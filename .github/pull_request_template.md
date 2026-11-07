@@ -1,8 +1,8 @@
-## O quê
+## What
 
 ## Checklist
-- [ ] Mudança na `plugin-api` ou em `contracts/`? → segui o procedimento do README e liguei os PRs dos plugins afetados
-- [ ] Endpoints novos têm `@RequiresPermission`
-- [ ] Escritas registam no Audit Trail
-- [ ] Queries filtradas por tenant (via `TenantContext`)
-- [ ] Testes a passar e `ModularityTest` verde
+- [ ] Touches the `plugin-api` or `contracts/`? → followed the README procedure and linked the affected plugin PRs
+- [ ] New endpoints have `@RequiresPermission`
+- [ ] Writes are recorded in the Audit Trail
+- [ ] Queries are filtered by tenant (via `TenantContext`)
+- [ ] Tests pass and `ModularityTest` is green

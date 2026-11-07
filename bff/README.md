@@ -1,4 +1,7 @@
 # BFF — Backend for Frontend
 
-Sessão (cookie HttpOnly, sem tokens no browser), login OIDC + MFA com o Keycloak e token relay para a aLinha Application.
-Stack a decidir no sprint 0 (Spring Cloud Gateway / Spring Boot com `spring-boot-starter-oauth2-client`). Sessões em Redis.
+**Spring Cloud Gateway** (technical report, 4.2).
+
+- OIDC + MFA login with Keycloak; session stored in Redis.
+- Tokens never reach the browser (HttpOnly cookie); token relay to the aLinha Application.
+- Rate limiting backed by Redis.

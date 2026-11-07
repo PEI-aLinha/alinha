@@ -1,7 +1,7 @@
 /**
- * Tipos gerados a partir do OpenAPI do backend (contracts/openapi/alinha.yaml).
- * Gerar com:  pnpm dlx openapi-typescript ../../../contracts/openapi/alinha.yaml -o src/schema.ts
- * Até lá, este ficheiro só exporta tipos partilhados escritos à mão.
+ * Types generated from the backend OpenAPI spec (contracts/openapi/alinha.yaml).
+ * Generate with:  pnpm dlx openapi-typescript ../../../contracts/openapi/alinha.yaml -o src/schema.ts
+ * Until then, this file only exports hand-written shared types.
  */
 export interface PluginManifestDto {
   id: string

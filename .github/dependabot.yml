@@ -1,7 +1,7 @@
 version: 2
 updates:
-  # Abre PRs a atualizar os ponteiros dos submodules para o último commit
-  # do main de cada plugin. O CI valida o conjunto antes do merge.
+  # Opens PRs that move the submodule pointers to the latest commit on each
+  # plugin's main. CI validates the whole set before merging.
   - package-ecosystem: gitsubmodule
     directory: "/"
     schedule:

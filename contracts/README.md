@@ -1,12 +1,12 @@
-# Contratos entre linguagens
+# Cross-language contracts
 
-Fonte única dos formatos partilhados entre Kotlin, Python e TypeScript.
-Um PR que muda um contrato muda **os dois lados no mesmo dia** (ver README principal > "Mudar a plugin-api ou um contrato").
+Single source of the formats shared between Kotlin, Python and TypeScript.
+A PR that changes a contract changes **both sides together** (see the main README > "Changing the plugin-api or a contract").
 
-| Pasta | Entre | Formato |
+| Folder | Between | Format |
 |---|---|---|
-| `jobs/` | Job Dispatcher (Kotlin) ↔ workers (Python) via Redis Streams | JSON Schema, um ficheiro por tipo e versão (`<tipo>.v<n>.schema.json`) |
-| `openapi/` | BFF/frontend ↔ aLinha Application | OpenAPI 3 (`alinha.yaml`), gera `@alinha/api-client` |
+| `jobs/` | Job Dispatcher (Kotlin) ↔ workers (Python) via Redis Streams | JSON Schema, one file per type and version (`<type>.v<n>.schema.json`) |
+| `openapi/` | BFF/frontend ↔ aLinha Application | OpenAPI 3 (`alinha.yaml`), generates `@alinha/api-client` |
 | `ai/` | AI Gateway (Kotlin) ↔ AI Service (Python) | OpenAPI 3 |
 
-Regra: nunca alterar um schema publicado de forma incompatível — cria-se `v2` e mantém-se `v1` até todos os consumidores migrarem.
+Rule: never change a published schema in an incompatible way — create `v2` and keep `v1` until every consumer has migrated.

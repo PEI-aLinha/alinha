@@ -1,8 +1,9 @@
 package pt.alinha.core.access
 
 /**
- * Marca um endpoint com o recurso/ação RBAC exigido (RNF09: role explícito
- * por operação). Verificado pelo Access Control do Core.
+ * Marks an endpoint with the required RBAC resource/action (RNF08: explicit
+ * roles per operation; RNF07: only login and health check skip the token).
+ * Enforced by the core's Access Control.
  */
 @Target(AnnotationTarget.FUNCTION, AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.RUNTIME)

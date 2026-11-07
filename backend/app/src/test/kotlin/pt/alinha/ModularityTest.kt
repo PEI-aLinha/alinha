@@ -5,24 +5,24 @@ import org.springframework.modulith.core.ApplicationModules
 import org.springframework.modulith.docs.Documenter
 
 /**
- * Garante as regras da arquitetura em cada build (corre no CI do repo
- * principal E no CI de cada plugin):
- *  - nenhum plugin acede a classes internas de outro módulo;
- *  - não há ciclos entre módulos;
- *  - só se usam os tipos públicos e as «named interfaces» (api, events, core::*).
+ * Enforces the architecture rules on every build (runs in the main repo's CI
+ * AND in every plugin's CI):
+ *  - no plugin accesses another module's internal classes (RNF17);
+ *  - no cycles between modules;
+ *  - only public types and «named interfaces» are used (api, events, core::*).
  */
 class ModularityTest {
 
     private val modules = ApplicationModules.of(AlinhaApplication::class.java)
 
     @Test
-    fun `respeita as fronteiras entre modulos`() {
+    fun `respects module boundaries`() {
         modules.verify()
     }
 
     @Test
-    fun `gera documentacao dos modulos`() {
-        // build/spring-modulith-docs — diagramas C4/PlantUML para o relatório
+    fun `writes module documentation`() {
+        // build/spring-modulith-docs — C4/PlantUML diagrams for the report
         Documenter(modules).writeDocumentation()
     }
 }

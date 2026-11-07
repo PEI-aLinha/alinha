@@ -2,17 +2,44 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://alinha.pt/contracts/jobs/evidence-collect.v1.schema.json",
   "title": "evidence.collect v1",
-  "description": "Job enviado pelo Job Dispatcher (Kotlin) para o worker de um Provider (Python) via Redis Streams. Mudanças incompatíveis = novo ficheiro v2.",
+  "description": "Job sent by the Job Dispatcher (Kotlin) to a Provider's worker (Python) via Redis Streams. Incompatible changes = new v2 file.",
   "type": "object",
-  "required": ["jobId", "type", "tenantId", "provider", "connectionRef", "requestedAt"],
+  "required": [
+    "jobId",
+    "type",
+    "tenantId",
+    "provider",
+    "connectionRef",
+    "requestedAt"
+  ],
   "additionalProperties": false,
   "properties": {
-    "jobId": { "type": "string", "format": "uuid" },
-    "type": { "const": "evidence.collect" },
-    "tenantId": { "type": "string", "format": "uuid" },
-    "provider": { "type": "string", "description": "id do provider plugin, ex.: code-repository" },
-    "connectionRef": { "type": "string", "description": "referência ao segredo no OpenBao — nunca a credencial em claro" },
-    "scope": { "type": "object", "description": "parâmetros específicos do provider (ex.: lista de repositórios)" },
-    "requestedAt": { "type": "string", "format": "date-time" }
+    "jobId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "type": {
+      "const": "evidence.collect"
+    },
+    "tenantId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "provider": {
+      "type": "string",
+      "description": "provider plugin id, e.g. code-repository"
+    },
+    "connectionRef": {
+      "type": "string",
+      "description": "reference to the secret in OpenBao — never the credential itself"
+    },
+    "scope": {
+      "type": "object",
+      "description": "provider-specific parameters (e.g. list of repositories)"
+    },
+    "requestedAt": {
+      "type": "string",
+      "format": "date-time"
+    }
   }
 }

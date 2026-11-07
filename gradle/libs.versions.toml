@@ -1,6 +1,6 @@
-# Versões centralizadas — usadas pelo core e por TODOS os plugins (os plugins
-# são subprojetos deste build, por isso veem este catálogo como `libs`).
-# Antes do primeiro build, confirmar os patches mais recentes de cada linha.
+# Centralised versions — used by the core and by ALL plugins (plugins are
+# subprojects of this build, so they see this catalogue as `libs`).
+# Before the first build, check the latest patch of each line.
 [versions]
 kotlin = "2.2.21"
 spring-boot = "4.0.0"
@@ -10,7 +10,7 @@ spring-modulith = "2.0.0"
 spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
 spring-modulith-bom = { module = "org.springframework.modulith:spring-modulith-bom", version.ref = "spring-modulith" }
 
-# versões geridas pelos BOMs acima
+# versions managed by the BOMs above
 spring-boot-starter-webmvc = { module = "org.springframework.boot:spring-boot-starter-webmvc" }
 spring-boot-starter-data-jpa = { module = "org.springframework.boot:spring-boot-starter-data-jpa" }
 spring-boot-starter-flyway = { module = "org.springframework.boot:spring-boot-starter-flyway" }

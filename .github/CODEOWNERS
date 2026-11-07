@@ -1,5 +1,5 @@
-# Quem tem de aprovar PRs em cada pasta. Substituir <...> pelos usernames
-# do GitHub (com @) e descomentar. Ver README > "Passos manuais".
+# Who must approve PRs in each folder. Replace <...> with GitHub usernames
+# (prefixed with @) and uncomment. Owners table: README.md > "Plugins and owners".
 #
 # *                       <martim> <afonso>
 # /backend/plugin-api/    <martim> <afonso>

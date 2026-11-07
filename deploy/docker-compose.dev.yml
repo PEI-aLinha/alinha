@@ -1,5 +1,7 @@
-# Dependências para desenvolvimento local: docker compose -f deploy/docker-compose.dev.yml up -d
-# A app corre fora do Docker (./gradlew :app:bootRun) e o frontend com pnpm dev.
+# Local development dependencies: docker compose -f deploy/docker-compose.dev.yml up -d
+# The app runs outside Docker (./gradlew :app:bootRun) and the frontend with pnpm dev.
+# TODO sprint 0 (RNF21): full docker-compose.yml with Nginx, BFF, app, AI Service,
+# workers and OpenBao, starting with a single command.
 services:
   postgres:
     image: postgres:17

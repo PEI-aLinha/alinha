@@ -16,7 +16,7 @@ dependencies {
     implementation(libs.kotlin.reflect)
     implementation(libs.jackson.module.kotlin)
 
-    // TODO sprint 0: segurança (Keycloak) — resource server JWT + RBAC
+    // TODO sprint 0: security (Keycloak) — JWT resource server + RBAC
     // implementation("org.springframework.boot:spring-boot-starter-security-oauth2-resource-server")
 
     testImplementation(libs.spring.boot.starter.test)

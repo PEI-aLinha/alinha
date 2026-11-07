@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestController
 import pt.alinha.pluginapi.AlinhaPlugin
 import pt.alinha.pluginapi.PluginManifest
 
-/** Module Registry: conhece todos os plugins presentes no build. */
+/** Module Registry: knows every plugin present in the build. */
 @Component
 class PluginRegistry(plugins: List<AlinhaPlugin>) {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -18,12 +18,12 @@ class PluginRegistry(plugins: List<AlinhaPlugin>) {
 
     init {
         val duplicated = manifests.groupBy { it.id }.filterValues { it.size > 1 }.keys
-        require(duplicated.isEmpty()) { "Plugins com id repetido: $duplicated" }
+        require(duplicated.isEmpty()) { "Duplicate plugin ids: $duplicated" }
     }
 
     @EventListener(ApplicationReadyEvent::class)
     fun logPlugins() {
-        log.info("aLinha arrancou com {} plugins: {}", manifests.size, manifests.joinToString { "${it.id}@${it.version}" })
+        log.info("aLinha started with {} plugins: {}", manifests.size, manifests.joinToString { "${it.id}@${it.version}" })
     }
 }
 

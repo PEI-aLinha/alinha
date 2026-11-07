@@ -7,17 +7,17 @@ on:
 
 jobs:
   submodules:
-    name: Ponteiros dos submodules
+    name: Submodule pointers
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-          token: ${{ secrets.ALINHA_READ_TOKEN || github.token }}
+          token: ${{ secrets.ALINHA_READ_TOKEN || github.token }}   # read-only PAT for the plugin repos
       - run: ./scripts/check-submodules.sh
 
   backend:
-    name: Backend (Core + plugins + Modulith verify)
+    name: Backend (core + plugins + Modulith verify)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

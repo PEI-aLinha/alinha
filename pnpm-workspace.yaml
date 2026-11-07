@@ -1,5 +1,5 @@
 packages:
   - frontend/shell
   - frontend/packages/*
-  # frontend de cada plugin (submodules)
+  # each plugin's frontend (submodules)
   - plugins/*/*/frontend

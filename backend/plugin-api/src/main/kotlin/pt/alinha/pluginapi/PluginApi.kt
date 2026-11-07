@@ -3,27 +3,27 @@ package pt.alinha.pluginapi
 import java.time.Instant
 import java.util.UUID
 
-/** Tipo de plugin, como no diagrama de arquitetura. */
+/** Plugin kind, as in the architecture diagram. */
 enum class PluginKind { FEATURE, FRAMEWORK, PROVIDER }
 
 /**
- * Manifest de um plugin. Espelha o `plugin.yaml` do repo do plugin e é
- * registado no Module Registry do Core no arranque.
+ * Plugin manifest. Mirrors the plugin repo's `plugin.yaml` and is registered
+ * in the core's Module Registry at startup.
  */
 data class PluginManifest(
     val id: String,
     val name: String,
     val kind: PluginKind,
     val version: String,
-    /** Nomes dos eventos que o plugin publica (ex.: "AssessmentSubmitted"). */
+    /** Names of the events the plugin publishes (e.g. "AssessmentSubmitted"). */
     val publishes: Set<String> = emptySet(),
-    /** Nomes dos eventos que o plugin consome. */
+    /** Names of the events the plugin consumes. */
     val consumes: Set<String> = emptySet(),
-    /** Recursos RBAC que o plugin declara (ex.: "assessment:read"). */
+    /** RBAC resources the plugin declares (e.g. "assessment:read"). */
     val permissions: Set<String> = emptySet(),
 )
 
-/** Cada plugin expõe exatamente um bean que implementa esta interface. */
+/** Every plugin exposes exactly one bean implementing this interface. */
 interface AlinhaPlugin {
     val manifest: PluginManifest
 }
@@ -32,9 +32,9 @@ interface AlinhaPlugin {
 value class TenantId(val value: UUID)
 
 /**
- * Evento de domínio. Publicado com o ApplicationEventPublisher do Spring e
- * persistido pelo Spring Modulith (event publication registry).
- * Os plugins só comunicam entre si por eventos e por contratos «api».
+ * Domain event. Published with Spring's ApplicationEventPublisher and
+ * persisted by Spring Modulith (event publication registry).
+ * Plugins talk to each other only through events and «api» contracts.
  */
 interface DomainEvent {
     val tenantId: TenantId

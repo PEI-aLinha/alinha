@@ -1,8 +1,8 @@
 package pt.alinha.core.jobs
 
 /**
- * Despacha jobs para os workers Python (outbox em PostgreSQL → Redis Streams).
- * O formato de cada job está em contracts/jobs/<tipo>.schema.json.
+ * Dispatches jobs to the Python workers (PostgreSQL outbox → Redis Streams, RNF02).
+ * Each job's format lives in contracts/jobs/<type>.schema.json.
  */
 interface JobDispatcher {
     fun dispatch(type: String, payload: Map<String, Any?>): String

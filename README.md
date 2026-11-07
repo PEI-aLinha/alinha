@@ -1,38 +1,44 @@
 # aLinha
 
-CISO-as-a-Service para PME portuguesas (NIS2 · GDPR · AI Act). Projeto PEI — Universidade de Aveiro.
+CISO-as-a-Service for Portuguese SMEs (NIS2 · GDPR · AI Act). PEI project — University of Aveiro.
 
-Este é o **repo principal**: Core, `plugin-api`, shell do frontend, BFF, AI Service, workers, contratos e deploy.
-Cada Feature/Provider plugin vive no **seu próprio repo** (backend + frontend) e entra aqui como **git submodule**
-em `plugins/<tipo>/<id>`. Tudo é compilado num único deployable. Decisão: [ADR 0001](docs/adr/0001-repositorios-com-submodules.md).
+This is the **main repo**: core, `plugin-api`, frontend shell, BFF, AI Service, workers, contracts and deployment.
+Each Feature/Provider plugin lives in **its own repo** (backend + frontend) and is included here as a **git submodule**
+under `plugins/<kind>/<id>`. Everything is built into a single deployable. Decision: [ADR 0001](docs/adr/0001-repositories-with-submodules.md).
 
 ```
 alinha/
 ├── backend/
-│   ├── plugin-api/       contrato Core ↔ plugins (manifest, eventos, TenantId)
+│   ├── plugin-api/       core ↔ plugin contract (manifest, events, TenantId)
 │   ├── core/             tenant, access (RBAC), audit, registry, jobs, compliance, aigateway
-│   └── app/              junta Core + plugins; ModularityTest (Spring Modulith verify)
+│   └── app/              assembles core + plugins; ModularityTest (Spring Modulith verify)
 ├── frontend/
-│   ├── shell/            router, layouts, sessão — monta as rotas e o menu dos plugins
+│   ├── shell/            router, layouts, session — mounts the plugins' routes and menu
 │   └── packages/
-│       ├── plugin-sdk/   contrato shell ↔ plugins (FrontendPlugin, useHost)
+│       ├── plugin-sdk/   shell ↔ plugin contract (FrontendPlugin, useHost)
 │       ├── ui/           design system
-│       └── api-client/   tipos gerados do OpenAPI
+│       └── api-client/   types generated from OpenAPI
 ├── plugins/
 │   ├── feature/<id>/     → submodule alinha-plugin-<id>
 │   └── provider/<id>/    → submodule alinha-provider-<id>
-├── frameworks/           catálogos YAML versionados (NIS2/QNRCS, GDPR, AI Act, SOC-CMM)
-├── contracts/            JSON Schema / OpenAPI partilhados entre Kotlin, Python e TS
+├── frameworks/           versioned YAML catalogues (NIS2/QNRCS, SOC-CMM, GDPR, AI Act)
+├── contracts/            JSON Schema / OpenAPI shared between Kotlin, Python and TS
 ├── bff/  ai-service/  workers/
-├── deploy/               docker-compose de desenvolvimento, Keycloak
+├── deploy/               development docker-compose, Keycloak
 └── docs/adr/
 ```
 
-## Plugins e donos
+## Language
 
-> Distribuição proposta — confirmar em equipa e refletir no CODEOWNERS de cada repo.
+Code, comments, docs and commit messages are in **English**.
+Everything the user sees in the UI (labels, titles, URL paths) is in **Portuguese**, in plain language
+(UI requirement in the technical report).
 
-| Plugin | Repo | Fase | Dono |
+## Plugins and owners
+
+> Proposed split — confirm as a team and mirror it in each repo's CODEOWNERS.
+
+| Plugin | Repo | Phase | Owner |
 |---|---|---|---|
 | Organization | `alinha-plugin-organization` | MVP | Íris |
 | Assessment | `alinha-plugin-assessment` | MVP | Afonso |
@@ -41,82 +47,97 @@ alinha/
 | Notifications | `alinha-plugin-notifications` | MVP | Xavier |
 | Code Repository | `alinha-provider-code-repository` | MVP | Xavier |
 | External Surface | `alinha-provider-external-surface` | MVP | Xavier |
-| Policy & Evidence | criar com `scripts/new-plugin.sh` | post-MVP | Afonso |
-| Review & Approval | idem | post-MVP | Martim |
-| Incident Reporting | idem | post-MVP | Íris |
-| Identity / Cloud, SIEM | idem | post-MVP | Xavier |
+| Policy & Evidence | create with `scripts/new-plugin.sh` | post-MVP | Afonso |
+| Review & Approval | same | post-MVP | Martim |
+| Incident Reporting | same | post-MVP | Íris |
+| Identity / Cloud, SIEM | same | post-MVP | Xavier |
 
-## Começar (uma vez por pessoa)
+## Getting started (once per person)
 
 ```bash
-git config --global submodule.recurse true             # pull/checkout atualizam os submodules
-git config --global push.recurseSubmodules on-demand   # push do principal faz push dos plugins primeiro
+git config --global submodule.recurse true             # pull/checkout also update submodules
+git config --global push.recurseSubmodules on-demand   # pushing the main repo pushes plugins first
 
 git clone --recurse-submodules git@github.com:PEI-aLinha/alinha.git
 cd alinha
 docker compose -f deploy/docker-compose.dev.yml up -d  # Postgres, Redis, Keycloak
-./gradlew :app:bootRun                                 # backend em :8080
-pnpm install && pnpm dev                               # frontend em :5173
+./gradlew :app:bootRun                                 # backend on :8080
+pnpm install && pnpm dev                               # frontend on :5173
 ```
 
-Requisitos: JDK 21, Node 22, pnpm 10, Docker.
+Requirements: JDK 21, Node 22, pnpm 10, Docker.
 
-## Trabalhar num plugin
+## Working on a plugin
 
-Desenvolve-se **sempre dentro do checkout do repo principal** — o repo de um plugin não compila sozinho
-(precisa da `plugin-api`, do `plugin-sdk` e do `ui`).
+Always work **inside a checkout of the main repo** — a plugin repo does not build on its own
+(it needs the `plugin-api`, the `plugin-sdk` and `ui`).
 
 ```bash
 cd plugins/feature/assessment
-git switch -c feat/roadmap            # branch NO REPO DO PLUGIN
-# ... código ...
-git commit -am "Roadmap: geração inicial"
-git push -u origin feat/roadmap       # PR no repo alinha-plugin-assessment
+git switch -c feat/roadmap            # branch IN THE PLUGIN REPO
+# ... code ...
+git commit -am "Roadmap: initial generation"
+git push -u origin feat/roadmap       # PR in alinha-plugin-assessment
 ```
 
-Depois do merge no plugin, o ponteiro no repo principal é atualizado pelo **Dependabot** (PR diário)
-ou à mão:
+After the plugin PR is merged, the pointer in the main repo is updated by **Dependabot** (daily PR)
+or by hand:
 
 ```bash
 git submodule update --remote plugins/feature/assessment
-git commit -am "plugins: atualiza assessment"
+git commit -am "plugins: update assessment"
 ```
 
-## Mudar a `plugin-api` ou um contrato
+## Changing the `plugin-api` or a contract
 
-É a única situação que mexe em vários repos ao mesmo tempo. Por esta ordem:
+This is the only change that touches several repos at once. In this order:
 
-1. Branch no repo principal com a mudança na `plugin-api` / `contracts/`.
-2. Branch com o mesmo nome em cada plugin afetado, já adaptado.
-3. No branch do principal, apontar os submodules para esses branches e abrir o PR — o CI testa o conjunto.
-4. Merge dos PRs dos plugins.
-5. No PR do principal: `git submodule update --remote` (ponteiros para o `main` dos plugins) → CI verde → merge.
+1. Branch in the main repo with the change to `plugin-api` / `contracts/`.
+2. A branch with the same name in every affected plugin, already adapted.
+3. On the main repo branch, point the submodules at those branches and open the PR — CI tests the whole set.
+4. Merge the plugin PRs.
+5. In the main repo PR: `git submodule update --remote` (pointers to each plugin's `main`) → CI green → merge.
 
-Combinar isto no sync semanal; não fazer em cima de uma entrega.
+Agree on this in the weekly sync; never do it right before a deadline.
 
-## Regras da arquitetura (verificadas no CI)
+## Architecture rules (checked in CI)
 
-- **Backend:** um plugin só usa os tipos públicos de outros módulos — `pt.alinha.<plugin>` (base), `.api`, `.events` e as named interfaces do Core (`core.tenant`, `core.access`, `core.audit`, `core.jobs`, `core.compliance`, `core.aigateway`). Nunca `internal`. Verificado pelo `ModularityTest`.
-- **Frontend:** um plugin só importa `@alinha/plugin-sdk`, `@alinha/ui` e `@alinha/api-client`. Verificado pelo ESLint.
-- **Dados:** cada plugin tem o seu schema PostgreSQL; migrações em `db/migration/<plugin>/V<yyyyMMddHHmm>__<plugin>_<descricao>.sql`.
-- **Pedidos:** tenant vem do token (`TenantContext`); endpoints com `@RequiresPermission`; escritas com Audit Trail na mesma transação.
+- **Backend:** a plugin only uses other modules' public types — `pt.alinha.<plugin>` (base), `.api`, `.events` and the core's named interfaces (`core.tenant`, `core.access`, `core.audit`, `core.jobs`, `core.compliance`, `core.aigateway`). Never `internal`. Checked by `ModularityTest`.
+- **Frontend:** a plugin only imports `@alinha/plugin-sdk`, `@alinha/ui` and `@alinha/api-client`. Checked by ESLint.
+- **Data:** each plugin has its own PostgreSQL schema; migrations in `db/migration/<plugin>/V<yyyyMMddHHmmss>__<plugin>_<description>.sql`.
+- **Requests:** tenant comes from the token (`TenantContext`); endpoints have `@RequiresPermission`; writes go to the Audit Trail in the same transaction.
 
-## Plugin novo
+## Non-functional requirements → where they are met
+
+Numbering from the technical report (section 3.2).
+
+| NFR | How | Status |
+|---|---|---|
+| RNF03 tenant isolation | `core.tenant.TenantContext` (tenant from the token); filtered queries | contract defined, implement in sprint 0 |
+| RNF04 audit trail | `core.audit.AuditTrail`, same transaction; `audit.audit_event` table INSERT-only | same |
+| RNF07/RNF08 OIDC + roles per endpoint | Keycloak + `@RequiresPermission` | same |
+| RNF12/RNF14 AI approval and provenance | `core.aigateway.AiDraft` (model, prompt version, sources, date) | contract defined |
+| RNF17 new plugin without touching the core | `settings.gradle.kts` and `gen-frontend-plugins.mjs` discover the submodules; `ModularityTest` | **done** |
+| RNF18 catalogues as data | `frameworks/` read at runtime by the Compliance Engine | see `frameworks/README.md` |
+| RNF19 coverage ≥ 70% and CI blocks merge | missing: Kover (Kotlin) + Vitest coverage in CI; blocking merges needs branch protection (GitHub Team) | **to do** |
+| RNF21 whole system starts with one command | missing: full `deploy/docker-compose.yml` (Nginx, BFF, app, AI Service, workers, OpenBao) | **to do** |
+
+## New plugin
 
 ```bash
 ./scripts/new-plugin.sh feature policy-evidence "Policy & Evidence"
 git push
 ```
 
-Cria o repo a partir do `alinha-plugin-template`, inicializa-o e adiciona-o como submodule.
-O Gradle e o shell do frontend descobrem-no sozinhos.
+Creates the repo from `alinha-plugin-template`, initialises it and adds it as a submodule.
+Gradle and the frontend shell pick it up automatically.
 
 ## Sprints (MVP)
 
-| Sprint | Datas | Objetivo |
+| Sprint | Dates | Goal |
 |---|---|---|
-| 0 | 4–10 nov | Walking skeleton: CI verde, compose, tenant + RBAC + audit, um plugin de UI → BFF → app → DB, `plugin-api` congelada |
-| 1 | 11–24 nov | Organization, Risk & Assets, catálogos, `ComplianceEngine.applicability()` |
-| 2 | 25 nov–8 dez | Assessment (evaluate, roadmap, `RoadmapValidated`), AI Service, workers + 2 providers, Notifications |
-| 3 | 9–15 dez | Dashboard & Reports, integração, demo |
-| — | 16–22 dez | Estabilização |
+| 0 | 4–10 Nov | Walking skeleton: green CI, compose, tenant + RBAC + audit, one plugin from UI → BFF → app → DB, `plugin-api` frozen |
+| 1 | 11–24 Nov | Organization, Risk & Assets, catalogues, `ComplianceEngine.applicability()` |
+| 2 | 25 Nov–8 Dec | Assessment (evaluate, roadmap, `RoadmapValidated`), AI Service, workers + 2 providers, Notifications |
+| 3 | 9–15 Dec | Dashboard & Reports, integration, demo |
+| — | 16–22 Dec | Stabilisation |

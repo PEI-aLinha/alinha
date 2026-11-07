@@ -6,15 +6,15 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    // Regra da arquitetura no frontend: um plugin só pode importar o SDK,
-    // o design system e o cliente da API — nunca outro plugin nem o shell.
+    // Architecture rule on the frontend: a plugin may only import the SDK,
+    // the design system and the API client — never another plugin or the shell.
     files: ['plugins/**/frontend/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': ['error', {
         patterns: [
-          { group: ['@alinha/plugin-*'], message: 'Plugins não importam outros plugins. Usa a API (contratos «api») ou eventos.' },
-          { group: ['**/frontend/shell/**', '@alinha/shell'], message: 'Plugins não importam o shell. Usa @alinha/plugin-sdk.' },
-          { group: ['../../../*'], message: 'Não saias da pasta do plugin.' },
+          { group: ['@alinha/plugin-*'], message: 'Plugins do not import other plugins. Use the API («api» contracts) or events.' },
+          { group: ['**/frontend/shell/**', '@alinha/shell'], message: 'Plugins do not import the shell. Use @alinha/plugin-sdk.' },
+          { group: ['../../../*'], message: 'Do not reach outside the plugin folder.' },
         ],
       }],
     },

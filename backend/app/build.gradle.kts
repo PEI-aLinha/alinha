@@ -1,11 +1,11 @@
-// Junta o Core e TODOS os plugins num único deployable (Spring Boot + Modulith).
+// Assembles the core and ALL plugins into a single deployable (Spring Boot + Modulith).
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.spring)
     alias(libs.plugins.spring.boot)
 }
 
-// Todos os subprojetos que vivem em plugins/** (os submodules).
+// Every subproject living under plugins/** (the submodules).
 val pluginProjects = rootProject.subprojects.filter {
     it.projectDir.toPath().startsWith(rootDir.toPath().resolve("plugins"))
 }
@@ -21,7 +21,7 @@ dependencies {
     implementation(libs.spring.boot.starter.actuator)
     implementation(libs.spring.boot.starter.flyway)
     implementation(libs.spring.modulith.starter.core)
-    implementation(libs.spring.modulith.starter.jdbc) // eventos persistidos em PostgreSQL
+    implementation(libs.spring.modulith.starter.jdbc) // events persisted in PostgreSQL
     implementation(libs.kotlin.reflect)
     implementation(libs.jackson.module.kotlin)
     runtimeOnly(libs.flyway.postgresql)

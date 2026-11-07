@@ -1,7 +1,7 @@
 /**
- * Design system do aLinha (componentes do Figma).
+ * aLinha design system (Figma components).
  *
- * Migração do protótipo: mover frontend-prototype/src/ui/* para aqui
- * (Button, Card, DataTable, RiskMatrix, ...) e re-exportar neste ficheiro.
+ * Migrating the prototype: move frontend-prototype/src/ui/* here
+ * (Button, Card, DataTable, RiskMatrix, ...) and re-export them from this file.
  */
 export { PageHeader } from './PageHeader'

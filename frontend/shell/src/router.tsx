@@ -6,8 +6,8 @@ const routesFor = (area: 'client' | 'consultant') =>
   plugins.flatMap((p) => p.routes[area] ?? [])
 
 /**
- * As rotas vêm dos plugins: nenhum plugin é referido à mão aqui.
- * (As rotas de registo/onboarding do protótipo pertencem ao plugin Organization.)
+ * Routes come from the plugins: no plugin is referenced by hand here.
+ * (The prototype's registration/onboarding routes belong to the Organization plugin.)
  */
 export const router = createBrowserRouter([
   { index: true, element: <Navigate to="/carteira" replace /> },

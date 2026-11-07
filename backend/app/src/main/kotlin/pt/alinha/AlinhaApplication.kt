@@ -5,8 +5,8 @@ import org.springframework.boot.runApplication
 import org.springframework.modulith.Modulithic
 
 /**
- * Cada subpackage direto de pt.alinha é um módulo do Spring Modulith:
- * core, pluginapi e um por plugin (pt.alinha.assessment, ...).
+ * Every direct subpackage of pt.alinha is a Spring Modulith module:
+ * core, pluginapi and one per plugin (pt.alinha.assessment, ...).
  */
 @SpringBootApplication
 @Modulithic(systemName = "aLinha", sharedModules = ["pluginapi"])

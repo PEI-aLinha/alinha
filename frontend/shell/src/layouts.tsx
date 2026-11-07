@@ -2,7 +2,7 @@ import { NavLink, Outlet } from 'react-router'
 import { useHost, type Area } from '@alinha/plugin-sdk'
 import { plugins } from './plugins.generated'
 
-/** Layout mínimo: menu construído a partir do `nav` de cada plugin. */
+/** Minimal layout: menu built from each plugin's `nav`. */
 export function AreaLayout({ area }: { area: Area }) {
   const { can } = useHost()
   const items = plugins

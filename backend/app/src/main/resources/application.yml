@@ -8,17 +8,17 @@ spring:
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: validate          # o schema é SEMPRE criado por migrações Flyway
+      ddl-auto: validate          # the schema is ALWAYS created by Flyway migrations
   flyway:
-    # Cada plugin põe as migrações em db/migration/<plugin>/ — o Flyway
-    # procura recursivamente. Versões com timestamp para não colidirem:
+    # Each plugin puts its migrations in db/migration/<plugin>/ — Flyway
+    # scans recursively. Timestamp versions so they never collide:
     #   V202611071530__assessment_init.sql
     locations: classpath:db/migration
   modulith:
     events:
       jdbc:
         schema-initialization:
-          enabled: true           # tabela de publicação de eventos do Modulith
+          enabled: true           # Modulith event publication table
 
 management:
   endpoints:
