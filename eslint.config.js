@@ -12,7 +12,7 @@ export default tseslint.config(
     rules: {
       'no-restricted-imports': ['error', {
         patterns: [
-          { group: ['@alinha/plugin-*'], message: 'Plugins do not import other plugins. Use the API («api» contracts) or events.' },
+          { group: ['@alinha/plugin-*', '!@alinha/plugin-sdk'], message: 'Plugins do not import other plugins. Use the API («api» contracts) or events.' },
           { group: ['**/frontend/shell/**', '@alinha/shell'], message: 'Plugins do not import the shell. Use @alinha/plugin-sdk.' },
           { group: ['../../../*'], message: 'Do not reach outside the plugin folder.' },
         ],
