@@ -11,7 +11,7 @@ import pt.alinha.pluginapi.TenantSecretStore
  * The tenant id is a UUID and the provider id is validated, so a caller cannot escape its tenant path.
  */
 @Component
-class OpenBaoTenantSecretStore(vault: VaultOperations) : TenantSecretStore {
+class OpenBaoTenantSecretStore(private val vault: VaultOperations) : TenantSecretStore {
 
     private val kv: VaultVersionedKeyValueOperations = vault.opsForVersionedKeyValue(KV_MOUNT)
 
@@ -24,8 +24,12 @@ class OpenBaoTenantSecretStore(vault: VaultOperations) : TenantSecretStore {
     override fun get(tenant: TenantId, provider: String): Map<String, String>? =
         kv.get(path(tenant, provider))?.data?.mapValues { (_, value) -> value.toString() }
 
+    /**
+     * Permanently removes the credential: deleting the KV v2 metadata destroys every version.
+     * A plain `kv.delete` is only a soft delete of the latest version, so old tokens stay recoverable.
+     */
     override fun delete(tenant: TenantId, provider: String) {
-        kv.delete(path(tenant, provider))
+        vault.delete("$KV_MOUNT/metadata/${path(tenant, provider)}")
     }
 
     private fun path(tenant: TenantId, provider: String): String {

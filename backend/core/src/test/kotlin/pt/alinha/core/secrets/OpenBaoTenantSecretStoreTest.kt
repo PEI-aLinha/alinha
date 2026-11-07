@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.vault.authentication.TokenAuthentication
 import org.springframework.vault.client.VaultEndpoint
 import org.springframework.vault.core.VaultTemplate
+import org.springframework.vault.support.Versioned
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.utility.DockerImageName
@@ -28,13 +29,15 @@ class OpenBaoTenantSecretStoreTest {
         ).withVaultToken(ROOT_TOKEN)
             .withEnv("BAO_DEV_ROOT_TOKEN_ID", ROOT_TOKEN) // OpenBao ignores the VAULT_* name
 
+        private lateinit var vault: VaultTemplate
         private lateinit var store: OpenBaoTenantSecretStore
 
         @BeforeAll
         @JvmStatic
         fun setUp() {
             val endpoint = VaultEndpoint.from(URI.create(openBao.httpHostAddress))
-            store = OpenBaoTenantSecretStore(VaultTemplate(endpoint, TokenAuthentication(ROOT_TOKEN)))
+            vault = VaultTemplate(endpoint, TokenAuthentication(ROOT_TOKEN))
+            store = OpenBaoTenantSecretStore(vault)
         }
     }
 
@@ -65,6 +68,20 @@ class OpenBaoTenantSecretStoreTest {
         store.delete(tenant, "external-surface")
 
         assertThat(store.get(tenant, "external-surface")).isNull()
+    }
+
+    @Test
+    fun `delete purges every version so old credentials cannot be recovered`() {
+        val tenant = newTenant()
+        store.put(tenant, "code-repository", mapOf("token" to "old"))
+        store.put(tenant, "code-repository", mapOf("token" to "new"))
+
+        store.delete(tenant, "code-repository")
+
+        val kv = vault.opsForVersionedKeyValue("secret")
+        val path = "tenants/${tenant.value}/providers/code-repository"
+        assertThat(kv.get<Map<String, Any>>(path, Versioned.Version.from(1))?.data).isNull()
+        assertThat(vault.read("secret/metadata/$path")).isNull()
     }
 
     @Test
