@@ -1,0 +1,32 @@
+# Versões centralizadas — usadas pelo core e por TODOS os plugins (os plugins
+# são subprojetos deste build, por isso veem este catálogo como `libs`).
+# Antes do primeiro build, confirmar os patches mais recentes de cada linha.
+[versions]
+kotlin = "2.2.21"
+spring-boot = "4.0.0"
+spring-modulith = "2.0.0"
+
+[libraries]
+spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
+spring-modulith-bom = { module = "org.springframework.modulith:spring-modulith-bom", version.ref = "spring-modulith" }
+
+# versões geridas pelos BOMs acima
+spring-boot-starter-webmvc = { module = "org.springframework.boot:spring-boot-starter-webmvc" }
+spring-boot-starter-data-jpa = { module = "org.springframework.boot:spring-boot-starter-data-jpa" }
+spring-boot-starter-flyway = { module = "org.springframework.boot:spring-boot-starter-flyway" }
+spring-boot-starter-actuator = { module = "org.springframework.boot:spring-boot-starter-actuator" }
+spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
+spring-modulith-api = { module = "org.springframework.modulith:spring-modulith-api" }
+spring-modulith-starter-core = { module = "org.springframework.modulith:spring-modulith-starter-core" }
+spring-modulith-starter-jdbc = { module = "org.springframework.modulith:spring-modulith-starter-jdbc" }
+spring-modulith-starter-test = { module = "org.springframework.modulith:spring-modulith-starter-test" }
+jackson-module-kotlin = { module = "tools.jackson.module:jackson-module-kotlin" }
+kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect" }
+flyway-postgresql = { module = "org.flywaydb:flyway-database-postgresql" }
+postgresql = { module = "org.postgresql:postgresql" }
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
+kotlin-jpa = { id = "org.jetbrains.kotlin.plugin.jpa", version.ref = "kotlin" }
+spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }

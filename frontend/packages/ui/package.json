@@ -1,0 +1,19 @@
+{
+  "name": "@alinha/ui",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "react": "^19.2.8"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.18",
+    "react": "^19.2.8",
+    "typescript": "~6.0.2"
+  }
+}

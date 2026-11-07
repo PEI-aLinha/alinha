@@ -1,0 +1,13 @@
+# Quem tem de aprovar PRs em cada pasta. Substituir <...> pelos usernames
+# do GitHub (com @) e descomentar. Ver README > "Passos manuais".
+#
+# *                       <martim> <afonso>
+# /backend/plugin-api/    <martim> <afonso>
+# /backend/core/          <martim> <afonso>
+# /contracts/             <martim> <afonso>
+# /frameworks/            <iris>
+# /frontend/              <ines>
+# /deploy/  /bff/         <xavier>
+# /ai-service/            <afonso>
+# /workers/               <xavier>
+# .gitmodules             <martim> <afonso>

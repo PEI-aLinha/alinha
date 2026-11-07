@@ -1,0 +1,10 @@
+version: 2
+updates:
+  # Abre PRs a atualizar os ponteiros dos submodules para o último commit
+  # do main de cada plugin. O CI valida o conjunto antes do merge.
+  - package-ecosystem: gitsubmodule
+    directory: "/"
+    schedule:
+      interval: daily
+    commit-message:
+      prefix: "plugins"

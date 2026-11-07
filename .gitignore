@@ -1,0 +1,28 @@
+# Gradle / JVM
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+*.class
+.kotlin/
+
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+frontend/shell/src/plugins.generated.ts
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# IDE / SO
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Segredos
+.env
+.env.*
+!.env.example

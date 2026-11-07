@@ -1,0 +1,18 @@
+{
+  "name": "alinha",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "gen:plugins": "node scripts/gen-frontend-plugins.mjs",
+    "dev": "pnpm gen:plugins && pnpm --filter @alinha/shell dev",
+    "build": "pnpm gen:plugins && pnpm --filter @alinha/shell build",
+    "typecheck": "pnpm gen:plugins && pnpm -r --parallel typecheck",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.13.0",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "^8.72.0"
+  }
+}

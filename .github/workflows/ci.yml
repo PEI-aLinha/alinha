@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  submodules:
+    name: Ponteiros dos submodules
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.ALINHA_READ_TOKEN || github.token }}
+      - run: ./scripts/check-submodules.sh
+
+  backend:
+    name: Backend (Core + plugins + Modulith verify)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.ALINHA_READ_TOKEN || github.token }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew build
+
+  frontend:
+    name: Frontend (shell + plugins)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.ALINHA_READ_TOKEN || github.token }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: pnpm install
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm build

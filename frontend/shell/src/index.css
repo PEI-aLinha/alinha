@@ -1,0 +1,4 @@
+@import "tailwindcss";
+/* Plugins vivem fora do shell: dizer ao Tailwind para os analisar também. */
+@source "../../../plugins";
+@source "../../packages/ui/src";
