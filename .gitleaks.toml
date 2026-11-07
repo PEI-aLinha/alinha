@@ -1,0 +1,11 @@
+# Secret scanning (NFR09). Runs in CI (job "secrets") and locally: gitleaks detect --source .
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Dev-only credentials for local docker compose (documented in CLAUDE.md)"
+paths = [
+  '''deploy/docker-compose\.dev\.yml''',
+  '''deploy/openbao/init\.sh''',
+  '''deploy/keycloak/.*''',
+]
