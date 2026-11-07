@@ -6,13 +6,18 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
+    // Build scripts run in Node.
+    files: ['scripts/**/*.{js,mjs}'],
+    languageOptions: { globals: { console: 'readonly', process: 'readonly' } },
+  },
+  {
     // Architecture rule on the frontend: a plugin may only import the SDK,
     // the design system and the API client — never another plugin or the shell.
     files: ['plugins/**/frontend/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': ['error', {
         patterns: [
-          { group: ['@alinha/plugin-*'], message: 'Plugins do not import other plugins. Use the API («api» contracts) or events.' },
+          { group: ['@alinha/plugin-*', '!@alinha/plugin-sdk'], message: 'Plugins do not import other plugins. Use the API («api» contracts) or events.' },
           { group: ['**/frontend/shell/**', '@alinha/shell'], message: 'Plugins do not import the shell. Use @alinha/plugin-sdk.' },
           { group: ['../../../*'], message: 'Do not reach outside the plugin folder.' },
         ],
