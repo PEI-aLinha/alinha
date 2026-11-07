@@ -1,0 +1,21 @@
+[submodule "plugins/feature/assessment"]
+	path = plugins/feature/assessment
+	url = ../alinha-plugin-assessment.git
+[submodule "plugins/feature/dashboard-reports"]
+	path = plugins/feature/dashboard-reports
+	url = ../alinha-plugin-dashboard-reports.git
+[submodule "plugins/feature/notifications"]
+	path = plugins/feature/notifications
+	url = ../alinha-plugin-notifications.git
+[submodule "plugins/feature/organization"]
+	path = plugins/feature/organization
+	url = ../alinha-plugin-organization.git
+[submodule "plugins/feature/risk-assets"]
+	path = plugins/feature/risk-assets
+	url = ../alinha-plugin-risk-assets.git
+[submodule "plugins/provider/code-repository"]
+	path = plugins/provider/code-repository
+	url = ../alinha-provider-code-repository.git
+[submodule "plugins/provider/external-surface"]
+	path = plugins/provider/external-surface
+	url = ../alinha-provider-external-surface.git
