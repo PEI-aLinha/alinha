@@ -6,6 +6,11 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
+    // Build scripts run in Node.
+    files: ['scripts/**/*.{js,mjs}'],
+    languageOptions: { globals: { console: 'readonly', process: 'readonly' } },
+  },
+  {
     // Architecture rule on the frontend: a plugin may only import the SDK,
     // the design system and the API client — never another plugin or the shell.
     files: ['plugins/**/frontend/**/*.{ts,tsx}'],
