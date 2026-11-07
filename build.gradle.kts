@@ -18,6 +18,11 @@ subprojects {
             jvmToolchain(21)
             compilerOptions { freeCompilerArgs.add("-Xjsr305=strict") }
         }
+        // Gradle's bundled launcher does not match JUnit 6 from the Boot BOM; align it explicitly.
+        dependencies {
+            "testRuntimeOnly"(platform(libs.spring.boot.bom))
+            "testRuntimeOnly"("org.junit.platform:junit-platform-launcher")
+        }
     }
 
     tasks.withType<Test>().configureEach { useJUnitPlatform() }
