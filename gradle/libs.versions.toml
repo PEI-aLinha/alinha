@@ -5,10 +5,12 @@
 kotlin = "2.2.21"
 spring-boot = "4.0.0"
 spring-modulith = "2.0.0"
+spring-cloud = "2025.1.0"
 
 [libraries]
 spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
 spring-modulith-bom = { module = "org.springframework.modulith:spring-modulith-bom", version.ref = "spring-modulith" }
+spring-cloud-bom = { module = "org.springframework.cloud:spring-cloud-dependencies", version.ref = "spring-cloud" }
 
 # versions managed by the BOMs above
 spring-boot-starter-webmvc = { module = "org.springframework.boot:spring-boot-starter-webmvc" }
@@ -24,6 +26,10 @@ jackson-module-kotlin = { module = "tools.jackson.module:jackson-module-kotlin" 
 kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect" }
 flyway-postgresql = { module = "org.flywaydb:flyway-database-postgresql" }
 postgresql = { module = "org.postgresql:postgresql" }
+spring-cloud-starter-vault-config = { module = "org.springframework.cloud:spring-cloud-starter-vault-config" }
+spring-vault-core = { module = "org.springframework.vault:spring-vault-core" }
+testcontainers-vault = { module = "org.testcontainers:testcontainers-vault" }
+testcontainers-junit-jupiter = { module = "org.testcontainers:testcontainers-junit-jupiter" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
