@@ -67,6 +67,21 @@ pnpm install && pnpm dev                               # frontend on :5173
 
 Requirements: JDK 21, Node 22, pnpm 10, Docker.
 
+### Optional: the `alinha` CLI
+
+[`alinha-cli`](https://github.com/PEI-aLinha/alinha-cli) wraps these steps and shows the state of every plugin. It needs [uv](https://docs.astral.sh/uv/).
+
+```bash
+uv tool install git+ssh://git@github.com/PEI-aLinha/alinha-cli.git@v0.1.0
+
+alinha doctor          # check tools, submodules, ports and dev secrets
+alinha plugins status  # branch, local changes and pointer drift per plugin
+alinha dev             # start dependencies, backend and frontend
+alinha down            # stop the containers
+```
+
+The supported CLI versions are pinned in `.alinha-cli-version`.
+
 ## Working on a plugin
 
 Always work **inside a checkout of the main repo** — a plugin repo does not build on its own
