@@ -115,7 +115,7 @@ Numbering from the technical report (section 3.2).
 |---|---|---|
 | RNF03 tenant isolation | `core.tenant.TenantContext` (tenant from the token); filtered queries | contract defined, implement in sprint 0 |
 | RNF04 audit trail | `core.audit.AuditTrail`, same transaction; `audit.audit_event` table INSERT-only | same |
-| RNF07/RNF08 OIDC + roles per endpoint | Keycloak + `@RequiresPermission` | same |
+| RNF07/RNF08 OIDC + roles per endpoint | Keycloak JWTs + `@RequiresPermission`, deny by default; see `docs/rbac.md` | **done** in the backend (not yet tested against a real Keycloak realm, see #5) |
 | RNF09 no secrets in code/config | OpenBao (`secret/alinha/app` via Spring Cloud Vault); per-tenant provider credentials via `pluginapi.TenantSecretStore`; gitleaks job in CI | **done** (AI Service reads it once implemented) |
 | RNF12/RNF14 AI approval and provenance | `core.aigateway.AiDraft` (model, prompt version, sources, date) | contract defined |
 | RNF17 new plugin without touching the core | `settings.gradle.kts` and `gen-frontend-plugins.mjs` discover the submodules; `ModularityTest` | **done** |
