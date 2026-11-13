@@ -5,10 +5,11 @@ package pt.alinha.pluginapi
  * Secrets never go to the database, logs or audit payloads.
  *
  * `provider` is the provider plugin id (lowercase letters, digits and dashes).
- * The tenant is explicit for now; callers pass `TenantContext.current()` (never a value from the request).
+ * The tenant is always the current one (the core's `TenantContext`), so a caller cannot reach
+ * another tenant's credentials. Calls outside a tenant-scoped request or `runAs` fail.
  */
 interface TenantSecretStore {
-    fun put(tenant: TenantId, provider: String, secret: Map<String, String>)
-    fun get(tenant: TenantId, provider: String): Map<String, String>?
-    fun delete(tenant: TenantId, provider: String)
+    fun put(provider: String, secret: Map<String, String>)
+    fun get(provider: String): Map<String, String>?
+    fun delete(provider: String)
 }
