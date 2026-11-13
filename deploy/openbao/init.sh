@@ -20,7 +20,15 @@ bao policy write alinha-app /init/alinha-app.hcl
 bao policy write alinha-ai-service /init/alinha-ai-service.hcl
 
 # Fixed dev token with the app policy, so the app never runs with the root token.
-bao token create -id=dev-app-token -policy=alinha-app -orphan -period=768h >/dev/null 2>&1 || true
-bao token create -id=dev-ai-token -policy=alinha-ai-service -orphan -period=768h >/dev/null 2>&1 || true
+# Only an existing token (re-run) is skipped; any other failure stops the script.
+create_token() {
+  if bao token lookup "$1" >/dev/null 2>&1; then
+    echo "token $1 already exists"
+  else
+    bao token create -id="$1" -policy="$2" -orphan -period=768h >/dev/null
+  fi
+}
+create_token dev-app-token alinha-app
+create_token dev-ai-token alinha-ai-service
 
 echo "OpenBao seeded: secret/alinha/app, secret/alinha/ai-service; tokens dev-app-token, dev-ai-token"
