@@ -15,16 +15,9 @@ bao kv put secret/alinha/app \
 # Secrets read by the AI Service (see ai-service/README.md).
 bao kv put secret/alinha/ai-service llm.api-key=change-me
 
-# Least-privilege policy for the app: read platform secrets, manage per-tenant provider credentials.
-bao policy write alinha-app - <<'POLICY'
-path "secret/data/alinha/app" { capabilities = ["read"] }
-path "secret/data/tenants/*" { capabilities = ["create", "read", "update", "delete"] }
-path "secret/metadata/tenants/*" { capabilities = ["read", "delete", "list"] }
-POLICY
-
-bao policy write alinha-ai-service - <<'POLICY'
-path "secret/data/alinha/ai-service" { capabilities = ["read"] }
-POLICY
+# Policies live next to this script (mounted at /init) so tests can load the same files.
+bao policy write alinha-app /init/alinha-app.hcl
+bao policy write alinha-ai-service /init/alinha-ai-service.hcl
 
 # Fixed dev token with the app policy, so the app never runs with the root token.
 bao token create -id=dev-app-token -policy=alinha-app -orphan -period=768h >/dev/null 2>&1 || true
