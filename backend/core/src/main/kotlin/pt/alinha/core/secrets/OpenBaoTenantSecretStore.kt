@@ -1,5 +1,6 @@
 package pt.alinha.core.secrets
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Component
 import org.springframework.vault.core.VaultOperations
 import org.springframework.vault.core.VaultVersionedKeyValueOperations
@@ -9,8 +10,12 @@ import pt.alinha.pluginapi.TenantSecretStore
 /**
  * Stores provider credentials in OpenBao KV v2 at `secret/tenants/{tenantId}/providers/{provider}`.
  * The tenant id is a UUID and the provider id is validated, so a caller cannot escape its tenant path.
+ *
+ * Not created when `spring.cloud.vault.enabled=false` (tests without OpenBao): there is no
+ * `VaultOperations` bean then, so a context test provides its own [TenantSecretStore] double.
  */
 @Component
+@ConditionalOnProperty(prefix = "spring.cloud.vault", name = ["enabled"], havingValue = "true", matchIfMissing = true)
 class OpenBaoTenantSecretStore(private val vault: VaultOperations) : TenantSecretStore {
 
     private val kv: VaultVersionedKeyValueOperations = vault.opsForVersionedKeyValue(KV_MOUNT)
