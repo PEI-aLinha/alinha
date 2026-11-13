@@ -8,6 +8,7 @@ import pt.alinha.pluginapi.TenantId
  * the `X-Alinha-Tenant` header, restricted to the organizations in the `tenants` claim.
  */
 interface TenantContext {
+    /** @throws IllegalStateException on a [TenantAgnostic] endpoint or outside a request / [runAs]. */
     fun current(): TenantId
 
     /**
