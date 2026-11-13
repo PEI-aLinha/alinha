@@ -26,3 +26,8 @@ dependencies {
     testImplementation(libs.testcontainers.vault)
     testImplementation(libs.testcontainers.junit.jupiter)
 }
+
+// OpenBaoTenantSecretStoreTest runs with the real app policy from deploy/openbao.
+tasks.test {
+    systemProperty("alinha.openbao.policy-dir", rootProject.file("deploy/openbao").absolutePath)
+}

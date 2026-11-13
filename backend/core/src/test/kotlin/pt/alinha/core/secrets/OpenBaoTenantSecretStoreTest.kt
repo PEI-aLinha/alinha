@@ -4,9 +4,11 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
+import org.springframework.vault.VaultException
 import org.springframework.vault.authentication.TokenAuthentication
 import org.springframework.vault.client.VaultEndpoint
 import org.springframework.vault.core.VaultTemplate
+import org.springframework.vault.support.VaultTokenRequest
 import org.springframework.vault.support.Versioned
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
@@ -14,7 +16,9 @@ import org.testcontainers.utility.DockerImageName
 import org.testcontainers.vault.VaultContainer
 import pt.alinha.pluginapi.TenantId
 import java.net.URI
+import java.nio.file.Path
 import java.util.UUID
+import kotlin.io.path.readText
 
 @Testcontainers
 class OpenBaoTenantSecretStoreTest {
@@ -29,7 +33,13 @@ class OpenBaoTenantSecretStoreTest {
         ).withVaultToken(ROOT_TOKEN)
             .withEnv("BAO_DEV_ROOT_TOKEN_ID", ROOT_TOKEN) // OpenBao ignores the VAULT_* name
 
+        private const val APP_POLICY = "alinha-app"
+
+        /** Root client, only for setup and assertions the app itself must not be able to make. */
         private lateinit var vault: VaultTemplate
+
+        /** Client with the app's token: restricted to deploy/openbao/alinha-app.hcl, as in dev. */
+        private lateinit var appVault: VaultTemplate
         private lateinit var store: OpenBaoTenantSecretStore
 
         @BeforeAll
@@ -37,7 +47,13 @@ class OpenBaoTenantSecretStoreTest {
         fun setUp() {
             val endpoint = VaultEndpoint.from(URI.create(openBao.httpHostAddress))
             vault = VaultTemplate(endpoint, TokenAuthentication(ROOT_TOKEN))
-            store = OpenBaoTenantSecretStore(vault)
+
+            val policyDir = Path.of(System.getProperty("alinha.openbao.policy-dir"))
+            vault.write("sys/policies/acl/$APP_POLICY", mapOf("policy" to policyDir.resolve("$APP_POLICY.hcl").readText()))
+            val appToken = vault.opsForToken().create(VaultTokenRequest.builder().withPolicy(APP_POLICY).build()).token
+
+            appVault = VaultTemplate(endpoint, TokenAuthentication(appToken))
+            store = OpenBaoTenantSecretStore(appVault)
         }
     }
 
@@ -82,6 +98,15 @@ class OpenBaoTenantSecretStoreTest {
         val path = "tenants/${tenant.value}/providers/code-repository"
         assertThat(kv.get<Map<String, Any>>(path, Versioned.Version.from(1))?.data).isNull()
         assertThat(vault.read("secret/metadata/$path")).isNull()
+    }
+
+    @Test
+    fun `the app policy cannot read the AI Service secrets`() {
+        vault.opsForVersionedKeyValue("secret").put("alinha/ai-service", mapOf("llm.api-key" to "k"))
+
+        assertThatThrownBy { appVault.opsForVersionedKeyValue("secret").get("alinha/ai-service") }
+            .isInstanceOf(VaultException::class.java)
+            .hasMessageContaining("403")
     }
 
     @Test
