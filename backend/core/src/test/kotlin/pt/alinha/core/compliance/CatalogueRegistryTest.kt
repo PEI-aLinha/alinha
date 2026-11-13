@@ -55,6 +55,19 @@ class CatalogueRegistryTest {
     }
 
     @Test
+    fun `reload keeps in-memory copy when a published version changes on disk`() {
+        write("nis2-qnrcs", 1)
+        val registry = registry().also { it.onStartup() }
+        published.clear()
+
+        write("nis2-qnrcs", 1, title = "Titulo Alterado")
+        registry.reload()
+
+        assertThat(registry.get("nis2-qnrcs", 1)?.title).isEqualTo("NIS2 v1")
+        assertThat(published).isEmpty()
+    }
+
+    @Test
     @OptIn(kotlin.io.path.ExperimentalPathApi::class)
     fun `version stays available after its folder is deleted and reload is called`() {
         write("nis2-qnrcs", 1)
@@ -78,13 +91,13 @@ class CatalogueRegistryTest {
 
     private fun registry() = CatalogueRegistry(frameworksDir.toString(), events)
 
-    private fun write(framework: String, version: Int) {
+    private fun write(framework: String, version: Int, title: String = "NIS2 v$version") {
         val dir = frameworksDir.resolve(framework).resolve("v$version").createDirectories()
         dir.resolve(CatalogueLoader.CATALOGUE_FILE).writeText(
             """
             framework: $framework
             version: $version
-            title: "NIS2 v$version"
+            title: "$title"
             sources:
               - "Fonte"
             requirements:
