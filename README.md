@@ -113,7 +113,7 @@ Numbering from the technical report (section 3.2).
 
 | NFR | How | Status |
 |---|---|---|
-| RNF03 tenant isolation | `core.tenant.TenantContext` (tenant from the token); filtered queries | contract defined, implement in sprint 0 |
+| RNF03 tenant isolation | `core.tenant.TenantContext` (tenant from the token, consultant picks with `X-Alinha-Tenant`); entities extend `TenantOwnedEntity` (Hibernate `@TenantId`); see `docs/tenancy.md` | **done** in the backend (Keycloak claims pending #5, header relay pending #14) |
 | RNF04 audit trail | `core.audit.AuditTrail`, same transaction; `audit.audit_event` table INSERT-only | same |
 | RNF07/RNF08 OIDC + roles per endpoint | Keycloak JWTs + `@RequiresPermission`, deny by default; see `docs/rbac.md` | **done** in the backend (not yet tested against a real Keycloak realm, see #5) |
 | RNF09 no secrets in code/config | OpenBao (`secret/alinha/app` via Spring Cloud Vault); per-tenant provider credentials via `pluginapi.TenantSecretStore`; gitleaks job in CI | **done** (AI Service reads it once implemented) |
