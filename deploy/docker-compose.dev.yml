@@ -10,7 +10,8 @@ services:
       POSTGRES_USER: alinha
       POSTGRES_PASSWORD: alinha
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U alinha -d alinha"]
+      # TCP, not the unix socket: the temporary initdb server only listens on the socket.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U alinha -d alinha"]
       interval: 2s
       timeout: 3s
       retries: 30
