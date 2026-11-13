@@ -54,3 +54,5 @@ Tests: `TenantResolutionTest`, `TenantResolutionWebTest`, `TenantIsolationIntegr
    started **outside** any transaction (a JPA session keeps the tenant it was opened with).
 5. **Native SQL and `JdbcTemplate` are not filtered.** Avoid them for tenant data, or add
    `where tenant_id = :tenant` by hand and cover it with a cross-tenant test.
+6. Provider credentials go through `pluginapi.TenantSecretStore`, which also takes the tenant from
+   `TenantContext`: call it from a tenant-scoped request or inside `runAs`, never with a tenant id.
