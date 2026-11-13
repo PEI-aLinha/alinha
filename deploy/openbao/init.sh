@@ -9,8 +9,7 @@ until bao status >/dev/null 2>&1; do sleep 1; done
 bao kv put secret/alinha/app \
   db.username=alinha \
   db.password=alinha \
-  smtp.password=change-me \
-  llm.api-key=change-me
+  smtp.password=change-me
 
 # Secrets read by the AI Service (see ai-service/README.md).
 bao kv put secret/alinha/ai-service llm.api-key=change-me
