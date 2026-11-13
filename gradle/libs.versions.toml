@@ -33,6 +33,7 @@ spring-cloud-starter-vault-config = { module = "org.springframework.cloud:spring
 spring-vault-core = { module = "org.springframework.vault:spring-vault-core" }
 testcontainers-vault = { module = "org.testcontainers:testcontainers-vault" }
 testcontainers-junit-jupiter = { module = "org.testcontainers:testcontainers-junit-jupiter" }
+testcontainers-postgresql = { module = "org.testcontainers:testcontainers-postgresql" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

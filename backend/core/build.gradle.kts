@@ -27,4 +27,7 @@ dependencies {
     testImplementation(libs.spring.boot.starter.actuator)
     testImplementation(libs.testcontainers.vault)
     testImplementation(libs.testcontainers.junit.jupiter)
+    testImplementation(libs.testcontainers.postgresql)
+    testRuntimeOnly(libs.postgresql)
+
 }
