@@ -12,10 +12,12 @@ class JwtTenantContext : TenantContext {
     private val scoped = ThreadLocal<TenantId>()
 
     override fun current(): TenantId =
+        currentOrNull() ?: error("No tenant: use a tenant-scoped endpoint or TenantContext.runAs")
+
+    internal fun currentOrNull(): TenantId? =
         scoped.get()
             ?: RequestContextHolder.getRequestAttributes()
                 ?.getAttribute(TENANT_ATTRIBUTE, RequestAttributes.SCOPE_REQUEST) as? TenantId
-            ?: error("No tenant: use a tenant-scoped endpoint or TenantContext.runAs")
 
     override fun <T> runAs(tenantId: TenantId, block: () -> T): T {
         check(!TransactionSynchronizationManager.isActualTransactionActive()) {
