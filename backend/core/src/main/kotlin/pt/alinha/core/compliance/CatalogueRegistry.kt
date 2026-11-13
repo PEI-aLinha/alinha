@@ -37,11 +37,17 @@ class CatalogueRegistry(
     @EventListener(ApplicationReadyEvent::class)
     fun onStartup() = reload()
 
-    /** Reads the frameworks folder again and announces every version not loaded before. */
+    /**
+     * Reads the frameworks folder again and announces every version not loaded before.
+     * Versions already in memory are never removed: a loaded version stays available for
+     * the lifetime of the application, so existing assessments can always retrieve their
+     * pinned catalogue (NFR05).
+     */
+    @Synchronized
     fun reload() {
         val loaded = loader.loadAll().associateBy { CatalogueKey(it.framework, it.version) }
         val newVersions = loaded.keys - catalogues.keys
-        catalogues = loaded
+        catalogues = catalogues + loaded
         newVersions.sortedWith(compareBy({ it.framework }, { it.version })).forEach { key ->
             val catalogue = loaded.getValue(key)
             events.publishEvent(CatalogueVersionPublished(key.framework, key.version, catalogue.title))

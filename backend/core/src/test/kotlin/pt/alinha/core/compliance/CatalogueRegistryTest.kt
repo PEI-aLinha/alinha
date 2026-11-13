@@ -2,6 +2,7 @@ package pt.alinha.core.compliance
 
 import java.nio.file.Path
 import kotlin.io.path.createDirectories
+import kotlin.io.path.deleteRecursively
 import kotlin.io.path.writeText
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -54,6 +55,18 @@ class CatalogueRegistryTest {
     }
 
     @Test
+    @OptIn(kotlin.io.path.ExperimentalPathApi::class)
+    fun `version stays available after its folder is deleted and reload is called`() {
+        write("nis2-qnrcs", 1)
+        val registry = registry().also { it.onStartup() }
+
+        frameworksDir.resolve("nis2-qnrcs").deleteRecursively()
+        registry.reload()
+
+        assertThat(registry.get("nis2-qnrcs", 1)).isNotNull()
+    }
+
+    @Test
     fun `finds every framework that uses a canonical control`() {
         write("nis2-qnrcs", 1)
         write("gdpr", 1)
@@ -84,7 +97,8 @@ class CatalogueRegistryTest {
                 title: "Autenticação com dois fatores"
                 level: basic
                 technical: true
-                evidence: []
+                evidence:
+                  - "Evidência"
                 questions:
                   - id: CTRL-MFA-Q1
                     text: "Pergunta"

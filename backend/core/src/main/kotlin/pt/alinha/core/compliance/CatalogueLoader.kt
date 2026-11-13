@@ -38,7 +38,7 @@ class CatalogueLoader(private val frameworksDir: Path) {
     }
 
     /** Loads and checks one catalogue file. */
-    fun load(file: Path): Catalogue {
+    private fun load(file: Path): Catalogue {
         val catalogue: Catalogue = file.inputStream().use { mapper.readValue(it) }
         val problems = checkConsistency(catalogue, file)
         if (problems.isNotEmpty()) throw InvalidCatalogueException(file, problems)
