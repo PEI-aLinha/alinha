@@ -86,6 +86,51 @@ class CatalogueLoaderTest {
         assertThat(CatalogueLoader(frameworksDir).loadAll()).isEmpty()
     }
 
+    @Test
+    fun `rejects empty evidence`() {
+        write("nis2-qnrcs", "v1", validCatalogue().replace(
+            "    evidence:\n      - \"Configuração\"",
+            "    evidence: []",
+        ))
+
+        assertThatThrownBy { CatalogueLoader(frameworksDir).loadAll() }
+            .isInstanceOf(InvalidCatalogueException::class.java)
+            .hasMessageContaining("evidence must not be empty")
+    }
+
+    @Test
+    fun `rejects answers with fewer than two items`() {
+        write("nis2-qnrcs", "v1", validCatalogue().replace(
+            "answers: [\"yes\", \"partial\", \"no\", \"unknown\"]",
+            "answers: [\"yes\"]",
+        ))
+
+        assertThatThrownBy { CatalogueLoader(frameworksDir).loadAll() }
+            .isInstanceOf(InvalidCatalogueException::class.java)
+            .hasMessageContaining("at least 2 answers")
+    }
+
+    @Test
+    fun `rejects an id that does not match the id pattern`() {
+        write("nis2-qnrcs", "v1", validCatalogue().replace("id: RJC-27-1-i", "id: invalid-id"))
+
+        assertThatThrownBy { CatalogueLoader(frameworksDir).loadAll() }
+            .isInstanceOf(InvalidCatalogueException::class.java)
+            .hasMessageContaining("does not match id pattern")
+    }
+
+    @Test
+    fun `rejects blank text in a question`() {
+        write("nis2-qnrcs", "v1", validCatalogue().replace(
+            "text: \"Pedem um segundo fator?\"",
+            "text: \"\"",
+        ))
+
+        assertThatThrownBy { CatalogueLoader(frameworksDir).loadAll() }
+            .isInstanceOf(InvalidCatalogueException::class.java)
+            .hasMessageContaining("text must not be blank")
+    }
+
     private fun write(framework: String, version: String, content: String) {
         val dir = frameworksDir.resolve(framework).resolve(version).createDirectories()
         dir.resolve(CatalogueLoader.CATALOGUE_FILE).writeText(content)

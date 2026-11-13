@@ -2,6 +2,7 @@ package pt.alinha.core.compliance
 
 import java.nio.file.Path
 import java.time.Instant
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.context.ApplicationEventPublisher
@@ -33,21 +34,34 @@ class CatalogueRegistry(
     @Volatile
     private var catalogues: Map<CatalogueKey, Catalogue> = emptyMap()
 
+    companion object {
+        private val log = LoggerFactory.getLogger(CatalogueRegistry::class.java)
+    }
+
     /** Loads the catalogues when the application starts. An invalid catalogue stops the start-up. */
     @EventListener(ApplicationReadyEvent::class)
     fun onStartup() = reload()
 
     /**
      * Reads the frameworks folder again and announces every version not loaded before.
-     * Versions already in memory are never removed: a loaded version stays available for
-     * the lifetime of the application, so existing assessments can always retrieve their
-     * pinned catalogue (NFR05).
+     * Versions already in memory are never removed or replaced: a loaded version stays
+     * unchanged for the lifetime of the application (NFR05). If a published version on disk
+     * differs from the in-memory copy, a warning is logged and the in-memory copy is kept.
      */
     @Synchronized
     fun reload() {
         val loaded = loader.loadAll().associateBy { CatalogueKey(it.framework, it.version) }
+        loaded.forEach { (key, fromDisk) ->
+            val inMemory = catalogues[key]
+            if (inMemory != null && inMemory != fromDisk) {
+                log.warn(
+                    "Published catalogue {}/{} changed on disk; keeping the in-memory copy (NFR05)",
+                    key.framework, key.version,
+                )
+            }
+        }
         val newVersions = loaded.keys - catalogues.keys
-        catalogues = catalogues + loaded
+        catalogues = loaded + catalogues
         newVersions.sortedWith(compareBy({ it.framework }, { it.version })).forEach { key ->
             val catalogue = loaded.getValue(key)
             events.publishEvent(CatalogueVersionPublished(key.framework, key.version, catalogue.title))
