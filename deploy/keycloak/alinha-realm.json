@@ -64,10 +64,25 @@
       "fullScopeAllowed": true,
       "rootUrl": "http://localhost:8081",
       "baseUrl": "http://localhost:8081",
-      "redirectUris": ["http://localhost:8081/*"],
-      "webOrigins": ["http://localhost:5173"],
-      "defaultClientScopes": ["web-origins", "acr", "roles", "profile", "email"],
-      "optionalClientScopes": ["address", "phone", "offline_access", "microprofile-jwt"],
+      "redirectUris": [
+        "http://localhost:8081/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5173"
+      ],
+      "defaultClientScopes": [
+        "web-origins",
+        "acr",
+        "roles",
+        "profile",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ],
       "protocolMappers": [
         {
           "name": "alinha-api audience",
@@ -127,11 +142,23 @@
       "firstName": "Rui",
       "lastName": "Santos",
       "attributes": {
-        "tenant_id": ["11111111-1111-4111-8111-111111111111"]
+        "tenant_id": [
+          "11111111-1111-4111-8111-111111111111"
+        ]
       },
-      "realmRoles": ["responsible"],
-      "requiredActions": ["CONFIGURE_TOTP"],
-      "credentials": [{ "type": "password", "value": "alinha", "temporary": false }]
+      "realmRoles": [
+        "responsible"
+      ],
+      "requiredActions": [
+        "CONFIGURE_TOTP"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "alinha",
+          "temporary": false
+        }
+      ]
     },
     {
       "username": "pedro.almeida@tiagueda.pt",
@@ -141,11 +168,23 @@
       "firstName": "Pedro",
       "lastName": "Almeida",
       "attributes": {
-        "tenant_id": ["11111111-1111-4111-8111-111111111111"]
+        "tenant_id": [
+          "11111111-1111-4111-8111-111111111111"
+        ]
       },
-      "realmRoles": ["analyst"],
-      "requiredActions": ["CONFIGURE_TOTP"],
-      "credentials": [{ "type": "password", "value": "alinha", "temporary": false }]
+      "realmRoles": [
+        "analyst"
+      ],
+      "requiredActions": [
+        "CONFIGURE_TOTP"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "alinha",
+          "temporary": false
+        }
+      ]
     },
     {
       "username": "marta.ferreira@alinha.pt",
@@ -160,9 +199,19 @@
           "22222222-2222-4222-8222-222222222222"
         ]
       },
-      "realmRoles": ["consultant"],
-      "requiredActions": ["CONFIGURE_TOTP"],
-      "credentials": [{ "type": "password", "value": "alinha", "temporary": false }]
+      "realmRoles": [
+        "consultant"
+      ],
+      "requiredActions": [
+        "CONFIGURE_TOTP"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "alinha",
+          "temporary": false
+        }
+      ]
     },
     {
       "username": "joao.pereira@alinha.pt",
@@ -172,11 +221,36 @@
       "firstName": "Joao",
       "lastName": "Pereira",
       "attributes": {
-        "tenants": ["22222222-2222-4222-8222-222222222222"]
+        "tenants": [
+          "22222222-2222-4222-8222-222222222222"
+        ]
       },
-      "realmRoles": ["consultant"],
-      "requiredActions": ["CONFIGURE_TOTP"],
-      "credentials": [{ "type": "password", "value": "alinha", "temporary": false }]
+      "realmRoles": [
+        "consultant"
+      ],
+      "requiredActions": [
+        "CONFIGURE_TOTP"
+      ],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "alinha",
+          "temporary": false
+        }
+      ]
     }
-  ]
+  ],
+  "components": {
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "providerId": "declarative-user-profile",
+        "subComponents": {},
+        "config": {
+          "kc.user.profile.config": [
+            "{\"attributes\":[{\"name\":\"username\",\"displayName\":\"${username}\",\"validations\":{\"length\":{\"min\":3,\"max\":255},\"username-prohibited-characters\":{},\"up-username-not-idn-homograph\":{}},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"email\",\"displayName\":\"${email}\",\"validations\":{\"email\":{},\"length\":{\"max\":255}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"firstName\",\"displayName\":\"${firstName}\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"lastName\",\"displayName\":\"${lastName}\",\"validations\":{\"length\":{\"max\":255},\"person-name-prohibited-characters\":{}},\"required\":{\"roles\":[\"user\"]},\"permissions\":{\"view\":[\"admin\",\"user\"],\"edit\":[\"admin\",\"user\"]},\"multivalued\":false},{\"name\":\"tenant_id\",\"displayName\":\"Organização\",\"group\":\"user-metadata\",\"validations\":{\"pattern\":{\"pattern\":\"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$\",\"error-message\":\"UUID inválido\"}},\"permissions\":{\"view\":[\"admin\"],\"edit\":[\"admin\"]},\"multivalued\":false},{\"name\":\"tenants\",\"displayName\":\"Organizações atribuídas\",\"group\":\"user-metadata\",\"validations\":{\"pattern\":{\"pattern\":\"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$\",\"error-message\":\"UUID inválido\"}},\"permissions\":{\"view\":[\"admin\"],\"edit\":[\"admin\"]},\"multivalued\":true}],\"groups\":[{\"name\":\"user-metadata\",\"displayHeader\":\"User metadata\",\"displayDescription\":\"Attributes, which refer to user metadata\"}]}"
+          ]
+        }
+      }
+    ]
+  }
 }

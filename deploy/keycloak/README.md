@@ -1,5 +1,9 @@
 # Keycloak
 
+> **Local development only.** This realm has `sslRequired: none`, a committed dev client secret and
+> test passwords. Never import it into staging or production; environment realms are configured
+> separately.
+
 The `alinha` realm is imported from `alinha-realm.json` by `start-dev --import-realm`. The import
 only runs when the realm does not exist; after editing the file, recreate the container:
 

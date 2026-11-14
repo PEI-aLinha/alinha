@@ -2,6 +2,7 @@
 // Regression checks for the local dev environment (issue #5): the Keycloak realm
 // contract and the compose file. Run in CI: node scripts/check-dev-env.mjs
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -39,6 +40,20 @@ for (const [name, attribute, multivalued] of [
 const otp = realm.requiredActions.find((action) => action.alias === "CONFIGURE_TOTP");
 assert.ok(otp?.enabled && otp.defaultAction, "CONFIGURE_TOTP must be enabled by default");
 
+// Tenant claims drive RNF03 isolation, so users must never be able to edit them.
+const profileComponent = realm.components?.["org.keycloak.userprofile.UserProfileProvider"]?.[0];
+assert.ok(profileComponent, "declarative user profile is missing");
+const profile = JSON.parse(profileComponent.config["kc.user.profile.config"][0]);
+for (const [name, multivalued] of [
+  ["tenant_id", false],
+  ["tenants", true],
+]) {
+  const attribute = profile.attributes.find((a) => a.name === name);
+  assert.ok(attribute, `user profile attribute ${name} is missing`);
+  assert.deepEqual(attribute.permissions, { view: ["admin"], edit: ["admin"] }, `${name} must be admin-only`);
+  assert.equal(attribute.multivalued, multivalued, `${name} has the wrong cardinality`);
+}
+
 const users = new Map(realm.users.map((user) => [user.username, user]));
 const expected = {
   "rui.santos@compagueda.pt": { role: "responsible", claim: "tenant_id" },
@@ -61,11 +76,21 @@ assert.equal(users.get("marta.ferreira@alinha.pt").attributes.tenants.length, 2)
 assert.equal(users.get("joao.pereira@alinha.pt").attributes.tenants.length, 1);
 
 assert.equal(realm.smtpServer.host, "mailpit");
-const compose = read("deploy/docker-compose.dev.yml");
-for (const service of ["postgres:", "redis:", "keycloak:", "mailpit:"]) {
-  assert.match(compose, new RegExp(`^\\s{2}${service}`, "m"), `compose service ${service} is missing`);
+const compose = JSON.parse(
+  execFileSync("docker", ["compose", "-f", "deploy/docker-compose.dev.yml", "config", "--format", "json"], {
+    cwd: root,
+    encoding: "utf8",
+  }),
+);
+for (const service of ["postgres", "redis", "keycloak", "mailpit"]) {
+  assert.ok(compose.services[service], `compose service ${service} is missing`);
 }
-assert.match(compose, /"1025:1025"/, "Mailpit SMTP port is not published");
+assert.deepEqual(
+  compose.services.mailpit.ports.map((port) => `${port.published}:${port.target}`).sort(),
+  ["1025:1025", "8025:8025"],
+  "Mailpit must publish SMTP and UI ports",
+);
+assert.ok(compose.services.keycloak.depends_on?.mailpit, "Keycloak must start after Mailpit");
 assert.ok(existsSync(join(root, "deploy/.env.example")), "deploy/.env.example is missing");
 
 console.log("dev environment checks passed");
