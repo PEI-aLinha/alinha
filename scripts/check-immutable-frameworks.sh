@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Fails if a PR modifies, deletes or renames a file inside a released framework version (NFR05).
+# Fails if a PR adds, modifies, deletes or renames a file inside a released framework version (NFR05).
 # Released versions are listed in frameworks/RELEASES (one framework/vN per line).
 # The list is read from origin/main, so a PR cannot unlist a version and edit it in the same change.
 set -euo pipefail
@@ -11,7 +11,7 @@ if [ -z "$released" ]; then
   exit 0
 fi
 
-changed=$(git diff --name-only --diff-filter=MDT --no-renames origin/main...HEAD -- frameworks/)
+changed=$(git diff --name-only --diff-filter=AMDT --no-renames origin/main...HEAD -- frameworks/)
 
 fail=0
 while IFS= read -r version; do

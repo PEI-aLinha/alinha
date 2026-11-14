@@ -105,6 +105,15 @@ class CatalogueLoaderTest {
     }
 
     @Test
+    fun `rejects a version number that does not fit in an Int`() {
+        write("nis2-qnrcs", "v99999999999", validCatalogue())
+
+        assertThatThrownBy { CatalogueLoader(frameworksDir).loadAll() }
+            .isInstanceOf(InvalidCatalogueException::class.java)
+            .hasMessageContaining("is not a version folder")
+    }
+
+    @Test
     fun `names the absolute path when the frameworks folder is missing`() {
         val missing = frameworksDir.resolve("missing")
 

@@ -171,7 +171,8 @@ class CatalogueLoader(private val frameworksDir: Path) {
 
     companion object {
         const val CATALOGUE_FILE = "catalogue.yaml"
-        private val VERSION_DIR_PATTERN = Regex("v[1-9]\\d*")
+        // At most 9 digits, so the number always fits in an Int.
+        private val VERSION_DIR_PATTERN = Regex("v[1-9]\\d{0,8}")
         private val FRAMEWORK_PATTERN = Regex("^[a-z0-9]+(-[a-z0-9]+)*$")
         private val ID_PATTERN = Regex("^[A-Z0-9]+([.-][A-Za-z0-9]+)*$")
     }
