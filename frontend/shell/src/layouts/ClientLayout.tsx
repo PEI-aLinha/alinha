@@ -1,4 +1,4 @@
-import { Navigate, Outlet, useParams } from 'react-router'
+import { Navigate, Outlet, useLocation, useParams } from 'react-router'
 import type { FrontendPlugin } from '@alinha/plugin-sdk'
 import { HostProvider } from '../host'
 import { ForbiddenPage } from '../pages/StatusPages'
@@ -10,9 +10,14 @@ import { AppFrame } from './AppFrame'
 /** /org/:org — the designated responsible person and analysts, inside their own organization. */
 export function ClientLayout({ plugins }: { plugins: readonly FrontendPlugin[] }) {
   const { org = '' } = useParams()
+  const { pathname, search, hash } = useLocation()
   const { me, can, isConsultant } = useSession()
 
-  if (isConsultant) return <Navigate to={`/carteira/${encodeURIComponent(org)}`} replace />
+  if (isConsultant) {
+    // Same page in the consultant area: keep what comes after /org/:org, the query and the hash.
+    const rest = pathname.replace(/^\/org\/[^/]+/, '')
+    return <Navigate to={`/portfolio/${encodeURIComponent(org)}${rest}${search}${hash}`} replace />
+  }
   if (!isClientUser(me.roles)) return <ForbiddenPage />
 
   const organization = me.organizations.find((o) => o.slug === org)

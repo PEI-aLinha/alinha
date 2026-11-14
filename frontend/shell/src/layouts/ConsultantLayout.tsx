@@ -8,9 +8,9 @@ import { pluginNav } from '../routing/plugins'
 import { useSession } from '../session/SessionGate'
 import { AppFrame, type FrameSection } from './AppFrame'
 
-const PORTFOLIO = { to: '/carteira', label: 'Carteira de clientes', end: true }
+const PORTFOLIO = { to: '/portfolio', label: 'Carteira de clientes', end: true }
 
-/** Organization switcher: changing it opens that client's area (/carteira/:org). */
+/** Organization switcher: changing it opens that client's area (/portfolio/:org). */
 export function OrgSwitcher({ organizations, current }: { organizations: readonly OrganizationRefDto[]; current?: string }) {
   const navigate = useNavigate()
   const id = useId()
@@ -22,7 +22,7 @@ export function OrgSwitcher({ organizations, current }: { organizations: readonl
         id={id}
         className="rounded-md border px-2 py-1.5"
         value={current ?? ''}
-        onChange={(e) => e.target.value && navigate(`/carteira/${encodeURIComponent(e.target.value)}`)}
+        onChange={(e) => e.target.value && navigate(`/portfolio/${encodeURIComponent(e.target.value)}`)}
       >
         <option value="" disabled>Escolher cliente</option>
         {organizations.map((o) => <option key={o.id} value={o.slug}>{o.name}</option>)}
@@ -31,7 +31,7 @@ export function OrgSwitcher({ organizations, current }: { organizations: readonl
   )
 }
 
-/** /carteira and /carteira/:org — the consultant: portfolio, organization switcher and the client's pages. */
+/** /portfolio and /portfolio/:org — the consultant: portfolio, organization switcher and the client's pages. */
 export function ConsultantLayout({ plugins }: { plugins: readonly FrontendPlugin[] }) {
   const { org } = useParams()
   const { me, can, isConsultant } = useSession()
@@ -40,7 +40,7 @@ export function ConsultantLayout({ plugins }: { plugins: readonly FrontendPlugin
   const organization = org ? me.organizations.find((o) => o.slug === org) : undefined
   const sections: FrameSection[] = [{ links: [PORTFOLIO] }]
   if (organization) {
-    const base = `/carteira/${organization.slug}`
+    const base = `/portfolio/${organization.slug}`
     const links = pluginNav(plugins, 'consultant', can).map((n) => ({ to: `${base}/${n.path}`, label: n.label }))
     sections.push({ heading: organization.name, links })
   }
@@ -59,7 +59,7 @@ export function ConsultantLayout({ plugins }: { plugins: readonly FrontendPlugin
   )
 }
 
-/** /carteira: the consultant's client organizations. */
+/** /portfolio: the consultant's client organizations. */
 export function PortfolioPage() {
   const { me } = useSession()
   if (me.organizations.length === 0) {
@@ -71,7 +71,7 @@ export function PortfolioPage() {
       <ul className="flex flex-col gap-2">
         {me.organizations.map((o) => (
           <li key={o.id}>
-            <Link to={`/carteira/${encodeURIComponent(o.slug)}`} className="block rounded-md border px-4 py-3 hover:bg-gray-50">{o.name}</Link>
+            <Link to={`/portfolio/${encodeURIComponent(o.slug)}`} className="block rounded-md border px-4 py-3 hover:bg-gray-50">{o.name}</Link>
           </li>
         ))}
       </ul>

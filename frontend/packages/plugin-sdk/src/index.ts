@@ -7,8 +7,8 @@ import type { RouteObject } from 'react-router'
 
 /** Application area where a plugin's routes are mounted. */
 export type Area =
-  | 'client'      // /org/:org/<path>       — designated responsible person and analysts
-  | 'consultant'  // /carteira/:org/<path>  — consultant (service provider), for one client organization
+  | 'client'      // /org/:org/<path>        — designated responsible person and analysts
+  | 'consultant'  // /portfolio/:org/<path>  — consultant (service provider), for one client organization
 
 export interface NavItem {
   /** Visible text — in Portuguese (UI requirement). */
@@ -54,7 +54,7 @@ export function definePlugin(plugin: FrontendPlugin): FrontendPlugin {
 export interface HostOrganization {
   /** Tenant UUID. */
   id: string
-  /** Used in URLs (/org/:org, /carteira/:org). */
+  /** Used in URLs (/org/:org, /portfolio/:org). */
   slug: string
   name: string
 }

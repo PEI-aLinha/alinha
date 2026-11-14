@@ -173,7 +173,14 @@ describe('client area (/org/:org)', () => {
 
   it('sends a consultant to the same organization in the consultant area', async () => {
     const { router } = renderApp({ url: '/org/acme', plugins, me: meFor('consultant') })
-    await waitFor(() => expect(router.state.location.pathname).toBe('/carteira/acme/painel'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/portfolio/acme/painel'))
+  })
+
+  it('keeps the rest of the address when sending a consultant to the consultant area', async () => {
+    const { router } = renderApp({ url: '/org/acme/painel?vista=mes#topo', plugins, me: meFor('consultant') })
+    await waitFor(() => expect(router.state.location.pathname).toBe('/portfolio/acme/painel'))
+    expect(router.state.location.search).toBe('?vista=mes')
+    expect(router.state.location.hash).toBe('#topo')
   })
 
   it('refuses a user without a client role', async () => {
@@ -195,30 +202,30 @@ describe('client area (/org/:org)', () => {
   })
 })
 
-describe('consultant area (/carteira)', () => {
+describe('consultant area (/portfolio)', () => {
   it('opens the portfolio with the assigned organizations', async () => {
     const { router } = renderApp({ url: '/', plugins, me: meFor('consultant') })
     expect(await screen.findByRole('heading', { name: 'Carteira de clientes' })).toBeInTheDocument()
-    expect(router.state.location.pathname).toBe('/carteira')
+    expect(router.state.location.pathname).toBe('/portfolio')
     const main = within(screen.getByRole('main'))
-    expect(main.getByRole('link', { name: 'Acme, Lda.' })).toHaveAttribute('href', '/carteira/acme')
-    expect(main.getByRole('link', { name: 'Beta, S.A.' })).toHaveAttribute('href', '/carteira/beta')
+    expect(main.getByRole('link', { name: 'Acme, Lda.' })).toHaveAttribute('href', '/portfolio/acme')
+    expect(main.getByRole('link', { name: 'Beta, S.A.' })).toHaveAttribute('href', '/portfolio/beta')
     expect(screen.getByText('Consultoria aLinha')).toBeInTheDocument()
   })
 
   it('opens a client from the portfolio, with its menu', async () => {
-    const { router } = renderApp({ url: '/carteira', plugins, me: meFor('consultant') })
+    const { router } = renderApp({ url: '/portfolio', plugins, me: meFor('consultant') })
     fireEvent.click(await screen.findByRole('link', { name: 'Acme, Lda.' }))
     expect(await screen.findByRole('heading', { name: 'Painel do cliente' })).toBeInTheDocument()
-    expect(router.state.location.pathname).toBe('/carteira/acme/painel')
-    expect(nav().getByRole('link', { name: 'Painel' })).toHaveAttribute('href', '/carteira/acme/painel')
-    expect(nav().getByRole('link', { name: 'Carteira de clientes' })).toHaveAttribute('href', '/carteira')
+    expect(router.state.location.pathname).toBe('/portfolio/acme/painel')
+    expect(nav().getByRole('link', { name: 'Painel' })).toHaveAttribute('href', '/portfolio/acme/painel')
+    expect(nav().getByRole('link', { name: 'Carteira de clientes' })).toHaveAttribute('href', '/portfolio')
   })
 
   it('switches organization and never shows the previous client data', async () => {
     let answerBeta: (r: Response) => void = () => {}
     const { router, calls } = renderApp({
-      url: '/carteira/acme/sonda',
+      url: '/portfolio/acme/sonda',
       plugins,
       me: meFor('consultant'),
       api: (_path, init) => new Headers(init.headers).get('X-Alinha-Tenant') === ACME.id
@@ -230,8 +237,8 @@ describe('consultant area (/carteira)', () => {
     expect(switcher).toHaveValue('acme')
 
     fireEvent.change(switcher, { target: { value: 'beta' } })
-    await waitFor(() => expect(router.state.location.pathname).toBe('/carteira/beta/painel'))
-    await router.navigate('/carteira/beta/sonda')
+    await waitFor(() => expect(router.state.location.pathname).toBe('/portfolio/beta/painel'))
+    await router.navigate('/portfolio/beta/sonda')
     // While Beta's answer is pending, Acme's cached data must not appear.
     expect(await screen.findByText('Dados de Beta, S.A.: a carregar')).toBeInTheDocument()
     expect(screen.queryByText(/dados A/)).not.toBeInTheDocument()
@@ -242,32 +249,32 @@ describe('consultant area (/carteira)', () => {
   })
 
   it('starts plugin pages from scratch on another organization (no leftover local state)', async () => {
-    const { router } = renderApp({ url: '/carteira/acme/rascunho', plugins, me: meFor('consultant') })
+    const { router } = renderApp({ url: '/portfolio/acme/rascunho', plugins, me: meFor('consultant') })
     fireEvent.change(await screen.findByRole('textbox', { name: 'Rascunho' }), { target: { value: 'notas da Acme' } })
     expect(screen.getByRole('textbox', { name: 'Rascunho' })).toHaveValue('notas da Acme')
-    await router.navigate('/carteira/beta/rascunho')
+    await router.navigate('/portfolio/beta/rascunho')
     await waitFor(() => expect(screen.getByRole('combobox', { name: 'Cliente' })).toHaveValue('beta'))
     expect(screen.getByRole('textbox', { name: 'Rascunho' })).toHaveValue('')
   })
 
   it('does not send a tenant on the portfolio', async () => {
-    renderApp({ url: '/carteira', plugins, me: meFor('consultant') })
+    renderApp({ url: '/portfolio', plugins, me: meFor('consultant') })
     await screen.findByRole('heading', { name: 'Carteira de clientes' })
     expect(screen.getByRole('combobox', { name: 'Cliente' })).toHaveValue('')
   })
 
   it('refuses an organization outside the portfolio', async () => {
-    renderApp({ url: '/carteira/outra', plugins, me: meFor('consultant') })
+    renderApp({ url: '/portfolio/outra', plugins, me: meFor('consultant') })
     expect(await screen.findByRole('heading', { name: 'Não tem acesso a esta organização' })).toBeInTheDocument()
   })
 
   it('sends a client user away from the consultant area', async () => {
-    const { router } = renderApp({ url: '/carteira/acme', plugins })
+    const { router } = renderApp({ url: '/portfolio/acme', plugins })
     await waitFor(() => expect(router.state.location.pathname).toBe('/org/acme/ativos'))
   })
 
   it('explains an empty portfolio', async () => {
-    renderApp({ url: '/carteira', plugins, me: meFor('consultant', { organizations: [] }) })
+    renderApp({ url: '/portfolio', plugins, me: meFor('consultant', { organizations: [] }) })
     expect(await screen.findByText(/Ainda não tem clientes atribuídos/)).toBeInTheDocument()
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
   })
@@ -296,6 +303,28 @@ describe('a 401 on a plugin call', () => {
     })
     expect(await screen.findByText('A abrir a página de entrada…')).toBeInTheDocument()
     expect(go).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the page when re-checking the session fails for another reason', async () => {
+    let meAnswers = 0
+    const { calls } = renderApp({
+      url: '/org/acme/dois',
+      plugins,
+      me: async () => (meAnswers++ === 0 ? json(meFor('responsible')) : json({}, 503)),
+      api: async () => json({}, 401),
+    })
+    expect(await screen.findByText('Pedidos recusados')).toBeInTheDocument()
+    await waitFor(() => expect(meCalls(calls)).toBeGreaterThan(1))
+    await new Promise((r) => setTimeout(r, 50))
+    expect(screen.queryByRole('heading', { name: 'Algo correu mal' })).not.toBeInTheDocument()
+    expect(screen.getByText('Pedidos recusados')).toBeInTheDocument()
+  })
+})
+
+describe('session answers that are not JSON', () => {
+  it('shows the error page when /api/me answers 200 with HTML', async () => {
+    renderApp({ url: '/', plugins, me: async () => new Response('<!doctype html><title>Keycloak</title>', { status: 200, headers: { 'Content-Type': 'text/html' } }) })
+    expect(await screen.findByRole('heading', { name: 'Algo correu mal' })).toBeInTheDocument()
   })
 })
 

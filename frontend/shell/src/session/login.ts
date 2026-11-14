@@ -28,7 +28,7 @@ export const login = {
     return Number.isFinite(at) && at > 0 && now - at < ATTEMPT_WINDOW_MS
   },
 
-  go(returnTo: string = window.location.pathname + window.location.search): void {
+  go(returnTo: string = window.location.pathname + window.location.search + window.location.hash): void {
     const s = storage()
     s?.setItem(ATTEMPT_KEY, String(Date.now()))
     if (isSafeReturnPath(returnTo) && returnTo !== '/') s?.setItem(RETURN_KEY, returnTo)

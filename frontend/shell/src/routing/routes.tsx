@@ -10,7 +10,7 @@ import { pluginNav, pluginRoutes } from './plugins'
 /** "/": the consultant goes to the portfolio, a client user to their organization. */
 export function HomeRedirect() {
   const { me, isConsultant } = useSession()
-  if (isConsultant) return <Navigate to="/carteira" replace />
+  if (isConsultant) return <Navigate to="/portfolio" replace />
   const [own] = me.organizations
   if (isClientUser(me.roles) && own) return <Navigate to={`/org/${encodeURIComponent(own.slug)}`} replace />
   return (
@@ -25,7 +25,7 @@ function AreaHome({ plugins, area }: { plugins: readonly FrontendPlugin[]; area:
   const { can } = useSession()
   const { org = '' } = useParams()
   const [first] = pluginNav(plugins, area, can)
-  if (first) return <Navigate to={`${area === 'client' ? '/org' : '/carteira'}/${encodeURIComponent(org)}/${first.path}`} replace />
+  if (first) return <Navigate to={`${area === 'client' ? '/org' : '/portfolio'}/${encodeURIComponent(org)}/${first.path}`} replace />
   return <StatusPage title="Ainda não há páginas disponíveis">Quando houver páginas para o seu perfil, aparecem no menu.</StatusPage>
 }
 
@@ -37,9 +37,9 @@ const areaChildren = (plugins: readonly FrontendPlugin[], area: Area): RouteObje
 
 /**
  * The whole route tree. Routes come from the plugins: no plugin is referenced by hand here.
- *   /org/:org/<path>       client area (plugins' `client` routes)
- *   /carteira              consultant portfolio
- *   /carteira/:org/<path>  consultant area for one client (plugins' `consultant` routes)
+ *   /org/:org/<path>        client area (plugins' `client` routes)
+ *   /portfolio              consultant portfolio (client list)
+ *   /portfolio/:org/<path>  consultant area for one client (plugins' `consultant` routes)
  */
 export function createRoutes(plugins: readonly FrontendPlugin[]): RouteObject[] {
   return [
@@ -56,13 +56,13 @@ export function createRoutes(plugins: readonly FrontendPlugin[]): RouteObject[] 
           children: areaChildren(plugins, 'client'),
         },
         {
-          path: 'carteira',
+          path: 'portfolio',
           element: <ConsultantLayout plugins={plugins} />,
           errorElement: <RouteErrorPage />,
           children: [{ index: true, element: <PortfolioPage /> }],
         },
         {
-          path: 'carteira/:org',
+          path: 'portfolio/:org',
           element: <ConsultantLayout plugins={plugins} />,
           errorElement: <RouteErrorPage />,
           children: areaChildren(plugins, 'consultant'),
