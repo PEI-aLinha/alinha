@@ -8,7 +8,7 @@ import type { RouteObject } from 'react-router'
 /** Application area where a plugin's routes are mounted. */
 export type Area =
   | 'client'      // /org/:org/...   — designated responsible person and analysts
-  | 'consultant'  // /portfolio/...  — consultant (service provider)
+  | 'consultant'  // /portfolio/:org/<path>  — consultant (service provider), for one client organization
 
 export interface NavItem {
   /** Visible text — in Portuguese (UI requirement). */
