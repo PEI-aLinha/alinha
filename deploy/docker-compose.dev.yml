@@ -25,5 +25,25 @@ services:
     ports: ["8180:8080"]
     volumes: [./keycloak:/opt/keycloak/data/import:ro]
 
+  # Secrets (NFR09). Dev mode: in-memory, unsealed, KV v2 at secret/. Data is lost on restart;
+  # openbao-init re-seeds it. Dev-only token below; never use dev mode outside local development.
+  openbao:
+    image: openbao/openbao:2.4.1
+    command: server -dev -dev-listen-address=0.0.0.0:8200
+    environment:
+      BAO_DEV_ROOT_TOKEN_ID: dev-root-token
+    cap_add: [IPC_LOCK]
+    ports: ["8200:8200"]
+
+  openbao-init:
+    image: openbao/openbao:2.4.1
+    depends_on: [openbao]
+    entrypoint: ["/bin/sh", "/init/init.sh"]
+    environment:
+      BAO_ADDR: http://openbao:8200
+      BAO_TOKEN: dev-root-token
+    volumes: [./openbao:/init:ro]
+    restart: "no"
+
 volumes:
   pgdata:

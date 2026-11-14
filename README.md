@@ -60,8 +60,8 @@ git config --global push.recurseSubmodules on-demand   # pushing the main repo p
 
 git clone --recurse-submodules git@github.com:PEI-aLinha/alinha.git
 cd alinha
-docker compose -f deploy/docker-compose.dev.yml up -d  # Postgres, Redis, Keycloak
-./gradlew :app:bootRun                                 # backend on :8080
+docker compose -f deploy/docker-compose.dev.yml up -d  # Postgres, Redis, Keycloak, OpenBao
+BAO_TOKEN=dev-app-token ./gradlew :app:bootRun         # backend on :8080
 pnpm install && pnpm dev                               # frontend on :5173
 ```
 
@@ -105,7 +105,7 @@ Agree on this in the weekly sync; never do it right before a deadline.
 - **Backend:** a plugin only uses other modules' public types — `pt.alinha.<plugin>` (base), `.api`, `.events` and the core's named interfaces (`core.tenant`, `core.access`, `core.audit`, `core.jobs`, `core.compliance`, `core.aigateway`). Never `internal`. Checked by `ModularityTest`.
 - **Frontend:** a plugin only imports `@alinha/plugin-sdk`, `@alinha/ui` and `@alinha/api-client`. Checked by ESLint.
 - **Data:** each plugin has its own PostgreSQL schema; migrations in `db/migration/<plugin>/V<yyyyMMddHHmmss>__<plugin>_<description>.sql`.
-- **Requests:** tenant comes from the token (`TenantContext`); endpoints have `@RequiresPermission`; writes go to the Audit Trail in the same transaction.
+- **Requests:** tenant comes from the token (`TenantContext`, rules in `docs/tenancy.md`); endpoints have `@RequiresPermission`; writes go to the Audit Trail in the same transaction.
 
 ## Non-functional requirements → where they are met
 
@@ -113,9 +113,10 @@ Numbering from the technical report (section 3.2).
 
 | NFR | How | Status |
 |---|---|---|
-| RNF03 tenant isolation | `core.tenant.TenantContext` (tenant from the token); filtered queries | contract defined, implement in sprint 0 |
+| RNF03 tenant isolation | `core.tenant.TenantContext` (tenant from the token, consultant picks with `X-Alinha-Tenant`); entities extend `TenantOwnedEntity` (Hibernate `@TenantId`); see `docs/tenancy.md` | **done** in the backend (Keycloak claims pending #5, header relay pending #14) |
 | RNF04 audit trail | `core.audit.AuditTrail`, same transaction; `audit.audit_event` table INSERT-only | same |
-| RNF07/RNF08 OIDC + roles per endpoint | Keycloak + `@RequiresPermission` | same |
+| RNF07/RNF08 OIDC + roles per endpoint | Keycloak JWTs + `@RequiresPermission`, deny by default; see `docs/rbac.md` | **done** in the backend (not yet tested against a real Keycloak realm, see #5) |
+| RNF09 no secrets in code/config | OpenBao (`secret/alinha/app` via Spring Cloud Vault); per-tenant provider credentials via `pluginapi.TenantSecretStore`; gitleaks job in CI | **done** (AI Service reads it once implemented) |
 | RNF12/RNF14 AI approval and provenance | `core.aigateway.AiDraft` (model, prompt version, sources, date) | contract defined |
 | RNF17 new plugin without touching the core | `settings.gradle.kts` and `gen-frontend-plugins.mjs` discover the submodules; `ModularityTest` | **done** |
 | RNF18 catalogues as data | `frameworks/` read at runtime by the Compliance Engine | see `frameworks/README.md` |
