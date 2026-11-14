@@ -20,6 +20,26 @@ const PEOPLE: Record<Role, MeDto['user']> = {
   analyst: { id: 'dev-analyst', name: 'Pedro Almeida' },
 }
 
+/**
+ * PLACEHOLDER permissions per role, taken from the frontend prototype's RBAC matrix (its `view` is `read` here).
+ * No plugin.yaml declares permissions yet; once they do, copy each role's set from the backend RBAC (#9).
+ */
+export const DEV_PERMISSIONS: Record<Role, readonly string[]> = {
+  responsible: [
+    'plugins:read', 'scope:read', 'scope:edit', 'framing:read', 'framing:edit',
+    'asset:read', 'asset:create', 'asset:edit', 'asset:delete', 'asset:import', 'asset:bulk_edit',
+    'critical_service:read', 'critical_service:create', 'critical_service:edit', 'critical_service:delete',
+    'asset_task:read', 'asset_task:assign', 'asset_comment:read', 'asset_export:read', 'roadmap:read', 'history:read',
+  ],
+  analyst: ['plugins:read', 'asset:read', 'asset:create', 'asset:edit', 'critical_service:read', 'asset_task:read'],
+  consultant: [
+    'plugins:read', 'scope:read', 'framing:read', 'asset:read', 'critical_service:read',
+    'asset_comment:read', 'asset_comment:comment', 'asset_export:read',
+    'risk:read', 'risk:create', 'risk:edit', 'risk:link', 'roadmap:read', 'roadmap:validate', 'roadmap:create',
+    'history:read', 'portfolio:read',
+  ],
+}
+
 export function isDevRole(value: string): value is DevRole {
   return (DEV_ROLES as readonly string[]).includes(value)
 }
@@ -28,7 +48,7 @@ export function devMe(role: Role): MeDto {
   return {
     user: PEOPLE[role],
     roles: [role],
-    permissions: ['plugins:read'],
+    permissions: [...DEV_PERMISSIONS[role]],
     organizations: role === 'consultant' ? ORGS : [ORGS[0]],
   }
 }

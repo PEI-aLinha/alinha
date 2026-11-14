@@ -54,4 +54,14 @@ describe('devSession (pnpm dev only)', () => {
     expect(devMe('consultant').organizations.length).toBeGreaterThan(1)
     expect(devMe('responsible').organizations).toHaveLength(1)
   })
+
+  it('gives each role its own permissions, in "<resource>:<action>" form', () => {
+    const [responsible, analyst, consultant] = (['responsible', 'analyst', 'consultant'] as const).map((r) => devMe(r).permissions)
+    expect(analyst.length).toBeLessThan(responsible.length)
+    expect(responsible).toContain('asset:delete')
+    expect(analyst).not.toContain('asset:delete')
+    expect(consultant).toContain('roadmap:validate')
+    expect(responsible).not.toContain('roadmap:validate')
+    for (const p of [...responsible, ...analyst, ...consultant]) expect(p).toMatch(/^[a-z_]+:[a-z_]+$/)
+  })
 })
