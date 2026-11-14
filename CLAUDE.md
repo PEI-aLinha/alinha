@@ -140,7 +140,8 @@ Avoid this unless the task needs it. Before starting, say so explicitly and list
 - Never change a contract incompatibly. Create `v2` and keep `v1` until every consumer has migrated.
 - The platform has two sides:
   - **client** area (`/org/:org/...`): the SME's designated responsible person
-  - **consultant** area (`/carteira/...`): the service provider managing several client organisations
+  - **consultant** area (`/carteira` portfolio, `/carteira/:org/...` for one client): the service provider managing
+    several client organisations
 
 ## Conventions
 

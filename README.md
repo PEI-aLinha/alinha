@@ -67,6 +67,13 @@ pnpm install && pnpm dev                               # frontend on :5173
 
 Requirements: JDK 21, Node 22, pnpm 10, Docker.
 
+Until the BFF exists (#14), the shell has no real login. To open it locally with a fake session, choose a role
+(`consultant`, `responsible`, `analyst`, or `anonymous` to see the login redirect). This only affects `pnpm dev`, never a build:
+
+```bash
+VITE_DEV_ROLE=consultant pnpm dev
+```
+
 ## Working on a plugin
 
 Always work **inside a checkout of the main repo** — a plugin repo does not build on its own
