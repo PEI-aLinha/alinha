@@ -1,5 +1,5 @@
 import type { MeDto } from '@alinha/api-client'
-import { ApiError } from '@alinha/plugin-sdk'
+import { API_REQUEST, readJson } from '../http'
 
 const isStringArray = (v: unknown): v is string[] => Array.isArray(v) && v.every((x) => typeof x === 'string')
 
@@ -11,11 +11,10 @@ function isMe(v: unknown): v is MeDto {
     && me.organizations.every((o) => typeof o?.id === 'string' && typeof o.slug === 'string' && typeof o.name === 'string')
 }
 
-/** GET /api/me. Throws ApiError(401) when there is no session. */
+/** GET /api/me. Throws ApiError(401) when there is no session (a 401, or a redirect to the login). */
 export async function fetchMe(fetchFn: typeof fetch = fetch): Promise<MeDto> {
-  const res = await fetchFn('/api/me', { credentials: 'include', headers: { Accept: 'application/json' } })
-  if (!res.ok) throw new ApiError(res.status, '/me')
-  const body: unknown = await res.json()
+  const res = await fetchFn('/api/me', { ...API_REQUEST, headers: { Accept: 'application/json' } })
+  const body = await readJson<unknown>(res, '/me')
   if (!isMe(body)) throw new Error('/api/me returned an unexpected response')
   return body
 }

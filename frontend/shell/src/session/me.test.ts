@@ -27,6 +27,17 @@ describe('fetchMe', () => {
     expect((error as ApiError).status).toBe(503)
   })
 
+  it('does not follow redirects, and treats one as no session (a BFF answering 302 instead of 401)', async () => {
+    const fetchFn = vi.fn(async () => ({ type: 'opaqueredirect', status: 0, ok: false }) as Response)
+    await expect(fetchMe(fetchFn)).rejects.toMatchObject({ name: 'ApiError', status: 401 })
+    expect(fetchFn).toHaveBeenCalledWith('/api/me', expect.objectContaining({ redirect: 'manual' }))
+  })
+
+  it('rejects HTML (e.g. a login page) with a clear error', async () => {
+    const fetchFn = vi.fn(async () => new Response('<!doctype html><title>Login</title>', { status: 200 }))
+    await expect(fetchMe(fetchFn)).rejects.toThrow('did not return JSON')
+  })
+
   it('rejects a response that is not a session', async () => {
     await expect(fetchMe(respond(200, { user: { id: 'u1' } }))).rejects.toThrow('unexpected response')
     await expect(fetchMe(respond(200, { ...me, organizations: [{ id: 't1' }] }))).rejects.toThrow('unexpected response')

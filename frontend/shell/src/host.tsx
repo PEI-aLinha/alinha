@@ -1,6 +1,7 @@
-import { useMemo, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query'
 import { ApiError, PluginHostContext, type HostOrganization, type PluginHost } from '@alinha/plugin-sdk'
+import { API_REQUEST, isUnauthenticatedResponse, readJson } from './http'
 import { ME_QUERY_KEY, useSession } from './session/SessionGate'
 
 /**
@@ -16,7 +17,10 @@ interface ApiOptions {
   fetchFn?: typeof fetch
 }
 
-/** `host.api`: fetch to /api with the session cookie and the current organization. */
+/**
+ * `host.api`: fetch to /api with the session cookie and the current organization. The shell always decides
+ * `credentials` (the session cookie), `redirect` and the tenant header; a plugin's values for them are ignored.
+ */
 export function createApi({ tenantId, onUnauthenticated, fetchFn = fetch }: ApiOptions): PluginHost['api'] {
   return async <T,>(path: string, init?: RequestInit): Promise<T> => {
     const normalized = path.startsWith('/') ? path : `/${path}`
@@ -24,11 +28,9 @@ export function createApi({ tenantId, onUnauthenticated, fetchFn = fetch }: ApiO
     if (!headers.has('Accept')) headers.set('Accept', 'application/json')
     if (tenantId) headers.set(TENANT_HEADER, tenantId)
     else headers.delete(TENANT_HEADER)
-    const res = await fetchFn(`/api${normalized}`, { ...init, headers, credentials: 'include' })
-    if (res.status === 401) onUnauthenticated()
-    if (!res.ok) throw new ApiError(res.status, normalized)
-    if (res.status === 204 || res.headers.get('Content-Length') === '0') return undefined as T
-    return (await res.json()) as T
+    const res = await fetchFn(`/api${normalized}`, { ...init, ...API_REQUEST, headers })
+    if (isUnauthenticatedResponse(res)) onUnauthenticated()
+    return readJson<T>(res, normalized)
   }
 }
 
@@ -45,7 +47,8 @@ export function HostProvider({ organization, children }: { organization: HostOrg
   // The session lives in the root client (SessionGate); each organization gets its own client below.
   const sessionClient = useQueryClient()
   const tenantId = organization?.id ?? null
-  const queryClient = useMemo(() => new QueryClient({ defaultOptions: { queries: { retry: retryUnlessClientError } } }), [tenantId])
+  // One client per mount: the layouts key HostProvider by organization, so another organization gets a new one.
+  const [queryClient] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: retryUnlessClientError } } }))
   const host = useMemo<PluginHost>(() => ({
     tenantId,
     organization,

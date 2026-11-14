@@ -64,4 +64,28 @@ describe('createApi', () => {
     await expect(api(null, async () => new Response(null, { status: 204 }))('/x')).resolves.toBeUndefined()
     await expect(api(null, async () => new Response('', { status: 200, headers: { 'Content-Length': '0' } }))('/x')).resolves.toBeUndefined()
   })
+
+  it('returns undefined for an empty 200 without Content-Length (chunked)', async () => {
+    const chunked = new Response(new ReadableStream({ start: (c) => c.close() }), { status: 200 })
+    expect(chunked.headers.get('Content-Length')).toBeNull()
+    await expect(api(null, async () => chunked)('/x')).resolves.toBeUndefined()
+  })
+
+  it('rejects HTML with a clear error instead of a SyntaxError', async () => {
+    await expect(api(null, async () => new Response('<html></html>', { status: 200 }))('/x')).rejects.toThrow('did not return JSON')
+  })
+
+  it('does not follow redirects, and treats one as a lost session', async () => {
+    const onUnauthenticated = vi.fn()
+    const fetchFn = vi.fn(async () => ({ type: 'opaqueredirect', status: 0, ok: false }) as Response)
+    await expect(api(null, fetchFn, onUnauthenticated)('/x')).rejects.toMatchObject({ status: 401 })
+    expect(onUnauthenticated).toHaveBeenCalledTimes(1)
+    expect((fetchFn.mock.calls[0] as unknown as [string, RequestInit])[1].redirect).toBe('manual')
+  })
+
+  it('always sends the session cookie, whatever the plugin passes', async () => {
+    const fetchFn = vi.fn(async () => ok())
+    await api(null, fetchFn)('/x', { credentials: 'omit' })
+    expect((fetchFn.mock.calls[0] as unknown as [string, RequestInit])[1].credentials).toBe('include')
+  })
 })
