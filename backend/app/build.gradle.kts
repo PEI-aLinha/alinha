@@ -32,6 +32,7 @@ dependencies {
     testImplementation(libs.spring.boot.starter.test)
     testImplementation(libs.spring.modulith.starter.test)
     testImplementation(libs.archunit.junit5) // TenantFilterBypassTest
+    testImplementation(libs.spring.boot.starter.data.jpa) // TenantFilterBypassTest fixtures
 }
 
 // Tests (ModularityTest, CI) run without OpenBao: no secrets are needed to verify the modules.
