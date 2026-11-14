@@ -17,8 +17,10 @@ export interface NavItem {
   path: string
   area: Area
   icon?: ComponentType<{ className?: string }>
-  /** RBAC resource required to see the entry (e.g. 'asset'); checked as `<resource>:read`. */
+  /** RBAC resource required to see the entry (e.g. 'asset'); checked as `<resource>:<action>`. */
   resource?: string
+  /** Defaults to 'read'. Use the same action as the route's `handle.action`, so menu and page agree. */
+  action?: string
   /** Menu order (lower first). */
   order?: number
 }
