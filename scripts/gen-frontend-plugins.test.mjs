@@ -2,7 +2,7 @@
 import { after, describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { findPluginFrontends, renderPluginsModule } from './gen-frontend-plugins.mjs'
@@ -57,16 +57,29 @@ describe('renderPluginsModule', () => {
 })
 
 describe('running the script', () => {
-  it('also runs when called through a symlinked path', () => {
+  const realOut = join(root, 'frontend/shell/src/plugins.generated.ts')
+  const snapshot = () => (existsSync(realOut) ? statSync(realOut).mtimeMs : null)
+
+  it('also runs when called through a symlinked path, and --out leaves the real generated file alone', () => {
     const tmp = mkdtempSync(join(tmpdir(), 'alinha-link-'))
+    const before = snapshot()
     try {
       symlinkSync(join(root, 'scripts'), join(tmp, 'scripts'), 'dir')
-      const run = spawnSync(process.execPath, [join(tmp, 'scripts/gen-frontend-plugins.mjs')], { encoding: 'utf8' })
+      const out = join(tmp, 'plugins.generated.ts')
+      const run = spawnSync(process.execPath, [join(tmp, 'scripts/gen-frontend-plugins.mjs'), '--out', out], { encoding: 'utf8' })
       assert.equal(run.status, 0, run.stderr)
       assert.match(run.stdout, /plugins\.generated\.ts: \d+ plugin\(s\)/, 'main() did not run')
+      assert.match(readFileSync(out, 'utf8'), /^export const plugins: FrontendPlugin\[\] = \[/m)
+      assert.equal(snapshot(), before, 'the real plugins.generated.ts was rewritten')
     } finally {
       rmSync(tmp, { recursive: true, force: true })
     }
+  })
+
+  it('fails when --out has no path', () => {
+    const run = spawnSync(process.execPath, [join(root, 'scripts/gen-frontend-plugins.mjs'), '--out'], { encoding: 'utf8' })
+    assert.notEqual(run.status, 0)
+    assert.match(run.stderr, /--out needs a file path/)
   })
 })
 

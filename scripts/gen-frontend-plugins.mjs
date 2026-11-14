@@ -3,7 +3,7 @@
 // plugins/<kind>/<id>/frontend. Runs automatically before dev/build/typecheck.
 // Adding a plugin = adding the submodule; the shell is never edited by hand.
 import { existsSync, readdirSync, realpathSync, statSync, writeFileSync } from 'node:fs'
-import { join, relative, dirname } from 'node:path'
+import { join, relative, dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
@@ -46,8 +46,16 @@ export function renderPluginsModule(entries, outFile) {
   ].join('\n')
 }
 
-function main() {
-  const outFile = join(root, 'frontend/shell/src/plugins.generated.ts')
+/** `--out <file>` writes somewhere else (the tests use it so they never touch the real generated file). */
+function outFileFrom(argv) {
+  const i = argv.indexOf('--out')
+  if (i === -1) return join(root, 'frontend/shell/src/plugins.generated.ts')
+  if (!argv[i + 1]) throw new Error('--out needs a file path')
+  return resolve(argv[i + 1])
+}
+
+function main(argv) {
+  const outFile = outFileFrom(argv)
   const { entries, empty } = findPluginFrontends(join(root, 'plugins'))
   for (const p of empty) console.warn(`! plugins/${p} is empty — missing "git submodule update --init"?`)
   writeFileSync(outFile, renderPluginsModule(entries, outFile))
@@ -63,4 +71,4 @@ function isMain() {
   }
 }
 
-if (isMain()) main()
+if (isMain()) main(process.argv.slice(2))
