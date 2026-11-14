@@ -9,17 +9,35 @@ services:
       POSTGRES_DB: alinha
       POSTGRES_USER: alinha
       POSTGRES_PASSWORD: alinha
+    healthcheck:
+      # TCP, not the unix socket: the temporary initdb server only listens on the socket.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U alinha -d alinha"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
     ports: ["5432:5432"]
     volumes: [pgdata:/var/lib/postgresql/data]
 
   redis:
     image: redis:8
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
     ports: ["6379:6379"]
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.4
     command: start-dev --import-realm
+    # The image has no curl, so the shell's /dev/tcp reads the management port directly.
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q ^HTTP/1.1.200 <&3"]
+      interval: 5s
+      timeout: 3s
+      retries: 40
     environment:
+      KC_HEALTH_ENABLED: "true"
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
     ports: ["8180:8080"]
