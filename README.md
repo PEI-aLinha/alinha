@@ -74,6 +74,21 @@ Until the BFF exists (#14), the shell has no real login. To open it locally with
 VITE_DEV_ROLE=consultant pnpm dev
 ```
 
+### Optional: the `alinha` CLI
+
+[`alinha-cli`](https://github.com/PEI-aLinha/alinha-cli) wraps these steps and shows the state of every plugin. It needs [uv](https://docs.astral.sh/uv/).
+
+```bash
+uv tool install git+ssh://git@github.com/PEI-aLinha/alinha-cli.git@v0.1.0
+
+alinha doctor          # check tools, submodules, ports and dev secrets
+alinha plugins status  # branch, local changes and pointer drift per plugin
+alinha dev             # start dependencies, backend and frontend
+alinha down            # stop the containers
+```
+
+The supported CLI versions are pinned in `.alinha-cli-version`.
+
 ## Working on a plugin
 
 Always work **inside a checkout of the main repo** — a plugin repo does not build on its own
