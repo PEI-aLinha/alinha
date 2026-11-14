@@ -32,7 +32,7 @@ services:
     command: start-dev --import-realm
     # The image has no curl, so the shell's /dev/tcp reads the management port directly.
     healthcheck:
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q ^HTTP/1.1.200 <&3"]
       interval: 5s
       timeout: 3s
       retries: 40
