@@ -32,11 +32,17 @@ The BFF forwards `X-Alinha-Tenant` to the app unchanged.
 3. A JPA session opened without a tenant (e.g. Spring Data validating `@Query` at startup) reads
    nothing, and any insert of a `TenantOwnedEntity` from it fails.
 
-4. Plugins may not use `JdbcTemplate`/`JdbcClient` or native queries (`@Query(nativeQuery = true)`, `@NativeQuery`),
-   which skip the tenant filter. `TenantFilterBypassTest` (ArchUnit) fails the build when a plugin does. Raw SQL
-   that really is needed lives in the core and filters by `tenant_id` by hand.
+4. Plugins may not use `JdbcTemplate`/`JdbcClient`, native queries (`@Query(nativeQuery = true)`, `@NativeQuery`,
+   `EntityManager.createNativeQuery`) or `Session.doWork`/`doReturningWork`, which skip the tenant filter.
+   `TenantFilterBypassTest` (ArchUnit) fails the build when a plugin does, and checks its rules against known
+   bypasses so they cannot go silent. Raw SQL that really is needed lives in the core and filters by `tenant_id`
+   by hand. There is no database-level backstop (no RLS).
+5. The request tenant is bound to the request thread. Work handed to another thread (`@Async`, executors,
+   `CompletableFuture`, virtual threads, `Callable`/`DeferredResult`) has **no tenant**: reads return nothing
+   and inserts fail. It fails closed, but that work must set the tenant itself (see rule 4 for plugin authors).
+6. `runAs` is refused inside a tenant-scoped request, so a handler cannot switch to another tenant.
 
-Tests: `TenantResolutionTest`, `TenantFilterBypassTest`, `TenantResolutionWebTest`, `TenantIsolationIntegrationTest` (real PostgreSQL).
+Tests: `TenantResolutionTest`, `JwtTenantContextTest`, `TenantFilterBypassTest`, `TenantResolutionWebTest`, `TenantIsolationIntegrationTest` (real PostgreSQL).
 
 ## Rules for plugin authors
 
@@ -54,8 +60,11 @@ Tests: `TenantResolutionTest`, `TenantFilterBypassTest`, `TenantResolutionWebTes
 2. Its entity extends `pt.alinha.core.tenant.TenantOwnedEntity`. Do not set `tenantId` yourself.
 3. Endpoints get the tenant automatically through `TenantContext.current()`. Use `@TenantAgnostic` only
    for endpoints that touch no tenant data.
-4. Work without a request (event listeners, jobs): wrap it in `tenantContext.runAs(event.tenantId) { ... }`,
-   started **outside** any transaction (a JPA session keeps the tenant it was opened with).
+4. Work without a request (event listeners, jobs, `@Async` code): wrap it in
+   `tenantContext.runAs(event.tenantId) { tx.execute { ... } }`, started **outside** any transaction (a JPA
+   session keeps the tenant it was opened with). `@ApplicationModuleListener` and `@Transactional` listeners
+   open the transaction before your code runs, so `runAs` fails there: use a plain
+   `@Async @TransactionalEventListener` and open the transaction inside `runAs`.
 5. **Native SQL and `JdbcTemplate` are not filtered**, so `TenantFilterBypassTest` bans them in plugins.
    Use JPA/HQL. If a case truly needs raw SQL, ask for it in the core and add a cross-tenant test.
 6. Provider credentials go through `pluginapi.TenantSecretStore`, which also takes the tenant from
