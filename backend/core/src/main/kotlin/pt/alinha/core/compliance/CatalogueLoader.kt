@@ -30,9 +30,9 @@ class CatalogueLoader(private val frameworksDir: Path) {
             .filter { it.isDirectory() }
             .sortedBy { it.name }
             .flatMap { frameworkDir ->
-                frameworkDir.listDirectoryEntries("v*")
-                    .filter { it.isDirectory() && it.resolve(CATALOGUE_FILE).exists() }
-                    .sortedBy { it.name.removePrefix("v").toIntOrNull() ?: 0 }
+                frameworkDir.listDirectoryEntries()
+                    .filter { it.isDirectory() && it.name.matches(Regex("v\\d+")) && it.resolve(CATALOGUE_FILE).exists() }
+                    .sortedBy { it.name.removePrefix("v").toInt() }
                     .map { versionDir -> load(versionDir.resolve(CATALOGUE_FILE)) }
             }
     }

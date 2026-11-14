@@ -67,6 +67,10 @@ pnpm install && pnpm dev                               # frontend on :5173
 
 Requirements: JDK 21, Node 22, pnpm 10, Docker.
 
+> **`FRAMEWORKS_DIR`** — the backend resolves framework catalogues from this path.
+> The default (`../../frameworks`) works when running from `backend/app/` (i.e. via `./gradlew :app:bootRun`).
+> In a container, set `FRAMEWORKS_DIR` to the absolute path of the mounted `frameworks/` folder.
+
 ## Working on a plugin
 
 Always work **inside a checkout of the main repo** — a plugin repo does not build on its own

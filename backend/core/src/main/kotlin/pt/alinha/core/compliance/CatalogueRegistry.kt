@@ -3,10 +3,9 @@ package pt.alinha.core.compliance
 import java.nio.file.Path
 import java.time.Instant
 import org.slf4j.LoggerFactory
+import jakarta.annotation.PostConstruct
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.context.ApplicationEventPublisher
-import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
 
 /**
@@ -38,8 +37,8 @@ class CatalogueRegistry(
         private val log = LoggerFactory.getLogger(CatalogueRegistry::class.java)
     }
 
-    /** Loads the catalogues when the application starts. An invalid catalogue stops the start-up. */
-    @EventListener(ApplicationReadyEvent::class)
+    /** Loads the catalogues during bean initialisation. An invalid catalogue stops the start-up before the port opens. */
+    @PostConstruct
     fun onStartup() = reload()
 
     /**
