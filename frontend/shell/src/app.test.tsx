@@ -105,6 +105,26 @@ describe('session bootstrap', () => {
     expect(sessionStorage.getItem('alinha.return-to')).toBeNull()
   })
 
+  it('lets the person move on after going back to the saved page', async () => {
+    sessionStorage.setItem('alinha.return-to', '/org/acme/sonda')
+    const { router } = renderApp({ url: '/', plugins, api: async () => json({ value: 'x' }) })
+    await waitFor(() => expect(router.state.location.pathname).toBe('/org/acme/sonda'))
+    fireEvent.click(nav().getByRole('link', { name: 'Ativos' }))
+    expect(await screen.findByRole('heading', { name: 'Página de ativos' })).toBeInTheDocument()
+    await new Promise((r) => setTimeout(r, 50))
+    expect(router.state.location.pathname).toBe('/org/acme/ativos')
+  })
+
+  it('goes back to a saved page with a query string, once', async () => {
+    sessionStorage.setItem('alinha.return-to', '/org/acme/sonda?filtro=abertos')
+    const { router } = renderApp({ url: '/', plugins, api: async () => json({ value: 'x' }) })
+    await waitFor(() => expect(router.state.location.search).toBe('?filtro=abertos'))
+    await router.navigate('/org/acme/ativos')
+    expect(await screen.findByRole('heading', { name: 'Página de ativos' })).toBeInTheDocument()
+    await new Promise((r) => setTimeout(r, 50))
+    expect(router.state.location.pathname).toBe('/org/acme/ativos')
+  })
+
   it('explains when the account has no organization yet', async () => {
     renderApp({ url: '/', plugins, me: meFor(null, { organizations: [] }) })
     expect(await screen.findByRole('heading', { name: 'A sua conta ainda não está pronta' })).toBeInTheDocument()

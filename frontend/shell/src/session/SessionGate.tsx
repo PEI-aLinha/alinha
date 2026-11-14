@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Navigate, Outlet, useLocation } from 'react-router'
+import { Outlet, useNavigate } from 'react-router'
 import { useQuery } from '@tanstack/react-query'
 import type { MeDto } from '@alinha/api-client'
 import { ApiError } from '@alinha/plugin-sdk'
@@ -37,16 +37,16 @@ function GoToLogin() {
 }
 
 function SessionReady({ me, children }: { me: MeDto; children: ReactNode }) {
-  const { pathname } = useLocation()
-  // After the login, go back to the page the person was trying to open.
-  const [returnTo] = useState(() => login.returnPath())
-  useEffect(() => login.succeeded(), [])
+  const navigate = useNavigate()
+  // Once per session: go back to the page the person was opening before the login, then forget it,
+  // so later navigation is never pulled back there. (Child effects run first, so this wins over "/" → home.)
+  useEffect(() => {
+    const returnTo = login.returnPath()
+    login.succeeded()
+    if (returnTo) navigate(returnTo, { replace: true })
+  }, [navigate])
   const session = useMemo<Session>(() => ({ me, can: makeCan(me.permissions), isConsultant: isConsultant(me.roles) }), [me])
-  return (
-    <SessionContext.Provider value={session}>
-      {returnTo && returnTo !== pathname ? <Navigate to={returnTo} replace /> : children}
-    </SessionContext.Provider>
-  )
+  return <SessionContext.Provider value={session}>{children}</SessionContext.Provider>
 }
 
 /** Root route element: loads the session from /api/me before showing any page. */
