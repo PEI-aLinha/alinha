@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { useQuery } from '@tanstack/react-query'
@@ -19,6 +20,12 @@ function TwoCalls() {
   return <p>{a.isError && b.isError ? 'Pedidos recusados' : 'A pedir'}</p>
 }
 
+/** A page with local state, like a half-filled form. */
+function Draft() {
+  const [text, setText] = useState('')
+  return <input aria-label="Rascunho" value={text} onChange={(e) => setText(e.target.value)} />
+}
+
 const Boom = () => { throw new Error('boom') }
 const Denied = () => { throw new ApiError(403, '/x') }
 
@@ -37,6 +44,7 @@ const testPlugin = definePlugin({
     consultant: [
       { path: 'painel', Component: () => <h1>Painel do cliente</h1> },
       { path: 'sonda', Component: TenantProbe },
+      { path: 'rascunho', Component: Draft },
     ],
   },
   nav: [
@@ -199,6 +207,15 @@ describe('consultant area (/carteira)', () => {
     expect(await screen.findByText('Dados de Beta, S.A.: dados B')).toBeInTheDocument()
     expect(calls.filter((c) => c.url === '/api/probe').map((c) => new Headers(c.init.headers).get('X-Alinha-Tenant')))
       .toEqual([ACME.id, BETA.id])
+  })
+
+  it('starts plugin pages from scratch on another organization (no leftover local state)', async () => {
+    const { router } = renderApp({ url: '/carteira/acme/rascunho', plugins, me: meFor('consultant') })
+    fireEvent.change(await screen.findByRole('textbox', { name: 'Rascunho' }), { target: { value: 'notas da Acme' } })
+    expect(screen.getByRole('textbox', { name: 'Rascunho' })).toHaveValue('notas da Acme')
+    await router.navigate('/carteira/beta/rascunho')
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Cliente' })).toHaveValue('beta'))
+    expect(screen.getByRole('textbox', { name: 'Rascunho' })).toHaveValue('')
   })
 
   it('does not send a tenant on the portfolio', async () => {

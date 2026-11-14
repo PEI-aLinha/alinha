@@ -49,8 +49,9 @@ export function ConsultantLayout({ plugins }: { plugins: readonly FrontendPlugin
     ? <ForbiddenPage title="Não tem acesso a esta organização">Esta organização não faz parte da sua carteira de clientes.</ForbiddenPage>
     : <Outlet />
 
+  // key: another organization remounts every plugin page, so no local state (e.g. a form draft) carries over.
   return (
-    <HostProvider organization={organization ?? null}>
+    <HostProvider key={organization?.id ?? 'portfolio'} organization={organization ?? null}>
       <AppFrame sections={sections} tools={<OrgSwitcher organizations={me.organizations} current={organization?.slug} />}>
         {content}
       </AppFrame>

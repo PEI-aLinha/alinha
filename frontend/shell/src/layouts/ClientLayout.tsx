@@ -22,8 +22,9 @@ export function ClientLayout({ plugins }: { plugins: readonly FrontendPlugin[] }
 
   const base = `/org/${organization.slug}`
   const links = pluginNav(plugins, 'client', can).map((n) => ({ to: `${base}/${n.path}`, label: n.label }))
+  // key: another organization remounts every plugin page, so no local state carries over (same as ConsultantLayout).
   return (
-    <HostProvider organization={organization}>
+    <HostProvider key={organization.id} organization={organization}>
       <AppFrame sections={[{ heading: organization.name, links }]}>
         <Outlet />
       </AppFrame>
