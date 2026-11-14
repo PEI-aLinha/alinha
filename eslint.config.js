@@ -17,6 +17,7 @@ export default tseslint.config(
     // See eslint-rules/plugin-boundaries.js (tests: eslint-rules/plugin-boundaries.test.js).
     files: ['plugins/**/frontend/**/*.{js,mjs,ts,tsx}'],
     plugins: { alinha: { rules: { 'plugin-boundaries': pluginBoundaries } } },
-    rules: { 'alinha/plugin-boundaries': 'error' },
+    // root: this folder, so the rule works wherever ESLint runs from (e.g. an IDE with one plugin open).
+    rules: { 'alinha/plugin-boundaries': ['error', { root: import.meta.dirname }] },
   },
 )

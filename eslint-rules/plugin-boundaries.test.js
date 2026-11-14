@@ -57,7 +57,31 @@ tester.run('plugin-boundaries', rule, {
     { filename: plugin('src/index.ts'), code: "import x from '/etc/passwd'", ...err('outside') },
     { filename: plugin('src/index.ts'), code: 'const m = (name: string) => import(name)', ...err('dynamic') },
     { filename: plugin('src/index.ts'), code: 'const m = (name: string) => import(`./${name}`)', ...err('dynamic') },
+    // Vite: import.meta.glob and new URL(..., import.meta.url) reach files too.
+    { filename: plugin('src/index.ts'), code: "const pages = import.meta.glob('../../../risk-assets/frontend/src/**/*.tsx')", ...err('outside') },
+    { filename: plugin('src/index.ts'), code: "const pages = import.meta.glob(['./pages/*.tsx', '../../../../frontend/shell/src/*.tsx'])", ...err('outside') },
+    { filename: plugin('src/index.ts'), code: "const pages = import.meta.glob('/src/**/*.tsx')", ...err('outside') },
+    { filename: plugin('src/index.ts'), code: 'const pages = (p: string) => import.meta.glob(p)', ...err('dynamic') },
+    { filename: plugin('src/index.ts'), code: "const url = new URL('../../../risk-assets/frontend/logo.svg', import.meta.url)", ...err('outside') },
+    { filename: plugin('src/index.ts'), code: 'const url = (p: string) => new URL(p, import.meta.url)', ...err('dynamic') },
+    // The repo root comes from an option (eslint.config.js passes its own folder), not from ESLint's cwd.
+    {
+      filename: '/elsewhere/repo/plugins/feature/x/frontend/src/a.ts',
+      options: [{ root: '/elsewhere/repo' }],
+      code: "import y from '@alinha/plugin-y'",
+      ...err('platformPackage'),
+    },
   ],
+})
+
+tester.run('plugin-boundaries (Vite paths that stay inside)', rule, {
+  valid: [
+    { filename: plugin('src/index.ts'), code: "const pages = import.meta.glob('./pages/**/*.tsx')" },
+    { filename: plugin('src/index.ts'), code: "const pages = import.meta.glob(['./pages/*.tsx', '!./pages/_*.tsx'])" },
+    { filename: plugin('src/index.ts'), code: "const url = new URL('./assets/logo.svg', import.meta.url)" },
+    { filename: plugin('src/index.ts'), code: "const url = new URL('https://example.org/x')" },
+  ],
+  invalid: [],
 })
 
 describe('eslint.config.js wiring', () => {
@@ -85,5 +109,15 @@ describe('eslint.config.js wiring', () => {
   it('does not restrict the shell', async () => {
     const ids = await ruleIds('frontend/shell/src/Probe.ts', "import x from '../../../plugins/feature/assessment/frontend/src/index.ts'")
     assert.ok(!ids.includes('alinha/plugin-boundaries'))
+  })
+
+  it('still applies when ESLint runs from inside a plugin (e.g. an IDE with one plugin open)', async () => {
+    const pluginDir = resolve(root, 'plugins/feature/assessment/frontend')
+    // ESLint finds the repo's eslint.config.js by looking up from the file, as an IDE does.
+    const fromPlugin = new ESLint({ cwd: pluginDir })
+    const [result] = await fromPlugin.lintText("import x from '@alinha/plugin-organization'\nexport default x\n", {
+      filePath: resolve(pluginDir, 'src/pages/Probe.ts'),
+    })
+    assert.ok(result.messages.some((m) => m.ruleId === 'alinha/plugin-boundaries'), JSON.stringify(result.messages))
   })
 })
