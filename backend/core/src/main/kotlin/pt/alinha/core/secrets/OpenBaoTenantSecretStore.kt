@@ -23,6 +23,9 @@ class OpenBaoTenantSecretStore(private val vault: VaultOperations) : TenantSecre
     // TODO(#10): record put/delete in AuditTrail (tenant, provider, action — never the secret value).
     override fun put(tenant: TenantId, provider: String, secret: Map<String, String>) {
         require(secret.isNotEmpty()) { "secret must not be empty" }
+        require(secret.all { (key, value) -> key.isNotBlank() && value.isNotBlank() }) {
+            "secret keys and values must not be blank"
+        }
         kv.put(path(tenant, provider), secret)
     }
 

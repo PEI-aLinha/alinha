@@ -167,4 +167,12 @@ class OpenBaoTenantSecretStoreTest {
         assertThatThrownBy { store.put(newTenant(), "code-repository", emptyMap()) }
             .isInstanceOf(IllegalArgumentException::class.java)
     }
+
+    @Test
+    fun `rejects blank secret keys and values`() {
+        listOf(mapOf("" to "v"), mapOf("k" to " ")).forEach { bad ->
+            assertThatThrownBy { store.put(newTenant(), "code-repository", bad) }
+                .isInstanceOf(IllegalArgumentException::class.java)
+        }
+    }
 }
