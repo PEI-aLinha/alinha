@@ -67,6 +67,9 @@ pnpm install && pnpm dev                               # frontend on :5173
 
 Requirements: JDK 21, Node 22, pnpm 10, Docker.
 
+`pnpm test` needs the plugin submodules (it checks that every plugin frontend is registered). If you cloned without
+`--recurse-submodules`, run `git submodule update --init --recursive` first.
+
 ## Working on a plugin
 
 Always work **inside a checkout of the main repo** — a plugin repo does not build on its own
