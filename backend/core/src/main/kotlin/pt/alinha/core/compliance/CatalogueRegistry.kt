@@ -3,7 +3,6 @@ package pt.alinha.core.compliance
 import jakarta.annotation.PostConstruct
 import java.nio.file.Path
 import java.time.Instant
-import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.context.ApplicationEventPublisher
@@ -24,6 +23,7 @@ data class CatalogueVersionPublished(
 /**
  * Keeps the loaded catalogues in memory. A published version is never edited (NFR05):
  * assessments store (framework, version) and read their questions with [get].
+ * Catalogues are read once, at start-up: a new version is picked up by restarting the application.
  */
 @Component
 class CatalogueRegistry(
@@ -34,10 +34,6 @@ class CatalogueRegistry(
 
     @Volatile
     private var catalogues: Map<CatalogueKey, Catalogue> = emptyMap()
-
-    companion object {
-        private val log = LoggerFactory.getLogger(CatalogueRegistry::class.java)
-    }
 
     /**
      * Loads and validates catalogues during bean initialisation so a bad catalogue aborts
@@ -58,37 +54,6 @@ class CatalogueRegistry(
     fun onReady() {
         catalogues.keys.sortedWith(compareBy({ it.framework }, { it.version })).forEach { key ->
             val catalogue = catalogues.getValue(key)
-            events.publishEvent(CatalogueVersionPublished(key.framework, key.version, catalogue.title))
-        }
-    }
-
-    /**
-     * Reads the frameworks folder again and announces every version not loaded before.
-     * Versions already in memory are never removed or replaced: a loaded version stays
-     * unchanged for the lifetime of the application (NFR05). If a published version on disk
-     * differs from the in-memory copy, a warning is logged and the in-memory copy is kept.
-     */
-    @Synchronized
-    fun reload() {
-        val loaded = try {
-            loader.loadAll().associateBy { CatalogueKey(it.framework, it.version) }
-        } catch (e: Exception) {
-            log.error("Failed to reload catalogues from disk; keeping existing versions in memory", e)
-            return
-        }
-        loaded.forEach { (key, fromDisk) ->
-            val inMemory = catalogues[key]
-            if (inMemory != null && inMemory != fromDisk) {
-                log.warn(
-                    "Published catalogue {}/{} changed on disk; keeping the in-memory copy (NFR05)",
-                    key.framework, key.version,
-                )
-            }
-        }
-        val newVersions = loaded.keys - catalogues.keys
-        catalogues = loaded + catalogues
-        newVersions.sortedWith(compareBy({ it.framework }, { it.version })).forEach { key ->
-            val catalogue = loaded.getValue(key)
             events.publishEvent(CatalogueVersionPublished(key.framework, key.version, catalogue.title))
         }
     }

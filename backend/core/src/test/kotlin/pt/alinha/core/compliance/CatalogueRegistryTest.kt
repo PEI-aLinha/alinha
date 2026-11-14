@@ -2,9 +2,9 @@ package pt.alinha.core.compliance
 
 import java.nio.file.Path
 import kotlin.io.path.createDirectories
-import kotlin.io.path.deleteRecursively
 import kotlin.io.path.writeText
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import org.springframework.context.ApplicationEventPublisher
@@ -54,41 +54,22 @@ class CatalogueRegistryTest {
     }
 
     @Test
-    fun `a reload only announces new versions`() {
-        write("nis2-qnrcs", 1)
-        val registry = registry().also { it.onStartup(); it.onReady() }
-        published.clear()
+    fun `an invalid catalogue stops the startup`() {
+        write("nis2-qnrcs", 1, title = "")
 
-        write("nis2-qnrcs", 2)
-        registry.reload()
-
-        assertThat(published).hasSize(1)
-        assertThat((published.single() as CatalogueVersionPublished).version).isEqualTo(2)
+        assertThatThrownBy { registry().onStartup() }
+            .isInstanceOf(InvalidCatalogueException::class.java)
+            .hasMessageContaining("title must not be blank")
     }
 
     @Test
-    fun `reload keeps in-memory copy when a published version changes on disk`() {
+    fun `a loaded version does not change when its file changes on disk`() {
         write("nis2-qnrcs", 1)
         val registry = registry().also { it.onStartup(); it.onReady() }
-        published.clear()
 
         write("nis2-qnrcs", 1, title = "Titulo Alterado")
-        registry.reload()
 
         assertThat(registry.get("nis2-qnrcs", 1)?.title).isEqualTo("NIS2 v1")
-        assertThat(published).isEmpty()
-    }
-
-    @Test
-    @OptIn(kotlin.io.path.ExperimentalPathApi::class)
-    fun `version stays available after its folder is deleted and reload is called`() {
-        write("nis2-qnrcs", 1)
-        val registry = registry().also { it.onStartup(); it.onReady() }
-
-        frameworksDir.resolve("nis2-qnrcs").deleteRecursively()
-        registry.reload()
-
-        assertThat(registry.get("nis2-qnrcs", 1)).isNotNull()
     }
 
     @Test

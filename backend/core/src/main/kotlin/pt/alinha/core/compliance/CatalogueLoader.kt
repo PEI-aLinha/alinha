@@ -12,8 +12,8 @@ import tools.jackson.module.kotlin.kotlinModule
 import tools.jackson.module.kotlin.readValue
 
 /**
- * Reads framework catalogues from a folder on disk, so a new version needs no recompile or
- * redeploy (NFR18). Expected layout: <frameworksDir>/<framework>/v<n>/catalogue.yaml
+ * Reads framework catalogues from a folder on disk, not from the jar, so a new version needs no
+ * recompile or new build (NFR18). Expected layout: <frameworksDir>/<framework>/v<n>/catalogue.yaml
  */
 class CatalogueLoader(private val frameworksDir: Path) {
 
