@@ -27,7 +27,10 @@ class OpenBaoTenantSecretStore(private val vault: VaultOperations) : TenantSecre
     }
 
     override fun get(tenant: TenantId, provider: String): Map<String, String>? =
-        kv.get(path(tenant, provider))?.data?.mapValues { (_, value) -> value.toString() }
+        kv.get(path(tenant, provider))?.data?.mapValues { (key, value) ->
+            check(value is String) { "secret field '$key' is not a string" }
+            value
+        }
 
     /**
      * Permanently removes the credential: deleting the KV v2 metadata destroys every version.

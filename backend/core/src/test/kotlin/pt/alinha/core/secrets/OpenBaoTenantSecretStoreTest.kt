@@ -77,6 +77,52 @@ class OpenBaoTenantSecretStoreTest {
     }
 
     @Test
+    fun `delete leaves another tenant's secret for the same provider untouched`() {
+        val tenantA = newTenant()
+        val tenantB = newTenant()
+        store.put(tenantA, "code-repository", mapOf("token" to "a"))
+        store.put(tenantB, "code-repository", mapOf("token" to "b"))
+
+        store.delete(tenantA, "code-repository")
+
+        assertThat(store.get(tenantA, "code-repository")).isNull()
+        assertThat(store.get(tenantB, "code-repository")).isEqualTo(mapOf("token" to "b"))
+    }
+
+    @Test
+    fun `put overwrites only the secret of its own tenant`() {
+        val tenantA = newTenant()
+        val tenantB = newTenant()
+        store.put(tenantA, "code-repository", mapOf("token" to "a1"))
+        store.put(tenantB, "code-repository", mapOf("token" to "b1"))
+
+        store.put(tenantA, "code-repository", mapOf("token" to "a2"))
+
+        assertThat(store.get(tenantA, "code-repository")).isEqualTo(mapOf("token" to "a2"))
+        assertThat(store.get(tenantB, "code-repository")).isEqualTo(mapOf("token" to "b1"))
+    }
+
+    @Test
+    fun `fails instead of coercing a stored value that is not a string`() {
+        val tenant = newTenant()
+        vault.opsForVersionedKeyValue("secret")
+            .put("tenants/${tenant.value}/providers/code-repository", mapOf("port" to 8080))
+
+        assertThatThrownBy { store.get(tenant, "code-repository") }.isInstanceOf(IllegalStateException::class.java)
+    }
+
+    @Test
+    fun `the app policy cannot list tenants or read secret metadata`() {
+        val tenant = newTenant()
+        store.put(tenant, "code-repository", mapOf("token" to "t"))
+
+        assertThatThrownBy { appVault.list("secret/metadata/tenants") }
+            .isInstanceOf(VaultException::class.java).hasMessageContaining("403")
+        assertThatThrownBy { appVault.read("secret/metadata/tenants/${tenant.value}/providers/code-repository") }
+            .isInstanceOf(VaultException::class.java).hasMessageContaining("403")
+    }
+
+    @Test
     fun `returns null after delete`() {
         val tenant = newTenant()
         store.put(tenant, "external-surface", mapOf("apiKey" to "k"))
