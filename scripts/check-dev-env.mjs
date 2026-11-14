@@ -13,6 +13,9 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const realm = JSON.parse(read("deploy/keycloak/alinha-realm.json"));
 assert.equal(realm.realm, "alinha");
+assert.equal(realm.internationalizationEnabled, true, "login UI translations must be enabled");
+assert.ok(realm.supportedLocales.includes("pt"), "European Portuguese must be supported");
+assert.equal(realm.defaultLocale, "pt", "login UI must default to European Portuguese");
 
 const roles = new Set(realm.roles.realm.map((role) => role.name));
 for (const role of ["consultant", "responsible", "analyst"]) {
@@ -44,6 +47,7 @@ assert.ok(otp?.enabled && otp.defaultAction, "CONFIGURE_TOTP must be enabled by 
 const profileComponent = realm.components?.["org.keycloak.userprofile.UserProfileProvider"]?.[0];
 assert.ok(profileComponent, "declarative user profile is missing");
 const profile = JSON.parse(profileComponent.config["kc.user.profile.config"][0]);
+assert.equal(profile.unmanagedAttributePolicy, undefined, "unmanaged attributes must stay disabled for users");
 for (const [name, multivalued] of [
   ["tenant_id", false],
   ["tenants", true],
@@ -86,10 +90,15 @@ for (const service of ["postgres", "redis", "keycloak", "mailpit"]) {
   assert.ok(compose.services[service], `compose service ${service} is missing`);
 }
 assert.deepEqual(
-  compose.services.mailpit.ports.map((port) => `${port.published}:${port.target}`).sort(),
-  ["1025:1025", "8025:8025"],
-  "Mailpit must publish SMTP and UI ports",
+  compose.services.mailpit.ports.map((port) => `${port.host_ip}:${port.published}:${port.target}`).sort(),
+  ["127.0.0.1:1025:1025", "127.0.0.1:8025:8025"],
+  "Mailpit must publish SMTP and UI ports on loopback",
 );
+for (const [name, service] of Object.entries(compose.services)) {
+  for (const port of service.ports ?? []) {
+    assert.equal(port.host_ip, "127.0.0.1", `${name} must bind to loopback only`);
+  }
+}
 assert.ok(compose.services.keycloak.depends_on?.mailpit, "Keycloak must start after Mailpit");
 assert.ok(existsSync(join(root, "deploy/.env.example")), "deploy/.env.example is missing");
 

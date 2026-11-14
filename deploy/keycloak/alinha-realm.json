@@ -8,6 +8,12 @@
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,
   "bruteForceProtected": true,
+  "internationalizationEnabled": true,
+  "supportedLocales": [
+    "pt",
+    "en"
+  ],
+  "defaultLocale": "pt",
   "accessTokenLifespan": 300,
   "ssoSessionIdleTimeout": 1800,
   "ssoSessionMaxLifespan": 36000,
@@ -218,7 +224,7 @@
       "email": "joao.pereira@alinha.pt",
       "emailVerified": true,
       "enabled": true,
-      "firstName": "Joao",
+      "firstName": "João",
       "lastName": "Pereira",
       "attributes": {
         "tenants": [

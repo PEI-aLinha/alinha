@@ -11,12 +11,12 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-alinha}
       POSTGRES_USER: ${POSTGRES_USER:-alinha}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-alinha}
-    ports: ["5432:5432"]
+    ports: ["127.0.0.1:5432:5432"]
     volumes: [pgdata:/var/lib/postgresql/data]
 
   redis:
     image: redis:8
-    ports: ["6379:6379"]
+    ports: ["127.0.0.1:6379:6379"]
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.4
@@ -24,14 +24,14 @@ services:
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
-    ports: ["8180:8080"]
+    ports: ["127.0.0.1:8180:8080"]
     volumes: [./keycloak:/opt/keycloak/data/import:ro]
     depends_on: [mailpit]
 
   # Catches every email the app and Keycloak send. UI: http://localhost:8025
   mailpit:
     image: axllent/mailpit:v1.33.1
-    ports: ["1025:1025", "8025:8025"]
+    ports: ["127.0.0.1:1025:1025", "127.0.0.1:8025:8025"]
 
 volumes:
   pgdata:

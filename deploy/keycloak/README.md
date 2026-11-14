@@ -14,6 +14,10 @@ docker compose -f deploy/docker-compose.dev.yml up -d --force-recreate keycloak
 - Admin console: http://localhost:8180 (admin / admin, or `KEYCLOAK_ADMIN*` from `deploy/.env`)
 - Realm: `alinha`
 - All dev users have the password `alinha` and **must set up TOTP on first login** (MFA).
+- Login, TOTP setup and emails default to European Portuguese (`pt`).
+
+`start-dev` keeps its database in H2 inside the container. Recreating the Keycloak container
+re-imports the realm and wipes every enrolled TOTP, so each user must scan the QR code again.
 
 ## Test users
 
@@ -23,6 +27,9 @@ docker compose -f deploy/docker-compose.dev.yml up -d --force-recreate keycloak
 | Pedro Almeida | `pedro.almeida@tiagueda.pt` | `analyst` | `tenant_id` = Componentes Águeda |
 | Marta Ferreira | `marta.ferreira@alinha.pt` | `consultant` | `tenants` = Componentes Águeda, Metalúrgica de Aveiro |
 | João Pereira | `joao.pereira@alinha.pt` | `consultant` | `tenants` = Metalúrgica de Aveiro |
+
+Pedro's `@tiagueda.pt` address is intentional: he is the external IT analyst working for
+Componentes Águeda, per the prototype personas.
 
 Dev tenant UUIDs, reused by the persona seed data (#42):
 
