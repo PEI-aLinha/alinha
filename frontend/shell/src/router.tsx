@@ -10,14 +10,14 @@ const routesFor = (area: 'client' | 'consultant') =>
  * (The prototype's registration/onboarding routes belong to the Organization plugin.)
  */
 export const router = createBrowserRouter([
-  { index: true, element: <Navigate to="/carteira" replace /> },
+  { index: true, element: <Navigate to="/portfolio" replace /> },
   {
     path: 'org/:org',
     element: <AreaLayout area="client" />,
     children: routesFor('client'),
   },
   {
-    path: 'carteira',
+    path: 'portfolio',
     element: <AreaLayout area="consultant" />,
     children: routesFor('consultant'),
   },

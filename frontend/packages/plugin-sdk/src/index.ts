@@ -8,12 +8,12 @@ import type { RouteObject } from 'react-router'
 /** Application area where a plugin's routes are mounted. */
 export type Area =
   | 'client'      // /org/:org/...   — designated responsible person and analysts
-  | 'consultant'  // /carteira/...   — consultant (service provider)
+  | 'consultant'  // /portfolio/...  — consultant (service provider)
 
 export interface NavItem {
   /** Visible text — in Portuguese (UI requirement). */
   label: string
-  /** Path relative to the area (e.g. 'ativos' → /org/:org/ativos). */
+  /** Path relative to the area in English (e.g. 'assets' → /org/:org/assets). */
   path: string
   area: Area
   icon?: ComponentType<{ className?: string }>
