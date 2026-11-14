@@ -36,4 +36,8 @@ dependencies {
 // Tests (ModularityTest, CI) run without OpenBao: no secrets are needed to verify the modules.
 tasks.test {
     systemProperty("spring.cloud.vault.enabled", "false")
+    // With Vault off, db.* is not resolved; use the dev Postgres credentials (deploy/docker-compose.dev.yml).
+    // Context tests using Testcontainers override these via @ServiceConnection / @DynamicPropertySource.
+    systemProperty("db.username", "alinha")
+    systemProperty("db.password", "alinha")
 }
