@@ -1,14 +1,16 @@
 # Local development dependencies: docker compose -f deploy/docker-compose.dev.yml up -d
 # The app runs outside Docker (./gradlew :app:bootRun) and the frontend with pnpm dev.
+# Dev-only credentials below are the defaults; override them in deploy/.env
+# (see deploy/.env.example). Never put real secrets in this file.
 # TODO sprint 0 (RNF21): full docker-compose.yml with Nginx, BFF, app, AI Service,
 # workers and OpenBao, starting with a single command.
 services:
   postgres:
     image: postgres:17
     environment:
-      POSTGRES_DB: alinha
-      POSTGRES_USER: alinha
-      POSTGRES_PASSWORD: alinha
+      POSTGRES_DB: ${POSTGRES_DB:-alinha}
+      POSTGRES_USER: ${POSTGRES_USER:-alinha}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-alinha}
     ports: ["5432:5432"]
     volumes: [pgdata:/var/lib/postgresql/data]
 
@@ -20,10 +22,16 @@ services:
     image: quay.io/keycloak/keycloak:26.4
     command: start-dev --import-realm
     environment:
-      KC_BOOTSTRAP_ADMIN_USERNAME: admin
-      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
     ports: ["8180:8080"]
     volumes: [./keycloak:/opt/keycloak/data/import:ro]
+    depends_on: [mailpit]
+
+  # Catches every email the app and Keycloak send. UI: http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:v1.33.1
+    ports: ["1025:1025", "8025:8025"]
 
 volumes:
   pgdata:

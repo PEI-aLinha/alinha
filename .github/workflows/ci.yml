@@ -6,6 +6,14 @@ on:
     branches: [main]
 
 jobs:
+  deploy:
+    name: Dev environment (compose + realm)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: node scripts/check-dev-env.mjs
+      - run: docker compose -f deploy/docker-compose.dev.yml config -q
+
   submodules:
     name: Submodule pointers
     runs-on: ubuntu-latest
