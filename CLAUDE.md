@@ -140,12 +140,13 @@ Avoid this unless the task needs it. Before starting, say so explicitly and list
 - Never change a contract incompatibly. Create `v2` and keep `v1` until every consumer has migrated.
 - The platform has two sides:
   - **client** area (`/org/:org/...`): the SME's designated responsible person
-  - **consultant** area (`/carteira/...`): the service provider managing several client organisations
+  - **consultant** area (`/portfolio/...`): the service provider managing several client organisations
 
 ## Conventions
 
-- **English** for code, comments, docs, commit messages and branch names. **European Portuguese**, plain and
-  non-technical, for everything the user sees in the UI (labels, titles, **URL paths**, messages).
+- **English** for code, comments, docs, commit messages, branch names and **URL paths** (`/org/:org/assets`,
+  `/portfolio`). **European Portuguese**, plain and non-technical, for everything else the user sees in the UI
+  (labels, titles, messages).
 - Kotlin package `pt.alinha.<pkg>`, where `<pkg>` is the plugin id without hyphens (`risk-assets` → `riskassets`).
   Each plugin has exactly one `AlinhaPlugin` bean, and its `PluginManifest` must match `plugin.yaml`.
 - Branches `feat/<topic>`, `fix/<topic>`. Keep PRs small and follow `.github/pull_request_template.md`.
