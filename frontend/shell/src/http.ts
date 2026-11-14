@@ -9,6 +9,17 @@ export const API_REQUEST: RequestInit = { credentials: 'include', redirect: 'man
 /** True when the response says there is no session: a 401, or a redirect (to the login). */
 export const isUnauthenticatedResponse = (res: Response) => res.status === 401 || res.type === 'opaqueredirect'
 
+/** The response was 2xx but its body is not JSON (e.g. an HTML page from a proxy). Asking again will not help. */
+export class NotJsonError extends Error {
+  readonly path: string
+
+  constructor(path: string) {
+    super(`/api${path} did not return JSON`)
+    this.path = path
+    this.name = 'NotJsonError'
+  }
+}
+
 /**
  * Reads a /api response: ApiError for anything that is not 2xx (401 for a redirect), undefined for an empty body
  * (204, Content-Length 0 or chunked), parsed JSON otherwise, and a clear error when the body is not JSON.
@@ -21,6 +32,6 @@ export async function readJson<T>(res: Response, path: string): Promise<T> {
   try {
     return JSON.parse(text) as T
   } catch {
-    throw new Error(`/api${path} did not return JSON`)
+    throw new NotJsonError(path)
   }
 }

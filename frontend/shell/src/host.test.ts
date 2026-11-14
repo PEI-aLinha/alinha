@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { ApiError } from '@alinha/plugin-sdk'
 import { createApi, retryUnlessClientError, TENANT_HEADER } from './host'
+import { NotJsonError } from './http'
 
 const ok = (body: unknown = {}, init: ResponseInit = {}) => new Response(JSON.stringify(body), { status: 200, ...init })
 const api = (tenantId: string | null, fetchFn: typeof fetch, onUnauthenticated = () => {}) =>
@@ -58,6 +59,7 @@ describe('createApi', () => {
     expect(retryUnlessClientError(0, new TypeError('Failed to fetch'))).toBe(true)
     expect(retryUnlessClientError(3, new ApiError(503, '/x'))).toBe(false)
     for (const status of [400, 401, 403, 404]) expect(retryUnlessClientError(0, new ApiError(status, '/x'))).toBe(false)
+    expect(retryUnlessClientError(0, new NotJsonError('/x'))).toBe(false)
   })
 
   it('returns undefined for empty responses', async () => {

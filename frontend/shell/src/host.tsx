@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query'
 import { ApiError, PluginHostContext, type HostOrganization, type PluginHost } from '@alinha/plugin-sdk'
-import { API_REQUEST, isUnauthenticatedResponse, readJson } from './http'
+import { API_REQUEST, isUnauthenticatedResponse, NotJsonError, readJson } from './http'
 import { ME_QUERY_KEY, useSession } from './session/SessionGate'
 
 /**
@@ -34,9 +34,12 @@ export function createApi({ tenantId, onUnauthenticated, fetchFn = fetch }: ApiO
   }
 }
 
-/** Retry network and server errors up to 3 times; a 4xx (no session, no permission, not found) will not change. */
+/**
+ * Retry network and server errors up to 3 times. A 4xx (no session, no permission, not found) or a body that is
+ * not JSON will not change, so those fail at once.
+ */
 export const retryUnlessClientError = (failureCount: number, error: unknown) =>
-  !(error instanceof ApiError && error.status >= 400 && error.status < 500) && failureCount < 3
+  !(error instanceof ApiError && error.status >= 400 && error.status < 500) && !(error instanceof NotJsonError) && failureCount < 3
 
 /**
  * Gives plugins the host for one organization (or none, e.g. on the portfolio). Each organization
