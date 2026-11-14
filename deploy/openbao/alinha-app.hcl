@@ -4,4 +4,5 @@ path "secret/data/alinha/app" { capabilities = ["read"] }
 # Spring Cloud Vault also reads alinha/app/<profile> for each active profile; fail-fast turns a 403 there into a startup failure.
 path "secret/data/alinha/app/*" { capabilities = ["read"] }
 path "secret/data/tenants/*" { capabilities = ["create", "read", "update", "delete"] }
-path "secret/metadata/tenants/*" { capabilities = ["read", "delete", "list"] }
+# Only `delete` (purges every version). No `list`/`read`: the app must not enumerate tenants or read version metadata.
+path "secret/metadata/tenants/*" { capabilities = ["delete"] }
