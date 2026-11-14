@@ -87,6 +87,32 @@ class CatalogueLoaderTest {
     }
 
     @Test
+    fun `rejects a version folder without a catalogue file`() {
+        frameworksDir.resolve("nis2-qnrcs").resolve("v2").createDirectories()
+
+        assertThatThrownBy { CatalogueLoader(frameworksDir).loadAll() }
+            .isInstanceOf(InvalidCatalogueException::class.java)
+            .hasMessageContaining("version folder has no catalogue.yaml")
+    }
+
+    @Test
+    fun `rejects a folder that is not named like a version`() {
+        write("nis2-qnrcs", "V2", validCatalogue())
+
+        assertThatThrownBy { CatalogueLoader(frameworksDir).loadAll() }
+            .isInstanceOf(InvalidCatalogueException::class.java)
+            .hasMessageContaining("'V2' is not a version folder")
+    }
+
+    @Test
+    fun `names the absolute path when the frameworks folder is missing`() {
+        val missing = frameworksDir.resolve("missing")
+
+        assertThatThrownBy { CatalogueLoader(missing).loadAll() }
+            .hasMessageContaining(missing.toAbsolutePath().toString())
+    }
+
+    @Test
     fun `rejects empty evidence`() {
         write("nis2-qnrcs", "v1", validCatalogue().replace(
             "    evidence:\n      - \"Configuração\"",

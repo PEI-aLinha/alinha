@@ -1,31 +1,29 @@
 #!/usr/bin/env bash
-# Fails if a PR modifies or deletes a file inside a released framework version.
+# Fails if a PR modifies, deletes or renames a file inside a released framework version (NFR05).
 # Released versions are listed in frameworks/RELEASES (one framework/vN per line).
-# Add a line there when a version is published and used by existing assessments.
+# The list is read from origin/main, so a PR cannot unlist a version and edit it in the same change.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-releases_file="frameworks/RELEASES"
-if [ ! -f "$releases_file" ] || ! grep -qE '^[^#[:space:]]' "$releases_file" 2>/dev/null; then
-  echo "No released versions defined — nothing to protect."
+released=$(git show origin/main:frameworks/RELEASES 2>/dev/null | grep -E '^[^#[:space:]]' || true)
+if [ -z "$released" ]; then
+  echo "No released versions on main -- nothing to protect."
   exit 0
 fi
 
-changed=$(git diff --name-only --diff-filter=MDT --no-renames origin/main...HEAD -- 'frameworks/' || true)
-if [ -z "$changed" ]; then
-  exit 0
-fi
+changed=$(git diff --name-only --diff-filter=MDT --no-renames origin/main...HEAD -- frameworks/)
 
 fail=0
-while IFS= read -r line; do
-  [[ "$line" =~ ^[[:space:]]*# || -z "${line// /}" ]] && continue
-  released="$line"
-  if echo "$changed" | grep -qE "^frameworks/$released(/|$)"; then
-    echo "ERROR: a file in released version '$released' was modified or deleted."
-    echo "       Create a new vN/ folder instead (NFR05)."
-    fail=1
-  fi
-done < "$releases_file"
+while IFS= read -r version; do
+  while IFS= read -r file; do
+    case "$file" in
+      "frameworks/$version/"*)
+        echo "ERROR: $file belongs to released version '$version'. Create a new vN/ folder instead (NFR05)."
+        fail=1
+        ;;
+    esac
+  done <<< "$changed"
+done <<< "$released"
 
 [ $fail -eq 0 ] || exit 1
-echo "ok -- immutable framework versions check passed"
+echo "ok -- released framework versions are unchanged"

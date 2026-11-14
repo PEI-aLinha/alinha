@@ -24,17 +24,30 @@ class CatalogueLoader(private val frameworksDir: Path) {
 
     /** Loads every catalogue found under the frameworks folder. */
     fun loadAll(): List<Catalogue> {
-        require(frameworksDir.isDirectory()) { "Frameworks folder not found: $frameworksDir" }
+        require(frameworksDir.isDirectory()) {
+            "Frameworks folder not found: ${frameworksDir.toAbsolutePath().normalize()} (set FRAMEWORKS_DIR)"
+        }
 
         return frameworksDir.listDirectoryEntries()
             .filter { it.isDirectory() }
             .sortedBy { it.name }
             .flatMap { frameworkDir ->
                 frameworkDir.listDirectoryEntries()
-                    .filter { it.isDirectory() && it.name.matches(Regex("v\\d+")) && it.resolve(CATALOGUE_FILE).exists() }
+                    .filter { it.isDirectory() }
+                    .onEach(::checkVersionDir)
                     .sortedBy { it.name.removePrefix("v").toInt() }
                     .map { versionDir -> load(versionDir.resolve(CATALOGUE_FILE)) }
             }
+    }
+
+    /** A misnamed or empty version folder must stop the load, not be skipped in silence. */
+    private fun checkVersionDir(dir: Path) {
+        if (!VERSION_DIR_PATTERN.matches(dir.name)) {
+            throw InvalidCatalogueException(dir, listOf("folder '${dir.name}' is not a version folder (expected v<n>)"))
+        }
+        if (!dir.resolve(CATALOGUE_FILE).exists()) {
+            throw InvalidCatalogueException(dir, listOf("version folder has no $CATALOGUE_FILE"))
+        }
     }
 
     /** Loads and checks one catalogue file. */
@@ -158,6 +171,7 @@ class CatalogueLoader(private val frameworksDir: Path) {
 
     companion object {
         const val CATALOGUE_FILE = "catalogue.yaml"
+        private val VERSION_DIR_PATTERN = Regex("v[1-9]\\d*")
         private val FRAMEWORK_PATTERN = Regex("^[a-z0-9]+(-[a-z0-9]+)*$")
         private val ID_PATTERN = Regex("^[A-Z0-9]+([.-][A-Za-z0-9]+)*$")
     }
