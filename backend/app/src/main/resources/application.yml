@@ -1,10 +1,31 @@
 spring:
   application:
     name: alinha
+  # Secrets come from OpenBao (NFR09) — never put credentials here or in env defaults.
+  # Dev: docker compose ... up -d, then BAO_TOKEN=dev-app-token ./gradlew :app:bootRun
+  config:
+    import: optional:vault://   # optional only so tests run with vault disabled; fail-fast below
+  cloud:
+    vault:
+      uri: ${BAO_ADDR:http://localhost:8200}
+      authentication: TOKEN
+      token: ${BAO_TOKEN}
+      fail-fast: true
+      kv:
+        enabled: true
+        backend: secret
+        default-context: alinha/app
+        application-name: alinha/app
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/alinha}
+          audiences: alinha-api
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/alinha}
-    username: ${DB_USER:alinha}
-    password: ${DB_PASSWORD:alinha}
+    username: ${db.username}
+    password: ${db.password}
   jpa:
     open-in-view: false
     hibernate:

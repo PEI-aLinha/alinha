@@ -6,6 +6,7 @@ import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RestController
+import pt.alinha.core.access.RequiresPermission
 import pt.alinha.pluginapi.AlinhaPlugin
 import pt.alinha.pluginapi.PluginManifest
 
@@ -29,6 +30,7 @@ class PluginRegistry(plugins: List<AlinhaPlugin>) {
 
 @RestController
 class PluginRegistryController(private val registry: PluginRegistry) {
+    @RequiresPermission("plugins")
     @GetMapping("/api/plugins")
     fun list(): List<PluginManifest> = registry.manifests
 }

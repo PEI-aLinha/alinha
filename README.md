@@ -60,8 +60,8 @@ git config --global push.recurseSubmodules on-demand   # pushing the main repo p
 
 git clone --recurse-submodules git@github.com:PEI-aLinha/alinha.git
 cd alinha
-docker compose -f deploy/docker-compose.dev.yml up -d  # Postgres, Redis, Keycloak
-./gradlew :app:bootRun                                 # backend on :8080
+docker compose -f deploy/docker-compose.dev.yml up -d  # Postgres, Redis, Keycloak, OpenBao
+BAO_TOKEN=dev-app-token ./gradlew :app:bootRun         # backend on :8080
 pnpm install && pnpm dev                               # frontend on :5173
 ```
 
@@ -115,7 +115,8 @@ Numbering from the technical report (section 3.2).
 |---|---|---|
 | RNF03 tenant isolation | `core.tenant.TenantContext` (tenant from the token); filtered queries | contract defined, implement in sprint 0 |
 | RNF04 audit trail | `core.audit.AuditTrail`, same transaction; `audit.audit_event` table INSERT-only | same |
-| RNF07/RNF08 OIDC + roles per endpoint | Keycloak + `@RequiresPermission` | same |
+| RNF07/RNF08 OIDC + roles per endpoint | Keycloak JWTs + `@RequiresPermission`, deny by default; see `docs/rbac.md` | **done** in the backend (not yet tested against a real Keycloak realm, see #5) |
+| RNF09 no secrets in code/config | OpenBao (`secret/alinha/app` via Spring Cloud Vault); per-tenant provider credentials via `pluginapi.TenantSecretStore`; gitleaks job in CI | **done** (AI Service reads it once implemented) |
 | RNF12/RNF14 AI approval and provenance | `core.aigateway.AiDraft` (model, prompt version, sources, date) | contract defined |
 | RNF17 new plugin without touching the core | `settings.gradle.kts` and `gen-frontend-plugins.mjs` discover the submodules; `ModularityTest` | **done** |
 | RNF18 catalogues as data | `frameworks/` read at runtime by the Compliance Engine | see `frameworks/README.md` |

@@ -21,6 +21,8 @@ data class PluginManifest(
     val consumes: Set<String> = emptySet(),
     /** RBAC resources the plugin declares (e.g. "assessment:read"). */
     val permissions: Set<String> = emptySet(),
+    /** Permissions granted to each realm role; every value must be listed in [permissions]. */
+    val rolePermissions: Map<String, Set<String>> = emptyMap(),
 )
 
 /** Every plugin exposes exactly one bean implementing this interface. */
