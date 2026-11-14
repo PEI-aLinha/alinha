@@ -5,6 +5,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+if ! git rev-parse --verify --quiet origin/main >/dev/null; then
+  echo "ERROR: origin/main not found (fetch it first: git fetch origin main)."
+  exit 1
+fi
+
 released=$(git show origin/main:frameworks/RELEASES 2>/dev/null | grep -E '^[^#[:space:]]' || true)
 if [ -z "$released" ]; then
   echo "No released versions on main -- nothing to protect."
