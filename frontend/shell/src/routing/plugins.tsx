@@ -11,18 +11,20 @@ export function RequirePermission({ resource, action, children }: { resource: st
   return can(resource, action) ? children : <ForbiddenPage />
 }
 
-/** Wraps a plugin route (and its children) whose `handle.resource` asks for a permission. */
+/**
+ * Guards a plugin route (and its children) whose `handle.resource` asks for a permission. The route itself is
+ * left untouched inside a pathless parent, so `element`, `Component` and `lazy` routes are all covered
+ * (a `lazy` Component would otherwise replace a guard set on the route's own `element`).
+ */
 function guard(route: RouteObject): RouteObject {
   const children = route.children?.map(guard)
+  const own = (children ? { ...route, children } : route) as RouteObject
   const handle = route.handle as RouteHandle | undefined
-  if (!handle?.resource) return (children ? { ...route, children } : route) as RouteObject
-  const { Component, element, ...rest } = route
-  const content = element ?? (Component ? <Component /> : <Outlet />)
+  if (!handle?.resource) return own
   return {
-    ...rest,
-    ...(children ? { children } : {}),
-    element: <RequirePermission resource={handle.resource} action={handle.action}>{content}</RequirePermission>,
-  } as RouteObject
+    element: <RequirePermission resource={handle.resource} action={handle.action}><Outlet /></RequirePermission>,
+    children: [own],
+  }
 }
 
 /** Every plugin's routes for one area, in plugin order, guarded by permission. */
@@ -34,6 +36,6 @@ export function pluginRoutes(plugins: readonly FrontendPlugin[], area: Area): Ro
 export function pluginNav(plugins: readonly FrontendPlugin[], area: Area, can: Can): NavItem[] {
   return plugins
     .flatMap((p) => p.nav ?? [])
-    .filter((n) => n.area === area && (!n.resource || can(n.resource)))
+    .filter((n) => n.area === area && (!n.resource || can(n.resource, n.action)))
     .sort((a, b) => (a.order ?? 100) - (b.order ?? 100) || a.label.localeCompare(b.label, 'pt'))
 }

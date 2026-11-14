@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { isValidElement } from 'react'
+import type { RouteObject } from 'react-router'
 import { definePlugin, type FrontendPlugin } from '@alinha/plugin-sdk'
 import { makeCan } from '../session/permissions'
 import { pluginNav, pluginRoutes, RequirePermission } from './plugins'
@@ -23,30 +24,35 @@ const a = definePlugin({
     { label: 'Alfa', path: 'a', area: 'client' },
     { label: 'Primeiro', path: 'p', area: 'client', order: 1 },
     { label: 'Riscos', path: 'riscos', area: 'client', resource: 'risk' },
+    { label: 'Editar riscos', path: 'editar', area: 'client', resource: 'risk', action: 'edit', order: 200 },
     { label: 'Painel', path: 'painel', area: 'consultant' },
   ],
 })
 const b: FrontendPlugin = { id: 'b', name: 'B', routes: {} }
 
-const guardOf = (route: { element?: unknown }) =>
+const guardOf = (route: RouteObject) =>
   isValidElement(route.element) && route.element.type === RequirePermission ? (route.element.props as { resource: string; action?: string }) : null
+/** The plugin route itself: the route, or the only child of its guard. */
+const inner = (route: RouteObject) => (guardOf(route) ? route.children![0] : route)
 
 describe('pluginRoutes', () => {
   const routes = pluginRoutes([a, b], 'client')
 
   it('takes only the routes of the area', () => {
-    expect(routes.map((r) => r.path)).toEqual(['livre', 'riscos', 'editar', 'grupo'])
-    expect(pluginRoutes([a, b], 'consultant').map((r) => r.path)).toEqual(['painel'])
+    expect(routes.map((r) => inner(r).path)).toEqual(['livre', 'riscos', 'editar', 'grupo'])
+    expect(pluginRoutes([a, b], 'consultant').map((r) => inner(r).path)).toEqual(['painel'])
   })
 
   it('leaves routes without a resource untouched', () => {
     expect(routes[0]).toBe(a.routes.client![0])
   })
 
-  it('guards routes that ask for a permission, with read by default', () => {
+  it('guards routes that ask for a permission from a pathless parent, keeping the route as is', () => {
     expect(guardOf(routes[1])).toMatchObject({ resource: 'risk', action: undefined })
-    expect(routes[1].Component).toBeUndefined()
+    expect(routes[1].path).toBeUndefined()
+    expect(inner(routes[1])).toBe(a.routes.client![1])
     expect(guardOf(routes[2])).toMatchObject({ resource: 'risk', action: 'edit' })
+    expect(inner(routes[2]).element).toBeDefined()
   })
 
   it('guards nested routes too', () => {
@@ -60,5 +66,10 @@ describe('pluginNav', () => {
     expect(pluginNav([a, b], 'client', makeCan([])).map((n) => n.label)).toEqual(['Primeiro', 'Alfa', 'Zeta'])
     expect(pluginNav([a, b], 'client', makeCan(['risk:read'])).map((n) => n.label)).toEqual(['Primeiro', 'Alfa', 'Riscos', 'Zeta'])
     expect(pluginNav([a, b], 'consultant', makeCan([])).map((n) => n.label)).toEqual(['Painel'])
+  })
+
+  it('uses the same action as the route when the entry names one', () => {
+    expect(pluginNav([a], 'client', makeCan(['risk:read'])).map((n) => n.label)).not.toContain('Editar riscos')
+    expect(pluginNav([a], 'client', makeCan(['risk:read', 'risk:edit'])).map((n) => n.label)).toContain('Editar riscos')
   })
 })

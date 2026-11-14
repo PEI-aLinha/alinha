@@ -40,6 +40,7 @@ const testPlugin = definePlugin({
       { path: 'negado', Component: Denied },
       { path: 'sonda', Component: TenantProbe },
       { path: 'dois', Component: TwoCalls },
+      { path: 'preguicoso', handle: { resource: 'risk' }, lazy: async () => ({ Component: () => <h1>Página carregada à parte</h1> }) },
     ],
     consultant: [
       { path: 'painel', Component: () => <h1>Painel do cliente</h1> },
@@ -152,6 +153,17 @@ describe('client area (/org/:org)', () => {
     expect(await screen.findByRole('heading', { name: 'Não tem acesso a esta página' })).toBeInTheDocument()
     expect(nav().queryByRole('link', { name: 'Riscos' })).not.toBeInTheDocument()
     expect(screen.getByText('Analista')).toBeInTheDocument()
+  })
+
+  it('guards a lazy plugin route and still loads it with the permission', async () => {
+    renderApp({ url: '/org/acme/preguicoso', plugins, me: meFor('responsible', { permissions: ['risk:read'] }) })
+    expect(await screen.findByRole('heading', { name: 'Página carregada à parte' })).toBeInTheDocument()
+  })
+
+  it('refuses a lazy plugin route without the permission', async () => {
+    renderApp({ url: '/org/acme/preguicoso', plugins })
+    expect(await screen.findByRole('heading', { name: 'Não tem acesso a esta página' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Página carregada à parte' })).not.toBeInTheDocument()
   })
 
   it('refuses another organization', async () => {
