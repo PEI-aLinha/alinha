@@ -16,8 +16,9 @@ export const router = createBrowserRouter([
     element: <AreaLayout area="client" />,
     children: routesFor('client'),
   },
+  // `/portfolio` (the consultant's client list) has no page yet.
   {
-    path: 'portfolio',
+    path: 'portfolio/:org',
     element: <AreaLayout area="consultant" />,
     children: routesFor('consultant'),
   },
