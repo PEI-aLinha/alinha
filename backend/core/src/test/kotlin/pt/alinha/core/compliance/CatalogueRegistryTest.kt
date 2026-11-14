@@ -18,11 +18,23 @@ class CatalogueRegistryTest {
     private val events = ApplicationEventPublisher { published += it }
 
     @Test
+    fun `does not publish events until onReady is called`() {
+        write("nis2-qnrcs", 1)
+        val registry = registry()
+
+        registry.onStartup()
+        assertThat(published).isEmpty()
+
+        registry.onReady()
+        assertThat(published).hasSize(1)
+    }
+
+    @Test
     fun `announces every version on startup`() {
         write("nis2-qnrcs", 1)
         write("nis2-qnrcs", 2)
 
-        registry().onStartup()
+        registry().also { it.onStartup(); it.onReady() }
 
         assertThat(published).containsExactly(
             CatalogueVersionPublished("nis2-qnrcs", 1, "NIS2 v1", (published[0] as CatalogueVersionPublished).occurredAt),
@@ -34,7 +46,7 @@ class CatalogueRegistryTest {
     fun `keeps old versions so existing assessments stay pinned`() {
         write("nis2-qnrcs", 1)
         write("nis2-qnrcs", 2)
-        val registry = registry().also { it.onStartup() }
+        val registry = registry().also { it.onStartup(); it.onReady() }
 
         assertThat(registry.get("nis2-qnrcs", 1)?.version).isEqualTo(1)
         assertThat(registry.latest("nis2-qnrcs")?.version).isEqualTo(2)
@@ -44,7 +56,7 @@ class CatalogueRegistryTest {
     @Test
     fun `a reload only announces new versions`() {
         write("nis2-qnrcs", 1)
-        val registry = registry().also { it.onStartup() }
+        val registry = registry().also { it.onStartup(); it.onReady() }
         published.clear()
 
         write("nis2-qnrcs", 2)
@@ -57,7 +69,7 @@ class CatalogueRegistryTest {
     @Test
     fun `reload keeps in-memory copy when a published version changes on disk`() {
         write("nis2-qnrcs", 1)
-        val registry = registry().also { it.onStartup() }
+        val registry = registry().also { it.onStartup(); it.onReady() }
         published.clear()
 
         write("nis2-qnrcs", 1, title = "Titulo Alterado")
@@ -71,7 +83,7 @@ class CatalogueRegistryTest {
     @OptIn(kotlin.io.path.ExperimentalPathApi::class)
     fun `version stays available after its folder is deleted and reload is called`() {
         write("nis2-qnrcs", 1)
-        val registry = registry().also { it.onStartup() }
+        val registry = registry().also { it.onStartup(); it.onReady() }
 
         frameworksDir.resolve("nis2-qnrcs").deleteRecursively()
         registry.reload()
@@ -83,7 +95,7 @@ class CatalogueRegistryTest {
     fun `finds every framework that uses a canonical control`() {
         write("nis2-qnrcs", 1)
         write("gdpr", 1)
-        val registry = registry().also { it.onStartup() }
+        val registry = registry().also { it.onStartup(); it.onReady() }
 
         assertThat(registry.frameworksWithControl("CTRL-MFA")).containsExactly("gdpr", "nis2-qnrcs")
         assertThat(registry.frameworksWithControl("CTRL-UNKNOWN")).isEmpty()

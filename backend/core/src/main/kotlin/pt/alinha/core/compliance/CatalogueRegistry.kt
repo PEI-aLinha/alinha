@@ -1,11 +1,13 @@
 package pt.alinha.core.compliance
 
+import jakarta.annotation.PostConstruct
 import java.nio.file.Path
 import java.time.Instant
 import org.slf4j.LoggerFactory
-import jakarta.annotation.PostConstruct
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.context.ApplicationEventPublisher
+import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
 
 /**
@@ -37,9 +39,28 @@ class CatalogueRegistry(
         private val log = LoggerFactory.getLogger(CatalogueRegistry::class.java)
     }
 
-    /** Loads the catalogues during bean initialisation. An invalid catalogue stops the start-up before the port opens. */
+    /**
+     * Loads and validates catalogues during bean initialisation so a bad catalogue aborts
+     * startup before the port opens. Events are NOT published here: [EventListener] and
+     * [org.springframework.modulith.events.ApplicationModuleListener] methods are not yet
+     * registered. They are notified in [onReady].
+     */
     @PostConstruct
-    fun onStartup() = reload()
+    fun onStartup() {
+        catalogues = loader.loadAll().associateBy { CatalogueKey(it.framework, it.version) }
+    }
+
+    /**
+     * Publishes [CatalogueVersionPublished] for every version loaded at startup, once all
+     * listeners are registered.
+     */
+    @EventListener(ApplicationReadyEvent::class)
+    fun onReady() {
+        catalogues.keys.sortedWith(compareBy({ it.framework }, { it.version })).forEach { key ->
+            val catalogue = catalogues.getValue(key)
+            events.publishEvent(CatalogueVersionPublished(key.framework, key.version, catalogue.title))
+        }
+    }
 
     /**
      * Reads the frameworks folder again and announces every version not loaded before.
