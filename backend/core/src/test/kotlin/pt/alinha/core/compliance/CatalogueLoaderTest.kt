@@ -76,7 +76,27 @@ class CatalogueLoaderTest {
         write("nis2-qnrcs", "v1", validCatalogue().replace("technical: true", "technical: true\n    colour: blue"))
 
         assertThatThrownBy { CatalogueLoader(frameworksDir).loadAll() }
+            .isInstanceOf(InvalidCatalogueException::class.java)
             .hasMessageContaining("colour")
+    }
+
+    @Test
+    fun `rejects a missing required field and names the file`() {
+        write("nis2-qnrcs", "v1", validCatalogue().replace("title: \"NIS2\"\n", ""))
+
+        assertThatThrownBy { CatalogueLoader(frameworksDir).loadAll() }
+            .isInstanceOf(InvalidCatalogueException::class.java)
+            .hasMessageContaining("catalogue.yaml")
+            .hasMessageContaining("title")
+    }
+
+    @Test
+    fun `rejects malformed YAML and names the file`() {
+        write("nis2-qnrcs", "v1", "framework: [unclosed")
+
+        assertThatThrownBy { CatalogueLoader(frameworksDir).loadAll() }
+            .isInstanceOf(InvalidCatalogueException::class.java)
+            .hasMessageContaining("catalogue.yaml")
     }
 
     @Test

@@ -1,11 +1,13 @@
 package pt.alinha.core.compliance
 
+import java.io.IOException
 import java.nio.file.Path
 import kotlin.io.path.exists
 import kotlin.io.path.inputStream
 import kotlin.io.path.isDirectory
 import kotlin.io.path.listDirectoryEntries
 import kotlin.io.path.name
+import tools.jackson.core.JacksonException
 import tools.jackson.databind.DeserializationFeature
 import tools.jackson.dataformat.yaml.YAMLMapper
 import tools.jackson.module.kotlin.kotlinModule
@@ -52,7 +54,13 @@ class CatalogueLoader(private val frameworksDir: Path) {
 
     /** Loads and checks one catalogue file. */
     private fun load(file: Path): Catalogue {
-        val catalogue: Catalogue = file.inputStream().use { mapper.readValue(it) }
+        val catalogue: Catalogue = try {
+            file.inputStream().use { mapper.readValue(it) }
+        } catch (e: JacksonException) {
+            throw InvalidCatalogueException(file, listOf(e.message ?: "cannot be parsed"), e)
+        } catch (e: IOException) {
+            throw InvalidCatalogueException(file, listOf(e.message ?: "cannot be read"), e)
+        }
         val problems = checkConsistency(catalogue, file)
         if (problems.isNotEmpty()) throw InvalidCatalogueException(file, problems)
         return catalogue
@@ -178,5 +186,5 @@ class CatalogueLoader(private val frameworksDir: Path) {
     }
 }
 
-class InvalidCatalogueException(file: Path, problems: List<String>) :
-    RuntimeException("Invalid catalogue $file:\n" + problems.joinToString("\n") { "  - $it" })
+class InvalidCatalogueException(file: Path, problems: List<String>, cause: Throwable? = null) :
+    RuntimeException("Invalid catalogue $file:\n" + problems.joinToString("\n") { "  - $it" }, cause)
