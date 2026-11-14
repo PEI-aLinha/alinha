@@ -1,5 +1,6 @@
 package pt.alinha.core.tenant.internal
 
+import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.core.Authentication
@@ -13,6 +14,8 @@ internal const val TENANT_HEADER = "X-Alinha-Tenant"
 internal const val TENANT_CLAIM = "tenant_id"
 internal const val ASSIGNED_TENANTS_CLAIM = "tenants"
 private const val CONSULTANT_AUTHORITY = "ROLE_consultant"
+
+private val log = LoggerFactory.getLogger("pt.alinha.core.tenant.internal.TenantResolution")
 
 /** Client error (400), as opposed to a denial (403). */
 internal class TenantNotSelectedException(reason: String) : ResponseStatusException(HttpStatus.BAD_REQUEST, reason)
@@ -28,9 +31,22 @@ internal fun resolveTenant(authentication: Authentication?, header: String?): Te
 private fun consultantTenant(token: Jwt, selected: TenantId?): TenantId {
     val tenant = selected
         ?: throw TenantNotSelectedException("Consultants must choose an organization with $TENANT_HEADER")
-    val assigned = token.getClaimAsStringList(ASSIGNED_TENANTS_CLAIM).orEmpty().mapNotNull(::parseTenant)
+    val assigned = assignedTenants(token)
     if (tenant !in assigned) throw AccessDeniedException("Organization not assigned to this consultant")
     return tenant
+}
+
+/** Entries that are not UUIDs are ignored (safe: fewer organizations), but logged to expose a Keycloak mapper misconfiguration. */
+private fun assignedTenants(token: Jwt): List<TenantId> {
+    val raw = token.getClaimAsStringList(ASSIGNED_TENANTS_CLAIM).orEmpty()
+    val parsed = raw.mapNotNull(::parseTenant)
+    if (parsed.size < raw.size) {
+        log.warn(
+            "Ignored {} malformed entries in the '{}' claim (subject {}); check the Keycloak mapper",
+            raw.size - parsed.size, ASSIGNED_TENANTS_CLAIM, token.subject,
+        )
+    }
+    return parsed
 }
 
 private fun clientTenant(token: Jwt, selected: TenantId?): TenantId {

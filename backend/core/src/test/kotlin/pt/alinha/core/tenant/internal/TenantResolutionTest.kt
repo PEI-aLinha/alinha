@@ -54,6 +54,29 @@ class TenantResolutionTest {
     }
 
     @Test
+    fun `consultant with an empty tenants claim is denied`() {
+        val empty = auth("consultant", mapOf(ASSIGNED_TENANTS_CLAIM to emptyList<String>()))
+        assertThrows<AccessDeniedException> { resolveTenant(empty, orgA.toString()) }
+    }
+
+    @Test
+    fun `consultant without a tenants claim is denied`() {
+        assertThrows<AccessDeniedException> { resolveTenant(auth("consultant"), orgA.toString()) }
+    }
+
+    @Test
+    fun `consultant with only malformed tenants entries is denied`() {
+        val malformed = auth("consultant", mapOf(ASSIGNED_TENANTS_CLAIM to listOf("not-a-uuid", "")))
+        assertThrows<AccessDeniedException> { resolveTenant(malformed, orgA.toString()) }
+    }
+
+    @Test
+    fun `consultant keeps the valid entries when others are malformed`() {
+        val mixed = auth("consultant", mapOf(ASSIGNED_TENANTS_CLAIM to listOf("not-a-uuid", orgA.toString())))
+        assertEquals(TenantId(orgA), resolveTenant(mixed, orgA.toString()))
+    }
+
+    @Test
     fun `consultant without header must choose an organization`() {
         assertThrows<TenantNotSelectedException> { resolveTenant(consultant, null) }
     }
