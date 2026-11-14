@@ -55,6 +55,8 @@ tester.run('plugin-boundaries', rule, {
     { filename: plugin('src/index.ts'), code: "import x from '../../../../../frontend/shell/src/host.tsx'", ...err('outside') },
     { filename: plugin('src/index.ts'), code: "import x from '../../backend/src/main/kotlin/x.ts'", ...err('outside') },
     { filename: plugin('src/index.ts'), code: "import x from '/etc/passwd'", ...err('outside') },
+    { filename: plugin('src/index.ts'), code: "import x from 'file:///repo/plugins/feature/risk-assets/frontend/src/index.ts'", ...err('outside') },
+    { filename: plugin('src/index.ts'), code: "const m = () => import('FILE:///repo/frontend/shell/src/host.tsx')", ...err('outside') },
     { filename: plugin('src/index.ts'), code: 'const m = (name: string) => import(name)', ...err('dynamic') },
     { filename: plugin('src/index.ts'), code: 'const m = (name: string) => import(`./${name}`)', ...err('dynamic') },
     // Vite: import.meta.glob and new URL(..., import.meta.url) reach files too.

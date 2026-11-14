@@ -32,12 +32,16 @@ const isImportMetaProperty = (node, names) =>
 /** Why `spec`, imported from `filename` inside `pluginRoot`, breaks the boundary; null if it is fine. */
 export function violationOf(spec, filename, pluginRoot) {
   if (spec.startsWith('@alinha/')) return isAllowedPlatformPackage(spec) ? null : 'platformPackage'
-  if (isAbsolute(spec)) return 'outside'
+  // file: URLs name a path on disk directly, like an absolute path.
+  if (isAbsolute(spec) || /^file:/i.test(spec)) return 'outside'
   if (spec === '.' || spec === '..' || spec.startsWith('./') || spec.startsWith('../')) {
     const target = relative(pluginRoot, resolve(dirname(filename), spec))
     return target === '..' || target.startsWith(`..${sep}`) || isAbsolute(target) ? 'outside' : null
   }
-  return null // third-party package (react, react-router, ...)
+  // Any other bare name is taken to be a third-party package (react, react-router, ...). This relies on there
+  // being no path aliases (Vite resolve.alias, tsconfig paths) that map a bare name into the repo: add one and
+  // it bypasses this rule, so check it here first.
+  return null
 }
 
 /** Static string value of an import source node, or undefined if it is computed at runtime. */
