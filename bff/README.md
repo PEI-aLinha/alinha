@@ -11,7 +11,7 @@
 - `GET /api/me` → `200` with `MeDto` (`frontend/packages/api-client/src/index.ts`): user, roles,
   `<resource>:<action>` permissions and organizations (`id` = tenant UUID, `slug`, `name`).
   `401` when there is no session — **not a 302 to the login** (Spring Security's default for browsers): `/api/**`
-  must answer 401 to XHR/fetch. The shell does not follow redirects and treats one as "no session" too, but a 401
+  must answer 401 to XHR/fetch, and no `/api/**` route ever answers 3xx. The shell does not follow redirects and treats one as "no session" too, but a 401
   is the contract.
 - Login at `/oauth2/authorization/keycloak` (`LOGIN_PATH` in `frontend/shell/src/session/login.ts`).
   After the login, send the browser to `/`; the shell returns to the page the person was opening.

@@ -82,7 +82,8 @@ export interface PluginHost {
   can: (resource: string, action?: string) => boolean
   /**
    * fetch to /api with the BFF session (HttpOnly cookie) and the current organization.
-   * Throws [ApiError] when the response is not 2xx; a 401 sends the user to the login page.
+   * Throws [ApiError] when the response is not 2xx. On a 401 the shell checks the session again (`/api/me`):
+   * only if that also answers 401 does the user go to the login page; otherwise this call just fails.
    */
   api: <T>(path: string, init?: RequestInit) => Promise<T>
 }
