@@ -70,7 +70,12 @@ class CatalogueRegistry(
      */
     @Synchronized
     fun reload() {
-        val loaded = loader.loadAll().associateBy { CatalogueKey(it.framework, it.version) }
+        val loaded = try {
+            loader.loadAll().associateBy { CatalogueKey(it.framework, it.version) }
+        } catch (e: Exception) {
+            log.error("Failed to reload catalogues from disk; keeping existing versions in memory", e)
+            return
+        }
         loaded.forEach { (key, fromDisk) ->
             val inMemory = catalogues[key]
             if (inMemory != null && inMemory != fromDisk) {

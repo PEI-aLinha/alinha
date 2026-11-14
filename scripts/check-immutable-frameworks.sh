@@ -11,7 +11,7 @@ if [ ! -f "$releases_file" ] || ! grep -qE '^[^#[:space:]]' "$releases_file" 2>/
   exit 0
 fi
 
-changed=$(git diff --name-status origin/main...HEAD -- 'frameworks/' | grep -E '^[MD]' | awk '{print $2}' || true)
+changed=$(git diff --name-only --diff-filter=MDT --no-renames origin/main...HEAD -- 'frameworks/' || true)
 if [ -z "$changed" ]; then
   exit 0
 fi
