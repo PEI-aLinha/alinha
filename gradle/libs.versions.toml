@@ -21,6 +21,7 @@ spring-modulith-starter-core = { module = "org.springframework.modulith:spring-m
 spring-modulith-starter-jdbc = { module = "org.springframework.modulith:spring-modulith-starter-jdbc" }
 spring-modulith-starter-test = { module = "org.springframework.modulith:spring-modulith-starter-test" }
 jackson-module-kotlin = { module = "tools.jackson.module:jackson-module-kotlin" }
+jackson-dataformat-yaml = { module = "tools.jackson.dataformat:jackson-dataformat-yaml" }
 kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect" }
 flyway-postgresql = { module = "org.flywaydb:flyway-database-postgresql" }
 postgresql = { module = "org.postgresql:postgresql" }
