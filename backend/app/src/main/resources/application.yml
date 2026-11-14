@@ -15,6 +15,7 @@ spring:
         enabled: true
         backend: secret
         default-context: alinha/app
+        # Required: without it Spring Cloud Vault also reads secret/data/<spring.application.name> (alinha) and gets 403.
         application-name: alinha/app
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/alinha}
