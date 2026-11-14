@@ -1,20 +1,23 @@
 import { useMemo, type ReactNode } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query'
 import { ApiError, PluginHostContext, type HostOrganization, type PluginHost } from '@alinha/plugin-sdk'
-import { useSession } from './session/SessionGate'
-import { login } from './session/login'
+import { ME_QUERY_KEY, useSession } from './session/SessionGate'
 
-/** Header the backend reads to know which organization a consultant is working on (see docs/tenancy.md). */
+/**
+ * Header that tells the backend which organization a call is for. The backend checks it against the token
+ * (TenantContext, issue #8): a consultant only gets organizations from their portfolio, a client user only their own.
+ */
 export const TENANT_HEADER = 'X-Alinha-Tenant'
 
 interface ApiOptions {
   tenantId: string | null
-  onUnauthenticated?: () => void
+  /** Called on a 401. The shell re-checks the session instead of redirecting, so a broken endpoint cannot loop. */
+  onUnauthenticated: () => void
   fetchFn?: typeof fetch
 }
 
 /** `host.api`: fetch to /api with the session cookie and the current organization. */
-export function createApi({ tenantId, onUnauthenticated = () => login.go(), fetchFn = fetch }: ApiOptions): PluginHost['api'] {
+export function createApi({ tenantId, onUnauthenticated, fetchFn = fetch }: ApiOptions): PluginHost['api'] {
   return async <T,>(path: string, init?: RequestInit): Promise<T> => {
     const normalized = path.startsWith('/') ? path : `/${path}`
     const headers = new Headers(init?.headers)
@@ -29,21 +32,29 @@ export function createApi({ tenantId, onUnauthenticated = () => login.go(), fetc
   }
 }
 
+/** Retry network and server errors up to 3 times; a 4xx (no session, no permission, not found) will not change. */
+export const retryUnlessClientError = (failureCount: number, error: unknown) =>
+  !(error instanceof ApiError && error.status >= 400 && error.status < 500) && failureCount < 3
+
 /**
  * Gives plugins the host for one organization (or none, e.g. on the portfolio). Each organization
  * gets its own query cache, so data from one client is never shown while looking at another.
  */
 export function HostProvider({ organization, children }: { organization: HostOrganization | null; children: ReactNode }) {
   const { me, can } = useSession()
+  // The session lives in the root client (SessionGate); each organization gets its own client below.
+  const sessionClient = useQueryClient()
   const tenantId = organization?.id ?? null
-  const queryClient = useMemo(() => new QueryClient(), [tenantId])
+  const queryClient = useMemo(() => new QueryClient({ defaultOptions: { queries: { retry: retryUnlessClientError } } }), [tenantId])
   const host = useMemo<PluginHost>(() => ({
     tenantId,
     organization,
     user: { id: me.user.id, name: me.user.name, roles: me.roles },
     can,
-    api: createApi({ tenantId }),
-  }), [tenantId, organization, me, can])
+    // A 401 from a plugin call: ask /api/me again. If the session expired, SessionGate sends the person to
+    // the login (with its loop guard); if it is still valid, the call just fails and the page shows the error.
+    api: createApi({ tenantId, onUnauthenticated: () => void sessionClient.invalidateQueries({ queryKey: ME_QUERY_KEY }) }),
+  }), [tenantId, organization, me, can, sessionClient])
 
   return (
     <QueryClientProvider client={queryClient}>

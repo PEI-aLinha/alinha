@@ -11,6 +11,14 @@ function TenantProbe() {
   return <p>Dados de {host.organization?.name}: {probe.data?.value ?? 'a carregar'}</p>
 }
 
+/** Two calls at once, like a page with several queries. */
+function TwoCalls() {
+  const host = useHost()
+  const a = useQuery({ queryKey: ['a'], queryFn: () => host.api('/a') })
+  const b = useQuery({ queryKey: ['b'], queryFn: () => host.api('/b') })
+  return <p>{a.isError && b.isError ? 'Pedidos recusados' : 'A pedir'}</p>
+}
+
 const Boom = () => { throw new Error('boom') }
 const Denied = () => { throw new ApiError(403, '/x') }
 
@@ -24,6 +32,7 @@ const testPlugin = definePlugin({
       { path: 'falha', Component: Boom },
       { path: 'negado', Component: Denied },
       { path: 'sonda', Component: TenantProbe },
+      { path: 'dois', Component: TwoCalls },
     ],
     consultant: [
       { path: 'painel', Component: () => <h1>Painel do cliente</h1> },
@@ -212,6 +221,32 @@ describe('consultant area (/carteira)', () => {
     renderApp({ url: '/carteira', plugins, me: meFor('consultant', { organizations: [] }) })
     expect(await screen.findByText(/Ainda não tem clientes atribuídos/)).toBeInTheDocument()
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+  })
+})
+
+describe('a 401 on a plugin call', () => {
+  const meCalls = (calls: { url: string }[]) => calls.filter((c) => c.url === '/api/me').length
+
+  it('does not redirect while the session is still valid (no login loop)', async () => {
+    const go = vi.spyOn(login, 'go').mockImplementation(() => {})
+    const { calls } = renderApp({ url: '/org/acme/dois', plugins, api: async () => json({}, 401) })
+    expect(await screen.findByText('Pedidos recusados')).toBeInTheDocument()
+    await waitFor(() => expect(meCalls(calls)).toBeGreaterThan(1))
+    expect(go).not.toHaveBeenCalled()
+    expect(screen.getByRole('navigation', { name: 'Navegação principal' })).toBeInTheDocument()
+  })
+
+  it('sends the person to the login once when the session has expired', async () => {
+    const go = vi.spyOn(login, 'go').mockImplementation(() => {})
+    let sessionAlive = true
+    renderApp({
+      url: '/org/acme/dois',
+      plugins,
+      me: async () => (sessionAlive ? json(meFor('responsible')) : json({}, 401)),
+      api: async () => { sessionAlive = false; return json({}, 401) },
+    })
+    expect(await screen.findByText('A abrir a página de entrada…')).toBeInTheDocument()
+    expect(go).toHaveBeenCalledTimes(1)
   })
 })
 
