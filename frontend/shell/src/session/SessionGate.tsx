@@ -53,9 +53,9 @@ function SessionReady({ me, children }: { me: MeDto; children: ReactNode }) {
 export function SessionGate({ children = <Outlet /> }: { children?: ReactNode }) {
   const me = useQuery({ queryKey: ME_QUERY_KEY, queryFn: () => fetchMe(), retry: false, staleTime: Infinity })
   if (me.isPending) return <LoadingPage label="A preparar a sua sessão…" />
-  if (me.isError) {
-    if (isUnauthenticated(me.error)) return <GoToLogin />
-    return <ErrorPage onRetry={() => me.refetch()} />
-  }
-  return <SessionReady me={me.data}>{children}</SessionReady>
+  if (me.isError && isUnauthenticated(me.error)) return <GoToLogin />
+  // A re-check that fails for another reason (e.g. a passing 503) keeps the session already loaded,
+  // so the page stays; the error page only shows when there has never been a session.
+  if (me.data) return <SessionReady me={me.data}>{children}</SessionReady>
+  return <ErrorPage onRetry={() => me.refetch()} />
 }
