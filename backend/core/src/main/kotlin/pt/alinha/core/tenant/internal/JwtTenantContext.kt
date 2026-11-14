@@ -15,13 +15,18 @@ class JwtTenantContext : TenantContext {
         currentOrNull() ?: error("No tenant: use a tenant-scoped endpoint or TenantContext.runAs")
 
     internal fun currentOrNull(): TenantId? =
-        scoped.get()
-            ?: RequestContextHolder.getRequestAttributes()
-                ?.getAttribute(TENANT_ATTRIBUTE, RequestAttributes.SCOPE_REQUEST) as? TenantId
+        scoped.get() ?: requestTenant()
+
+    private fun requestTenant(): TenantId? =
+        RequestContextHolder.getRequestAttributes()
+            ?.getAttribute(TENANT_ATTRIBUTE, RequestAttributes.SCOPE_REQUEST) as? TenantId
 
     override fun <T> runAs(tenantId: TenantId, block: () -> T): T {
         check(!TransactionSynchronizationManager.isActualTransactionActive()) {
             "runAs must start outside a transaction: the open JPA session keeps its tenant"
+        }
+        check(requestTenant() == null) {
+            "runAs is not allowed inside a tenant-scoped request: it would let the request reach another tenant"
         }
         val previous = scoped.get()
         scoped.set(tenantId)
