@@ -8,6 +8,7 @@ import org.springframework.web.context.request.RequestContextHolder
 import org.springframework.web.context.request.ServletRequestAttributes
 import pt.alinha.pluginapi.TenantId
 import java.util.UUID
+import java.util.concurrent.Executors
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 
@@ -33,5 +34,18 @@ class JwtTenantContextTest {
     fun `runAs sets the tenant outside a request and restores it afterwards`() {
         assertEquals(otherTenant, context.runAs(otherTenant) { context.current() })
         assertNull(context.currentOrNull())
+    }
+
+    @Test
+    fun `a thread started from a request does not inherit the request tenant`() {
+        val request = MockHttpServletRequest().apply { setAttribute(TENANT_ATTRIBUTE, requestTenant) }
+        RequestContextHolder.setRequestAttributes(ServletRequestAttributes(request))
+
+        val seenByAsyncWork = Executors.newSingleThreadExecutor().use { executor ->
+            executor.submit<TenantId?> { context.currentOrNull() }.get()
+        }
+
+        assertNull(seenByAsyncWork)
+        assertEquals(requestTenant, context.current())
     }
 }
