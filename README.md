@@ -60,12 +60,25 @@ git config --global push.recurseSubmodules on-demand   # pushing the main repo p
 
 git clone --recurse-submodules git@github.com:PEI-aLinha/alinha.git
 cd alinha
-docker compose -f deploy/docker-compose.dev.yml up -d  # Postgres, Redis, Keycloak
+cp deploy/.env.example deploy/.env                     # optional: dev defaults work without it
+docker compose -f deploy/docker-compose.dev.yml up -d  # Postgres, Redis, Keycloak, Mailpit
 ./gradlew :app:bootRun                                 # backend on :8080
 pnpm install && pnpm dev                               # frontend on :5173
 ```
 
-Requirements: JDK 21, Node 22, pnpm 10, Docker.
+| Service | URL | Dev credentials |
+|---|---|---|
+| Postgres | `localhost:5432` | `alinha` / `alinha` |
+| Redis | `localhost:6379` | — |
+| Keycloak | http://localhost:8180 | admin / admin |
+| Mailpit | http://localhost:8025 | — |
+
+The `alinha` realm, test users (Rui, Pedro, Marta, João) and their roles/tenants are in
+[deploy/keycloak/README.md](deploy/keycloak/README.md). The dev password is `alinha`; the first
+login sets up TOTP (MFA). Emails land in Mailpit.
+
+Requirements: JDK 21, Node 22, pnpm 10, Docker (Compose v2). The flow above is verified on Linux;
+on macOS use Docker Desktop and the same commands.
 
 ## Working on a plugin
 
