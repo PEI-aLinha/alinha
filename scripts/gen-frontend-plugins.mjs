@@ -2,14 +2,17 @@
 // Generates frontend/shell/src/plugins.generated.ts from the submodules under
 // plugins/<kind>/<id>/frontend. Runs automatically before dev/build/typecheck.
 // Adding a plugin = adding the submodule; the shell is never edited by hand.
-import { existsSync, readdirSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, readdirSync, realpathSync, statSync, writeFileSync } from 'node:fs'
 import { join, relative, dirname } from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const ENTRY = 'frontend/src/index.ts'
 
 const dirs = (p) => (existsSync(p) ? readdirSync(p).filter((d) => statSync(join(p, d)).isDirectory()).sort() : [])
+
+/** Nothing but dotfiles left by the OS (e.g. .DS_Store): an uninitialised submodule. Its `.git` file counts. */
+const isEmptyCheckout = (dir) => readdirSync(dir).every((name) => name.startsWith('.') && name !== '.git')
 
 /**
  * Plugins under `pluginsDir` (<kind>/<id>) that have a frontend entry, sorted by kind then id.
@@ -24,7 +27,7 @@ export function findPluginFrontends(pluginsDir) {
       const dir = join(pluginsDir, kind, id)
       const entry = join(dir, ENTRY)
       if (existsSync(entry)) entries.push({ id, kind, entry })
-      else if (readdirSync(dir).length === 0) empty.push(`${kind}/${id}`)
+      else if (isEmptyCheckout(dir)) empty.push(`${kind}/${id}`)
     }
   }
   return { entries, empty }
@@ -51,4 +54,13 @@ function main() {
   console.log(`plugins.generated.ts: ${entries.length} plugin(s) — ${entries.map((e) => e.id).join(', ') || 'none'}`)
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main()
+/** Run as a script (not imported by the tests). Real paths, so a symlinked path to this file still counts. */
+function isMain() {
+  try {
+    return !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url))
+  } catch {
+    return false
+  }
+}
+
+if (isMain()) main()

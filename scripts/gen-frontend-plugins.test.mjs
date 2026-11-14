@@ -1,7 +1,8 @@
 // Run with: pnpm test
 import { after, describe, it } from 'node:test'
 import assert from 'node:assert/strict'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { findPluginFrontends, renderPluginsModule } from './gen-frontend-plugins.mjs'
@@ -23,6 +24,9 @@ describe('findPluginFrontends', () => {
   plugin('feature/assessment')
   plugin('provider/backend-only', { frontend: false })
   mkdirSync(join(tmp, 'feature/not-initialised'), { recursive: true })
+  // Finder leaves a .DS_Store behind; the folder is still an uninitialised submodule.
+  mkdirSync(join(tmp, 'feature/with-ds-store'), { recursive: true })
+  writeFileSync(join(tmp, 'feature/with-ds-store/.DS_Store'), '')
 
   const { entries, empty } = findPluginFrontends(tmp)
 
@@ -30,8 +34,8 @@ describe('findPluginFrontends', () => {
     assert.deepEqual(entries.map((e) => `${e.kind}/${e.id}`), ['feature/assessment', 'feature/risk-assets', 'provider/zeta'])
   })
 
-  it('reports only empty folders (submodule not initialised)', () => {
-    assert.deepEqual(empty, ['feature/not-initialised'])
+  it('reports only empty folders (submodule not initialised), ignoring dotfiles such as .DS_Store', () => {
+    assert.deepEqual(empty, ['feature/not-initialised', 'feature/with-ds-store'])
   })
 
   it('returns nothing when there is no plugins folder', () => {
@@ -52,6 +56,21 @@ describe('renderPluginsModule', () => {
   })
 })
 
+describe('running the script', () => {
+  it('also runs when called through a symlinked path', () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'alinha-link-'))
+    try {
+      symlinkSync(join(root, 'scripts'), join(tmp, 'scripts'), 'dir')
+      const run = spawnSync(process.execPath, [join(tmp, 'scripts/gen-frontend-plugins.mjs')], { encoding: 'utf8' })
+      assert.equal(run.status, 0, run.stderr)
+      assert.match(run.stdout, /plugins\.generated\.ts: \d+ plugin\(s\)/, 'main() did not run')
+    } finally {
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+})
+
+// Needs the plugin submodules: git clone --recurse-submodules (or git submodule update --init --recursive).
 describe('this repo', () => {
   const submodules = [...readFileSync(join(root, '.gitmodules'), 'utf8').matchAll(/^\s*path = (plugins\/.+)$/gm)].map((m) => m[1])
   const { entries, empty } = findPluginFrontends(join(root, 'plugins'))
@@ -62,7 +81,10 @@ describe('this repo', () => {
 
   it('registers the frontend of every plugin submodule that has one', () => {
     const withFrontend = submodules.filter((p) => existsSync(join(root, p, 'frontend'))).sort()
-    assert.ok(withFrontend.length > 0)
-    assert.deepEqual(entries.map((e) => `plugins/${e.kind}/${e.id}`), withFrontend)
+    const registered = entries.map((e) => `plugins/${e.kind}/${e.id}`)
+    const withoutEntry = withFrontend.filter((p) => !registered.includes(p))
+    assert.ok(withFrontend.length > 0, 'no plugin submodule has a frontend/ folder')
+    assert.deepEqual(withoutEntry, [], `these plugins have frontend/ but no ${'frontend/src/index.ts'}, so they are not registered`)
+    assert.deepEqual(registered, withFrontend)
   })
 })
