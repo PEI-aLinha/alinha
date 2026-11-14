@@ -16,7 +16,8 @@ export const router = createBrowserRouter([
     element: <AreaLayout area="client" />,
     children: routesFor('client'),
   },
-  // `/portfolio` (the consultant's client list) has no page yet.
+  // Placeholder for the consultant's client list until the real page exists (#64).
+  { path: 'portfolio', element: <p className="p-8">Lista de clientes em breve.</p> },
   {
     path: 'portfolio/:org',
     element: <AreaLayout area="consultant" />,
