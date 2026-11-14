@@ -67,6 +67,13 @@ pnpm install && pnpm dev                               # frontend on :5173
 
 Requirements: JDK 21, Node 22, pnpm 10, Docker.
 
+Until the BFF exists (#14), the shell has no real login. To open it locally with a fake session, choose a role
+(`consultant`, `responsible`, `analyst`, or `anonymous` to see the login redirect). This only affects `pnpm dev`, never a build:
+
+```bash
+VITE_DEV_ROLE=consultant pnpm dev
+```
+
 ### Optional: the `alinha` CLI
 
 [`alinha-cli`](https://github.com/PEI-aLinha/alinha-cli) wraps these steps and shows the state of every plugin. It needs [uv](https://docs.astral.sh/uv/).
