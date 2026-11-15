@@ -25,8 +25,9 @@ class JwtTenantContext : TenantContext {
         check(!TransactionSynchronizationManager.isActualTransactionActive()) {
             "runAs must start outside a transaction: the open JPA session keeps its tenant"
         }
-        check(requestTenant() == null) {
-            "runAs is not allowed inside a tenant-scoped request: it would let the request reach another tenant"
+        // Any HTTP request, tenant-agnostic ones included: otherwise a handler could reach any tenant's data.
+        check(RequestContextHolder.getRequestAttributes() == null) {
+            "runAs is not allowed inside an HTTP request: it would let the request reach another tenant"
         }
         val previous = scoped.get()
         scoped.set(tenantId)

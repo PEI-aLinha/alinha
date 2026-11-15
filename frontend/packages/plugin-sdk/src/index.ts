@@ -13,7 +13,7 @@ export type Area =
 export interface NavItem {
   /** Visible text — in Portuguese (UI requirement). */
   label: string
-  /** Path relative to the area (e.g. 'ativos' → /org/:org/ativos). */
+  /** Path relative to the area in English (e.g. 'assets' → /org/:org/assets). */
   path: string
   area: Area
   icon?: ComponentType<{ className?: string }>

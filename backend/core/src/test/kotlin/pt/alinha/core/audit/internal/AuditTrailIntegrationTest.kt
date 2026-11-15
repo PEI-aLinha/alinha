@@ -22,7 +22,8 @@ import pt.alinha.pluginapi.TenantId
 import java.time.Instant
 import java.util.UUID
 
-@SpringBootTest(classes = [AuditTestApplication::class])
+// No mock web environment: it binds a fake request to the test thread, and runAs refuses to run inside one.
+@SpringBootTest(classes = [AuditTestApplication::class], webEnvironment = SpringBootTest.WebEnvironment.NONE)
 class AuditTrailIntegrationTest {
     companion object {
         @DynamicPropertySource

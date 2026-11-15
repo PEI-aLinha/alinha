@@ -37,7 +37,11 @@ private const val FAILING_PROVIDER = "audit-fails"
  * The store as the app wires it: its @Transactional proxy plus the real JpaAuditTrail
  * (Propagation.MANDATORY) on PostgreSQL. Only OpenBao is a mock, to control when it fails.
  */
-@SpringBootTest(classes = [AuditTestApplication::class, OpenBaoTenantSecretStoreAuditTest.StoreConfig::class])
+// No mock web environment: it binds a fake request to the test thread, and runAs refuses to run inside one.
+@SpringBootTest(
+    classes = [AuditTestApplication::class, OpenBaoTenantSecretStoreAuditTest.StoreConfig::class],
+    webEnvironment = SpringBootTest.WebEnvironment.NONE,
+)
 class OpenBaoTenantSecretStoreAuditTest {
     companion object {
         @DynamicPropertySource

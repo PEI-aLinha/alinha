@@ -27,7 +27,9 @@ internal class TenantNotSelectedException(reason: String) : ResponseStatusExcept
 internal fun resolveTenant(authentication: Authentication?, header: String?): TenantId {
     val auth = authentication as? JwtAuthenticationToken
         ?: throw AccessDeniedException("A tenant needs an authenticated token")
-    val selected = header?.let { parseTenant(it) ?: throw TenantNotSelectedException("Invalid $TENANT_HEADER") }
+    // A blank header counts as absent: the BFF may forward an empty X-Alinha-Tenant for client users.
+    val selected = header?.takeIf { it.isNotBlank() }
+        ?.let { parseTenant(it) ?: throw TenantNotSelectedException("Invalid $TENANT_HEADER") }
     val isConsultant = auth.authorities.any { it.authority == CONSULTANT_AUTHORITY }
     return if (isConsultant) consultantTenant(auth.token, selected) else clientTenant(auth.token, selected)
 }
@@ -63,5 +65,8 @@ private fun clientTenant(token: Jwt, selected: TenantId?): TenantId {
     return own
 }
 
+/** The nil UUID is rejected: it is Hibernate's [NO_TENANT] sentinel, so it would run as "no tenant". */
 private fun parseTenant(raw: String): TenantId? =
-    runCatching { TenantId(UUID.fromString(raw.trim())) }.getOrNull()
+    runCatching { UUID.fromString(raw.trim()) }.getOrNull()
+        ?.takeIf { it != NO_TENANT }
+        ?.let(::TenantId)

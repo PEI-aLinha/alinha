@@ -13,7 +13,8 @@ interface TenantContext {
 
     /**
      * Runs [block] as [tenantId], for work without a request (event listeners, jobs).
-     * Must start OUTSIDE a transaction: a JPA session keeps the tenant it was opened with.
+     * Must start OUTSIDE a transaction (a JPA session keeps the tenant it was opened with) and outside any
+     * HTTP request, so a handler cannot switch tenant.
      */
     fun <T> runAs(tenantId: TenantId, block: () -> T): T
 }
