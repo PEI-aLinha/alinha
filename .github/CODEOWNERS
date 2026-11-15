@@ -1,13 +1,18 @@
-# Who must approve PRs in each folder. Replace <...> with GitHub usernames
-# (prefixed with @) and uncomment. Owners table: README.md > "Plugins and owners".
-#
-# *                       <martim> <afonso>
-# /backend/plugin-api/    <martim> <afonso>
-# /backend/core/          <martim> <afonso>
-# /contracts/             <martim> <afonso>
-# /frameworks/            <iris>
-# /frontend/              <ines>
-# /deploy/  /bff/         <xavier>
-# /ai-service/            <afonso>
-# /workers/               <xavier>
-# .gitmodules             <martim> <afonso>
+# Who must approve PRs in each folder. Owners table: README.md > "Plugins and owners".
+
+# Global fallback: every change needs an owner review.
+*                       @martimgil @afonsosantos11
+
+# Shared surface: the contract, core and build wiring.
+/backend/plugin-api/    @martimgil @afonsosantos11
+/backend/core/          @martimgil @afonsosantos11
+/contracts/             @martimgil @afonsosantos11
+/.gitmodules            @martimgil @afonsosantos11
+/.github/               @martimgil @afonsosantos11
+
+/frameworks/            @irisslucas
+/frontend/              @inessgomes
+/deploy/                @tomasxavier06
+/bff/                   @tomasxavier06
+/workers/               @tomasxavier06
+/ai-service/            @afonsosantos11

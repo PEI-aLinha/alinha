@@ -1,0 +1,45 @@
+import { describe, expect, it, vi } from 'vitest'
+import { ApiError } from '@alinha/plugin-sdk'
+import { fetchMe } from './me'
+
+const me = {
+  user: { id: 'u1', name: 'Rui Santos' },
+  roles: ['responsible'],
+  permissions: ['asset:read'],
+  organizations: [{ id: 't1', slug: 'acme', name: 'Acme' }],
+}
+const respond = (status: number, body: unknown = {}) => vi.fn(async () => new Response(JSON.stringify(body), { status }))
+
+describe('fetchMe', () => {
+  it('reads /api/me with the session cookie', async () => {
+    const fetchFn = respond(200, me)
+    await expect(fetchMe(fetchFn)).resolves.toEqual(me)
+    expect(fetchFn).toHaveBeenCalledWith('/api/me', expect.objectContaining({ credentials: 'include' }))
+  })
+
+  it('throws ApiError(401) without a session', async () => {
+    await expect(fetchMe(respond(401))).rejects.toMatchObject({ name: 'ApiError', status: 401 })
+  })
+
+  it('throws ApiError with the status on other failures', async () => {
+    const error = await fetchMe(respond(503)).catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(ApiError)
+    expect((error as ApiError).status).toBe(503)
+  })
+
+  it('does not follow redirects, and treats one as no session (a BFF answering 302 instead of 401)', async () => {
+    const fetchFn = vi.fn(async () => ({ type: 'opaqueredirect', status: 0, ok: false }) as Response)
+    await expect(fetchMe(fetchFn)).rejects.toMatchObject({ name: 'ApiError', status: 401 })
+    expect(fetchFn).toHaveBeenCalledWith('/api/me', expect.objectContaining({ redirect: 'manual' }))
+  })
+
+  it('rejects HTML (e.g. a login page) with a clear error', async () => {
+    const fetchFn = vi.fn(async () => new Response('<!doctype html><title>Login</title>', { status: 200 }))
+    await expect(fetchMe(fetchFn)).rejects.toThrow('did not return JSON')
+  })
+
+  it('rejects a response that is not a session', async () => {
+    await expect(fetchMe(respond(200, { user: { id: 'u1' } }))).rejects.toThrow('unexpected response')
+    await expect(fetchMe(respond(200, { ...me, organizations: [{ id: 't1' }] }))).rejects.toThrow('unexpected response')
+  })
+})
