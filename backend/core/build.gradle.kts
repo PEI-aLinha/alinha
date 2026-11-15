@@ -30,6 +30,8 @@ dependencies {
     testImplementation(libs.testcontainers.vault)
     testImplementation(libs.testcontainers.junit.jupiter)
     testImplementation(libs.testcontainers.postgresql)
+    testImplementation(libs.spring.boot.starter.flyway) // audit tests run the real core migrations
+    testRuntimeOnly(libs.flyway.postgresql)
     testRuntimeOnly(libs.postgresql)
 
 }

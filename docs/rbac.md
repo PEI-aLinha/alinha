@@ -59,3 +59,4 @@ Add a row with each new endpoint.
 |---|---|---|---|---|
 | `GET /actuator/health` | public | yes | yes | yes |
 | `GET /api/plugins` | `plugins:read` | yes | yes | yes |
+| `GET /api/audit/events` | `audit:read` | yes | yes | no |

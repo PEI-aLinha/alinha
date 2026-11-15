@@ -44,6 +44,15 @@ class RolePermissionRegistryTest {
     }
 
     @Test
+    fun `audit history is readable by consultant and responsible, not analyst`() {
+        val registry = registry()
+
+        assertThat(registry.permissionsFor(setOf("consultant"))).contains("audit:read")
+        assertThat(registry.permissionsFor(setOf("responsible"))).contains("audit:read")
+        assertThat(registry.permissionsFor(setOf("analyst"))).doesNotContain("audit:read")
+    }
+
+    @Test
     fun `grants nothing to unknown or missing roles`() {
         assertThat(registry().permissionsFor(setOf("intruder"))).isEmpty()
         assertThat(registry().permissionsFor(emptySet())).isEmpty()

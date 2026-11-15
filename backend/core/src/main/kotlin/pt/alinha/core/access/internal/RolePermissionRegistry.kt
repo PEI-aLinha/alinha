@@ -6,6 +6,11 @@ import pt.alinha.pluginapi.PluginManifest
 
 private val KNOWN_ROLES = setOf("consultant", "responsible", "analyst")
 private val CORE_PERMISSIONS = setOf("plugins:read")
+// Analysts excluded: least privilege, same rule as results/roadmap (docs/rbac.md).
+private val CORE_ROLE_PERMISSIONS = mapOf(
+    "consultant" to setOf("audit:read"),
+    "responsible" to setOf("audit:read"),
+)
 
 /** Role -> permission map built from the plugin manifests. Invalid manifests stop the application at startup. */
 @Component
@@ -18,7 +23,7 @@ class RolePermissionRegistry(plugins: PluginRegistry) {
 
     fun permissionsFor(roles: Set<String>): Set<String> =
         roles.filter { it in KNOWN_ROLES }
-            .flatMap { byRole[it].orEmpty() + CORE_PERMISSIONS }
+            .flatMap { byRole[it].orEmpty() + CORE_PERMISSIONS + CORE_ROLE_PERMISSIONS[it].orEmpty() }
             .toSet()
 
     private fun validate(manifest: PluginManifest) {
