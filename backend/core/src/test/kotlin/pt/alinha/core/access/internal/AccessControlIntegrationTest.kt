@@ -126,6 +126,7 @@ class AccessControlIntegrationTest {
     AccessWebConfig::class,
     RequiresPermissionInterceptor::class,
     RolePermissionRegistry::class,
+    RequiredPermissionsVerifier::class,
     PluginRegistry::class,
     PluginRegistryController::class,
     FixtureController::class,

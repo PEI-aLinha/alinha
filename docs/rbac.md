@@ -28,7 +28,7 @@ Annotate the controller method, or the class for a default. A method annotation 
 fun create(...) = ...
 ```
 
-An endpoint without `@RequiresPermission` always answers 403. Functional routes are denied too, so plugins must use annotated controllers.
+An endpoint without `@RequiresPermission` always answers 403. The application refuses to start if an annotation names a permission that no plugin declares, so a typo such as `"assesment"` fails at startup instead of answering 403 to everyone. Functional routes are denied too, so plugins must use annotated controllers.
 
 ## Declaring permissions in a plugin
 

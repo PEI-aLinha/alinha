@@ -14,6 +14,13 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 import org.springframework.web.servlet.resource.ResourceHttpRequestHandler
 import pt.alinha.core.access.RequiresPermission
 
+/** The `resource:action` an endpoint requires; a method annotation replaces the class one. */
+internal fun requiredPermission(handler: HandlerMethod): String? {
+    val annotation = AnnotatedElementUtils.findMergedAnnotation(handler.method, RequiresPermission::class.java)
+        ?: AnnotatedElementUtils.findMergedAnnotation(handler.beanType, RequiresPermission::class.java)
+    return annotation?.let { "${it.resource}:${it.action}" }
+}
+
 /** RNF08: deny by default, so an endpoint that forgets [RequiresPermission] is closed rather than open. */
 @Component
 class RequiresPermissionInterceptor(private val registry: RolePermissionRegistry) : HandlerInterceptor {
@@ -25,12 +32,6 @@ class RequiresPermissionInterceptor(private val registry: RolePermissionRegistry
             throw AccessDeniedException("Missing permission $required")
         }
         return true
-    }
-
-    private fun requiredPermission(handler: HandlerMethod): String? {
-        val annotation = AnnotatedElementUtils.findMergedAnnotation(handler.method, RequiresPermission::class.java)
-            ?: AnnotatedElementUtils.findMergedAnnotation(handler.beanType, RequiresPermission::class.java)
-        return annotation?.let { "${it.resource}:${it.action}" }
     }
 
     private fun currentRoles(): Set<String> =
