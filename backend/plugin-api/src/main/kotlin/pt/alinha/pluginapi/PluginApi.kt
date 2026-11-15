@@ -7,8 +7,10 @@ import java.util.UUID
 enum class PluginKind { FEATURE, FRAMEWORK, PROVIDER }
 
 /**
- * Plugin manifest. Mirrors the plugin repo's `plugin.yaml` and is registered
- * in the core's Module Registry at startup.
+ * Plugin manifest, registered in the core's Module Registry at startup.
+ * This class is the source of truth: nothing reads the plugin repo's `plugin.yaml`,
+ * which only describes the plugin (id, name, kind, path) for people and tooling.
+ * Permissions and role mappings live here only.
  */
 data class PluginManifest(
     val id: String,

@@ -1,6 +1,6 @@
 # Access control (NFR07, NFR08)
 
-Every API request needs a valid Keycloak access token and an explicit permission. Only `/actuator/health` is public. Other actuator endpoints are denied.
+Every API request needs a valid Keycloak access token and an explicit permission. Only `/actuator/health` is public. Other actuator endpoints are denied. Spring's internal error dispatches (rendering an error response) also skip the token; a direct request to `/error` still needs one.
 
 ## Roles
 
@@ -28,7 +28,7 @@ Annotate the controller method, or the class for a default. A method annotation 
 fun create(...) = ...
 ```
 
-The application refuses to start if a controller endpoint has no `@RequiresPermission`, or if an annotation names a permission that no plugin declares, so a forgotten annotation or a typo such as `"assesment"` fails at startup instead of answering 403 to everyone. Spring's `/error` controller is the only exemption. At request time the interceptor still denies any endpoint without a permission, as a backstop. Functional routes are denied too, so plugins must use annotated controllers.
+The application refuses to start if a controller endpoint has no `@RequiresPermission`, or if an annotation names a permission that no plugin declares, so a forgotten annotation or a typo such as `"assesment"` fails at startup instead of answering 403 to everyone. Spring's `/error` controller is the only exemption. At request time the interceptor still denies any endpoint without a permission, as a backstop. The startup check only sees annotated controllers (`@RequestMapping` and friends); functional routes are not checked at startup and are always denied at request time, so plugins must use annotated controllers.
 
 An endpoint open to every signed-in role (such as a plugin's `ping`) uses `@RequiresPermission("plugins")`, the core's `plugins:read`.
 
@@ -40,7 +40,7 @@ Tenant isolation comes from `TenantContext` (ADR 0002, #8), which must check the
 
 ## Declaring permissions in a plugin
 
-Declare permissions and their roles in the plugin's `PluginManifest`, and keep `plugin.yaml` in sync. The application refuses to start if:
+Declare permissions and their roles in the plugin's `PluginManifest` (Kotlin). That is the only place they are read: `plugin.yaml` is descriptive and is not checked, so do not list permissions there. The application refuses to start if:
 
 - a role is unknown;
 - a mapped permission is not in the plugin's own `permissions`;
