@@ -9,6 +9,9 @@ No tenant can read or write another tenant's data. The tenant always comes from 
 | Designated Officer (`responsible`), Analyst | `tenant_id` claim | one tenant; `X-Alinha-Tenant`, if sent, must match it |
 | Consultant | `X-Alinha-Tenant` header | required; must be one of the `tenants` claim (assigned organizations) |
 
+A token with the `consultant` role follows the consultant rules even if it also has a client role
+(e.g. `responsible`) and a `tenant_id` claim: `X-Alinha-Tenant` is required and `tenant_id` is ignored.
+
 Never read the tenant from the body or the query string.
 
 | Situation | Answer |

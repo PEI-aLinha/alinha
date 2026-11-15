@@ -20,6 +20,10 @@ private val log = LoggerFactory.getLogger("pt.alinha.core.tenant.internal.Tenant
 /** Client error (400), as opposed to a denial (403). */
 internal class TenantNotSelectedException(reason: String) : ResponseStatusException(HttpStatus.BAD_REQUEST, reason)
 
+/**
+ * A token with the `consultant` role always follows the consultant rules, even if it also carries a client role
+ * and `tenant_id`: the header is required and must be an assigned organization; `tenant_id` is ignored.
+ */
 internal fun resolveTenant(authentication: Authentication?, header: String?): TenantId {
     val auth = authentication as? JwtAuthenticationToken
         ?: throw AccessDeniedException("A tenant needs an authenticated token")

@@ -14,10 +14,13 @@ class TenantResolutionTest {
     private val orgA = UUID.randomUUID()
     private val orgB = UUID.randomUUID()
 
-    private fun auth(role: String, claims: Map<String, Any> = emptyMap()): JwtAuthenticationToken {
+    private fun auth(role: String, claims: Map<String, Any> = emptyMap()): JwtAuthenticationToken =
+        auth(listOf(role), claims)
+
+    private fun auth(roles: List<String>, claims: Map<String, Any>): JwtAuthenticationToken {
         val jwt = Jwt.withTokenValue("t").header("alg", "none").subject("user-1")
             .claims { it.putAll(claims) }.build()
-        return JwtAuthenticationToken(jwt, listOf(SimpleGrantedAuthority("ROLE_$role")))
+        return JwtAuthenticationToken(jwt, roles.map { SimpleGrantedAuthority("ROLE_$it") })
     }
 
     private val client = auth("responsible", mapOf(TENANT_CLAIM to orgA.toString()))
@@ -89,5 +92,17 @@ class TenantResolutionTest {
     @Test
     fun `request without jwt is denied`() {
         assertThrows<AccessDeniedException> { resolveTenant(null, orgA.toString()) }
+    }
+
+    @Test
+    fun `a token with both consultant and responsible follows the consultant rules`() {
+        val both = auth(
+            listOf("consultant", "responsible"),
+            mapOf(TENANT_CLAIM to orgA.toString(), ASSIGNED_TENANTS_CLAIM to listOf(orgB.toString())),
+        )
+
+        assertThrows<TenantNotSelectedException> { resolveTenant(both, null) }
+        assertThrows<AccessDeniedException> { resolveTenant(both, orgA.toString()) }
+        assertEquals(TenantId(orgB), resolveTenant(both, orgB.toString()))
     }
 }
