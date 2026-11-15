@@ -43,8 +43,8 @@ assigned to this consultant" (403) can be exercised locally.
 
 ## Token contract
 
-The `bff` client adds these to the access token. Backend contract: the tenant and RBAC docs added
-by #8 and #9.
+The `bff` client adds these to the access token. Backend contract: [`docs/tenancy.md`](../../docs/tenancy.md)
+and [`docs/rbac.md`](../../docs/rbac.md).
 
 - `aud` includes `alinha-api`
 - `realm_access.roles` contains the realm role (`roles` client scope)
