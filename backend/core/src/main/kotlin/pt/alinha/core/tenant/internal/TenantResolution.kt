@@ -65,5 +65,8 @@ private fun clientTenant(token: Jwt, selected: TenantId?): TenantId {
     return own
 }
 
+/** The nil UUID is rejected: it is Hibernate's [NO_TENANT] sentinel, so it would run as "no tenant". */
 private fun parseTenant(raw: String): TenantId? =
-    runCatching { TenantId(UUID.fromString(raw.trim())) }.getOrNull()
+    runCatching { UUID.fromString(raw.trim()) }.getOrNull()
+        ?.takeIf { it != NO_TENANT }
+        ?.let(::TenantId)

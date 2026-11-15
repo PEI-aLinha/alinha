@@ -97,6 +97,17 @@ class TenantResolutionTest {
     }
 
     @Test
+    fun `nil uuid is never a tenant`() {
+        val nil = UUID(0, 0).toString()
+
+        assertThrows<AccessDeniedException> { resolveTenant(auth("responsible", mapOf(TENANT_CLAIM to nil)), null) }
+        val nilConsultant = auth("consultant", mapOf(ASSIGNED_TENANTS_CLAIM to listOf(nil)))
+        assertThrows<AccessDeniedException> { resolveTenant(nilConsultant, orgA.toString()) }
+        assertThrows<TenantNotSelectedException> { resolveTenant(nilConsultant, nil) }
+        assertThrows<TenantNotSelectedException> { resolveTenant(client, nil) }
+    }
+
+    @Test
     fun `request without jwt is denied`() {
         assertThrows<AccessDeniedException> { resolveTenant(null, orgA.toString()) }
     }
