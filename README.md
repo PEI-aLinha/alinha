@@ -30,8 +30,8 @@ alinha/
 
 ## Language
 
-Code, comments, docs and commit messages are in **English**.
-Everything the user sees in the UI (labels, titles, URL paths) is in **Portuguese**, in plain language
+Code, comments, docs, commit messages and URL paths are in **English**.
+Everything else the user sees in the UI (labels, titles, messages) is in **Portuguese**, in plain language
 (UI requirement in the technical report).
 
 ## Plugins and owners
