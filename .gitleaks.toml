@@ -8,4 +8,5 @@ paths = [
   '''deploy/docker-compose\.dev\.yml''',
   '''deploy/openbao/init\.sh''',
   '''deploy/keycloak/.*''',
+  '''deploy/postgres/init/.*''',
 ]

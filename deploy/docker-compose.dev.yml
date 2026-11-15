@@ -9,8 +9,11 @@ services:
       POSTGRES_DB: alinha
       POSTGRES_USER: alinha
       POSTGRES_PASSWORD: alinha
+      ALINHA_APP_DB_PASSWORD: alinha_app   # runtime role, see postgres/init (fresh volume only)
     ports: ["5432:5432"]
-    volumes: [pgdata:/var/lib/postgresql/data]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
 
   redis:
     image: redis:8
