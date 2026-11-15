@@ -22,6 +22,9 @@ class HibernateTenantResolver(private val tenantContext: JwtTenantContext) :
 
     override fun customize(hibernateProperties: MutableMap<String, Any>) {
         hibernateProperties[AvailableSettings.MULTI_TENANT_IDENTIFIER_RESOLVER] = this
-        hibernateProperties[JpaSettings.INTEGRATOR_PROVIDER] = IntegratorProvider { listOf(NoTenantWriteGuard) }
+        // Append, never replace: losing NoTenantWriteGuard would silently allow writes without a tenant.
+        val existing = hibernateProperties[JpaSettings.INTEGRATOR_PROVIDER] as IntegratorProvider?
+        hibernateProperties[JpaSettings.INTEGRATOR_PROVIDER] =
+            IntegratorProvider { existing?.integrators.orEmpty() + NoTenantWriteGuard }
     }
 }
