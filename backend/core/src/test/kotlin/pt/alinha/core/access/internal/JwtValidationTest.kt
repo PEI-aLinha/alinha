@@ -19,13 +19,16 @@ class JwtValidationTest {
     private val issuer = "https://keycloak.test/realms/alinha"
     private val audience = "alinha-api"
     private val keys = KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair()
-    private val decoder = NimbusJwtDecoder.withPublicKey(keys.public as RSAPublicKey).build().apply {
-        setJwtValidator(alinhaJwtValidator(issuer, audience))
-    }
+    private val decoder = decoderFor(listOf(audience))
+
+    private fun decoderFor(audiences: List<String>) =
+        NimbusJwtDecoder.withPublicKey(keys.public as RSAPublicKey).build().apply {
+            setJwtValidator(alinhaJwtValidator(issuer, audiences))
+        }
 
     private fun token(
         tokenIssuer: String = issuer,
-        tokenAudience: String = audience,
+        tokenAudience: List<String> = listOf(audience),
         expiresAt: Instant = Instant.now().plusSeconds(300),
     ): String {
         val claims = JWTClaimsSet.Builder()
@@ -50,7 +53,7 @@ class JwtValidationTest {
 
     @Test
     fun `rejects token for another audience`() {
-        assertThatThrownBy { decoder.decode(token(tokenAudience = "other-api")) }
+        assertThatThrownBy { decoder.decode(token(tokenAudience = listOf("other-api"))) }
             .isInstanceOf(JwtValidationException::class.java)
     }
 
@@ -58,5 +61,24 @@ class JwtValidationTest {
     fun `rejects expired token`() {
         assertThatThrownBy { decoder.decode(token(expiresAt = Instant.now().minusSeconds(3600))) }
             .isInstanceOf(JwtValidationException::class.java)
+    }
+
+    @Test
+    fun `accepts token when any audience matches any configured audience`() {
+        val multi = decoderFor(listOf("bff", audience))
+
+        assertThat(multi.decode(token(tokenAudience = listOf("account", audience))).subject).isEqualTo("user-1")
+    }
+
+    @Test
+    fun `rejects token without audience`() {
+        assertThatThrownBy { decoder.decode(token(tokenAudience = emptyList())) }
+            .isInstanceOf(JwtValidationException::class.java)
+    }
+
+    @Test
+    fun `refuses empty audience configuration`() {
+        assertThatThrownBy { alinhaJwtValidator(issuer, emptyList()) }
+            .isInstanceOf(IllegalArgumentException::class.java)
     }
 }
