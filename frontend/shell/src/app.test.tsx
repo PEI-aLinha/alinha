@@ -110,7 +110,9 @@ describe('session bootstrap', () => {
     sessionStorage.setItem('alinha.return-to', '/org/acme/sonda')
     const { router } = renderApp({ url: '/', plugins, api: async () => json({ value: 'x' }) })
     await waitFor(() => expect(router.state.location.pathname).toBe('/org/acme/sonda'))
-    fireEvent.click(nav().getByRole('link', { name: 'Ativos' }))
+    // The layout can render after the redirect; wait for it instead of reading it synchronously.
+    const mainNav = await screen.findByRole('navigation', { name: 'Navegação principal' })
+    fireEvent.click(within(mainNav).getByRole('link', { name: 'Ativos' }))
     expect(await screen.findByRole('heading', { name: 'Página de ativos' })).toBeInTheDocument()
     await new Promise((r) => setTimeout(r, 50))
     expect(router.state.location.pathname).toBe('/org/acme/ativos')
