@@ -4,6 +4,8 @@
   "type": "module",
   "scripts": {
     "gen:plugins": "node scripts/gen-frontend-plugins.mjs",
+    "gen:api": "pnpm --filter @alinha/api-client gen:api",
+    "check:api": "pnpm gen:api && git diff --exit-code -- frontend/packages/api-client/src/schema.generated.ts",
     "dev": "pnpm gen:plugins && pnpm --filter @alinha/shell dev",
     "build": "pnpm gen:plugins && pnpm --filter @alinha/shell build",
     "typecheck": "pnpm gen:plugins && pnpm -r --parallel typecheck",
