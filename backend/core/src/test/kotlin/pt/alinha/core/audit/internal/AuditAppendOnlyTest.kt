@@ -75,4 +75,20 @@ class AuditAppendOnlyTest {
         }
         assertThat(jdbc.queryForObject("select count(*) from audit.audit_event where action = 'tampered'", Long::class.java)).isZero()
     }
+
+    /** Default privileges give alinha_app UPDATE/DELETE on new tables; none may land in schema audit. */
+    @Test
+    fun `runtime role cannot update or delete any audit table`() {
+        val writable = jdbc.queryForList(
+            """
+            select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
+            where n.nspname = 'audit' and c.relkind in ('r', 'p')
+              and (has_table_privilege('alinha_app', c.oid, 'UPDATE')
+                   or has_table_privilege('alinha_app', c.oid, 'DELETE')
+                   or has_table_privilege('alinha_app', c.oid, 'TRUNCATE'))
+            """.trimIndent(),
+            String::class.java,
+        )
+        assertThat(writable).isEmpty()
+    }
 }
