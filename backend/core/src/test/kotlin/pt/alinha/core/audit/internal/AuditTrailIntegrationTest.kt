@@ -87,6 +87,20 @@ class AuditTrailIntegrationTest {
     }
 
     @Test
+    fun `record writes the row before it returns, inside the open transaction`() {
+        val entityId = UUID.randomUUID().toString()
+
+        val rowsBeforeCommit = tenants.runAs(tenantA) {
+            tx.execute {
+                audit.record("fixture.create", "fixture", entityId)
+                auditRows(entityId) // same connection: sees the flushed, uncommitted INSERT
+            }
+        }
+
+        assertThat(rowsBeforeCommit).isEqualTo(1L)
+    }
+
+    @Test
     fun `record outside a transaction is refused`() {
         val entityId = UUID.randomUUID().toString()
 

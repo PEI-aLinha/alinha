@@ -39,5 +39,8 @@ class JpaAuditTrail(
                 aiGeneratedAt = provenance?.generatedAt,
             ),
         )
+        // Run the INSERT now, not at commit: a failing entry must fail here, before the caller's next
+        // step (e.g. the OpenBao call in OpenBaoTenantSecretStore). Still the same transaction.
+        em.flush()
     }
 }
