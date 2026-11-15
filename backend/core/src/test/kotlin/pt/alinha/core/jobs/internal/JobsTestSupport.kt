@@ -34,6 +34,7 @@ import java.util.UUID
     OutboxJobDispatcher::class,
     RedisJobStreams::class,
     OutboxRelay::class,
+    DeadJobNotifier::class,
 )
 class JobsTestApplication
 
