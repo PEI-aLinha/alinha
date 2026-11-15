@@ -44,7 +44,10 @@ The BFF forwards `X-Alinha-Tenant` to the app unchanged.
 5. The request tenant is bound to the request thread. Work handed to another thread (`@Async`, executors,
    `CompletableFuture`, virtual threads, `Callable`/`DeferredResult`) has **no tenant**: reads return nothing
    and inserts fail. It fails closed, but that work must set the tenant itself (see rule 4 for plugin authors).
-6. `runAs` is refused inside a tenant-scoped request, so a handler cannot switch to another tenant.
+6. `runAs` is refused inside any HTTP request (`@TenantAgnostic` endpoints included), so a handler cannot
+   switch to another tenant.
+7. A blank `X-Alinha-Tenant` counts as absent. The nil UUID (`00000000-…`) is never a tenant: it is rejected in
+   the header (400) and ignored in the claims (403).
 
 Tests: `TenantResolutionTest`, `JwtTenantContextTest`, `TenantFilterBypassTest`, `TenantResolutionWebTest`, `TenantIsolationIntegrationTest` (real PostgreSQL).
 
