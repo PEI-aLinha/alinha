@@ -72,3 +72,20 @@ jobs:
       - run: pnpm test
       - run: pnpm typecheck
       - run: pnpm build
+
+  frameworks:
+    name: Framework catalogues
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pipx install check-jsonschema==0.39.0
+      - run: ./scripts/validate-frameworks.sh
+
+  immutable-frameworks:
+    name: Immutable framework versions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: ./scripts/check-immutable-frameworks.sh

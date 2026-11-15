@@ -1,21 +1,16 @@
 package pt.alinha.core.secrets
 
-import org.springframework.beans.factory.ObjectProvider
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Component
 import org.springframework.vault.core.VaultOperations
 import org.springframework.vault.core.VaultVersionedKeyValueOperations
 import pt.alinha.core.tenant.TenantContext
-import pt.alinha.pluginapi.TenantId
 import pt.alinha.pluginapi.TenantSecretStore
 
 /**
  * Stores provider credentials in OpenBao KV v2 at `secret/tenants/{tenantId}/providers/{provider}`.
  * The tenant comes from [TenantContext], never from the caller. The tenant id is a UUID and the provider id
  * is validated, so a caller cannot escape its tenant path.
- *
- * [TenantContext] is looked up on each call: until its implementation exists (#8) the app still starts,
- * and any call fails instead of guessing a tenant.
  *
  * Not created when `spring.cloud.vault.enabled=false` (tests without OpenBao): there is no
  * `VaultOperations` bean then, so a context test provides its own [TenantSecretStore] double.
@@ -24,7 +19,7 @@ import pt.alinha.pluginapi.TenantSecretStore
 @ConditionalOnProperty(prefix = "spring.cloud.vault", name = ["enabled"], havingValue = "true", matchIfMissing = true)
 class OpenBaoTenantSecretStore(
     private val vault: VaultOperations,
-    private val tenantContext: ObjectProvider<TenantContext>,
+    private val tenants: TenantContext,
 ) : TenantSecretStore {
 
     private val kv: VaultVersionedKeyValueOperations = vault.opsForVersionedKeyValue(KV_MOUNT)
@@ -54,12 +49,8 @@ class OpenBaoTenantSecretStore(
 
     private fun path(provider: String): String {
         require(PROVIDER_ID.matches(provider)) { "invalid provider id" }
-        return "tenants/${currentTenant().value}/providers/$provider"
+        return "tenants/${tenants.current().value}/providers/$provider"
     }
-
-    private fun currentTenant(): TenantId =
-        checkNotNull(tenantContext.ifAvailable) { "no TenantContext: provider secrets need a tenant-scoped request" }
-            .current()
 
     private companion object {
         const val KV_MOUNT = "secret"
