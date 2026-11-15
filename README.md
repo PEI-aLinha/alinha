@@ -67,6 +67,9 @@ pnpm install && pnpm dev                               # frontend on :5173
 
 Requirements: JDK 21, Node 22, pnpm 10, Docker.
 
+`pnpm test` needs the plugin submodules (it checks that every plugin frontend is registered). If you cloned without
+`--recurse-submodules`, run `git submodule update --init --recursive` first.
+
 Until the BFF exists (#14), the shell has no real login. To open it locally with a fake session, choose a role
 (`consultant`, `responsible`, `analyst`, or `anonymous` to see the login redirect). This only affects `pnpm dev`, never a build:
 
@@ -125,7 +128,7 @@ Agree on this in the weekly sync; never do it right before a deadline.
 ## Architecture rules (checked in CI)
 
 - **Backend:** a plugin only uses other modules' public types — `pt.alinha.<plugin>` (base), `.api`, `.events` and the core's named interfaces (`core.tenant`, `core.access`, `core.audit`, `core.jobs`, `core.compliance`, `core.aigateway`). Never `internal`. Checked by `ModularityTest`.
-- **Frontend:** a plugin only imports `@alinha/plugin-sdk`, `@alinha/ui` and `@alinha/api-client`. Checked by ESLint.
+- **Frontend:** a plugin only imports `@alinha/plugin-sdk`, `@alinha/ui` and `@alinha/api-client`, and never reaches outside its own `frontend/` folder. Checked by the ESLint rule `alinha/plugin-boundaries` (`eslint-rules/`).
 - **Data:** each plugin has its own PostgreSQL schema; migrations in `db/migration/<plugin>/V<yyyyMMddHHmmss>__<plugin>_<description>.sql`.
 - **Requests:** tenant comes from the token (`TenantContext`); endpoints have `@RequiresPermission`; writes go to the Audit Trail in the same transaction.
 
