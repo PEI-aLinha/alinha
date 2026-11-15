@@ -1,26 +1,5 @@
-import { createBrowserRouter, Navigate } from 'react-router'
+import { createBrowserRouter } from 'react-router'
 import { plugins } from './plugins.generated'
-import { AreaLayout } from './layouts'
+import { createRoutes } from './routing/routes'
 
-const routesFor = (area: 'client' | 'consultant') =>
-  plugins.flatMap((p) => p.routes[area] ?? [])
-
-/**
- * Routes come from the plugins: no plugin is referenced by hand here.
- * (The prototype's registration/onboarding routes belong to the Organization plugin.)
- */
-export const router = createBrowserRouter([
-  { index: true, element: <Navigate to="/portfolio" replace /> },
-  {
-    path: 'org/:org',
-    element: <AreaLayout area="client" />,
-    children: routesFor('client'),
-  },
-  // Placeholder for the consultant's client list until the real page exists (#64).
-  { path: 'portfolio', element: <p className="p-8">Lista de clientes em breve.</p> },
-  {
-    path: 'portfolio/:org',
-    element: <AreaLayout area="consultant" />,
-    children: routesFor('consultant'),
-  },
-])
+export const router = createBrowserRouter(createRoutes(plugins))
