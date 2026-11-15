@@ -4,8 +4,8 @@
 [versions]
 kotlin = "2.2.21"
 spring-boot = "4.0.9"
-spring-modulith = "2.0.0"
-spring-cloud = "2025.1.0"
+spring-modulith = "2.0.9"
+spring-cloud = "2025.1.4"
 
 [libraries]
 spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
