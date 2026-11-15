@@ -33,9 +33,15 @@ dependencies {
     testImplementation(libs.spring.modulith.starter.test)
     testImplementation(libs.archunit.junit5) // TenantFilterBypassTest
     testImplementation(libs.spring.boot.starter.data.jpa) // TenantFilterBypassTest fixtures
+    testImplementation(libs.testcontainers.junit.jupiter) // ApplicationContextTest
+    testImplementation(libs.testcontainers.postgresql)
 }
 
 // Tests (ModularityTest, CI) run without OpenBao: no secrets are needed to verify the modules.
 tasks.test {
     systemProperty("spring.cloud.vault.enabled", "false")
+    // With Vault off, db.* is not resolved. Take it from the environment (no credentials in code);
+    // context tests should use Testcontainers (@ServiceConnection / @DynamicPropertySource), which overrides these.
+    systemProperty("db.username", System.getenv("DB_USER") ?: "")
+    systemProperty("db.password", System.getenv("DB_PASSWORD") ?: "")
 }

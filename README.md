@@ -68,6 +68,31 @@ pnpm install && pnpm dev                               # frontend on :5173
 
 Requirements: JDK 21, Node 22, pnpm 10, Docker.
 
+`pnpm test` needs the plugin submodules (it checks that every plugin frontend is registered). If you cloned without
+`--recurse-submodules`, run `git submodule update --init --recursive` first.
+
+Until the BFF exists (#14), the shell has no real login. To open it locally with a fake session, choose a role
+(`consultant`, `responsible`, `analyst`, or `anonymous` to see the login redirect). This only affects `pnpm dev`, never a build:
+
+```bash
+VITE_DEV_ROLE=consultant pnpm dev
+```
+
+### Optional: the `alinha` CLI
+
+[`alinha-cli`](https://github.com/PEI-aLinha/alinha-cli) wraps these steps and shows the state of every plugin. It needs [uv](https://docs.astral.sh/uv/).
+
+```bash
+uv tool install git+ssh://git@github.com/PEI-aLinha/alinha-cli.git@v0.1.0
+
+alinha doctor          # check tools, submodules, ports and dev secrets
+alinha plugins status  # branch, local changes and pointer drift per plugin
+alinha dev             # start dependencies, backend and frontend
+alinha down            # stop the containers
+```
+
+The supported CLI versions are pinned in `.alinha-cli-version`.
+
 ## Working on a plugin
 
 Always work **inside a checkout of the main repo** — a plugin repo does not build on its own
@@ -104,7 +129,7 @@ Agree on this in the weekly sync; never do it right before a deadline.
 ## Architecture rules (checked in CI)
 
 - **Backend:** a plugin only uses other modules' public types — `pt.alinha.<plugin>` (base), `.api`, `.events` and the core's named interfaces (`core.tenant`, `core.access`, `core.audit`, `core.jobs`, `core.compliance`, `core.aigateway`). Never `internal`. Checked by `ModularityTest`.
-- **Frontend:** a plugin only imports `@alinha/plugin-sdk`, `@alinha/ui` and `@alinha/api-client`. Checked by ESLint.
+- **Frontend:** a plugin only imports `@alinha/plugin-sdk`, `@alinha/ui` and `@alinha/api-client`, and never reaches outside its own `frontend/` folder. Checked by the ESLint rule `alinha/plugin-boundaries` (`eslint-rules/`).
 - **Data:** each plugin has its own PostgreSQL schema; migrations in `db/migration/<plugin>/V<yyyyMMddHHmmss>__<plugin>_<description>.sql`.
 - **Requests:** tenant comes from the token (`TenantContext`, rules in `docs/tenancy.md`); endpoints have `@RequiresPermission`; writes go to the Audit Trail in the same transaction.
 
@@ -121,7 +146,7 @@ Numbering from the technical report (section 3.2).
 | RNF12/RNF14 AI approval and provenance | `core.aigateway.AiDraft` (model, prompt version, sources, date); `AiDraft.provenance()` stored in the audit trail | provenance recorded; approval to do |
 | RNF17 new plugin without touching the core | `settings.gradle.kts` and `gen-frontend-plugins.mjs` discover the submodules; `ModularityTest` | **done** |
 | RNF18 catalogues as data | `frameworks/` read at runtime by the Compliance Engine | see `frameworks/README.md` |
-| RNF19 coverage ≥ 70% and CI blocks merge | missing: Kover (Kotlin) + Vitest coverage in CI; blocking merges needs branch protection (GitHub Team) | **to do** |
+| RNF19 coverage ≥ 70% and CI blocks merge | missing: Kover (Kotlin) + Vitest coverage in CI; branch protection/rulesets are available because all nine repos are public, and are applied in #4 | **to do** |
 | RNF21 whole system starts with one command | missing: full `deploy/docker-compose.yml` (Nginx, BFF, app, AI Service, workers, OpenBao) | **to do** |
 
 ## New plugin

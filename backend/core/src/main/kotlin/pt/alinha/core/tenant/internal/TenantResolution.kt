@@ -20,6 +20,10 @@ private val log = LoggerFactory.getLogger("pt.alinha.core.tenant.internal.Tenant
 /** Client error (400), as opposed to a denial (403). */
 internal class TenantNotSelectedException(reason: String) : ResponseStatusException(HttpStatus.BAD_REQUEST, reason)
 
+/**
+ * A token with the `consultant` role always follows the consultant rules, even if it also carries a client role
+ * and `tenant_id`: the header is required and must be an assigned organization; `tenant_id` is ignored.
+ */
 internal fun resolveTenant(authentication: Authentication?, header: String?): TenantId {
     val auth = authentication as? JwtAuthenticationToken
         ?: throw AccessDeniedException("A tenant needs an authenticated token")
@@ -36,14 +40,17 @@ private fun consultantTenant(token: Jwt, selected: TenantId?): TenantId {
     return tenant
 }
 
-/** Entries that are not UUIDs are ignored (safe: fewer organizations), but logged to expose a Keycloak mapper misconfiguration. */
+/**
+ * Entries that are not UUIDs are ignored (safe: fewer organizations). Only their count is logged, enough to expose
+ * a Keycloak mapper misconfiguration without putting identity data in the logs.
+ */
 private fun assignedTenants(token: Jwt): List<TenantId> {
     val raw = token.getClaimAsStringList(ASSIGNED_TENANTS_CLAIM).orEmpty()
     val parsed = raw.mapNotNull(::parseTenant)
     if (parsed.size < raw.size) {
         log.warn(
-            "Ignored {} malformed entries in the '{}' claim (subject {}); check the Keycloak mapper",
-            raw.size - parsed.size, ASSIGNED_TENANTS_CLAIM, token.subject,
+            "Ignored {} malformed entries in the '{}' claim; check the Keycloak mapper",
+            raw.size - parsed.size, ASSIGNED_TENANTS_CLAIM,
         )
     }
     return parsed

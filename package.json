@@ -7,7 +7,8 @@
     "dev": "pnpm gen:plugins && pnpm --filter @alinha/shell dev",
     "build": "pnpm gen:plugins && pnpm --filter @alinha/shell build",
     "typecheck": "pnpm gen:plugins && pnpm -r --parallel typecheck",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test": "pnpm gen:plugins && node --test \"scripts/*.test.mjs\" \"eslint-rules/*.test.js\" && pnpm -r --if-present test"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
