@@ -3,7 +3,7 @@
 # Before the first build, check the latest patch of each line.
 [versions]
 kotlin = "2.2.21"
-spring-boot = "4.0.0"
+spring-boot = "4.0.9"
 spring-modulith = "2.0.0"
 
 [libraries]
