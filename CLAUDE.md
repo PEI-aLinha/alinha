@@ -47,7 +47,7 @@ docker compose -f deploy/docker-compose.dev.yml up -d   # Postgres :5432, Redis 
 BAO_TOKEN=dev-app-token ./gradlew :app:bootRun          # backend :8080 (secrets from OpenBao)
 ./gradlew :<plugin-id>:test :app:test                   # one plugin + module verification
 pnpm install && pnpm dev                                # frontend :5173 (runs gen:plugins first)
-pnpm lint && pnpm typecheck && pnpm build               # what CI runs for the frontend
+pnpm lint && pnpm test && pnpm typecheck && pnpm build  # what CI runs for the frontend
 pnpm --filter @alinha/plugin-<id> typecheck
 ./scripts/check-submodules.sh                           # every submodule pointer is on its plugin's main
 ```
@@ -100,13 +100,15 @@ Avoid this unless the task needs it. Before starting, say so explicitly and list
 - Plugin-to-plugin communication: synchronous through `api/` only; asynchronous through `DomainEvent`
   (Spring `ApplicationEventPublisher`, persisted by the Modulith event publication registry).
 - **Frontend boundaries:** plugin code imports only `@alinha/plugin-sdk`, `@alinha/ui` and `@alinha/api-client`,
-  never another plugin or the shell (ESLint `no-restricted-imports`). Each plugin exports `definePlugin({...})` and
-  uses `useHost()` for the session, tenant, permissions and API calls.
+  never another plugin or the shell (ESLint rule `alinha/plugin-boundaries` in `eslint-rules/`). Each plugin
+  exports `definePlugin({...})` and uses `useHost()` for the session, tenant, permissions and API calls.
 - **Data:** one PostgreSQL schema per plugin (the core uses `core` and `audit`). Flyway migrations go in
   `db/migration/<pkg>/V<yyyyMMddHHmmss>__<pkg>_<description>.sql`. The timestamp prevents collisions between repos.
   **Never edit a migration that has been merged.** Add a new one instead.
 - **Every request:**
   - The tenant comes from the token through `TenantContext`, **never from the body or query** (RNF03).
+    A consultant picks one of the organizations in the token's `tenants` claim with the `X-Alinha-Tenant`
+    header; `TenantContext` rejects any other value with 403 (ADR 0002).
   - Every query is filtered by tenant.
   - Every endpoint has `@RequiresPermission(resource, action)` (RNF07/08).
   - Every write calls `AuditTrail.record(...)` **in the same transaction** (RNF04). `audit.audit_event` is
@@ -140,12 +142,14 @@ Avoid this unless the task needs it. Before starting, say so explicitly and list
 - Never change a contract incompatibly. Create `v2` and keep `v1` until every consumer has migrated.
 - The platform has two sides:
   - **client** area (`/org/:org/...`): the SME's designated responsible person
-  - **consultant** area (`/carteira/...`): the service provider managing several client organisations
+  - **consultant** area (`/portfolio` for the client list, `/portfolio/:org/...` for one client): the service
+    provider managing several client organisations
 
 ## Conventions
 
-- **English** for code, comments, docs, commit messages and branch names. **European Portuguese**, plain and
-  non-technical, for everything the user sees in the UI (labels, titles, **URL paths**, messages).
+- **English** for code, comments, docs, commit messages, branch names and **URL paths** (`/org/:org/assets`,
+  `/portfolio`). **European Portuguese**, plain and non-technical, for everything else the user sees in the UI
+  (labels, titles, messages).
 - Kotlin package `pt.alinha.<pkg>`, where `<pkg>` is the plugin id without hyphens (`risk-assets` → `riskassets`).
   Each plugin has exactly one `AlinhaPlugin` bean, and its `PluginManifest` must match `plugin.yaml`.
 - Branches `feat/<topic>`, `fix/<topic>`. Keep PRs small and follow `.github/pull_request_template.md`.
