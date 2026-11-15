@@ -6,9 +6,8 @@ import pt.alinha.pluginapi.PluginManifest
 
 private val KNOWN_ROLES = setOf("consultant", "responsible", "analyst")
 private val CORE_PERMISSIONS = setOf("plugins:read")
+// Analysts excluded: least privilege, same rule as results/roadmap (docs/rbac.md).
 private val CORE_ROLE_PERMISSIONS = mapOf(
-    "consultant" to setOf("audit:read"),
-    "consultant" to setOf("audit:read"),
     "consultant" to setOf("audit:read"),
     "responsible" to setOf("audit:read"),
 )

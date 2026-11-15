@@ -26,6 +26,5 @@ data class AuditEntry(
     val entityId: String,
     val details: Map<String, Any?>,
     val provenance: AiProvenance?,
-    val occuredAt: Instant,
-
+    val occurredAt: Instant,
 )

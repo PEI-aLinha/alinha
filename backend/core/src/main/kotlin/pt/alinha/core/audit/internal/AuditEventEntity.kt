@@ -25,6 +25,7 @@ class AuditEventEntity(
     val actor: String,
 
     @Column(nullable = false, updatable = false)
+    val action: String,
 
     @Column(name = "entity_type", nullable = false, updatable = false)
     val entityType: String,

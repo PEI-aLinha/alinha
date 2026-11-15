@@ -1,6 +1,7 @@
 package pt.alinha.core.audit
 
 import java.time.Instant
+
 /**
  * Append-only. Every write is recorded here, in the caller's transaction (RNF04): call it from
  * inside your @Transactional service method. Outside a transaction it throws.
@@ -19,7 +20,7 @@ interface AuditTrail {
     )
 }
 
-/** Provenance of AI-generated content (RNF 14), Use AiDraft.provenance() **/
+/** Provenance of AI-generated content (RNF14). Use `AiDraft.provenance()`. */
 data class AiProvenance(
     val model: String,
     val promptVersion: String,
