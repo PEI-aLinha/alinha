@@ -46,4 +46,4 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,modulith
+        include: health   # everything else is denied by SecurityConfig
