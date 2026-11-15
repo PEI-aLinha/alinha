@@ -41,7 +41,7 @@ begin
 end
 $$;
 
-grant usage on schema core, audit to alinha_app;
+grant usage on schema audit to alinha_app;  -- schema core is not created yet; default privileges cover it
 revoke all on audit.audit_event from public, alinha_app;
 grant select, insert on audit.audit_event to alinha_app;
 
