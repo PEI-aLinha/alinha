@@ -30,8 +30,8 @@ alinha/
 
 ## Language
 
-Code, comments, docs and commit messages are in **English**.
-Everything the user sees in the UI (labels, titles, URL paths) is in **Portuguese**, in plain language
+Code, comments, docs, commit messages and URL paths are in **English**.
+Everything else the user sees in the UI (labels, titles, messages) is in **Portuguese**, in plain language
 (UI requirement in the technical report).
 
 ## Plugins and owners
@@ -60,12 +60,26 @@ git config --global push.recurseSubmodules on-demand   # pushing the main repo p
 
 git clone --recurse-submodules git@github.com:PEI-aLinha/alinha.git
 cd alinha
-docker compose -f deploy/docker-compose.dev.yml up -d  # Postgres, Redis, Keycloak, OpenBao
+cp deploy/.env.example deploy/.env                     # optional: dev defaults work without it
+docker compose -f deploy/docker-compose.dev.yml up -d  # Postgres, Redis, Keycloak, Mailpit, OpenBao
 BAO_TOKEN=dev-app-token ./gradlew :app:bootRun         # backend on :8080
 pnpm install && pnpm dev                               # frontend on :5173
 ```
 
-Requirements: JDK 21, Node 22, pnpm 10, Docker.
+| Service | URL | Dev credentials |
+|---|---|---|
+| Postgres | `localhost:5432` | `alinha` / `alinha` |
+| Redis | `localhost:6379` | — |
+| Keycloak | http://localhost:8180 | admin / admin |
+| Mailpit | http://localhost:8025 | — |
+| OpenBao | http://localhost:8200 | `BAO_TOKEN=dev-app-token` (root `dev-root-token`) |
+
+The `alinha` realm, test users (Rui, Pedro, Marta, João) and their roles/tenants are in
+[deploy/keycloak/README.md](deploy/keycloak/README.md). The dev password is `alinha`; the first
+login sets up TOTP (MFA). Emails land in Mailpit.
+
+Requirements: JDK 21, Node 22, pnpm 10, Docker (Compose v2). The flow above is verified on Linux;
+on macOS use Docker Desktop and the same commands.
 
 `pnpm test` needs the plugin submodules (it checks that every plugin frontend is registered). If you cloned without
 `--recurse-submodules`, run `git submodule update --init --recursive` first.

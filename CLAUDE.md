@@ -147,8 +147,9 @@ Avoid this unless the task needs it. Before starting, say so explicitly and list
 
 ## Conventions
 
-- **English** for code, comments, docs, commit messages and branch names. **European Portuguese**, plain and
-  non-technical, for everything the user sees in the UI (labels, titles, **URL paths**, messages).
+- **English** for code, comments, docs, commit messages, branch names and **URL paths** (`/org/:org/assets`,
+  `/portfolio`). **European Portuguese**, plain and non-technical, for everything else the user sees in the UI
+  (labels, titles, messages).
 - Kotlin package `pt.alinha.<pkg>`, where `<pkg>` is the plugin id without hyphens (`risk-assets` → `riskassets`).
   Each plugin has exactly one `AlinhaPlugin` bean, and its `PluginManifest` must match the id, name and kind in
   `plugin.yaml`. Permissions and role mappings live only in the `PluginManifest` (`docs/rbac.md`).
