@@ -31,7 +31,8 @@ class AuditHistoryController(private val history: AuditHistory) {
         val pageable = PageRequest.of(
             page.coerceAtLeast(0),
             size.coerceIn(1, MAX_PAGE_SIZE),
-            Sort.by(Sort.Direction.DESC, "occurredAt"),
+            // id breaks ties (same transaction or millisecond) so offset pages never skip or repeat rows.
+            Sort.by(Sort.Direction.DESC, "occurredAt").and(Sort.by(Sort.Direction.DESC, "id")),
         )
         val result = history.find(AuditFilter(entityType, entityId, actor, from, to), pageable)
         return AuditPage(result.content, result.number, result.size, result.totalElements)

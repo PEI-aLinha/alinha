@@ -37,7 +37,7 @@ The model, prompt version, sources and generation date are stored in their own c
 
 - Inside the backend: `pt.alinha.core.audit.AuditHistory.find(filter, pageable)`, current tenant only.
 - HTTP: `GET /api/audit/events?entityType=&entityId=&actor=&from=&to=&page=&size=` (`audit:read`,
-  consultant and Designated Officer). `from`/`to` are ISO-8601 instants, newest first, `size` at most 200.
+  consultant and Designated Officer). `from`/`to` are ISO-8601 instants (`from` inclusive, `to` exclusive), newest first, `size` at most 200.
 
 ## Append-only guarantees
 
