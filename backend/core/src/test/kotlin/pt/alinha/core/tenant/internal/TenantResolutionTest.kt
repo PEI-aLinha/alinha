@@ -90,6 +90,13 @@ class TenantResolutionTest {
     }
 
     @Test
+    fun `blank header counts as absent`() {
+        assertEquals(TenantId(orgA), resolveTenant(client, ""))
+        assertEquals(TenantId(orgA), resolveTenant(client, "   "))
+        assertThrows<TenantNotSelectedException> { resolveTenant(consultant, "") }
+    }
+
+    @Test
     fun `request without jwt is denied`() {
         assertThrows<AccessDeniedException> { resolveTenant(null, orgA.toString()) }
     }
