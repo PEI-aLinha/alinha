@@ -206,7 +206,7 @@ class OpenBaoTenantSecretStoreTest {
     }
 }
 
-/** Records calls; the transactional behaviour is covered by AuditTrailIntegrationTest. */
+/** Records calls; the transactional behaviour is covered by OpenBaoTenantSecretStoreAuditTest. */
 private class RecordingAuditTrail : AuditTrail {
     data class Entry(val action: String, val entityType: String, val entityId: String, val details: Map<String, Any?>)
 
