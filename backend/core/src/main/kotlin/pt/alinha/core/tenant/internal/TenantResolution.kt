@@ -36,14 +36,17 @@ private fun consultantTenant(token: Jwt, selected: TenantId?): TenantId {
     return tenant
 }
 
-/** Entries that are not UUIDs are ignored (safe: fewer organizations), but logged to expose a Keycloak mapper misconfiguration. */
+/**
+ * Entries that are not UUIDs are ignored (safe: fewer organizations). Only their count is logged, enough to expose
+ * a Keycloak mapper misconfiguration without putting identity data in the logs.
+ */
 private fun assignedTenants(token: Jwt): List<TenantId> {
     val raw = token.getClaimAsStringList(ASSIGNED_TENANTS_CLAIM).orEmpty()
     val parsed = raw.mapNotNull(::parseTenant)
     if (parsed.size < raw.size) {
         log.warn(
-            "Ignored {} malformed entries in the '{}' claim (subject {}); check the Keycloak mapper",
-            raw.size - parsed.size, ASSIGNED_TENANTS_CLAIM, token.subject,
+            "Ignored {} malformed entries in the '{}' claim; check the Keycloak mapper",
+            raw.size - parsed.size, ASSIGNED_TENANTS_CLAIM,
         )
     }
     return parsed
