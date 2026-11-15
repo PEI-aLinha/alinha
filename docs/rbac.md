@@ -28,7 +28,15 @@ Annotate the controller method, or the class for a default. A method annotation 
 fun create(...) = ...
 ```
 
-An endpoint without `@RequiresPermission` always answers 403. The application refuses to start if an annotation names a permission that no plugin declares, so a typo such as `"assesment"` fails at startup instead of answering 403 to everyone. Functional routes are denied too, so plugins must use annotated controllers.
+The application refuses to start if a controller endpoint has no `@RequiresPermission`, or if an annotation names a permission that no plugin declares, so a forgotten annotation or a typo such as `"assesment"` fails at startup instead of answering 403 to everyone. Spring's `/error` controller is the only exemption. At request time the interceptor still denies any endpoint without a permission, as a backstop. Functional routes are denied too, so plugins must use annotated controllers.
+
+An endpoint open to every signed-in role (such as a plugin's `ping`) uses `@RequiresPermission("plugins")`, the core's `plugins:read`.
+
+## Tenant scope
+
+Realm roles are realm-wide: a `responsible` or `analyst` token has the same permissions in every organisation. `@RequiresPermission` decides *what* a user may do, not *for which organisation*, so on its own it does not stop cross-tenant access.
+
+Tenant isolation comes from `TenantContext` (ADR 0002, #8), which must check the token's `tenants` claim, and from filtering every query by the current tenant. This RBAC layer does not provide either.
 
 ## Declaring permissions in a plugin
 
@@ -64,3 +72,4 @@ Add a row with each new endpoint.
 |---|---|---|---|---|
 | `GET /actuator/health` | public | yes | yes | yes |
 | `GET /api/plugins` | `plugins:read` | yes | yes | yes |
+| `GET /api/<plugin-id>/ping` | `plugins:read` | yes | yes | yes |
