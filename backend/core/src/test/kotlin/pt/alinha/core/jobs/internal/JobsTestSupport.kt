@@ -32,6 +32,8 @@ import java.util.UUID
     JobSchemaValidator::class,
     JobOutboxRepository::class,
     OutboxJobDispatcher::class,
+    RedisJobStreams::class,
+    OutboxRelay::class,
 )
 class JobsTestApplication
 

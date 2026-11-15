@@ -40,6 +40,16 @@ spring:
     # scans recursively. Timestamp versions so they never collide:
     #   V202611071530__assessment_init.sql
     locations: classpath:db/migration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      # Short: the outbox relay holds row locks while it publishes (RNF02, docs/jobs.md).
+      timeout: 2s
+  task:
+    scheduling:
+      pool:
+        size: 4                   # outbox relay + dead job notifier (+ results consumer, #13 part 2) never queue behind each other
   modulith:
     events:
       jdbc:
@@ -51,3 +61,16 @@ management:
     web:
       exposure:
         include: health,info,modulith
+
+# Job dispatcher (RNF02): outbox in PostgreSQL -> Redis Streams. See docs/jobs.md.
+alinha:
+  jobs:
+    relay:
+      enabled: true
+      poll-interval-ms: 1000
+      batch-size: 50
+      max-publish-failures: 10
+      backoff-base: 2s
+      backoff-max: 5m
+    default-max-attempts: 3
+    stream-max-length: 10000
