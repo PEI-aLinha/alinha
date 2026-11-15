@@ -17,6 +17,12 @@ spring:
         default-context: alinha/app
         # Required: without it Spring Cloud Vault also reads secret/data/<spring.application.name> (alinha) and gets 403.
         application-name: alinha/app
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/alinha}
+          audiences: alinha-api
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/alinha}
     username: ${db.username}

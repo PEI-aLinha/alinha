@@ -4,7 +4,6 @@ import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
-import org.springframework.beans.factory.support.StaticListableBeanFactory
 import org.springframework.vault.VaultException
 import org.springframework.vault.authentication.TokenAuthentication
 import org.springframework.vault.client.VaultEndpoint
@@ -15,7 +14,7 @@ import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.utility.DockerImageName
 import org.testcontainers.vault.VaultContainer
-import pt.alinha.core.tenant.TenantContext
+import pt.alinha.core.tenant.internal.JwtTenantContext
 import pt.alinha.pluginapi.TenantId
 import java.net.URI
 import java.nio.file.Path
@@ -43,7 +42,7 @@ class OpenBaoTenantSecretStoreTest {
         /** Client with the app's token: restricted to deploy/openbao/alinha-app.hcl, as in dev. */
         private lateinit var appVault: VaultTemplate
         private lateinit var store: OpenBaoTenantSecretStore
-        private val tenants = FakeTenantContext()
+        private val tenants = JwtTenantContext()
 
         @BeforeAll
         @JvmStatic
@@ -56,26 +55,13 @@ class OpenBaoTenantSecretStoreTest {
             val appToken = vault.opsForToken().create(VaultTokenRequest.builder().withPolicy(APP_POLICY).build()).token
 
             appVault = VaultTemplate(endpoint, TokenAuthentication(appToken))
-            store = OpenBaoTenantSecretStore(appVault, providerOf(tenants))
+            store = OpenBaoTenantSecretStore(appVault, tenants)
         }
-    }
-
-    /** Stands in for the request's tenant until the real TenantContext exists (#8). */
-    private class FakeTenantContext : TenantContext {
-        var tenant: TenantId? = null
-        override fun current(): TenantId = checkNotNull(tenant) { "no current tenant" }
     }
 
     private fun newTenant() = TenantId(UUID.randomUUID())
 
-    private fun <T> asTenant(tenant: TenantId, block: () -> T): T {
-        tenants.tenant = tenant
-        try {
-            return block()
-        } finally {
-            tenants.tenant = null
-        }
-    }
+    private fun <T> asTenant(tenant: TenantId, block: () -> T): T = tenants.runAs(tenant, block)
 
     @Test
     fun `stores and reads a provider secret for a tenant`() {
@@ -198,16 +184,4 @@ class OpenBaoTenantSecretStoreTest {
     fun `fails without a current tenant`() {
         assertThatThrownBy { store.get("code-repository") }.isInstanceOf(IllegalStateException::class.java)
     }
-
-    @Test
-    fun `fails when no TenantContext is available`() {
-        val withoutContext = OpenBaoTenantSecretStore(appVault, StaticListableBeanFactory().getBeanProvider(TenantContext::class.java))
-
-        assertThatThrownBy { withoutContext.get("code-repository") }
-            .isInstanceOf(IllegalStateException::class.java)
-            .hasMessageContaining("TenantContext")
-    }
 }
-
-private fun providerOf(context: TenantContext) =
-    StaticListableBeanFactory(mapOf("tenantContext" to context)).getBeanProvider(TenantContext::class.java)
