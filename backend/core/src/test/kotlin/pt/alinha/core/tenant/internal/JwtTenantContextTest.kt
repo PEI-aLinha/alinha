@@ -31,6 +31,14 @@ class JwtTenantContextTest {
     }
 
     @Test
+    fun `runAs is rejected inside a tenant-agnostic request`() {
+        RequestContextHolder.setRequestAttributes(ServletRequestAttributes(MockHttpServletRequest()))
+
+        assertThrows<IllegalStateException> { context.runAs(otherTenant) { } }
+        assertNull(context.currentOrNull())
+    }
+
+    @Test
     fun `runAs sets the tenant outside a request and restores it afterwards`() {
         assertEquals(otherTenant, context.runAs(otherTenant) { context.current() })
         assertNull(context.currentOrNull())

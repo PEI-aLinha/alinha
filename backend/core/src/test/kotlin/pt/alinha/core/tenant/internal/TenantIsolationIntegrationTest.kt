@@ -36,9 +36,11 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
 @Testcontainers
+// No mock web environment: it binds a fake request to the test thread, and runAs refuses inside a request.
 @SpringBootTest(
     classes = [TenantIsolationTestApplication::class],
     properties = ["spring.jpa.hibernate.ddl-auto=create"],
+    webEnvironment = SpringBootTest.WebEnvironment.NONE,
 )
 class TenantIsolationIntegrationTest {
     companion object {
