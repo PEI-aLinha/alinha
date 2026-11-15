@@ -3,6 +3,7 @@ package pt.alinha.fixture.tenantbypass
 import jakarta.persistence.EntityManager
 import org.hibernate.Session
 import org.springframework.data.jpa.repository.Query
+import org.springframework.data.repository.NoRepositoryBean
 import org.springframework.data.repository.Repository
 import org.springframework.jdbc.core.JdbcOperations
 import org.springframework.jdbc.core.JdbcTemplate
@@ -44,6 +45,7 @@ class DriverManagerUser {
     fun open(): Any = DriverManager.getConnection("jdbc:postgresql://localhost/alinha")
 }
 
+@NoRepositoryBean // not a real repository: keep it out of ApplicationContextTest
 interface NativeQueryRepository : Repository<Any, UUID> {
     @Query("select 1", nativeQuery = true)
     fun one(): Int
