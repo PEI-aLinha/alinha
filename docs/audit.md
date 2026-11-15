@@ -21,7 +21,8 @@ fun rename(id: UUID, name: String) {
   (`sub`, or `system` for jobs and event listeners running under `TenantContext.runAs`).
 - `action` is `<entity>.<verb>` (`assessment.answer`, `roadmap.validate`).
 - `details` holds ids and the names of changed fields. **Never** secrets, tokens, document content or
-  personal data beyond ids.
+  personal data beyond ids. It is returned as-is by `GET /api/audit/events` to everyone with `audit:read`,
+  including the client's Designated Officer, so treat it as visible to the client.
 
 ## AI-generated content (NFR14)
 
@@ -37,17 +38,24 @@ The model, prompt version, sources and generation date are stored in their own c
 
 - Inside the backend: `pt.alinha.core.audit.AuditHistory.find(filter, pageable)`, current tenant only.
 - HTTP: `GET /api/audit/events?entityType=&entityId=&actor=&from=&to=&page=&size=` (`audit:read`,
-  consultant and Designated Officer). `from`/`to` are ISO-8601 instants (`from` inclusive, `to` exclusive), newest first, `size` at most 200.
+  consultant and Designated Officer). `from`/`to` are ISO-8601 instants (`from` inclusive, `to` exclusive),
+  `from` after `to` is a 400. Newest first, `size` at most 200.
 
 ## Append-only guarantees
 
 - The app connects as `alinha_app`, which has only `SELECT, INSERT` on `audit.audit_event`.
   Flyway runs as the schema owner (`db.migration-username` in OpenBao).
-- A trigger rejects `UPDATE`, `DELETE` and `TRUNCATE` for every role, owner and superuser included.
+- A trigger rejects `UPDATE`, `DELETE` and `TRUNCATE` for any role, the owner included. It is a guard against
+  mistakes, not against the owner or a superuser: they can still `ALTER TABLE ... DISABLE TRIGGER`. Keep the
+  owner credentials out of the app (they are only `db.migration-username`/`-password` in OpenBao).
 - Anonymising personal data after one year (NFR15) will run under its own role, never `alinha_app`.
 
-Dev: the `alinha_app` role is created by `deploy/postgres/init/` only on a **fresh** volume. After pulling
-this change once: `docker compose -f deploy/docker-compose.dev.yml down -v && docker compose -f deploy/docker-compose.dev.yml up -d`.
+Dev: the `alinha_app` role is created with `LOGIN` by `deploy/postgres/init/` only on a **fresh** volume.
+On an older volume the core migration creates it instead, as a fallback without `LOGIN`, and the app then
+fails at startup with a password authentication error for `alinha_app`. Fix it once, either way:
+
+- reset the volume: `docker compose -f deploy/docker-compose.dev.yml down -v && docker compose -f deploy/docker-compose.dev.yml up -d`
+- or keep the data: `docker compose -f deploy/docker-compose.dev.yml exec postgres psql -U alinha -d alinha -c "alter role alinha_app login password 'alinha_app'"`
 
 ## Writes outside the database
 
