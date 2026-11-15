@@ -62,4 +62,30 @@ class RolePermissionRegistryTest {
             .isInstanceOf(IllegalArgumentException::class.java)
             .hasMessageContaining("a:edit")
     }
+
+    @Test
+    fun `fails when two plugins declare the same permission`() {
+        assertThatThrownBy {
+            registry(
+                plugin("a", setOf("a:read"), mapOf("analyst" to setOf("a:read"))),
+                plugin("b", setOf("a:read"), mapOf("consultant" to setOf("a:read"))),
+            )
+        }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("a:read")
+    }
+
+    @Test
+    fun `fails when a plugin declares a core permission`() {
+        assertThatThrownBy { registry(plugin("a", setOf("plugins:read"), emptyMap())) }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("plugins:read")
+    }
+
+    @Test
+    fun `exposes core and plugin permissions as declared`() {
+        val registry = registry(plugin("a", setOf("a:read", "a:edit"), emptyMap()))
+
+        assertThat(registry.declaredPermissions).containsExactlyInAnyOrder("plugins:read", "a:read", "a:edit")
+    }
 }

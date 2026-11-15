@@ -32,7 +32,12 @@ An endpoint without `@RequiresPermission` always answers 403. Functional routes 
 
 ## Declaring permissions in a plugin
 
-Declare permissions and their roles in the plugin's `PluginManifest`, and keep `plugin.yaml` in sync. The application refuses to start if a role is unknown or a mapped permission is not in `permissions`.
+Declare permissions and their roles in the plugin's `PluginManifest`, and keep `plugin.yaml` in sync. The application refuses to start if:
+
+- a role is unknown;
+- a mapped permission is not in the plugin's own `permissions`;
+- two plugins declare the same permission (each permission has exactly one owner);
+- a plugin declares a core permission (`plugins:read`).
 
 ```kotlin
 PluginManifest(
