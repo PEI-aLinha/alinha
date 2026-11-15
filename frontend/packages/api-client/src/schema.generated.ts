@@ -25,10 +25,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/{plugin}/ping": {
+    "/api/plugins": {
         parameters: {
             query?: never;
             header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the plugins present in the build */
+        get: operations["listPlugins"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/{plugin}/ping": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
             path: {
                 /** @description Plugin id exactly as declared in `plugin.yaml`. */
                 plugin: "assessment" | "dashboard-reports" | "notifications" | "organization" | "risk-assets" | "code-repository" | "external-surface";
@@ -37,8 +61,9 @@ export interface paths {
         };
         /**
          * Walking-skeleton health check (temporary)
-         * @description Proves that a plugin is wired end to end. It does not read or write tenant data and is
-         *     unauthenticated. Remove this path when the plugin exposes its first real endpoint.
+         * @description Proves that a plugin is wired end to end. It does not read or write tenant data; the shell
+         *     still sends the tenant header because it is inside an organization. Remove this path when
+         *     the plugin exposes its first real endpoint.
          */
         get: operations["pingPlugin"];
         put?: never;
@@ -58,7 +83,6 @@ export interface components {
             /**
              * Format: uri
              * @description Problem type URI, or `about:blank`.
-             * @default about:blank
              */
             type: string;
             /** @description Short, stable summary of the problem. */
@@ -121,6 +145,19 @@ export interface components {
              *     organizations (the `tenants` claim).
              */
             organizations: components["schemas"]["OrganizationRef"][];
+        };
+        PluginManifest: {
+            id: string;
+            name: string;
+            /** @enum {string} */
+            kind: "FEATURE" | "FRAMEWORK" | "PROVIDER";
+            version: string;
+            /** @description Events the plugin publishes. */
+            publishes: string[];
+            /** @description Events the plugin consumes. */
+            consumes: string[];
+            /** @description RBAC resources the plugin declares. */
+            permissions: string[];
         };
         Ping: {
             plugin: string;
@@ -223,10 +260,38 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
         };
     };
-    pingPlugin: {
+    listPlugins: {
         parameters: {
             query?: never;
             header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Every plugin manifest, sorted by id. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginManifest"][];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+        };
+    };
+    pingPlugin: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
             path: {
                 /** @description Plugin id exactly as declared in `plugin.yaml`. */
                 plugin: "assessment" | "dashboard-reports" | "notifications" | "organization" | "risk-assets" | "code-repository" | "external-surface";

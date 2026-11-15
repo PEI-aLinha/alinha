@@ -22,6 +22,8 @@ servers:
 tags:
   - name: session
     description: Who is signed in (owned by the BFF).
+  - name: registry
+    description: Plugins present in the running application.
   - name: internal
     description: Walking-skeleton endpoints. Temporary; remove when the real endpoint exists.
 
@@ -47,6 +49,23 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /api/plugins:
+    get:
+      tags: [registry]
+      operationId: listPlugins
+      summary: List the plugins present in the build
+      responses:
+        '200':
+          description: Every plugin manifest, sorted by id.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PluginManifest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /api/{plugin}/ping:
     parameters:
       - name: plugin
@@ -63,14 +82,15 @@ paths:
             - risk-assets
             - code-repository
             - external-surface
+      - $ref: '#/components/parameters/Tenant'
     get:
       tags: [internal]
       operationId: pingPlugin
       summary: Walking-skeleton health check (temporary)
       description: |
-        Proves that a plugin is wired end to end. It does not read or write tenant data and is
-        unauthenticated. Remove this path when the plugin exposes its first real endpoint.
-      security: []
+        Proves that a plugin is wired end to end. It does not read or write tenant data; the shell
+        still sends the tenant header because it is inside an organization. Remove this path when
+        the plugin exposes its first real endpoint.
       responses:
         '200':
           description: The plugin answered.
@@ -130,7 +150,6 @@ components:
         type:
           type: string
           format: uri
-          default: about:blank
           description: Problem type URI, or `about:blank`.
         title:
           type: string
@@ -237,6 +256,35 @@ components:
             organizations (the `tenants` claim).
           items:
             $ref: '#/components/schemas/OrganizationRef'
+
+    PluginManifest:
+      type: object
+      required: [id, name, kind, version, publishes, consumes, permissions]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        kind:
+          type: string
+          enum: [FEATURE, FRAMEWORK, PROVIDER]
+        version:
+          type: string
+        publishes:
+          type: array
+          description: Events the plugin publishes.
+          items:
+            type: string
+        consumes:
+          type: array
+          description: Events the plugin consumes.
+          items:
+            type: string
+        permissions:
+          type: array
+          description: RBAC resources the plugin declares.
+          items:
+            type: string
 
     Ping:
       type: object

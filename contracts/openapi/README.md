@@ -41,8 +41,9 @@ shell already uses (`MeDto`, `OrganizationRefDto`, `Role`).
    apply, and reference the shared error responses.
 3. Put request and response schemas under `components.schemas`; reuse `PageMeta` for every list.
 4. Run `pnpm gen:api` and commit `alinha.yaml` and `schema.generated.ts` together.
-5. Open the contract PR in this repo first. After it is merged, the plugin imports the types from
-   `@alinha/api-client` and opens its own PR. This is the multi-repo rule in the main `README.md`.
+5. Follow the coordinated multi-repo rule in the main `README.md`: branch with the same name here and in
+   every affected plugin, merge the plugin PRs, then merge this PR (plugin first, pointer second). The
+   plugin imports the types from `@alinha/api-client`; the generated file is part of this PR.
 6. Remove the temporary `/api/{plugin}/ping` path once the plugin has a real endpoint.
 
 Example for a plugin's first list endpoint:

@@ -19,3 +19,6 @@ export type OrganizationRefDto = components['schemas']['OrganizationRef']
  *   assigned organizations (the `tenants` claim).
  */
 export type MeDto = components['schemas']['Me']
+
+/** GET /api/plugins: a plugin manifest, as registered by the backend. */
+export type PluginManifestDto = components['schemas']['PluginManifest']

@@ -39,7 +39,8 @@ is no BFF implementation yet, so generating the document from running code would
   not that controllers match the spec.
 - (−) Several teams edit one YAML file, so unrelated changes can conflict. If that becomes frequent, split
   the source into fragments and bundle it into the single published document behind a new decision.
-- (−) Changing the contract requires a PR in this repo before the plugin PR, following the repository rules.
+- (−) A contract change that affects plugin code follows the repository's coordinated rule: branches
+  with the same name in this repo and in every affected plugin, plugin PRs merged first, then this PR.
 
 ## Alternatives considered
 - **Generate with springdoc from the Spring application:** describes only the application, not the BFF,
