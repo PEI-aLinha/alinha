@@ -15,9 +15,11 @@ import tools.jackson.module.kotlin.readValue
 
 /**
  * Reads framework catalogues from a folder on disk, not from the jar, so a new version needs no
- * recompile or new build (NFR18). Expected layout: <frameworksDir>/<framework>/v<n>/catalogue.yaml
+ * recompile or new build (RNF18). Expected layout: <frameworksDir>/<framework>/v<n>/catalogue.yaml
+ *
+ * Internal to the core: plugins read catalogues through [CatalogueRegistry].
  */
-class CatalogueLoader(private val frameworksDir: Path) {
+internal class CatalogueLoader(private val frameworksDir: Path) {
 
     private val mapper = YAMLMapper.builder()
         .addModule(kotlinModule())
@@ -66,10 +68,15 @@ class CatalogueLoader(private val frameworksDir: Path) {
         return catalogue
     }
 
-    /** Rules the JSON Schema cannot express (applied at runtime in addition to CI validation). */
-    private fun checkConsistency(catalogue: Catalogue, file: Path): List<String> {
-        val problems = mutableListOf<String>()
+    /** The schema rules, enforced again at runtime, plus the rules the JSON Schema cannot express. */
+    private fun checkConsistency(catalogue: Catalogue, file: Path): List<String> =
+        checkHeader(catalogue, file) +
+            catalogue.requirements.flatMap(::checkRequirement) +
+            catalogue.controls.flatMap(::checkControl) +
+            checkCrossReferences(catalogue)
 
+    private fun checkHeader(catalogue: Catalogue, file: Path): List<String> {
+        val problems = mutableListOf<String>()
         val versionDir = file.parent
         val frameworkDir = versionDir.parent
         if (catalogue.framework != frameworkDir.name) {
@@ -78,107 +85,80 @@ class CatalogueLoader(private val frameworksDir: Path) {
         if ("v${catalogue.version}" != versionDir.name) {
             problems += "version ${catalogue.version} does not match folder '${versionDir.name}'"
         }
-
-        // Schema constraints the Jackson binding cannot enforce
         if (!FRAMEWORK_PATTERN.matches(catalogue.framework)) {
             problems += "framework '${catalogue.framework}' does not match pattern ^[a-z0-9]+(-[a-z0-9]+)*\$"
         }
-        if (catalogue.version < 1) {
-            problems += "version must be >= 1, got ${catalogue.version}"
+        if (catalogue.version < 1) problems += "version must be >= 1, got ${catalogue.version}"
+        if (catalogue.title.isBlank()) problems += "title must not be blank"
+        if (catalogue.sources.isEmpty()) problems += "sources must not be empty"
+        catalogue.sources.forEachIndexed { i, source ->
+            if (source.isBlank()) problems += "sources[$i] must not be blank"
         }
-        if (catalogue.title.isBlank()) {
-            problems += "title must not be blank"
-        }
-        if (catalogue.sources.isEmpty()) {
-            problems += "sources must not be empty"
-        }
-        catalogue.sources.forEachIndexed { i, s ->
-            if (s.isBlank()) problems += "sources[$i] must not be blank"
-        }
-        if (catalogue.requirements.isEmpty()) {
-            problems += "requirements must not be empty"
-        }
-        if (catalogue.controls.isEmpty()) {
-            problems += "controls must not be empty"
-        }
-
-        catalogue.requirements.forEach { req ->
-            if (!ID_PATTERN.matches(req.id)) {
-                problems += "requirement id '${req.id}' does not match id pattern"
-            }
-            if (req.reference.isBlank()) {
-                problems += "requirement '${req.id}' reference must not be blank"
-            }
-            if (req.text.isBlank()) {
-                problems += "requirement '${req.id}' text must not be blank"
-            }
-            if (req.controls.isEmpty()) {
-                problems += "requirement '${req.id}' controls must not be empty"
-            }
-            req.controls.groupingBy { it }.eachCount().filterValues { it > 1 }.keys.forEach { dup ->
-                problems += "requirement '${req.id}' has duplicate control reference '$dup'"
-            }
-        }
-
-        catalogue.controls.forEach { ctrl ->
-            if (!ID_PATTERN.matches(ctrl.id)) {
-                problems += "control id '${ctrl.id}' does not match id pattern"
-            }
-            if (ctrl.title.isBlank()) {
-                problems += "control '${ctrl.id}' title must not be blank"
-            }
-            if (ctrl.evidence.isEmpty()) {
-                problems += "control '${ctrl.id}' evidence must not be empty"
-            }
-            ctrl.evidence.forEachIndexed { i, e ->
-                if (e.isBlank()) problems += "control '${ctrl.id}' evidence[$i] must not be blank"
-            }
-            if (ctrl.questions.isEmpty()) {
-                problems += "control '${ctrl.id}' questions must not be empty"
-            }
-            ctrl.questions.forEach { q ->
-                if (!ID_PATTERN.matches(q.id)) {
-                    problems += "question id '${q.id}' does not match id pattern"
-                }
-                if (q.text.isBlank()) {
-                    problems += "question '${q.id}' text must not be blank"
-                }
-                if (q.explanation.isBlank()) {
-                    problems += "question '${q.id}' explanation must not be blank"
-                }
-                if (q.example.isBlank()) {
-                    problems += "question '${q.id}' example must not be blank"
-                }
-                if (q.answers.size < 2) {
-                    problems += "question '${q.id}' must have at least 2 answers, got ${q.answers.size}"
-                }
-                q.answers.groupingBy { it }.eachCount().filterValues { it > 1 }.keys.forEach { dup ->
-                    problems += "question '${q.id}' has duplicate answer '$dup'"
-                }
-            }
-        }
-
-        // Global duplicate id check (requirements, controls and questions share a namespace)
-        val ids = catalogue.requirements.map { it.id } +
-                catalogue.controls.map { it.id } +
-                catalogue.controls.flatMap { control -> control.questions.map { it.id } }
-        ids.groupingBy { it }.eachCount().filterValues { it > 1 }.keys.forEach {
-            problems += "duplicate id '$it'"
-        }
-
-        // Cross-reference check
-        val controlIds = catalogue.controls.map { it.id }.toSet()
-        catalogue.requirements.forEach { requirement ->
-            requirement.controls.filterNot { it in controlIds }.forEach {
-                problems += "requirement '${requirement.id}' points to unknown control '$it'"
-            }
-        }
-
+        if (catalogue.requirements.isEmpty()) problems += "requirements must not be empty"
+        if (catalogue.controls.isEmpty()) problems += "controls must not be empty"
         return problems
     }
 
+    private fun checkRequirement(requirement: Requirement): List<String> {
+        val problems = mutableListOf<String>()
+        val id = requirement.id
+        if (!ID_PATTERN.matches(id)) problems += "requirement id '$id' does not match id pattern"
+        if (requirement.reference.isBlank()) problems += "requirement '$id' reference must not be blank"
+        if (requirement.text.isBlank()) problems += "requirement '$id' text must not be blank"
+        if (requirement.controls.isEmpty()) problems += "requirement '$id' controls must not be empty"
+        duplicates(requirement.controls).forEach {
+            problems += "requirement '$id' has duplicate control reference '$it'"
+        }
+        return problems
+    }
+
+    private fun checkControl(control: Control): List<String> {
+        val problems = mutableListOf<String>()
+        val id = control.id
+        if (!ID_PATTERN.matches(id)) problems += "control id '$id' does not match id pattern"
+        if (control.title.isBlank()) problems += "control '$id' title must not be blank"
+        if (control.evidence.isEmpty()) problems += "control '$id' evidence must not be empty"
+        control.evidence.forEachIndexed { i, evidence ->
+            if (evidence.isBlank()) problems += "control '$id' evidence[$i] must not be blank"
+        }
+        if (control.questions.isEmpty()) problems += "control '$id' questions must not be empty"
+        return problems + control.questions.flatMap(::checkQuestion)
+    }
+
+    private fun checkQuestion(question: Question): List<String> {
+        val problems = mutableListOf<String>()
+        val id = question.id
+        if (!ID_PATTERN.matches(id)) problems += "question id '$id' does not match id pattern"
+        if (question.text.isBlank()) problems += "question '$id' text must not be blank"
+        if (question.explanation.isBlank()) problems += "question '$id' explanation must not be blank"
+        if (question.example.isBlank()) problems += "question '$id' example must not be blank"
+        if (question.answers.size < 2) {
+            problems += "question '$id' must have at least 2 answers, got ${question.answers.size}"
+        }
+        duplicates(question.answers).forEach { problems += "question '$id' has duplicate answer '$it'" }
+        return problems
+    }
+
+    /** Requirements, controls and questions share one id namespace; requirements must point to known controls. */
+    private fun checkCrossReferences(catalogue: Catalogue): List<String> {
+        val ids = catalogue.requirements.map { it.id } +
+            catalogue.controls.map { it.id } +
+            catalogue.controls.flatMap { control -> control.questions.map { it.id } }
+        val controlIds = catalogue.controls.map { it.id }.toSet()
+
+        return duplicates(ids).map { "duplicate id '$it'" } +
+            catalogue.requirements.flatMap { requirement ->
+                requirement.controls.filterNot { it in controlIds }
+                    .map { "requirement '${requirement.id}' points to unknown control '$it'" }
+            }
+    }
+
+    private fun <T> duplicates(values: List<T>): Set<T> =
+        values.groupingBy { it }.eachCount().filterValues { it > 1 }.keys
+
     companion object {
         const val CATALOGUE_FILE = "catalogue.yaml"
+
         // At most 9 digits, so the number always fits in an Int.
         private val VERSION_DIR_PATTERN = Regex("v[1-9]\\d{0,8}")
         private val FRAMEWORK_PATTERN = Regex("^[a-z0-9]+(-[a-z0-9]+)*$")
@@ -186,5 +166,5 @@ class CatalogueLoader(private val frameworksDir: Path) {
     }
 }
 
-class InvalidCatalogueException(file: Path, problems: List<String>, cause: Throwable? = null) :
+internal class InvalidCatalogueException(file: Path, problems: List<String>, cause: Throwable? = null) :
     RuntimeException("Invalid catalogue $file:\n" + problems.joinToString("\n") { "  - $it" }, cause)

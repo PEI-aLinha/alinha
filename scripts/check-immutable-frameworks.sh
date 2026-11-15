@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Fails if a PR adds, modifies, deletes or renames a file inside a released framework version (NFR05).
+# Fails if a PR adds, modifies, deletes or renames a file inside a released framework version (RNF18).
 # Released versions are listed in frameworks/RELEASES (one framework/vN per line).
 # The list is read from origin/main, so a PR cannot unlist a version and edit it in the same change.
 set -euo pipefail
@@ -23,7 +23,7 @@ while IFS= read -r version; do
   while IFS= read -r file; do
     case "$file" in
       "frameworks/$version/"*)
-        echo "ERROR: $file belongs to released version '$version'. Create a new vN/ folder instead (NFR05)."
+        echo "ERROR: $file belongs to released version '$version'. Create a new vN/ folder instead (RNF18)."
         fail=1
         ;;
     esac

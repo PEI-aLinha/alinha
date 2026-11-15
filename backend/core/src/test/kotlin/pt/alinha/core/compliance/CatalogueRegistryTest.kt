@@ -8,6 +8,7 @@ import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import org.springframework.context.ApplicationEventPublisher
+import org.springframework.transaction.support.TransactionOperations
 
 class CatalogueRegistryTest {
 
@@ -36,10 +37,8 @@ class CatalogueRegistryTest {
 
         registry().also { it.onStartup(); it.onReady() }
 
-        assertThat(published).containsExactly(
-            CatalogueVersionPublished("nis2-qnrcs", 1, "NIS2 v1", (published[0] as CatalogueVersionPublished).occurredAt),
-            CatalogueVersionPublished("nis2-qnrcs", 2, "NIS2 v2", (published[1] as CatalogueVersionPublished).occurredAt),
-        )
+        assertThat(published.map { it as CatalogueVersionPublished }.map { Triple(it.framework, it.version, it.title) })
+            .containsExactly(Triple("nis2-qnrcs", 1, "NIS2 v1"), Triple("nis2-qnrcs", 2, "NIS2 v2"))
     }
 
     @Test
@@ -82,7 +81,8 @@ class CatalogueRegistryTest {
         assertThat(registry.frameworksWithControl("CTRL-UNKNOWN")).isEmpty()
     }
 
-    private fun registry() = CatalogueRegistry(frameworksDir.toString(), events)
+    private fun registry() =
+        CatalogueRegistry(frameworksDir.toString(), events, TransactionOperations.withoutTransaction())
 
     private fun write(framework: String, version: Int, title: String = "NIS2 v$version") {
         val dir = frameworksDir.resolve(framework).resolve("v$version").createDirectories()

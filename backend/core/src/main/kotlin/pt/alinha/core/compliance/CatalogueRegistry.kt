@@ -8,6 +8,7 @@ import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
+import org.springframework.transaction.support.TransactionOperations
 
 /**
  * Announces that a catalogue version is available. Not tenant-specific: a catalogue applies to every
@@ -17,18 +18,19 @@ data class CatalogueVersionPublished(
     val framework: String,
     val version: Int,
     val title: String,
-    val occurredAt: Instant = Instant.now(),
+    val occurredAt: Instant,
 )
 
 /**
- * Keeps the loaded catalogues in memory. A published version is never edited (NFR05):
+ * Keeps the loaded catalogues in memory. A loaded version never changes (RNF18):
  * assessments store (framework, version) and read their questions with [get].
  * Catalogues are read once, at start-up: a new version is picked up by restarting the application.
  */
 @Component
 class CatalogueRegistry(
-    @Value("\${alinha.frameworks.dir:../../frameworks}") frameworksDir: String,
+    @Value("\${alinha.frameworks.dir}") frameworksDir: String,
     private val events: ApplicationEventPublisher,
+    private val transactions: TransactionOperations,
 ) {
     private val loader = CatalogueLoader(Path.of(frameworksDir))
 
@@ -37,8 +39,7 @@ class CatalogueRegistry(
 
     /**
      * Loads and validates catalogues during bean initialisation so a bad catalogue aborts
-     * startup before the port opens. Events are NOT published here: [EventListener] and
-     * [org.springframework.modulith.events.ApplicationModuleListener] methods are not yet
+     * startup before the port opens. Events are NOT published here: listeners are not yet
      * registered. They are notified in [onReady].
      */
     @PostConstruct
@@ -47,14 +48,15 @@ class CatalogueRegistry(
     }
 
     /**
-     * Publishes [CatalogueVersionPublished] for every version loaded at startup, once all
-     * listeners are registered.
+     * Publishes [CatalogueVersionPublished] for every version loaded at startup, once all listeners
+     * are registered. It publishes inside a transaction because `@ApplicationModuleListener` only
+     * runs after a commit: without one, those listeners would be skipped in silence.
      */
     @EventListener(ApplicationReadyEvent::class)
     fun onReady() {
-        catalogues.keys.sortedWith(compareBy({ it.framework }, { it.version })).forEach { key ->
-            val catalogue = catalogues.getValue(key)
-            events.publishEvent(CatalogueVersionPublished(key.framework, key.version, catalogue.title))
+        val now = Instant.now()
+        transactions.executeWithoutResult {
+            all().forEach { events.publishEvent(CatalogueVersionPublished(it.framework, it.version, it.title, now)) }
         }
     }
 

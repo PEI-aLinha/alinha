@@ -24,6 +24,7 @@ dependencies {
     // implementation("org.springframework.boot:spring-boot-starter-security-oauth2-resource-server")
 
     testImplementation(libs.spring.boot.starter.test)
+    testImplementation(libs.spring.modulith.events.api) // @ApplicationModuleListener in the wiring test
     testImplementation(libs.testcontainers.vault)
     testImplementation(libs.testcontainers.junit.jupiter)
 }

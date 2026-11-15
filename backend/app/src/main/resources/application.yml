@@ -44,5 +44,5 @@ management:
 
 alinha:
   frameworks:
-    # Folder with the framework catalogues (NFR18). Mounted into the container in production.
+    # Folder with the framework catalogues (RNF18). Mounted into the container in production.
     dir: ${FRAMEWORKS_DIR:../../frameworks}

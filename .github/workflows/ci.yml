@@ -78,7 +78,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: pipx install check-jsonschema
+      - run: pipx install check-jsonschema==0.39.0
       - run: ./scripts/validate-frameworks.sh
 
   immutable-frameworks:
