@@ -47,3 +47,8 @@ management:
     web:
       exposure:
         include: health,info,modulith
+
+alinha:
+  frameworks:
+    # Folder with the framework catalogues (RNF18). Mounted into the container in production.
+    dir: ${FRAMEWORKS_DIR:../../frameworks}

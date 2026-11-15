@@ -17,11 +17,13 @@ dependencies {
     implementation(libs.spring.modulith.starter.core)
     implementation(libs.kotlin.reflect)
     implementation(libs.jackson.module.kotlin)
+    implementation(libs.jackson.dataformat.yaml)
     implementation(libs.spring.vault.core) // TenantSecretStore on OpenBao (KV v2)
 
     implementation(libs.spring.boot.starter.security.oauth2.resource.server) // Keycloak JWTs + RBAC
 
     testImplementation(libs.spring.boot.starter.test)
+    testImplementation(libs.spring.modulith.events.api) // @ApplicationModuleListener in the wiring test
     testImplementation(libs.spring.boot.starter.webmvc.test)
     testImplementation(libs.spring.boot.starter.security.oauth2.resource.server.test)
     testImplementation(libs.spring.boot.starter.actuator)
