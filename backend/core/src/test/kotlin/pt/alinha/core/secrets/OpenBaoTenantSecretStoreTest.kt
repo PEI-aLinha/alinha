@@ -12,6 +12,8 @@ import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.utility.DockerImageName
 import org.testcontainers.vault.VaultContainer
+import pt.alinha.core.audit.AiProvenance
+import pt.alinha.core.audit.AuditTrail
 import pt.alinha.core.tenant.internal.JwtTenantContext
 import pt.alinha.pluginapi.TenantId
 import java.net.URI
@@ -33,13 +35,14 @@ class OpenBaoTenantSecretStoreTest {
         private lateinit var vault: VaultTemplate
         private val tenants = JwtTenantContext()
         private lateinit var store: OpenBaoTenantSecretStore
+        private val audit = RecordingAuditTrail()
 
         @BeforeAll
         @JvmStatic
         fun setUp() {
             val endpoint = VaultEndpoint.from(URI.create(openBao.httpHostAddress))
             vault = VaultTemplate(endpoint, TokenAuthentication(ROOT_TOKEN))
-            store = OpenBaoTenantSecretStore(vault, tenants)
+            store = OpenBaoTenantSecretStore(vault, tenants, audit)
         }
     }
 
@@ -106,7 +109,41 @@ class OpenBaoTenantSecretStoreTest {
     }
 
     @Test
+    fun `records put and delete without the secret value`() {
+        val tenant = newTenant()
+        asTenant(tenant) {
+            store.put("code-repository", mapOf("token" to "ghp_secret"))
+            store.delete("code-repository")
+        }
+
+        val entries = audit.entries.filter { it.entityId == "code-repository" }.takeLast(2)
+        assertThat(entries.map { it.action }).containsExactly("tenant_secret.put", "tenant_secret.delete")
+        assertThat(entries).allSatisfy {
+            assertThat(it.entityType).isEqualTo("provider_credential")
+            assertThat(it.details).isEqualTo(mapOf("provider" to "code-repository"))
+            assertThat(it.toString()).doesNotContain("ghp_secret").doesNotContain("token")
+        }
+    }
+
+    @Test
     fun `fails without a current tenant`() {
         assertThatThrownBy { store.get("code-repository") }.isInstanceOf(IllegalStateException::class.java)
+    }
+}
+
+/** Records calls; the transactional behaviour is covered by AuditTrailIntegrationTest. */
+private class RecordingAuditTrail : AuditTrail {
+    data class Entry(val action: String, val entityType: String, val entityId: String, val details: Map<String, Any?>)
+
+    val entries = mutableListOf<Entry>()
+
+    override fun record(
+        action: String,
+        entityType: String,
+        entityId: String,
+        details: Map<String, Any?>,
+        provenance: AiProvenance?,
+    ) {
+        entries += Entry(action, entityType, entityId, details)
     }
 }
