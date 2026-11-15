@@ -1,6 +1,7 @@
 package pt.alinha
 
 import com.tngtech.archunit.base.DescribedPredicate
+import com.tngtech.archunit.core.domain.JavaClass
 import com.tngtech.archunit.core.domain.JavaClasses
 import com.tngtech.archunit.core.domain.JavaMethod
 import com.tngtech.archunit.core.domain.JavaMethodCall
@@ -14,7 +15,7 @@ import org.junit.jupiter.api.Test
 
 /**
  * Tenant isolation (RNF03) is enforced by Hibernate's `@TenantId`, which only covers JPA/HQL.
- * Native SQL and `JdbcTemplate` skip it and there is no database-level backstop, so plugins may not use them.
+ * Native SQL and raw JDBC (`JdbcTemplate`, `DataSource`, `Connection`, ...) skip it and there is no database-level backstop, so plugins may not use them.
  * See docs/tenancy.md. The core owns the few places that need raw SQL and filters by tenant by hand.
  */
 class TenantFilterBypassTest {
@@ -24,7 +25,7 @@ class TenantFilterBypassTest {
         .importPackages("pt.alinha")
 
     @Test
-    fun `plugins do not use JdbcTemplate`() = jdbcTemplates.check(classes)
+    fun `plugins do not use raw JDBC`() = rawJdbc.check(classes)
 
     @Test
     fun `plugins do not declare native queries`() = nativeQueryAnnotations.check(classes)
@@ -37,7 +38,10 @@ class TenantFilterBypassTest {
     fun `rules flag every bypass in the fixtures`() {
         val fixtures = ClassFileImporter().importPackages(FIXTURE_PACKAGE)
         val expected = mapOf(
-            jdbcTemplates to listOf("JdbcTemplateUser"),
+            rawJdbc to listOf(
+                "JdbcTemplateUser", "JdbcOperationsUser", "JdbcClientUser", "DataSourceUser",
+                "ConnectionUser", "StatementUser", "DriverManagerUser",
+            ),
             nativeQueryAnnotations to listOf("NativeQueryRepository"),
             nativeSqlCalls to listOf("EntityManagerNativeQuery", "SessionDoWork", "SessionDoReturningWork"),
         )
@@ -56,14 +60,26 @@ class TenantFilterBypassTest {
         const val FIXTURE_PACKAGE = "pt.alinha.fixture.tenantbypass"
         val coreCode = arrayOf("pt.alinha.core..", "pt.alinha.pluginapi..")
 
-        val jdbcTemplates: ArchRule = noClasses()
+        /** Every way to reach a JDBC connection directly; subtypes (e.g. `PreparedStatement`) included. */
+        val rawJdbcTypes = listOf(
+            "org.springframework.jdbc.core.JdbcOperations", // JdbcTemplate
+            "org.springframework.jdbc.core.namedparam.NamedParameterJdbcOperations",
+            "org.springframework.jdbc.core.simple.JdbcClient",
+            "org.springframework.jdbc.core.simple.SimpleJdbcInsertOperations",
+            "org.springframework.jdbc.core.simple.SimpleJdbcCallOperations",
+            "javax.sql.DataSource",
+            "java.sql.Connection",
+            "java.sql.Statement",
+            "java.sql.DriverManager",
+        )
+
+        val rawJdbc: ArchRule = noClasses()
             .that().resideInAPackage("pt.alinha..")
             .and().resideOutsideOfPackages(*coreCode)
-            .should().dependOnClassesThat().haveFullyQualifiedName("org.springframework.jdbc.core.JdbcTemplate")
-            .orShould().dependOnClassesThat().haveFullyQualifiedName("org.springframework.jdbc.core.simple.JdbcClient")
-            .orShould().dependOnClassesThat()
-            .haveFullyQualifiedName("org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate")
-            .because("JdbcTemplate is not filtered by tenant (docs/tenancy.md)")
+            .should().dependOnClassesThat(object : DescribedPredicate<JavaClass>("are raw JDBC access") {
+                override fun test(type: JavaClass): Boolean = rawJdbcTypes.any(type::isAssignableTo)
+            })
+            .because("raw JDBC is not filtered by tenant (docs/tenancy.md)")
             .allowEmptyShould(true)
 
         val nativeQueryAnnotations: ArchRule = methods()
