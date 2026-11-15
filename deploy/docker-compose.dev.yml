@@ -11,17 +11,35 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-alinha}
       POSTGRES_USER: ${POSTGRES_USER:-alinha}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-alinha}
+    healthcheck:
+      # TCP, not the unix socket: the temporary initdb server only listens on the socket.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 2s
+      timeout: 3s
+      retries: 30
     ports: ["127.0.0.1:5432:5432"]
     volumes: [pgdata:/var/lib/postgresql/data]
 
   redis:
     image: redis:8
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
     ports: ["127.0.0.1:6379:6379"]
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.4
     command: start-dev --import-realm
+    # The image has no curl, so the shell's /dev/tcp reads the management port directly.
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q ^HTTP/1.1.200 <&3"]
+      interval: 5s
+      timeout: 3s
+      retries: 40
     environment:
+      KC_HEALTH_ENABLED: "true"
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
     ports: ["127.0.0.1:8180:8080"]
@@ -32,6 +50,26 @@ services:
   mailpit:
     image: axllent/mailpit:v1.33.1
     ports: ["127.0.0.1:1025:1025", "127.0.0.1:8025:8025"]
+
+  # Secrets (NFR09). Dev mode: in-memory, unsealed, KV v2 at secret/. Data is lost on restart;
+  # openbao-init re-seeds it. Dev-only token below; never use dev mode outside local development.
+  openbao:
+    image: openbao/openbao:2.4.1
+    command: server -dev -dev-listen-address=0.0.0.0:8200
+    environment:
+      BAO_DEV_ROOT_TOKEN_ID: dev-root-token
+    cap_add: [IPC_LOCK]
+    ports: ["127.0.0.1:8200:8200"] # dev root token is public: never expose beyond localhost
+
+  openbao-init:
+    image: openbao/openbao:2.4.1
+    depends_on: [openbao]
+    entrypoint: ["/bin/sh", "/init/init.sh"]
+    environment:
+      BAO_ADDR: http://openbao:8200
+      BAO_TOKEN: dev-root-token
+    volumes: [./openbao:/init:ro]
+    restart: "no"
 
 volumes:
   pgdata:
