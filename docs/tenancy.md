@@ -68,7 +68,8 @@ Tests: `TenantResolutionTest`, `JwtTenantContextTest`, `TenantFilterBypassTest`,
    `tenantContext.runAs(event.tenantId) { tx.execute { ... } }`, started **outside** any transaction (a JPA
    session keeps the tenant it was opened with). `@ApplicationModuleListener` and `@Transactional` listeners
    open the transaction before your code runs, so `runAs` fails there: use a plain
-   `@Async @TransactionalEventListener` and open the transaction inside `runAs`.
+   `@Async @TransactionalEventListener` and open the transaction inside `runAs`. `TenantIsolationIntegrationTest`
+   has a working example (`FixtureNoteListener`).
 5. **Native SQL and raw JDBC are not filtered**, so `TenantFilterBypassTest` bans them in plugins.
    Use JPA/HQL. If a case truly needs raw SQL, ask for it in the core and add a cross-tenant test.
 6. Provider credentials go through `pluginapi.TenantSecretStore`, which also takes the tenant from

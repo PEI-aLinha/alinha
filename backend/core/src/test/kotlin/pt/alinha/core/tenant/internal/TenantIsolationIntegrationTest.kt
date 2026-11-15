@@ -11,13 +11,18 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.SpringBootConfiguration
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.context.annotation.Import
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.scheduling.annotation.Async
+import org.springframework.scheduling.annotation.EnableAsync
+import org.springframework.stereotype.Component
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
+import org.springframework.transaction.event.TransactionalEventListener
 import org.springframework.transaction.support.TransactionTemplate
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
@@ -26,6 +31,9 @@ import pt.alinha.core.tenant.TenantContext
 import pt.alinha.core.tenant.TenantOwnedEntity
 import pt.alinha.pluginapi.TenantId
 import java.util.UUID
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 
 @Testcontainers
 @SpringBootTest(
@@ -58,6 +66,12 @@ class TenantIsolationIntegrationTest {
 
     @Autowired
     private lateinit var jdbc: JdbcTemplate
+
+    @Autowired
+    private lateinit var events: ApplicationEventPublisher
+
+    @Autowired
+    private lateinit var listener: FixtureNoteListener
 
     private val tenantA = TenantId(UUID.randomUUID())
     private val tenantB = TenantId(UUID.randomUUID())
@@ -113,11 +127,47 @@ class TenantIsolationIntegrationTest {
     fun `runAs refuses to start inside a transaction`() {
         assertThrows<IllegalStateException> { tx.execute { tenants.runAs(tenantA) { } } }
     }
+
+    /** The listener recipe from docs/tenancy.md (rule 4 for plugin authors). */
+    @Test
+    fun `async transactional listener writes for the event tenant through runAs`() {
+        val text = "from-listener-${UUID.randomUUID()}"
+
+        asTenant(tenantA) { events.publishEvent(FixtureNoteRequested(tenantA, text)) }
+        val id = listener.result(text).get(10, TimeUnit.SECONDS)
+
+        val stored = jdbc.queryForObject("select tenant_id from fixture_note where id = ?", UUID::class.java, id)
+        assertEquals(tenantA.value, stored)
+        asTenant(tenantB) { assertTrue(notes.findById(id).isEmpty) }
+    }
+}
+
+data class FixtureNoteRequested(val tenant: TenantId, val text: String)
+
+/** Recommended shape: async, after commit, `runAs` first and the transaction inside it. */
+@Component
+class FixtureNoteListener(
+    private val tenants: TenantContext,
+    private val tx: TransactionTemplate,
+    private val notes: FixtureNoteRepository,
+) {
+    private val results = ConcurrentHashMap<String, CompletableFuture<UUID>>()
+
+    fun result(text: String): CompletableFuture<UUID> = results.computeIfAbsent(text) { CompletableFuture() }
+
+    @Async
+    @TransactionalEventListener
+    fun on(event: FixtureNoteRequested) {
+        val result = result(event.text)
+        runCatching { tenants.runAs(event.tenant) { checkNotNull(tx.execute { notes.save(FixtureNote(text = event.text)).id }) } }
+            .fold(result::complete, result::completeExceptionally)
+    }
 }
 
 @SpringBootConfiguration
 @EnableAutoConfiguration
-@Import(JwtTenantContext::class, HibernateTenantResolver::class)
+@EnableAsync
+@Import(JwtTenantContext::class, HibernateTenantResolver::class, FixtureNoteListener::class)
 class TenantIsolationTestApplication
 
 @Entity
