@@ -3,9 +3,10 @@
 useDefault = true
 
 [allowlist]
-description = "Dev-only credentials for local docker compose (documented in CLAUDE.md)"
+description = "Dev-only credentials for local docker compose"
+# Only the files that hold dev credentials on purpose. Do not widen this to whole folders:
+# a future Keycloak realm export with real client secrets must still be flagged.
 paths = [
   '''deploy/docker-compose\.dev\.yml''',
   '''deploy/openbao/init\.sh''',
-  '''deploy/keycloak/.*''',
 ]

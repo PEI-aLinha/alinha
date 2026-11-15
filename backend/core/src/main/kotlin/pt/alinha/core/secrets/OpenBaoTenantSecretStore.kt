@@ -1,5 +1,6 @@
 package pt.alinha.core.secrets
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Component
 import org.springframework.vault.core.VaultOperations
 import org.springframework.vault.core.VaultVersionedKeyValueOperations
@@ -8,10 +9,14 @@ import pt.alinha.pluginapi.TenantSecretStore
 
 /**
  * Stores provider credentials in OpenBao KV v2 at `secret/tenants/{tenantId}/providers/{provider}`.
- * The tenant comes from [TenantContext], never from the caller.
- * The tenant id is a UUID and the provider id is validated, so a caller cannot escape its tenant path.
+ * The tenant comes from [TenantContext], never from the caller. The tenant id is a UUID and the provider id
+ * is validated, so a caller cannot escape its tenant path.
+ *
+ * Not created when `spring.cloud.vault.enabled=false` (tests without OpenBao): there is no
+ * `VaultOperations` bean then, so a context test provides its own [TenantSecretStore] double.
  */
 @Component
+@ConditionalOnProperty(prefix = "spring.cloud.vault", name = ["enabled"], havingValue = "true", matchIfMissing = true)
 class OpenBaoTenantSecretStore(
     private val vault: VaultOperations,
     private val tenants: TenantContext,
@@ -22,11 +27,17 @@ class OpenBaoTenantSecretStore(
     // TODO(#10): record put/delete in AuditTrail (tenant, provider, action — never the secret value).
     override fun put(provider: String, secret: Map<String, String>) {
         require(secret.isNotEmpty()) { "secret must not be empty" }
+        require(secret.all { (key, value) -> key.isNotBlank() && value.isNotBlank() }) {
+            "secret keys and values must not be blank"
+        }
         kv.put(path(provider), secret)
     }
 
     override fun get(provider: String): Map<String, String>? =
-        kv.get(path(provider))?.data?.mapValues { (_, value) -> value.toString() }
+        kv.get(path(provider))?.data?.mapValues { (key, value) ->
+            check(value is String) { "secret field '$key' is not a string" }
+            value
+        }
 
     /**
      * Permanently removes the credential: deleting the KV v2 metadata destroys every version.
