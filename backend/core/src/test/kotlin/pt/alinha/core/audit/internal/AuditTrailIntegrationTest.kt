@@ -153,4 +153,18 @@ class AuditTrailIntegrationTest {
         assertThat(all.content.map { it.entityId }).containsExactly(second, first)
         assertThat(after.content.map { it.entityId }).containsExactly(second)
     }
+
+    @Test
+    fun `from is inclusive and to is exclusive`() {
+        val tenant = TenantId(UUID.randomUUID())
+        val entityId = UUID.randomUUID().toString()
+        recordAs(tenant, entityId)
+        val at = tenants.runAs(tenant) { history.find(AuditFilter(entityId = entityId), page) }.content.single().occurredAt
+
+        val fromAt = tenants.runAs(tenant) { history.find(AuditFilter(entityId = entityId, from = at), page) }
+        val toAt = tenants.runAs(tenant) { history.find(AuditFilter(entityId = entityId, to = at), page) }
+
+        assertThat(fromAt.content).hasSize(1)
+        assertThat(toAt.content).isEmpty()
+    }
 }
