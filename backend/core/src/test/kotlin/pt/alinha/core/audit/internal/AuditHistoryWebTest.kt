@@ -71,6 +71,49 @@ class AuditHistoryWebTest {
     }
 
     @Test
+    fun `filters reach the history unchanged`() {
+        mockMvc.get(PATH) {
+            header("Authorization", "Bearer responsible")
+            param("entityType", "asset")
+            param("actor", "user-9")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.items[0].entityType") { value("asset") } // fake echoes the filter
+            jsonPath("$.items[0].actor") { value("user-9") }
+        }
+    }
+
+    @Test
+    fun `size is capped at 200`() {
+        mockMvc.get(PATH) {
+            header("Authorization", "Bearer responsible")
+            param("size", "1000")
+        }.andExpect { jsonPath("$.size") { value(200) } }
+    }
+
+    @Test
+    fun `zero or negative size and page fall back to the smallest valid values`() {
+        mockMvc.get(PATH) {
+            header("Authorization", "Bearer responsible")
+            param("size", "0")
+            param("page", "-3")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.size") { value(1) }
+            jsonPath("$.page") { value(0) }
+        }
+    }
+
+    @Test
+    fun `from after to is a bad request`() {
+        mockMvc.get(PATH) {
+            header("Authorization", "Bearer responsible")
+            param("from", "2026-11-16T10:00:00Z")
+            param("to", "2026-11-15T10:00:00Z")
+        }.andExpect { status { isBadRequest() } }
+    }
+
+    @Test
     fun `analyst is denied`() {
         mockMvc.get(PATH) { header("Authorization", "Bearer analyst") }.andExpect { status { isForbidden() } }
     }
@@ -111,16 +154,19 @@ class AuditWebTestApplication {
         builder.build()
     }
 
-    /** Returns one entry naming the tenant it ran as, to prove the tenant comes from the token. */
+    /**
+     * Returns one entry naming the tenant it ran as (proves the tenant comes from the token) and echoing
+     * the entityType/actor filters (proves the controller passes them through).
+     */
     @Bean
     fun fakeHistory(tenants: TenantContext): AuditHistory = object : AuditHistory {
         override fun find(filter: AuditFilter, pageable: Pageable): Page<AuditEntry> = PageImpl(
             listOf(
                 AuditEntry(
                     id = UUID.randomUUID(),
-                    actor = "user-1",
+                    actor = filter.actor ?: "user-1",
                     action = "fixture.read",
-                    entityType = "tenant",
+                    entityType = filter.entityType ?: "tenant",
                     entityId = tenants.current().value.toString(),
                     details = emptyMap(),
                     provenance = null,

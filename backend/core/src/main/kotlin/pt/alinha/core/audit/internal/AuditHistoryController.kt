@@ -3,9 +3,11 @@ package pt.alinha.core.audit.internal
 import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.format.annotation.DateTimeFormat
+import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.server.ResponseStatusException
 import pt.alinha.core.access.RequiresPermission
 import pt.alinha.core.audit.AuditEntry
 import pt.alinha.core.audit.AuditFilter
@@ -28,6 +30,9 @@ class AuditHistoryController(private val history: AuditHistory) {
         @RequestParam(defaultValue = "0") page: Int,
         @RequestParam(defaultValue = "50") size: Int,
     ): AuditPage {
+        if (from != null && to != null && from.isAfter(to)) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "from must not be after to")
+        }
         val pageable = PageRequest.of(
             page.coerceAtLeast(0),
             size.coerceIn(1, MAX_PAGE_SIZE),
