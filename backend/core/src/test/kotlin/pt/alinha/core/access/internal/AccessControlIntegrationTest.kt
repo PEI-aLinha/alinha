@@ -71,11 +71,6 @@ class AccessControlIntegrationTest {
     }
 
     @Test
-    fun `denies authenticated user on endpoint without annotation`() {
-        getAs("consultant", "/fixture/unannotated").andExpect { status { isForbidden() } }
-    }
-
-    @Test
     fun `denies token without known roles`() {
         getAs("intruder", "/fixture/assessment").andExpect { status { isForbidden() } }
     }
@@ -181,9 +176,6 @@ class FixtureController {
     @RequiresPermission("roadmap")
     @GetMapping("/roadmap")
     fun roadmap() = "ok"
-
-    @GetMapping("/unannotated")
-    fun unannotated() = "ok"
 }
 
 @RestController

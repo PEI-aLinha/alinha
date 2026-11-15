@@ -2,6 +2,7 @@ package pt.alinha.core.access.internal
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.springframework.boot.webmvc.error.ErrorController
 import org.springframework.web.method.HandlerMethod
 import pt.alinha.core.access.RequiresPermission
 
@@ -17,6 +18,11 @@ class RequiredPermissionsVerifierTest {
         fun unannotated() = "ok"
     }
 
+    @Suppress("unused")
+    private class SpringErrorEndpoint : ErrorController {
+        fun error() = "error"
+    }
+
     private fun handler(name: String) = HandlerMethod(Endpoints(), Endpoints::class.java.getDeclaredMethod(name))
 
     @Test
@@ -27,9 +33,23 @@ class RequiredPermissionsVerifierTest {
     }
 
     @Test
-    fun `ignores declared and unannotated endpoints`() {
+    fun `undeclared check ignores declared and unannotated endpoints`() {
         val handlers = listOf(handler("declared"), handler("unannotated"))
 
         assertThat(undeclaredPermissions(handlers, setOf("assessment:read"))).isEmpty()
+    }
+
+    @Test
+    fun `reports an endpoint without RequiresPermission`() {
+        val unannotated = unannotatedEndpoints(listOf(handler("declared"), handler("unannotated")))
+
+        assertThat(unannotated).hasSize(1).first().asString().contains("unannotated")
+    }
+
+    @Test
+    fun `exempts the error controller`() {
+        val errorHandler = HandlerMethod(SpringErrorEndpoint(), SpringErrorEndpoint::class.java.getDeclaredMethod("error"))
+
+        assertThat(unannotatedEndpoints(listOf(errorHandler))).isEmpty()
     }
 }
