@@ -163,8 +163,9 @@ class KeycloakIdentityDirectory internal constructor(
 
     /**
      * Writes back the whole representation read by [readUser]: Keycloak 26 refuses a partial `PUT`
-     * (`error-user-attribute-required`). A profile change made between the read and this write (e.g. in the account
-     * console) is overwritten. The window is two back-to-back calls, and only right after registration.
+     * (`error-user-attribute-required`). A profile change made between the read and this write (e.g. by an admin; users
+     * have no account console, see deploy/keycloak/README.md) is overwritten. The window is two back-to-back calls, and
+     * only right after registration.
      */
     private fun writeUser(token: String, subject: String, user: Map<String, Any?>, attributes: Map<String, List<String>>) {
         http.put().uri("$users/{id}", subject).headers { it.setBearerAuth(token) }

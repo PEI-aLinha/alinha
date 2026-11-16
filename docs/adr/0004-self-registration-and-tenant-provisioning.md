@@ -33,6 +33,8 @@ handler cannot pick a tenant either. Nothing in the platform creates a tenant.
 - **The identity provider is behind an internal, vendor-neutral `IdentityDirectory`.** The Keycloak implementation
   uses the Admin REST API with a confidential client (`alinha-provisioner`, service account with
   `realm-management` `manage-users` and `view-users`). Its secret comes from OpenBao. Plugins never call Keycloak.
+  Keycloak gives the default role (and so `registrant`) to every account it creates, except imported ones, so any
+  `IdentityDirectory` method that creates accounts (invitations, consultants) must remove that role.
 - **Registration is limited** because each one holds a database connection while it calls the identity provider:
   at most 4 at once on the instance, one in flight per account, and per client IP one in flight and 5 attempts per
   hour (`alinha.provisioning.max-per-client-per-hour`). Over the limits: 503 `REGISTRATION_BUSY` or 429
