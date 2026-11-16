@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component
 import org.springframework.transaction.support.TransactionSynchronization
 import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.transaction.support.TransactionTemplate
+import org.springframework.web.client.RestClientException
 import org.springframework.web.server.ResponseStatusException
 import pt.alinha.core.audit.AuditTrail
 import pt.alinha.core.tenant.TenantProvisioning
@@ -65,8 +66,24 @@ class TenantProvisioner(
 
         // Registered before the call: a partial assignment that throws is undone as well.
         TransactionSynchronizationManager.registerSynchronization(RevokeOnRollback(subject, tenantId))
-        directory.assignTenant(subject, tenantId) // last: everything else can still roll back
+        assignInDirectory(subject, tenantId) // last: everything else can still roll back
         return result
+    }
+
+    /** An identity provider failure is the platform's problem, not the user's: 503, details only in the log. */
+    private fun assignInDirectory(subject: String, tenantId: TenantId) {
+        try {
+            directory.assignTenant(subject, tenantId)
+        } catch (e: RestClientException) {
+            throw identityUnavailable(tenantId, e)
+        } catch (e: IllegalStateException) {
+            throw identityUnavailable(tenantId, e)
+        }
+    }
+
+    private fun identityUnavailable(tenantId: TenantId, cause: Exception): ResponseStatusException {
+        log.error("Identity provider failed while assigning tenant {}", tenantId.value, cause)
+        return ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Identity provider unavailable", cause)
     }
 
     private inner class RevokeOnRollback(

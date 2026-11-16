@@ -27,13 +27,18 @@ import pt.alinha.core.audit.internal.AuditTestApplication
 import pt.alinha.core.tenant.TenantContext
 import pt.alinha.core.tenant.TenantProvisioning
 import pt.alinha.pluginapi.TenantId
+import java.util.Collections
 import java.util.UUID
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 /** Records calls instead of talking to Keycloak; can be told to fail. */
 class FakeIdentityDirectory : IdentityDirectory {
-    val assigned = mutableListOf<Pair<String, TenantId>>()
-    val revoked = mutableListOf<Pair<String, TenantId>>()
+    val assigned: MutableList<Pair<String, TenantId>> = Collections.synchronizedList(mutableListOf())
+    val revoked: MutableList<Pair<String, TenantId>> = Collections.synchronizedList(mutableListOf())
     var failOnAssign = false
+    var failOnRevoke = false
 
     override fun assignTenant(subject: String, tenantId: TenantId) {
         assigned += subject to tenantId
@@ -42,6 +47,7 @@ class FakeIdentityDirectory : IdentityDirectory {
 
     override fun revokeTenant(subject: String, tenantId: TenantId) {
         revoked += subject to tenantId
+        if (failOnRevoke) error("identity provider down")
     }
 }
 
@@ -74,6 +80,7 @@ class TenantProvisionerIntegrationTest {
         directory.assigned.clear()
         directory.revoked.clear()
         directory.failOnAssign = false
+        directory.failOnRevoke = false
         jdbc.execute("create table if not exists public.provisioning_fixture (id uuid primary key, tenant_id uuid not null)")
     }
 
@@ -175,12 +182,13 @@ class TenantProvisionerIntegrationTest {
     }
 
     @Test
-    fun `an identity provider failure rolls back and undoes a partial assignment`() {
+    fun `an identity provider failure is a 503, rolls back and undoes a partial assignment`() {
         directory.failOnAssign = true
         var tenant: TenantId? = null
 
-        assertThrows<IllegalStateException> { provisioning.provisionForCurrentUser { tenant = it } }
+        val error = assertThrows<ResponseStatusException> { provisioning.provisionForCurrentUser { tenant = it } }
 
+        assertThat(error.statusCode).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE)
         val created = checkNotNull(tenant)
         assertThat(tenantRows(created)).isZero()
         assertThat(auditRows(created)).isZero()
@@ -204,6 +212,46 @@ class TenantProvisionerIntegrationTest {
         assertThat(directory.assigned).containsExactly(subject to created)
         assertThat(directory.revoked).containsExactly(subject to created)
         assertThat(tenantRows(created)).isZero()
+    }
+
+    @Test
+    fun `a failing undo is only logged and keeps the original error`() {
+        directory.failOnAssign = true
+        directory.failOnRevoke = true
+
+        val error = assertThrows<ResponseStatusException> { provisioning.provisionForCurrentUser { } }
+
+        assertThat(error.statusCode).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE)
+        assertThat(directory.revoked).hasSize(1)
+    }
+
+    @Test
+    fun `two concurrent registrations by the same account create one tenant`() {
+        val auth = SecurityContextHolder.getContext().authentication
+        val start = CountDownLatch(1)
+        val pool = Executors.newFixedThreadPool(2)
+        val outcomes = try {
+            List(2) {
+                pool.submit<Result<TenantId>> {
+                    SecurityContextHolder.getContext().authentication = auth
+                    start.await()
+                    try {
+                        runCatching { provisioning.provisionForCurrentUser { tenant -> Thread.sleep(200); tenant } }
+                    } finally {
+                        SecurityContextHolder.clearContext()
+                    }
+                }
+            }.also { start.countDown() }.map { it.get(30, TimeUnit.SECONDS) }
+        } finally {
+            pool.shutdownNow()
+        }
+
+        assertThat(outcomes.count { it.isSuccess }).isEqualTo(1)
+        val conflict = outcomes.single { it.isFailure }.exceptionOrNull()
+        assertThat((conflict as ResponseStatusException).statusCode).isEqualTo(HttpStatus.CONFLICT)
+        assertThat(jdbc.queryForObject("select count(*) from core.tenant where owner_subject = ?", Long::class.java, subject)).isEqualTo(1)
+        assertThat(directory.assigned).hasSize(1)
+        assertThat(directory.revoked).isEmpty()
     }
 
     @Test

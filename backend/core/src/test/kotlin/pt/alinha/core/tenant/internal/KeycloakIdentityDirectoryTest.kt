@@ -39,7 +39,7 @@ class KeycloakIdentityDirectoryTest {
         server.expect(requestTo("http://kc/realms/alinha/protocol/openid-connect/token"))
             .andExpect(method(HttpMethod.POST))
             .andExpect(content().formDataContains(mapOf("grant_type" to "client_credentials", "client_id" to "alinha-provisioner", "client_secret" to "s3cret")))
-            .andRespond(withSuccess("""{"access_token":"tok","expires_in":60}""", MediaType.APPLICATION_JSON))
+            .andRespond(withSuccess("""{"access_token":"tok","expires_in":300}""", MediaType.APPLICATION_JSON))
     }
 
     private fun expectGet(uri: String, body: String) {
@@ -92,19 +92,25 @@ class KeycloakIdentityDirectoryTest {
     }
 
     @Test
-    fun `revoke leaves another tenant in place`() {
-        val other = UUID.randomUUID()
+    fun `revoke leaves an account that now holds another tenant untouched`() {
         expectToken()
-        expectGet(users, """{"id":"$subject","attributes":{"tenant_id":["$other"]}}""")
-        server.expect(requestTo(users)).andExpect(method(HttpMethod.PUT))
-            .andExpect(content().json("""{"attributes":{"tenant_id":["$other"]}}"""))
-            .andRespond(withNoContent())
-        expectGet("$users/role-mappings/realm", "[]")
-        expectGet("$users/role-mappings/realm/available", "[]")
+        expectGet(users, """{"id":"$subject","attributes":{"tenant_id":["${UUID.randomUUID()}"]}}""")
 
         directory.revokeTenant(subject, tenant)
 
-        server.verify()
+        server.verify() // no PUT and no role change
+    }
+
+    @Test
+    fun `reuses the service-account token until shortly before it expires`() {
+        expectToken()
+        expectGet(users, """{"id":"$subject","attributes":{}}""")
+        expectGet(users, """{"id":"$subject","attributes":{}}""")
+
+        directory.revokeTenant(subject, tenant)
+        directory.revokeTenant(subject, tenant)
+
+        server.verify() // a single token request
     }
 
     @Test

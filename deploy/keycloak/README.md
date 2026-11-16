@@ -50,7 +50,9 @@ assigned to this consultant" (403) can be exercised locally.
   `view-users`). When an organization is registered, the app sets `tenant_id`, maps `responsible` and removes
   `default-roles-alinha` (so `registrant` goes away). It cannot create roles or read clients.
 - Its dev secret (`dev-provisioner-secret`) is also seeded in OpenBao as `identity.provisioner-secret`; the app reads
-  it from there, never from config files.
+  it from there, never from config files. Outside local development use a new secret and never this one.
+- The default role only exists in a realm created from this file. An existing dev realm must be recreated
+  (command above), or self-registered accounts get no `registrant` role and are refused (403).
 
 ## Token contract
 
