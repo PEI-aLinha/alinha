@@ -51,7 +51,12 @@ handler cannot pick a tenant either. Nothing in the platform creates a tenant.
   the commit can leave an account pointing to a tenant that does not exist. The account then has no data and the
   registration can be repeated by an admin clearing `tenant_id`. Logged as ERROR.
 - (−) Accounts that never finish registration stay as `registrant` (cleanup: #92).
-- (−) The app holds a credential that can manage users. It is scoped to one realm and stored in OpenBao.
+- (−) The app holds a credential that can manage users. It is scoped to one realm and stored in OpenBao, but
+  `manage-users` can map any realm role, `consultant` included, so it is as sensitive as an admin password.
+- (−) The per-IP limit trusts `X-Forwarded-For` from internal proxies (Tomcat's default: private and loopback
+  ranges). In production the backend must be reachable only through the BFF, which sets `X-Forwarded-For` from the
+  socket peer, and `server.tomcat.remoteip.internal-proxies` should name only the BFF. Otherwise every registration
+  shares the proxy's address and one limit (#14).
 
 ## Alternatives considered
 - **Consultant registers the client (`/portfolio`):** still needs Keycloak admin access and a tenant switch inside a

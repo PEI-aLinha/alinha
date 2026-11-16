@@ -48,7 +48,11 @@ assigned to this consultant" (403) can be exercised locally.
   The seed users above keep only their explicit role.
 - `alinha-provisioner` is a confidential client with a service account (`realm-management`: `manage-users`,
   `view-users`). When an organization is registered, the app sets `tenant_id`, maps `responsible` and removes
-  `default-roles-alinha` (so `registrant` goes away). It cannot create roles or read clients.
+  `default-roles-alinha` (so `registrant` goes away). It cannot create roles or read clients, but `manage-users`
+  can map **any** realm role (`consultant` included) to any user: treat its secret like an admin credential.
+- `tenant_id` and `tenants` are admin-only in the user profile (view and edit `admin`), and unmanaged attributes are
+  off, so a user cannot set them in the registration form or the account console. Keep it that way: a user who could
+  write `tenant_id` could enter another organization.
 - Its dev secret (`dev-provisioner-secret`) is also seeded in OpenBao as `identity.provisioner-secret`; the app reads
   it from there, never from config files. Outside local development use a new secret and never this one.
 - The default role only exists in a realm created from this file. An existing dev realm must be recreated

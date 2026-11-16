@@ -66,4 +66,5 @@ alinha:
 server:
   # Behind the BFF/Nginx: take the client IP from X-Forwarded-For only when the request comes from an internal
   # (private-range) proxy, so a client cannot choose its own (registration rate limit, ADR 0004).
+  # Production: set server.tomcat.remoteip.internal-proxies to the BFF's address only (ADR 0004).
   forward-headers-strategy: native
