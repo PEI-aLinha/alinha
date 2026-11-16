@@ -107,6 +107,10 @@ alinha down            # stop the containers
 
 The supported CLI versions are pinned in `.alinha-cli-version`.
 
+> **`FRAMEWORKS_DIR`** — the backend resolves framework catalogues from this path.
+> The default (`../../frameworks`) works when running from `backend/app/` (i.e. via `./gradlew :app:bootRun`).
+> In a container, set `FRAMEWORKS_DIR` to the absolute path of the mounted `frameworks/` folder.
+
 ## Working on a plugin
 
 Always work **inside a checkout of the main repo** — a plugin repo does not build on its own
@@ -160,7 +164,7 @@ Numbering from the technical report (section 3.2).
 | RNF09 no secrets in code/config | OpenBao (`secret/alinha/app` via Spring Cloud Vault); per-tenant provider credentials via `pluginapi.TenantSecretStore`; gitleaks job in CI | **done** (AI Service reads it once implemented) |
 | RNF12/RNF14 AI approval and provenance | `core.aigateway.AiDraft` (model, prompt version, sources, date); `AiDraft.provenance()` stored in the audit trail | provenance recorded; approval to do |
 | RNF17 new plugin without touching the core | `settings.gradle.kts` and `gen-frontend-plugins.mjs` discover the submodules; `ModularityTest` | **done** |
-| RNF18 catalogues as data | `frameworks/` read at runtime by the Compliance Engine | see `frameworks/README.md` |
+| RNF18 catalogues as data | `frameworks/` read from disk at start-up by `core.compliance.CatalogueRegistry` (`CatalogueLoader`); schema in `contracts/frameworks/`; released versions frozen by `scripts/check-immutable-frameworks.sh` | **done** for loading and versioning; see `frameworks/README.md` |
 | RNF19 coverage ≥ 70% and CI blocks merge | missing: Kover (Kotlin) + Vitest coverage in CI; branch protection/rulesets are available because all nine repos are public, and are applied in #4 | **to do** |
 | RNF21 whole system starts with one command | missing: full `deploy/docker-compose.yml` (Nginx, BFF, app, AI Service, workers, OpenBao) | **to do** |
 

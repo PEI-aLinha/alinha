@@ -1,0 +1,117 @@
+package pt.alinha.core.compliance
+
+import java.nio.file.Path
+import kotlin.io.path.createDirectories
+import kotlin.io.path.writeText
+import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
+import org.springframework.context.ApplicationEventPublisher
+import org.springframework.transaction.support.TransactionOperations
+
+class CatalogueRegistryTest {
+
+    @TempDir
+    lateinit var frameworksDir: Path
+
+    private val published = mutableListOf<Any>()
+    private val events = ApplicationEventPublisher { published += it }
+
+    @Test
+    fun `does not publish events until onReady is called`() {
+        write("nis2-qnrcs", 1)
+        val registry = registry()
+
+        registry.onStartup()
+        assertThat(published).isEmpty()
+
+        registry.onReady()
+        assertThat(published).hasSize(1)
+    }
+
+    @Test
+    fun `announces every version on startup`() {
+        write("nis2-qnrcs", 1)
+        write("nis2-qnrcs", 2)
+
+        registry().also { it.onStartup(); it.onReady() }
+
+        assertThat(published.map { it as CatalogueVersionPublished }.map { Triple(it.framework, it.version, it.title) })
+            .containsExactly(Triple("nis2-qnrcs", 1, "NIS2 v1"), Triple("nis2-qnrcs", 2, "NIS2 v2"))
+    }
+
+    @Test
+    fun `keeps old versions so existing assessments stay pinned`() {
+        write("nis2-qnrcs", 1)
+        write("nis2-qnrcs", 2)
+        val registry = registry().also { it.onStartup(); it.onReady() }
+
+        assertThat(registry.get("nis2-qnrcs", 1)?.version).isEqualTo(1)
+        assertThat(registry.latest("nis2-qnrcs")?.version).isEqualTo(2)
+        assertThat(registry.get("nis2-qnrcs", 3)).isNull()
+    }
+
+    @Test
+    fun `an invalid catalogue stops the startup`() {
+        write("nis2-qnrcs", 1, title = "")
+
+        assertThatThrownBy { registry().onStartup() }
+            .isInstanceOf(InvalidCatalogueException::class.java)
+            .hasMessageContaining("title must not be blank")
+    }
+
+    @Test
+    fun `a loaded version does not change when its file changes on disk`() {
+        write("nis2-qnrcs", 1)
+        val registry = registry().also { it.onStartup(); it.onReady() }
+
+        write("nis2-qnrcs", 1, title = "Titulo Alterado")
+
+        assertThat(registry.get("nis2-qnrcs", 1)?.title).isEqualTo("NIS2 v1")
+    }
+
+    @Test
+    fun `finds every framework that uses a canonical control`() {
+        write("nis2-qnrcs", 1)
+        write("gdpr", 1)
+        val registry = registry().also { it.onStartup(); it.onReady() }
+
+        assertThat(registry.frameworksWithControl("CTRL-MFA")).containsExactly("gdpr", "nis2-qnrcs")
+        assertThat(registry.frameworksWithControl("CTRL-UNKNOWN")).isEmpty()
+    }
+
+    private fun registry() =
+        CatalogueRegistry(frameworksDir.toString(), events, TransactionOperations.withoutTransaction())
+
+    private fun write(framework: String, version: Int, title: String = "NIS2 v$version") {
+        val dir = frameworksDir.resolve(framework).resolve("v$version").createDirectories()
+        dir.resolve(CatalogueLoader.CATALOGUE_FILE).writeText(
+            """
+            framework: $framework
+            version: $version
+            title: "$title"
+            sources:
+              - "Fonte"
+            requirements:
+              - id: REQ-1
+                reference: "Ref"
+                text: "Texto"
+                controls: [CTRL-MFA]
+            controls:
+              - id: CTRL-MFA
+                title: "Autenticação com dois fatores"
+                level: basic
+                technical: true
+                evidence:
+                  - "Evidência"
+                questions:
+                  - id: CTRL-MFA-Q1
+                    text: "Pergunta"
+                    explanation: "Explicação"
+                    example: "Exemplo"
+                    answers: ["yes", "no"]
+            """.trimIndent(),
+        )
+    }
+}

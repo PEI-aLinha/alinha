@@ -68,8 +68,11 @@ management:
       # (RNF02). Alerting on the age of the oldest pending job is #87.
       enabled: false
 
-# Job dispatcher (RNF02): outbox in PostgreSQL -> Redis Streams. See docs/jobs.md.
 alinha:
+  frameworks:
+    # Folder with the framework catalogues (RNF18). Mounted into the container in production.
+    dir: ${FRAMEWORKS_DIR:../../frameworks}
+  # Job dispatcher (RNF02): outbox in PostgreSQL -> Redis Streams. See docs/jobs.md.
   jobs:
     relay:
       enabled: true

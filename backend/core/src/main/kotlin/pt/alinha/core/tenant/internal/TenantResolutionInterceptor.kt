@@ -21,6 +21,9 @@ private const val TENANT_INTERCEPTOR_ORDER = 1
 @Component
 class TenantResolutionInterceptor : HandlerInterceptor {
     override fun preHandle(request: HttpServletRequest, response: HttpServletResponse, handler: Any): Boolean {
+        // Only controller methods are resolved. Every other handler is already denied by
+        // RequiresPermissionInterceptor, except static resources, which never read tenant data.
+        // If RBAC ever lets another handler type through, resolve its tenant here too.
         if (handler !is HandlerMethod || isTenantAgnostic(handler)) return true
         val tenant = resolveTenant(SecurityContextHolder.getContext().authentication, request.getHeader(TENANT_HEADER))
         request.setAttribute(TENANT_ATTRIBUTE, tenant)
