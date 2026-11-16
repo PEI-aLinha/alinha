@@ -101,6 +101,22 @@ class JobOutboxRepository(private val jdbc: JdbcClient) {
             .update()
     }
 
+    /** Redis outage: retry later without counting a failure, so the row never ends `dead` because of it. */
+    fun deferPublish(id: UUID, error: String, retryInMillis: Long) {
+        jdbc.sql(
+            """
+              update core.job_outbox
+              set last_error      = :error,
+                  next_attempt_at = now() + :delay * interval '1 millisecond'
+              where id = :id
+              """.trimIndent(),
+        )
+            .param("id", id)
+            .param("error", error)
+            .param("delay", retryInMillis)
+            .update()
+    }
+
     fun findDeadUnnotified(limit: Int): List<OutboxJob> =
         jdbc.sql("$SELECT_JOB where status = 'dead' and finished_at is null order by created_at limit :limit")
             .param("limit", limit)

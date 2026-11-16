@@ -12,7 +12,6 @@ import org.springframework.test.context.event.ApplicationEvents
 import org.springframework.test.context.event.RecordApplicationEvents
 import org.springframework.transaction.support.TransactionTemplate
 import pt.alinha.core.jobs.JobDispatcher
-import pt.alinha.core.jobs.JobError
 import pt.alinha.core.jobs.JobFailed
 import pt.alinha.core.tenant.TenantContext
 import pt.alinha.pluginapi.TenantId
@@ -51,7 +50,7 @@ class OutboxRelayRedisDownTest {
     }
 
     private fun row(id: UUID) = jdbc.queryForMap(
-        "select status, publish_failures, next_attempt_at > now() as delayed, last_error, finished_at " +
+        "select status, publish_failures, next_attempt_at > now() as delayed, next_attempt_at, last_error " +
             "from core.job_outbox where id = ?",
         id,
     )
@@ -59,46 +58,39 @@ class OutboxRelayRedisDownTest {
     private fun makeDue(id: UUID) = jdbc.update("update core.job_outbox set next_attempt_at = now() where id = ?", id)
 
     @Test
-    fun `failed publish backs off, then the job dies and JobFailed is emitted once`() {
+    fun `a Redis outage longer than max-publish-failures never kills the job`() {
         val id = dispatcher.dispatchAs(tenants, tx, tenant, collectRequest())
 
-        assertThat(relay.relayOnce()).isZero()
-        row(id).let {
-            assertThat(it["status"]).isEqualTo("pending")
-            assertThat(it["publish_failures"]).isEqualTo(1)
-            assertThat(it["delayed"]).isEqualTo(true)
-            assertThat(it["last_error"] as String).isNotBlank()
+        repeat(5) { // max-publish-failures is 2
+            makeDue(id)
+            assertThat(relay.relayOnce()).isZero()
+            row(id).let {
+                assertThat(it["status"]).isEqualTo("pending")
+                assertThat(it["publish_failures"]).isEqualTo(0)
+                assertThat(it["delayed"]).isEqualTo(true)
+                assertThat(it["last_error"] as String).isNotBlank()
+            }
         }
-        assertThat(relay.relayOnce()).isZero() // still backing off: not even tried
-        assertThat(row(id)["publish_failures"]).isEqualTo(1)
 
-        makeDue(id)
-        relay.relayOnce()
-        assertThat(row(id)["status"]).isEqualTo("dead")
-
-        assertThat(notifier.notifyOnce()).isEqualTo(1)
         assertThat(notifier.notifyOnce()).isZero()
+        assertThat(events.stream(JobFailed::class.java)).isEmpty()
+    }
 
-        val failed = events.stream(JobFailed::class.java).toList().single()
-        assertThat(failed.jobId).isEqualTo(id)
-        assertThat(failed.tenantId).isEqualTo(tenant)
-        assertThat(failed.requestedBy).isEqualTo("code-repository")
-        assertThat(failed.error.code).isEqualTo(JobError.PUBLISH_FAILED)
-        assertThat(row(id)["finished_at"]).isNotNull()
-        assertThat(
-            jdbc.queryForObject(
-                "select count(*) from audit.audit_event where action = 'job.dead' and entity_id = ? and tenant_id = ?",
-                Int::class.java,
-                id.toString(),
-                tenant.value,
-            ),
-        ).isEqualTo(1)
+    @Test
+    fun `a deferred job is not tried again before its delay`() {
+        val id = dispatcher.dispatchAs(tenants, tx, tenant, collectRequest())
+        relay.relayOnce()
+        val retryAt = row(id)["next_attempt_at"]
+
+        relay.relayOnce()
+
+        assertThat(row(id)["next_attempt_at"]).isEqualTo(retryAt)
     }
 
     @Test
     fun `one failure stops the batch instead of waiting on every row`() {
         val ids = (1..5).map { dispatcher.dispatchAs(tenants, tx, tenant, collectRequest()) }
         relay.relayOnce()
-        assertThat(ids.count { row(it)["publish_failures"] == 1 }).isEqualTo(1)
+        assertThat(ids.count { row(it)["last_error"] != null }).isEqualTo(1)
     }
 }
