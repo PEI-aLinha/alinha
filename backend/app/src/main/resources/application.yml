@@ -50,7 +50,7 @@ spring:
   task:
     scheduling:
       pool:
-        size: 4                   # outbox relay + dead job notifier (+ results consumer, #13 part 2) never queue behind each other
+        size: 4                   # outbox relay, dead job notifier and results consumer never queue behind each other
   modulith:
     events:
       jdbc:
@@ -81,4 +81,8 @@ alinha:
       max-publish-failures: 10
       backoff-base: 2s
       backoff-max: 5m
+    results:
+      enabled: true
+      poll-interval-ms: 1000
+      batch-size: 50
     default-max-attempts: 3

@@ -37,6 +37,7 @@ class OutboxRelayRedisDownTest {
     @Autowired private lateinit var dispatcher: JobDispatcher
     @Autowired private lateinit var relay: OutboxRelay
     @Autowired private lateinit var notifier: DeadJobNotifier
+    @Autowired private lateinit var results: JobResultConsumer
     @Autowired private lateinit var tenants: TenantContext
     @Autowired private lateinit var tx: TransactionTemplate
     @Autowired private lateinit var jdbc: JdbcTemplate
@@ -92,5 +93,11 @@ class OutboxRelayRedisDownTest {
         val ids = (1..5).map { dispatcher.dispatchAs(tenants, tx, tenant, collectRequest()) }
         relay.relayOnce()
         assertThat(ids.count { row(it)["last_error"] != null }).isEqualTo(1)
+    }
+
+    @Test
+    fun `the results consumer waits for Redis instead of failing`() {
+        assertThat(results.consumeOnce()).isZero()
+        assertThat(results.consumeOnce()).isZero()
     }
 }

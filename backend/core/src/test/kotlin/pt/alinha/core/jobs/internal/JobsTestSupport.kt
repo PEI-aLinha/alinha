@@ -36,6 +36,8 @@ import java.util.UUID
     OutboxRelay::class,
     DeadJobNotifier::class,
     OutboxJobResults::class,
+    JobResultHandler::class,
+    JobResultConsumer::class,
 )
 class JobsTestApplication
 
@@ -47,13 +49,14 @@ object JobsInfrastructure {
         .withExposedPorts(REDIS_PORT)
         .apply { start() }
 
-    /** Relay scheduling off: tests drive relayOnce()/notifyOnce() by hand. */
+    /** Scheduling off: tests drive relayOnce()/notifyOnce()/consumeOnce() by hand. */
     fun register(registry: DynamicPropertyRegistry, redisPort: Int? = null) {
         AuditDatabase.register(registry)
         registry.add("spring.data.redis.host") { if (redisPort == null) redis.host else "localhost" }
         registry.add("spring.data.redis.port") { redisPort ?: redis.getMappedPort(REDIS_PORT) }
         registry.add("spring.data.redis.timeout") { "500ms" }
         registry.add("alinha.jobs.relay.enabled") { "false" }
+        registry.add("alinha.jobs.results.enabled") { "false" }
     }
 }
 

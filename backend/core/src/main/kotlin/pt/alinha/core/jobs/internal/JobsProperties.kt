@@ -6,6 +6,7 @@ import java.time.Duration
 @ConfigurationProperties("alinha.jobs")
 data class JobsProperties(
     val relay: Relay = Relay(),
+    val results: Results = Results(),
     val defaultMaxAttempts: Int = 3,
 ) {
     init {
@@ -24,6 +25,21 @@ data class JobsProperties(
         init {
             require(pollIntervalMs > 0 && batchSize > 0 && maxPublishFailures >= 1) { "Invalid alinha.jobs.relay settings" }
             require(!backoffBase.isNegative && backoffMax >= backoffBase) { "backoff-max must be >= backoff-base" }
+        }
+    }
+
+    /**
+     * Consumer of `alinha:jobs:results`. poll-interval-ms is read by @Scheduled directly.
+     * [consumerName] blank = a random name per start (several instances never share one).
+     */
+    data class Results(
+        val enabled: Boolean = true,
+        val pollIntervalMs: Long = 1_000,
+        val batchSize: Int = 50,
+        val consumerName: String = "",
+    ) {
+        init {
+            require(pollIntervalMs > 0 && batchSize > 0) { "Invalid alinha.jobs.results settings" }
         }
     }
 }
