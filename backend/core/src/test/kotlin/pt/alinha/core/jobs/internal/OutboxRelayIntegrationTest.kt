@@ -109,7 +109,7 @@ class OutboxRelayIntegrationTest {
     }
 
     @Test
-    fun `a job that fails with any error backs off instead of blocking the rest`() {
+    fun `a job that fails with any error backs off without holding up the rest`() {
         val ids = (1..3).map { dispatcher.dispatchAs(tenants, tx, tenant, collectRequest()) }
         val poison = ids.first() // oldest, so it heads every batch
         val streams = object : RedisJobStreams(redis) {
@@ -118,8 +118,8 @@ class OutboxRelayIntegrationTest {
         }
         val relay = OutboxRelay(outbox, streams, tx, properties)
 
-        assertThat(relay.relayOnce()).isZero() // the failure stops this round
-        assertThat(relay.relayOnce()).isEqualTo(2) // the poison row is backing off; the others go
+        assertThat(relay.relayOnce()).isEqualTo(2) // the others go in the same round
+        assertThat(relay.relayOnce()).isZero() // the poison row is backing off
 
         assertThat(publishedJobIds()).containsExactlyInAnyOrderElementsOf(ids - poison)
         assertThat(status(poison)).isEqualTo("pending")

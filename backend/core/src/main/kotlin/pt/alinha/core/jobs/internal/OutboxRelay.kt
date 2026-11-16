@@ -38,9 +38,10 @@ class OutboxRelay(
                 break // Redis is probably down: the rest of the batch waits for the next round
             } catch (e: RuntimeException) {
                 // Anything else is a problem with this job or with our code. Catch it here, otherwise the batch rolls
-                // back, publish_failures never grows, and the same row blocks every round.
+                // back, publish_failures never grows, and the same row blocks every round. Redis answered, so the
+                // rest of the batch still goes.
                 recordFailure(job, e)
-                break
+                continue
             }
             outbox.markPublished(job.id)
             published++
