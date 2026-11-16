@@ -66,9 +66,13 @@ class RedisJobStreams(private val redis: StringRedisTemplate) {
         streams.delete(RESULTS_STREAM, id)
     }
 
-    /** Keeps the worker's fields as they came, plus where the entry came from and why it was refused. */
-    fun deadLetter(record: ResultRecord, reason: String) {
-        streams.add(RESULTS_DLQ, record.value + mapOf(SOURCE_ID to record.id.value, REASON to reason.take(MAX_REASON)))
+    /**
+     * Keeps the worker's fields as they came (minus [RESULT] when [dropResult]: too large to keep), plus where the
+     * entry came from and why it was refused.
+     */
+    fun deadLetter(record: ResultRecord, reason: String, dropResult: Boolean = false) {
+        val fields = if (dropResult) record.value - RESULT else record.value
+        streams.add(RESULTS_DLQ, fields + mapOf(SOURCE_ID to record.id.value, REASON to reason.take(MAX_REASON)))
     }
 
     companion object {

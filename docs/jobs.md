@@ -118,6 +118,8 @@ fun on(event: JobCompleted) {
 - `failed` with `retryable: true` and `attempt < max_attempts`: the row goes back to `pending` with `attempt + 1`
   and the relay's backoff; the relay publishes it again. Otherwise the job is `failed`.
 - Audited: `job.completed`, `job.retried`, `job.failed` (error code only, never the worker's message).
+- A `result` field over `max-result-bytes` (UTF-8) is dead-lettered **without** that field (`reason` says why),
+  before it is parsed: it would otherwise be stored as is in `core.job_outbox`. The job stays `published`.
 - **Dead letters** go to `alinha:jobs:results:dead`, with the original fields plus `sourceId` and `reason`: an entry
   that is not valid JSON or does not match the contract, names an unknown job, or whose `tenantId`, `type` or
   `version` disagree with the outbox row. The job itself is not changed (it stays `published`, #86).
@@ -146,6 +148,7 @@ fun on(event: JobCompleted) {
 | `results.claim-min-idle` | `1m` | unacknowledged for this long = claimed again |
 | `results.max-deliveries` | `5` | then dead-lettered |
 | `results.consumer-name` | random per start | |
+| `results.max-result-bytes` | `1048576` | larger `result` fields are dead-lettered without the payload |
 | `default-max-attempts` | `3` | worker attempts per job |
 
 Redis: `spring.data.redis.host/port` (`REDIS_HOST`/`REDIS_PORT`), with command and connect timeouts of `2s`,

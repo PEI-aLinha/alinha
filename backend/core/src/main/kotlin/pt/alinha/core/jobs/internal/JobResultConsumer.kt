@@ -80,6 +80,13 @@ class JobResultConsumer(
 
     /** @return true when the entry was acknowledged. */
     private fun process(record: ResultRecord): Boolean {
+        if (isTooLarge(record)) {
+            val limit = properties.results.maxResultBytes
+            log.warn("Job result {} larger than {} bytes, dead-lettered without it", record.id, limit)
+            streams.deadLetter(record, "result larger than $limit bytes", dropResult = true)
+            streams.ack(record.id)
+            return true
+        }
         val handling = try {
             handler.handle(record.value[RESULT])
         } catch (e: RuntimeException) {
@@ -100,6 +107,9 @@ class JobResultConsumer(
         streams.ack(record.id)
         return true
     }
+
+    private fun isTooLarge(record: ResultRecord) =
+        record.value[RESULT]?.let { it.toByteArray(Charsets.UTF_8).size > properties.results.maxResultBytes } == true
 
     /** Ends the round; the entries already read stay pending and are delivered again. */
     private class DatabaseUnavailable : RuntimeException()

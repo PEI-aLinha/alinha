@@ -274,6 +274,22 @@ class JobResultConsumerTest {
     }
 
     @Test
+    fun `a result over the size limit is dead-lettered without its payload`() {
+        val id = published()
+        val limit = JobsProperties.Results().maxResultBytes
+        val huge = result(id, "completed").replace("\"repositories\":2", "\"blob\":\"${"x".repeat(limit)}\"")
+        send(huge)
+
+        assertThat(consumer.consumeOnce()).isEqualTo(1)
+
+        val dead = deadLetters().single().value
+        assertThat(dead[REASON]).isEqualTo("result larger than $limit bytes")
+        assertThat(dead).doesNotContainKey(RESULT)
+        assertThat(row(id)["status"]).isEqualTo("published")
+        assertThat(unacknowledged()).isZero()
+    }
+
+    @Test
     fun `the group is created again when Redis lost it`() {
         val id = published()
         redis.delete(RESULTS_STREAM) // group gone, as after a Redis restart without its data
