@@ -100,8 +100,9 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '409':
           description: |
-            The account already has an organization, or the NIF is already registered
-            (`code` = `NIF_ALREADY_REGISTERED`).
+            `code` tells the cases apart:
+            - `ORGANIZATION_ALREADY_EXISTS`: this account already has an organization (refresh the session and go to it);
+            - `NIF_ALREADY_REGISTERED`: another organization already uses this NIF.
           content:
             application/problem+json:
               schema:
@@ -113,7 +114,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
         '503':
-          description: The identity provider is unavailable; nothing was created. Try again later.
+          description: |
+            The identity provider is unavailable (`code` = `IDENTITY_UNAVAILABLE`); nothing was created. Try again
+            later.
           content:
             application/problem+json:
               schema:
@@ -172,7 +175,10 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
         '409':
-          description: Stale `version`, or the NIF belongs to another organization.
+          description: |
+            `code` tells the cases apart:
+            - `VERSION_CONFLICT`: the data changed since it was read (reload and edit again);
+            - `NIF_ALREADY_REGISTERED`: another organization already uses this NIF.
           content:
             application/problem+json:
               schema:
@@ -430,6 +436,7 @@ components:
       properties:
         phone:
           type: string
+          maxLength: 20
           description: 9 digits starting with 2 or 9; spaces are ignored on input.
         email:
           type: string
@@ -446,6 +453,7 @@ components:
           maxLength: 120
         phone:
           type: string
+          maxLength: 20
 
     OrganizationProfileInput:
       type: object
@@ -461,15 +469,19 @@ components:
           description: Official name, as in the permanent certificate.
         nif:
           type: string
+          maxLength: 20
           description: Portuguese tax number, 9 digits with a valid check digit.
         cae:
           type: string
+          maxLength: 20
           description: Main CAE code, 5 digits.
         sector:
           type: string
+          maxLength: 40
           description: Sector id from the DL 125/2025 annexes (e.g. `industria`), or `outro`.
         subsector:
           type: [string, 'null']
+          maxLength: 40
           description: Required only when the sector has subsectors (e.g. `automoveis`).
         services:
           type: string
@@ -498,6 +510,7 @@ components:
           properties:
             version:
               type: integer
+              minimum: 0
               description: The `version` that was read.
 
     OrganizationProfile:

@@ -442,8 +442,9 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             /**
-             * @description The account already has an organization, or the NIF is already registered
-             *     (`code` = `NIF_ALREADY_REGISTERED`).
+             * @description `code` tells the cases apart:
+             *     - `ORGANIZATION_ALREADY_EXISTS`: this account already has an organization (refresh the session and go to it);
+             *     - `NIF_ALREADY_REGISTERED`: another organization already uses this NIF.
              */
             409: {
                 headers: {
@@ -462,7 +463,10 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description The identity provider is unavailable; nothing was created. Try again later. */
+            /**
+             * @description The identity provider is unavailable (`code` = `IDENTITY_UNAVAILABLE`); nothing was created. Try again
+             *     later.
+             */
             503: {
                 headers: {
                     [name: string]: unknown;
@@ -537,7 +541,11 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            /** @description Stale `version`, or the NIF belongs to another organization. */
+            /**
+             * @description `code` tells the cases apart:
+             *     - `VERSION_CONFLICT`: the data changed since it was read (reload and edit again);
+             *     - `NIF_ALREADY_REGISTERED`: another organization already uses this NIF.
+             */
             409: {
                 headers: {
                     [name: string]: unknown;
