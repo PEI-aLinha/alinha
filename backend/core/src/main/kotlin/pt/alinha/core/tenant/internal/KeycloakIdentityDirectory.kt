@@ -1,6 +1,8 @@
 package pt.alinha.core.tenant.internal
 
 import com.fasterxml.jackson.annotation.JsonProperty
+import io.micrometer.observation.ObservationRegistry
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.http.client.SimpleClientHttpRequestFactory
@@ -59,15 +61,18 @@ class KeycloakIdentityDirectory internal constructor(
 
     @Volatile private var cached: CachedToken? = null
 
+    /** With the application's observation registry, so the calls get `http.client.requests` metrics and traces. */
     @Autowired
-    constructor(properties: IdentityProperties) : this(
+    constructor(properties: IdentityProperties, observations: ObjectProvider<ObservationRegistry>) : this(
         properties,
-        RestClient.builder().requestFactory(
-            SimpleClientHttpRequestFactory().apply {
-                setConnectTimeout(CONNECT_TIMEOUT)
-                setReadTimeout(READ_TIMEOUT)
-            },
-        ),
+        RestClient.builder()
+            .requestFactory(
+                SimpleClientHttpRequestFactory().apply {
+                    setConnectTimeout(CONNECT_TIMEOUT)
+                    setReadTimeout(READ_TIMEOUT)
+                },
+            )
+            .observationRegistry(observations.getIfAvailable { ObservationRegistry.NOOP }),
     )
 
     private val http = restClientBuilder.baseUrl(properties.baseUrl.trimEnd('/')).build()
