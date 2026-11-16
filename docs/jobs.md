@@ -59,6 +59,8 @@ fun startCollection(...) {
 - **At-least-once**: a crash after `XADD` but before the row is marked `published` publishes the job again.
 - Once a row is `published`, the job lives only in Redis. Redis must keep its data across restarts (AOF, as in
   `deploy/docker-compose.dev.yml`). Until the watchdog (#86) exists, a job Redis loses stays `published` forever.
+- Redis is **not** part of the app's health (`management.health.redis.enabled: false`): while it is down, dispatch
+  keeps working and the relay catches up later.
 
 ## What workers must do (#28)
 
