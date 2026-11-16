@@ -37,6 +37,11 @@ describe('devSession (pnpm dev only)', () => {
     expect(JSON.parse(res.body!)).toEqual(devMe('analyst'))
   })
 
+  it('gives a registrant no organization and only the registration permission', () => {
+    expect(devMe('registrant')).toMatchObject({ roles: ['registrant'], organizations: [] })
+    expect(devMe('registrant').permissions).toEqual(['plugins:read', 'organization:register'])
+  })
+
   it('answers 401 for anonymous', () => {
     expect(serve(devSession('anonymous')!)('GET', '/api/me').res.statusCode).toBe(401)
   })
