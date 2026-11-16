@@ -53,8 +53,9 @@ fun startCollection(...) {
 - `XADD alinha:jobs:<type>:v<n>` with the fields `envelope` (JSON) and `attempt`. There is **no `MAXLEN`**:
   trimming by length also drops entries no worker has read yet, and the row already says `published`, so the job
   would be lost. Streams grow until acknowledged entries are trimmed (#87).
-- If the publish fails, the batch stops (Redis is probably down), and the row gets `publish_failures + 1` and
-  exponential backoff (`backoff-base` × 2ⁿ, at most `backoff-max`).
+- If the publish fails, for any reason, the batch stops (Redis is probably down), and the row gets
+  `publish_failures + 1` and exponential backoff (`backoff-base` × 2ⁿ, at most `backoff-max`). A row that always
+  fails therefore ends `dead` instead of blocking the rows behind it.
 - **At-least-once**: a crash after `XADD` but before the row is marked `published` publishes the job again.
 
 ## What workers must do (#28)

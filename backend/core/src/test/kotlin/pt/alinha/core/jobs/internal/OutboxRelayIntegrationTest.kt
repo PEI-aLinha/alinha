@@ -33,6 +33,8 @@ class OutboxRelayIntegrationTest {
     @Autowired private lateinit var jdbc: JdbcTemplate
     @Autowired private lateinit var redis: StringRedisTemplate
     @Autowired private lateinit var json: JsonMapper
+    @Autowired private lateinit var outbox: JobOutboxRepository
+    @Autowired private lateinit var properties: JobsProperties
 
     private val tenant = TenantId(UUID.randomUUID())
 
@@ -104,5 +106,24 @@ class OutboxRelayIntegrationTest {
         }
 
         assertThat(publishedJobIds()).containsExactlyInAnyOrderElementsOf(ids)
+    }
+
+    @Test
+    fun `a job that fails with any error backs off instead of blocking the rest`() {
+        val ids = (1..3).map { dispatcher.dispatchAs(tenants, tx, tenant, collectRequest()) }
+        val poison = ids.first() // oldest, so it heads every batch
+        val streams = object : RedisJobStreams(redis) {
+            override fun publish(job: OutboxJob) =
+                if (job.id == poison) throw IllegalStateException("not a DataAccessException") else super.publish(job)
+        }
+        val relay = OutboxRelay(outbox, streams, tx, properties)
+
+        assertThat(relay.relayOnce()).isZero() // the failure stops this round
+        assertThat(relay.relayOnce()).isEqualTo(2) // the poison row is backing off; the others go
+
+        assertThat(publishedJobIds()).containsExactlyInAnyOrderElementsOf(ids - poison)
+        assertThat(status(poison)).isEqualTo("pending")
+        assertThat(jdbc.queryForObject("select publish_failures from core.job_outbox where id = ?", Int::class.java, poison))
+            .isEqualTo(1)
     }
 }

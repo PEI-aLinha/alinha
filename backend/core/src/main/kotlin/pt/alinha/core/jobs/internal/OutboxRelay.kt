@@ -1,7 +1,6 @@
 package pt.alinha.core.jobs.internal
 
 import org.slf4j.LoggerFactory
-import org.springframework.dao.DataAccessException
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import org.springframework.transaction.support.TransactionTemplate
@@ -30,9 +29,11 @@ class OutboxRelay(
         for (job in outbox.lockDuePending(properties.relay.batchSize)) {
             try {
                 streams.publish(job)
-            } catch (e: DataAccessException) {
+            } catch (e: RuntimeException) {
+                // Any error, not only Redis being down: otherwise the batch rolls back, publish_failures never
+                // grows, and the same row blocks every round while the rows before it are republished.
                 recordFailure(job, e)
-                break // Redis is most likely down: the rest of the batch waits for the next round
+                break // the rest of the batch waits for the next round
             }
             outbox.markPublished(job.id)
             published++
