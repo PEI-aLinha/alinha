@@ -20,6 +20,7 @@ import pt.alinha.core.audit.AuditTrail
 import pt.alinha.core.tenant.TenantProvisioning
 import pt.alinha.pluginapi.TenantId
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Semaphore
 
 internal const val REGISTRANT_AUTHORITY = "ROLE_registrant"
@@ -50,6 +51,9 @@ class TenantProvisioner(
     private val log = LoggerFactory.getLogger(javaClass)
     private val slots = Semaphore(MAX_CONCURRENT_PROVISIONING)
 
+    /** Accounts with a registration in flight on this instance: one account cannot take several slots. */
+    private val inFlight: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
     /** Accounts left pointing to a rolled-back tenant; alert on any increase (#92 reconciles them). */
     private val orphaned: Counter = Counter.builder(ORPHANED_METRIC)
         .description("Identity assignments that could not be undone after a rollback")
@@ -64,14 +68,19 @@ class TenantProvisioner(
         }
         val subject = auth.token.subject
         val tenantId = TenantId(UUID.randomUUID())
-        if (!slots.tryAcquire()) throw busy()
+        if (!inFlight.add(subject)) throw busy()
         try {
-            return tenants.runAsNewTenant(tenantId) {
-                @Suppress("UNCHECKED_CAST")
-                tx.execute { provision(subject, tenantId, block) } as T
+            if (!slots.tryAcquire()) throw busy()
+            try {
+                return tenants.runAsNewTenant(tenantId) {
+                    @Suppress("UNCHECKED_CAST")
+                    tx.execute { provision(subject, tenantId, block) } as T
+                }
+            } finally {
+                slots.release()
             }
         } finally {
-            slots.release()
+            inFlight.remove(subject)
         }
     }
 

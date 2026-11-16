@@ -269,6 +269,34 @@ class TenantProvisionerIntegrationTest {
     }
 
     @Test
+    fun `a second request from the same account does not wait for a slot`() {
+        val inside = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val auth = SecurityContextHolder.getContext().authentication
+        val pool = Executors.newSingleThreadExecutor()
+        try {
+            val first = pool.submit<TenantId> {
+                SecurityContextHolder.getContext().authentication = auth
+                try {
+                    provisioning.provisionForCurrentUser { inside.countDown(); release.await(); it }
+                } finally {
+                    SecurityContextHolder.clearContext()
+                }
+            }
+            assertThat(inside.await(30, TimeUnit.SECONDS)).isTrue()
+
+            val error = assertThrows<ResponseStatusException> { provisioning.provisionForCurrentUser { } }
+
+            assertThat(error.body.properties?.get("code")).isEqualTo(REGISTRATION_BUSY)
+            release.countDown()
+            first.get(30, TimeUnit.SECONDS)
+        } finally {
+            release.countDown()
+            pool.shutdownNow()
+        }
+    }
+
+    @Test
     fun `an unknown commit outcome is reported, never revoked`() {
         val tenant = TenantId(UUID.randomUUID())
         val before = orphanedCount()
@@ -301,8 +329,9 @@ class TenantProvisionerIntegrationTest {
         }
 
         assertThat(outcomes.count { it.isSuccess }).isEqualTo(1)
-        val conflict = outcomes.single { it.isFailure }.exceptionOrNull()
-        assertThat((conflict as ResponseStatusException).statusCode).isEqualTo(HttpStatus.CONFLICT)
+        // The loser is refused while the winner runs (503 busy), or after it committed (409).
+        val loser = outcomes.single { it.isFailure }.exceptionOrNull() as ResponseStatusException
+        assertThat(loser.body.properties?.get("code")).isIn(REGISTRATION_BUSY, ORGANIZATION_ALREADY_EXISTS)
         assertThat(jdbc.queryForObject("select count(*) from core.tenant where owner_subject = ?", Long::class.java, subject)).isEqualTo(1)
         assertThat(directory.assigned).hasSize(1)
         assertThat(directory.revoked).isEmpty()

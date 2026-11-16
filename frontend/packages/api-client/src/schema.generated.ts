@@ -467,7 +467,7 @@ export interface operations {
             /**
              * @description Nothing was created; try again later. `code` tells why:
              *     - `IDENTITY_UNAVAILABLE`: the identity provider failed;
-             *     - `REGISTRATION_BUSY`: too many registrations at once.
+             *     - `REGISTRATION_BUSY`: too many registrations at once, or this account's registration is still running.
              */
             503: {
                 headers: {
