@@ -18,7 +18,8 @@ import java.util.UUID
 @SpringBootTest(classes = [JobsTestApplication::class], webEnvironment = SpringBootTest.WebEnvironment.NONE)
 class JobOutboxRuntimeRoleTest {
     companion object {
-        private const val APP_PASSWORD = "test-app"
+        /** Throwaway login for the test container, new on every run. */
+        private val APP_PASSWORD = UUID.randomUUID().toString()
         private const val TYPE = "evidence.collect"
 
         @DynamicPropertySource
