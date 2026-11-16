@@ -31,6 +31,7 @@ internal const val ORPHANED_METRIC = "alinha.tenant.provisioning.orphaned"
 internal const val ORGANIZATION_ALREADY_EXISTS = "ORGANIZATION_ALREADY_EXISTS"
 internal const val IDENTITY_UNAVAILABLE = "IDENTITY_UNAVAILABLE"
 internal const val REGISTRATION_BUSY = "REGISTRATION_BUSY"
+private const val EMAIL_VERIFIED_CLAIM = "email_verified"
 
 /**
  * Registrations that may run at once. Each one holds a database connection while it calls the identity provider
@@ -68,6 +69,11 @@ class TenantProvisioner(
         requireNoTenant(auth)
         if (auth.authorities.none { it.authority == REGISTRANT_AUTHORITY }) {
             throw AccessDeniedException("Only a new account can register an organization")
+        }
+        // Defence in depth: the realm already blocks sign-in before verification, but a realm change (federated
+        // login, admin-created user) must not let an unverified account create an organization.
+        if (auth.token.getClaimAsBoolean(EMAIL_VERIFIED_CLAIM) != true) {
+            throw AccessDeniedException("Verify the account's email before registering an organization")
         }
         val subject = auth.token.subject
         val tenantId = TenantId(UUID.randomUUID())
@@ -123,6 +129,10 @@ class TenantProvisioner(
         } catch (e: IllegalStateException) {
             // Not an outage: missing secret, unknown account, missing role or the time budget ran out.
             log.error("Identity assignment refused for tenant {}: {}", tenantId.value, e.message, e)
+            throw identityUnavailable(e)
+        } catch (e: RuntimeException) {
+            // e.g. an unexpected response shape; still a 503 so the client sees one consistent answer.
+            log.error("Unexpected failure while assigning tenant {}", tenantId.value, e)
             throw identityUnavailable(e)
         }
     }

@@ -40,14 +40,18 @@ class FakeIdentityDirectory : IdentityDirectory {
     val revoked: MutableList<Pair<String, TenantId>> = Collections.synchronizedList(mutableListOf())
     var failOnAssign = false
     var failOnRevoke = false
+    var assignFailure: RuntimeException? = null
+    var onRevoke: () -> Unit = {}
 
     override fun assignTenant(subject: String, tenantId: TenantId) {
         assigned += subject to tenantId
         if (failOnAssign) error("identity provider down")
+        assignFailure?.let { throw it }
     }
 
     override fun revokeTenant(subject: String, tenantId: TenantId) {
         revoked += subject to tenantId
+        onRevoke()
         if (failOnRevoke) error("identity provider down")
     }
 }
@@ -87,6 +91,8 @@ class TenantProvisionerIntegrationTest {
         directory.revoked.clear()
         directory.failOnAssign = false
         directory.failOnRevoke = false
+        directory.assignFailure = null
+        directory.onRevoke = {}
         jdbc.execute("create table if not exists public.provisioning_fixture (id uuid primary key, tenant_id uuid not null)")
     }
 
@@ -94,7 +100,8 @@ class TenantProvisionerIntegrationTest {
     fun signOut() = SecurityContextHolder.clearContext()
 
     private fun signIn(sub: String, roles: List<String>, claims: Map<String, Any> = emptyMap()) {
-        val jwt = Jwt.withTokenValue("t").header("alg", "none").subject(sub).claims { it.putAll(claims) }.build()
+        val jwt = Jwt.withTokenValue("t").header("alg", "none").subject(sub)
+            .claim("email_verified", true).claims { it.putAll(claims) }.build()
         SecurityContextHolder.getContext().authentication =
             JwtAuthenticationToken(jwt, roles.map { SimpleGrantedAuthority("ROLE_$it") })
     }
@@ -294,6 +301,49 @@ class TenantProvisionerIntegrationTest {
             release.countDown()
             pool.shutdownNow()
         }
+    }
+
+    @Test
+    fun `an account whose email is not verified is refused`() {
+        signIn(subject, roles = listOf("registrant"), claims = mapOf("email_verified" to false))
+
+        assertThrows<AccessDeniedException> { provisioning.provisionForCurrentUser { } }
+
+        assertThat(directory.assigned).isEmpty()
+    }
+
+    @Test
+    fun `an account holding registrant and responsible with a stale token cannot register twice`() {
+        provisioning.provisionForCurrentUser { }
+        signIn(subject, roles = listOf("registrant", "responsible"))
+
+        val error = assertThrows<ResponseStatusException> { provisioning.provisionForCurrentUser { } }
+
+        assertThat(error.body.properties?.get("code")).isEqualTo(ORGANIZATION_ALREADY_EXISTS)
+        assertThat(jdbc.queryForObject("select count(*) from core.tenant where owner_subject = ?", Long::class.java, subject)).isEqualTo(1)
+    }
+
+    @Test
+    fun `an unexpected identity failure is still a 503 and rolls back`() {
+        directory.assignFailure = IllegalArgumentException("unexpected response shape")
+
+        val error = assertThrows<ResponseStatusException> { provisioning.provisionForCurrentUser { } }
+
+        assertThat(error.body.properties?.get("code")).isEqualTo(IDENTITY_UNAVAILABLE)
+        assertThat(jdbc.queryForObject("select count(*) from core.tenant where owner_subject = ?", Long::class.java, subject)).isZero()
+        assertThat(directory.revoked).hasSize(1)
+    }
+
+    @Test
+    fun `a retry while the rollback undo is running is refused, not interleaved`() {
+        directory.failOnAssign = true
+        var retry: Throwable? = null
+        directory.onRevoke = { retry = runCatching { provisioning.provisionForCurrentUser { } }.exceptionOrNull() }
+
+        assertThrows<ResponseStatusException> { provisioning.provisionForCurrentUser { } }
+
+        assertThat((retry as ResponseStatusException).body.properties?.get("code")).isEqualTo(REGISTRATION_BUSY)
+        assertThat(directory.assigned).hasSize(1)
     }
 
     @Test
