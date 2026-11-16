@@ -62,3 +62,8 @@ alinha:
     realm: alinha
     client-id: alinha-provisioner
     client-secret: ${identity.provisioner-secret:}
+
+server:
+  # Behind the BFF/Nginx: take the client IP from X-Forwarded-For only when the request comes from an internal
+  # (private-range) proxy, so a client cannot choose its own (registration rate limit, ADR 0004).
+  forward-headers-strategy: native

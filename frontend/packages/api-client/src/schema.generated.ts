@@ -465,6 +465,18 @@ export interface operations {
                 };
             };
             /**
+             * @description Too many registration attempts from this client (`code` = `TOO_MANY_REGISTRATIONS`): at most 5 per hour,
+             *     one at a time. Nothing was created.
+             */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /**
              * @description Nothing was created; try again later. `code` tells why:
              *     - `IDENTITY_UNAVAILABLE`: the identity provider failed;
              *     - `REGISTRATION_BUSY`: too many registrations at once, or this account's registration is still running.

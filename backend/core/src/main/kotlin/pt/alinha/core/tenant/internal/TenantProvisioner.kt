@@ -5,6 +5,7 @@ import io.micrometer.core.instrument.MeterRegistry
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.ObjectProvider
+import org.springframework.context.annotation.Import
 import org.springframework.http.HttpStatus
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.security.access.AccessDeniedException
@@ -39,6 +40,7 @@ internal const val MAX_CONCURRENT_PROVISIONING = 4
 
 /** Creates a tenant for the registering account (ADR 0004). See [TenantProvisioning]. */
 @Component
+@Import(RegistrationRateLimiter::class)
 class TenantProvisioner(
     private val tenants: JwtTenantContext,
     private val tx: TransactionTemplate,
@@ -46,6 +48,7 @@ class TenantProvisioner(
     private val audit: AuditTrail,
     private val directory: IdentityDirectory,
     meters: ObjectProvider<MeterRegistry>,
+    private val clients: RegistrationRateLimiter,
 ) : TenantProvisioning {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -68,6 +71,10 @@ class TenantProvisioner(
         }
         val subject = auth.token.subject
         val tenantId = TenantId(UUID.randomUUID())
+        return clients.limit { provisionWithinSlots(subject, tenantId, block) }
+    }
+
+    private fun <T> provisionWithinSlots(subject: String, tenantId: TenantId, block: (TenantId) -> T): T {
         if (!inFlight.add(subject)) throw busy()
         try {
             if (!slots.tryAcquire()) throw busy()

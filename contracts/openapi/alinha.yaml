@@ -113,6 +113,14 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+        '429':
+          description: |
+            Too many registration attempts from this client (`code` = `TOO_MANY_REGISTRATIONS`): at most 5 per hour,
+            one at a time. Nothing was created.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
         '503':
           description: |
             Nothing was created; try again later. `code` tells why:
