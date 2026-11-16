@@ -44,6 +44,27 @@ class JobSchemaValidatorTest {
     }
 
     @Test
+    fun `error message never echoes bad formats, enum values or unknown property names`() {
+        val secret = "s3cr3t-value"
+        val bad = envelope() + mapOf(
+            "jobId" to secret, // format: uuid
+            "requestedAt" to "$secret-date", // format: date-time
+            "provider" to "$secret-provider", // pattern / enum
+            "$secret-key" to "x", // additionalProperties
+        )
+
+        val e = assertThrows<IllegalArgumentException> { validator.validate("evidence-collect.v1", bad) }
+
+        assertThat(e.message).contains("/jobId: format", "/requestedAt: format", "additionalProperties").doesNotContain(secret)
+    }
+
+    @Test
+    fun `error message names a missing required property`() {
+        val e = assertThrows<IllegalArgumentException> { validator.validate("evidence-collect.v1", envelope() - "provider") }
+        assertThat(e.message).contains("required provider")
+    }
+
+    @Test
     fun `rejects a type without a contract`() {
         val e = assertThrows<IllegalArgumentException> { validator.validate("nothing-here.v1", emptyMap()) }
         assertThat(e.message).contains("No job contract")

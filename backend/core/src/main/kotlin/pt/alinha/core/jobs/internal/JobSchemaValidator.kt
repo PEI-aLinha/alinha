@@ -1,5 +1,6 @@
 package pt.alinha.core.jobs.internal
 
+import com.networknt.schema.Error
 import com.networknt.schema.Schema
 import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SchemaRegistryConfig
@@ -19,10 +20,20 @@ class JobSchemaValidator(private val json: JsonMapper) {
     }
     private val schemas = ConcurrentHashMap<String, Schema>()
 
-    /** @throws IllegalArgumentException listing the violations (paths and rule messages, never instance values). */
+    /**
+     * @throws IllegalArgumentException listing each violation as `location: keyword`. Never the library's message: it
+     * can quote the payload (unknown property names, for one), and this text reaches logs and the dead-letter stream.
+     */
     fun validate(schemaName: String, document: Map<String, Any?>) {
         val errors = schema(schemaName).validate(json.valueToTree<JsonNode>(document))
-        require(errors.isEmpty()) { "$schemaName: ${errors.joinToString("; ")}" }
+        require(errors.isEmpty()) { "$schemaName: ${errors.joinToString("; ", transform = ::describe)}" }
+    }
+
+    /** A `required` property name comes from the schema, so it is safe to show; any other name may come from the payload. */
+    private fun describe(error: Error): String {
+        val location = error.instanceLocation.toString().ifEmpty { "/" }
+        val missing = if (error.keyword == REQUIRED) " ${error.property}" else ""
+        return "$location: ${error.keyword}$missing"
     }
 
     private fun schema(name: String): Schema = schemas.computeIfAbsent(name) {
@@ -33,6 +44,7 @@ class JobSchemaValidator(private val json: JsonMapper) {
 
     companion object {
         private const val CONTRACTS = "contracts/jobs"
+        private const val REQUIRED = "required"
 
         /** evidence.collect v1 → evidence-collect.v1 */
         fun envelopeSchema(type: String, version: Int) = "${type.replace('.', '-')}.v$version"
