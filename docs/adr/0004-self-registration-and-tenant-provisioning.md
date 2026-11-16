@@ -24,7 +24,7 @@ handler cannot pick a tenant either. Nothing in the platform creates a tenant.
      repeated or concurrent request gets 409).
   3. Runs the caller's block **as the new tenant** in one transaction, records `tenant.provisioned` in the audit
      trail, and as the last step sets `tenant_id`, adds `responsible` and removes `registrant` in the identity
-     provider.
+     provider (in Keycloak `registrant` comes from the default composite role, so that mapping is removed).
   4. Identity provider fails: the exception rolls everything back. The commit fails after the identity provider
      changed: a rollback hook restores the account (remove `tenant_id`, `responsible`; add `registrant`).
 - **This is the only exception to "no tenant switch inside a request"**, and it is internal to the core. It is safe
