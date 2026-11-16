@@ -9,6 +9,7 @@ Every API request needs a valid Keycloak access token and an explicit permission
 | `consultant` | Consultant |
 | `responsible` | Designated Officer |
 | `analyst` | Analyst |
+| `registrant` | New account that has not registered its organization yet (ADR 0004). Gets `plugins:read` and only what a plugin maps to it, e.g. `organization:register`. Replaced by `responsible` when the organization is registered |
 
 ## Token contract
 
