@@ -132,6 +132,7 @@ class JobResultConsumerTest {
         assertThat(completed.attempt).isEqualTo(1)
         assertThat(audited("job.completed", id)).isEqualTo(1)
         assertThat(unacknowledged()).isZero()
+        assertThat(redis.opsForStream<String, String>().size(RESULTS_STREAM)).isZero() // deleted once applied
         assertThat(deadLetters()).isEmpty()
     }
 
@@ -202,6 +203,7 @@ class JobResultConsumerTest {
         assertThat(events.stream(JobCompleted::class.java)).hasSize(1)
         assertThat(audited("job.completed", id)).isEqualTo(1)
         assertThat(unacknowledged()).isZero()
+        assertThat(redis.opsForStream<String, String>().size(RESULTS_STREAM)).isZero() // deleted once applied
         assertThat(deadLetters()).isEmpty()
     }
 
@@ -239,6 +241,7 @@ class JobResultConsumerTest {
         assertThat(events.stream(JobCompleted::class.java)).isEmpty()
         assertThat(deadLetters().single().value[REASON]).contains("do not match")
         assertThat(unacknowledged()).isZero()
+        assertThat(redis.opsForStream<String, String>().size(RESULTS_STREAM)).isZero() // deleted once applied
     }
 
     @Test
@@ -267,6 +270,7 @@ class JobResultConsumerTest {
         assertThat(dead.map { it.value[RedisJobStreams.SOURCE_ID] }).doesNotContainNull()
         assertThat(row(id)["status"]).isEqualTo("published")
         assertThat(unacknowledged()).isZero()
+        assertThat(redis.opsForStream<String, String>().size(RESULTS_STREAM)).isZero() // deleted once applied
     }
 
     @Test

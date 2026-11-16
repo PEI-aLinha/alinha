@@ -113,7 +113,7 @@ fun on(event: JobCompleted) {
   group `alinha-core` (created at offset `0` with `MKSTREAM`, again if Redis lost it).
 - Each entry is validated against `job-result.v1`, then applied in its own transaction under the job's tenant. The
   outbox row is locked `for update`, so a result that arrives before the relay commits `published` waits for it.
-- The entry is `XACK`ed only after that transaction commits. A result for another attempt, or for a job that is
+- The entry is `XACK`ed (and deleted) only after that transaction commits. A result for another attempt, or for a job that is
   already finished, is ignored: applying the same entry twice changes nothing.
 - `failed` with `retryable: true` and `attempt < max_attempts`: the row goes back to `pending` with `attempt + 1`
   and the relay's backoff; the relay publishes it again. Otherwise the job is `failed`.
@@ -128,7 +128,8 @@ fun on(event: JobCompleted) {
 - Database down: every read or claim counts as a delivery, so a round starts only after a `select 1` succeeds, and
   stops when applying an entry fails and the database no longer answers. However long the outage, it never
   dead-letters a result. A failure while the database is up (a bug) does count towards `max-deliveries`.
-- The results stream and the dead-letter stream are not trimmed yet (#87). Each app start uses a new consumer name
+- Every entry is deleted (`XDEL`) right after its `XACK`: the outcome is in the outbox row, and a result may hold
+  collected evidence. The dead-letter stream is not trimmed yet (#87). Each app start uses a new consumer name
   unless `results.consumer-name` is set; old names stay in the group with nothing pending.
 
 ## Configuration (`alinha.jobs.*`)

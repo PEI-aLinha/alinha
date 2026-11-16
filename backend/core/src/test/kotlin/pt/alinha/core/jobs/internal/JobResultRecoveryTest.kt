@@ -132,6 +132,7 @@ class JobResultRecoveryTest {
 
         assertThat(status(id)).isEqualTo("completed")
         assertThat(unacknowledged()).isZero()
+        assertThat(redis.opsForStream<String, String>().size(RESULTS_STREAM)).isZero() // deleted once applied
     }
 
     @Test
@@ -180,5 +181,6 @@ class JobResultRecoveryTest {
         assertThat(dead.value[REASON]).isEqualTo("not applied after 3 deliveries")
         assertThat(dead.value[RedisJobStreams.SOURCE_ID]).isEqualTo(entry.value)
         assertThat(unacknowledged()).isZero()
+        assertThat(redis.opsForStream<String, String>().size(RESULTS_STREAM)).isZero() // deleted once applied
     }
 }

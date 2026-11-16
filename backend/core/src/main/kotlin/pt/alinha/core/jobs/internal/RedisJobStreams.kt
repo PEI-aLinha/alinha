@@ -57,8 +57,13 @@ class RedisJobStreams(private val redis: StringRedisTemplate) {
         if (ids.isEmpty()) emptyList()
         else streams.claim(RESULTS_STREAM, RESULTS_GROUP, consumer, minIdle, *ids.toTypedArray()).orEmpty()
 
+    /**
+     * XACK, then XDEL: an applied result is in the outbox row, so Redis need not keep it (it may hold collected
+     * evidence). Should XDEL fail, the entry is only left behind; it is acknowledged, so never read again.
+     */
     fun ack(id: RecordId) {
         streams.acknowledge(RESULTS_STREAM, RESULTS_GROUP, id)
+        streams.delete(RESULTS_STREAM, id)
     }
 
     /** Keeps the worker's fields as they came, plus where the entry came from and why it was refused. */
