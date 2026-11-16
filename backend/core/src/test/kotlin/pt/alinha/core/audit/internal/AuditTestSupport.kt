@@ -30,5 +30,11 @@ object AuditDatabase {
         registry.add("spring.datasource.password", postgres::getPassword)
         registry.add("spring.jpa.hibernate.ddl-auto") { "validate" }
         registry.add("spring.flyway.locations") { "classpath:db/migration/core" }
+        // Every test class has its own context (its own @DynamicPropertySource), and Spring keeps them all open. At
+        // Hikari's default of 10 connections each, a dozen classes use up PostgreSQL's max_connections of 100.
+        registry.add("spring.datasource.hikari.maximum-pool-size") { MAX_POOL_SIZE }
+        registry.add("spring.datasource.hikari.minimum-idle") { 1 }
     }
+
+    private const val MAX_POOL_SIZE = 4
 }
