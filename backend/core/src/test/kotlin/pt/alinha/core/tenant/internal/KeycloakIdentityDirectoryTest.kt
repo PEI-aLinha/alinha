@@ -77,24 +77,38 @@ class KeycloakIdentityDirectoryTest {
     }
 
     @Test
-    fun `revoke restores the account and only removes its own tenant`() {
+    fun `revoke restores registrant first and removes the tenant last`() {
         expectToken()
         expectGet(users, """{"id":"$subject","attributes":{"tenant_id":["${tenant.value}"]}}""")
-        server.expect(requestTo(users)).andExpect(method(HttpMethod.PUT))
-            .andExpect(content().string(not(containsString("tenant_id"))))
+        expectGet("$users/role-mappings/realm/available", "[$defaultRoles]")
+        server.expect(requestTo("$users/role-mappings/realm")).andExpect(method(HttpMethod.POST))
+            .andExpect(content().json("""[{"id":"r-default","name":"default-roles-alinha"}]""", JsonCompareMode.STRICT))
             .andRespond(withNoContent())
         expectGet("$users/role-mappings/realm", "[$responsible]")
         server.expect(requestTo("$users/role-mappings/realm")).andExpect(method(HttpMethod.DELETE))
             .andExpect(content().json("[$responsible]"))
             .andRespond(withNoContent())
-        expectGet("$users/role-mappings/realm/available", "[$defaultRoles]")
-        server.expect(requestTo("$users/role-mappings/realm")).andExpect(method(HttpMethod.POST))
-            .andExpect(content().json("""[{"id":"r-default","name":"default-roles-alinha"}]""", JsonCompareMode.STRICT))
+        server.expect(requestTo(users)).andExpect(method(HttpMethod.PUT))
+            .andExpect(content().string(not(containsString("tenant_id"))))
             .andRespond(withNoContent())
 
         directory.revokeTenant(subject, tenant)
 
         server.verify()
+    }
+
+    @Test
+    fun `a revoke that fails halfway keeps the tenant attribute for a retry`() {
+        expectToken()
+        expectGet(users, """{"id":"$subject","attributes":{"tenant_id":["${tenant.value}"]}}""")
+        expectGet("$users/role-mappings/realm/available", "[$defaultRoles]")
+        server.expect(requestTo("$users/role-mappings/realm")).andExpect(method(HttpMethod.POST)).andRespond(withNoContent())
+        expectGet("$users/role-mappings/realm", "[$responsible]")
+        server.expect(requestTo("$users/role-mappings/realm")).andExpect(method(HttpMethod.DELETE)).andRespond(withServerError())
+
+        assertThrows<RestClientException> { directory.revokeTenant(subject, tenant) }
+
+        server.verify() // the PUT that removes tenant_id never happened
     }
 
     @Test

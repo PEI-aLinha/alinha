@@ -96,9 +96,11 @@ class KeycloakIdentityDirectory internal constructor(
         // owns the account, or the assignment never got this far. Roles follow the attribute, so leave them too.
         val own = attributesOf(user)[TENANT_CLAIM].orEmpty().any { it.equals(tenantId.value.toString(), ignoreCase = true) }
         if (!own) return
-        writeUser(token, subject, user, attributesOf(user) - TENANT_CLAIM)
-        unmapRoles(token, subject, mappedRealmRoles(token, subject).filter { it.name == RESPONSIBLE_ROLE })
+        // Restore `registrant` first and drop the attribute last: a failure halfway leaves the attribute in place, so
+        // a retry (or #92's reconciliation) still recognises the account, and it is never left without any role.
         mapRoles(token, subject, availableRealmRoles(token, subject).filter { it.name == defaultRoles() })
+        unmapRoles(token, subject, mappedRealmRoles(token, subject).filter { it.name == RESPONSIBLE_ROLE })
+        writeUser(token, subject, user, attributesOf(user) - TENANT_CLAIM)
     }
 
     private fun defaultRoles() = DEFAULT_ROLES + properties.realm
