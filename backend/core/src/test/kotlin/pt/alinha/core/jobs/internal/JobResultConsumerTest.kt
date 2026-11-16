@@ -90,7 +90,8 @@ class JobResultConsumerTest {
     private fun send(fields: Map<String, String>) = redis.opsForStream<String, String>().add(RESULTS_STREAM, fields)
 
     private fun row(id: UUID) = jdbc.queryForMap(
-        "select status, attempt, last_error, result::text as result, finished_at, next_attempt_at > now() as delayed " +
+        "select status, attempt, publish_failures, last_error, result::text as result, finished_at, " +
+            "next_attempt_at > now() as delayed " +
             "from core.job_outbox where id = ?",
         id,
     )
@@ -137,6 +138,7 @@ class JobResultConsumerTest {
     @Test
     fun `a retryable failure is published again with the next attempt`() {
         val id = published()
+        jdbc.update("update core.job_outbox set publish_failures = 4 where id = ?", id) // from the first attempt
         send(result(id, "failed", retryable = true))
 
         consumer.consumeOnce()
@@ -144,6 +146,7 @@ class JobResultConsumerTest {
         row(id).let {
             assertThat(it["status"]).isEqualTo("pending")
             assertThat(it["attempt"]).isEqualTo(2)
+            assertThat(it["publish_failures"]).isEqualTo(0)
             assertThat(it["delayed"]).isEqualTo(true)
             assertThat(it["last_error"]).isEqualTo("auth: token expired")
         }

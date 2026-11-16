@@ -183,16 +183,20 @@ class JobOutboxRepository(private val jdbc: JdbcClient) {
             .update()
     }
 
-    /** Back to `pending` with the next attempt number; the relay publishes it again after the delay. */
+    /**
+     * Back to `pending` with the next attempt number; the relay publishes it again after the delay. Publish failures
+     * count per attempt, so the new one starts from zero.
+     */
     fun scheduleRetry(id: UUID, error: String, retryInMillis: Long) {
         jdbc.sql(
             """
               update core.job_outbox
-              set status          = 'pending',
-                  attempt         = attempt + 1,
-                  published_at    = null,
-                  last_error      = :error,
-                  next_attempt_at = now() + :delay * interval '1 millisecond'
+              set status           = 'pending',
+                  attempt          = attempt + 1,
+                  publish_failures = 0,
+                  published_at     = null,
+                  last_error       = :error,
+                  next_attempt_at  = now() + :delay * interval '1 millisecond'
               where id = :id
               """.trimIndent(),
         )

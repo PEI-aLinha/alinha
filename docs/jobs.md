@@ -49,7 +49,7 @@ fun startCollection(...) {
 | `published` | on the stream, waiting for the worker's result |
 | `completed` | the worker finished it; `JobCompleted` is emitted, the result is in `JobResults.find` |
 | `failed` | the worker failed it for good (not `retryable`, or no attempts left); `JobFailed` carries the worker's error |
-| `dead` | publishing failed `max-publish-failures` times for a reason other than Redis (see Relay); `JobFailed` (`publish_failed`) is emitted |
+| `dead` | publishing one attempt failed `max-publish-failures` times for a reason other than Redis (see Relay); `JobFailed` (`publish_failed`) is emitted |
 
 ## Relay
 
