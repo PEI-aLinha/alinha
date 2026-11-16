@@ -41,6 +41,17 @@ Dev tenant UUIDs, reused by the persona seed data (#42):
 Marta can act on both organisations; João only on Metalúrgica de Aveiro, so "organization not
 assigned to this consultant" (403) can be exercised locally.
 
+## Self-registration and the provisioner (ADR 0004)
+
+- The login page has **Registar** (email as username, verified email through Mailpit, TOTP on first login).
+- A new account gets the default role `default-roles-alinha`, which includes `registrant` and no `tenant_id`.
+  The seed users above keep only their explicit role.
+- `alinha-provisioner` is a confidential client with a service account (`realm-management`: `manage-users`,
+  `view-users`). When an organization is registered, the app sets `tenant_id`, maps `responsible` and removes
+  `default-roles-alinha` (so `registrant` goes away). It cannot create roles or read clients.
+- Its dev secret (`dev-provisioner-secret`) is also seeded in OpenBao as `identity.provisioner-secret`; the app reads
+  it from there, never from config files.
+
 ## Token contract
 
 The `bff` client adds these to the access token. Backend contract: [`docs/tenancy.md`](../../docs/tenancy.md)
