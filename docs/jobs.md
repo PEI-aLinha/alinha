@@ -33,7 +33,8 @@ fun startCollection(...) {
   transaction rolls back. Because dots become dashes, `a-b.c` and `a.b-c` would share one contract file: never
   register two types that differ only there.
 - `idempotencyKey`: the same `(tenant, type, key)` returns the **existing** jobId and writes nothing. The payload of
-  the second call is ignored, but it is still validated first (an invalid one throws).
+  the second call is ignored, but it is still validated first (an invalid one throws). The contract `version` is not
+  part of the key: a retry after a v1 → v2 upgrade gets the v1 job back instead of running the same work twice.
   The key never expires while the row exists (until retention, #87), **even if that job is `dead` or `failed`**: put
   something in the key that changes when you really want a new job (e.g. `collect:<assessmentId>:<runId>`).
 - Every new job is audited (`job.dispatched`) in the same transaction.

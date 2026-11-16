@@ -10,7 +10,7 @@ interface JobDispatcher {
      * Writes the job to the outbox in the caller's transaction (MANDATORY), so it is published only if that commits.
      *
      * @return the new jobId, or the existing one when [JobRequest.idempotencyKey] was already used for this
-     *   tenant and type (the second payload is ignored).
+     *   tenant and type (the second payload is ignored). The contract version is not part of the key.
      * @throws IllegalArgumentException if the envelope does not match contracts/jobs/<type>.v<version>.schema.json
      */
     fun dispatch(request: JobRequest): UUID
