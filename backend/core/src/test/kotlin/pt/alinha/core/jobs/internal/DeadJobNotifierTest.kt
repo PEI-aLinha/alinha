@@ -5,6 +5,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.DynamicPropertyRegistry
@@ -12,6 +13,8 @@ import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.context.event.ApplicationEvents
 import org.springframework.test.context.event.RecordApplicationEvents
 import org.springframework.transaction.support.TransactionTemplate
+import pt.alinha.core.audit.AiProvenance
+import pt.alinha.core.audit.AuditTrail
 import pt.alinha.core.jobs.JobDispatcher
 import pt.alinha.core.jobs.JobError
 import pt.alinha.core.jobs.JobFailed
@@ -41,6 +44,8 @@ class DeadJobNotifierTest {
     @Autowired private lateinit var tx: TransactionTemplate
     @Autowired private lateinit var jdbc: JdbcTemplate
     @Autowired private lateinit var redis: StringRedisTemplate
+    @Autowired private lateinit var audit: AuditTrail
+    @Autowired private lateinit var publisher: ApplicationEventPublisher
     @Autowired private lateinit var events: ApplicationEvents
 
     private val tenant = TenantId(UUID.randomUUID())
@@ -62,6 +67,14 @@ class DeadJobNotifierTest {
         jdbc.queryForMap("select status, publish_failures, finished_at from core.job_outbox where id = ?", id)
 
     private fun makeDue(id: UUID) = jdbc.update("update core.job_outbox set next_attempt_at = now() where id = ?", id)
+
+    private fun killed(): UUID {
+        val id = dispatcher.dispatchAs(tenants, tx, tenant, collectRequest())
+        brokenRelay.relayOnce()
+        makeDue(id)
+        brokenRelay.relayOnce()
+        return id
+    }
 
     private fun auditCount(id: UUID) = jdbc.queryForObject(
         "select count(*) from audit.audit_event where action = 'job.dead' and entity_id = ? and tenant_id = ?",
@@ -91,5 +104,31 @@ class DeadJobNotifierTest {
         assertThat(failed.error.code).isEqualTo(JobError.PUBLISH_FAILED)
         assertThat(row(id)["finished_at"]).isNotNull()
         assertThat(auditCount(id)).isEqualTo(1)
+    }
+
+    @Test
+    fun `a dead job that cannot be notified does not block the others`() {
+        val stuck = killed() // oldest, so it heads every round
+        val other = killed()
+        val failingAudit = object : AuditTrail {
+            override fun record(
+                action: String,
+                entityType: String,
+                entityId: String,
+                details: Map<String, Any?>,
+                provenance: AiProvenance?,
+            ) {
+                check(entityId != stuck.toString()) { "audit unavailable" }
+                audit.record(action, entityType, entityId, details, provenance)
+            }
+        }
+        val notifier = DeadJobNotifier(outbox, tenants, tx, failingAudit, publisher, properties)
+
+        assertThat(notifier.notifyOnce()).isEqualTo(1)
+
+        assertThat(row(other)["finished_at"]).isNotNull()
+        assertThat(row(stuck)["finished_at"]).isNull() // rolled back: tried again next round
+        assertThat(events.stream(JobFailed::class.java).map { it.jobId }.toList()).containsExactly(other)
+        assertThat(auditCount(stuck)).isZero()
     }
 }

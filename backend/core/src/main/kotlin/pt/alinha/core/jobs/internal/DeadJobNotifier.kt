@@ -1,5 +1,6 @@
 package pt.alinha.core.jobs.internal
 
+import org.slf4j.LoggerFactory
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
@@ -24,14 +25,21 @@ class DeadJobNotifier(
     private val events: ApplicationEventPublisher,
     private val properties: JobsProperties,
 ) {
+    private val log = LoggerFactory.getLogger(javaClass)
+
     @Scheduled(fixedDelayString = "\${alinha.jobs.relay.poll-interval-ms:1000}")
     fun poll() {
         if (properties.relay.enabled) notifyOnce()
     }
 
-    /** @return dead jobs notified in this round. */
+    /** @return dead jobs notified in this round. A job that fails is retried next round without blocking the rest. */
     fun notifyOnce(): Int = outbox.findDeadUnnotified(properties.relay.batchSize).count { job ->
-        tenants.runAs(TenantId(job.tenantId)) { tx.execute { notify(job) } == true }
+        try {
+            tenants.runAs(TenantId(job.tenantId)) { tx.execute { notify(job) } == true }
+        } catch (e: RuntimeException) {
+            log.error("Could not emit JobFailed for dead job {} ({}), retrying next round", job.id, job.type, e)
+            false
+        }
     }
 
     private fun notify(job: OutboxJob): Boolean {
