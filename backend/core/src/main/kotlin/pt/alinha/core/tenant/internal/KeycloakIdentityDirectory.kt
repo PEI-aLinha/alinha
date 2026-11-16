@@ -17,9 +17,12 @@ import java.time.Instant
 
 private const val DEFAULT_ROLES = "default-roles-"
 private const val RESPONSIBLE_ROLE = "responsible"
-private val CONNECT_TIMEOUT: Duration = Duration.ofSeconds(5)
-private val READ_TIMEOUT: Duration = Duration.ofSeconds(5)
-/** Upper bound for one assignment; it runs inside the provisioning transaction (ADR 0004). */
+private val CONNECT_TIMEOUT: Duration = Duration.ofSeconds(2)
+private val READ_TIMEOUT: Duration = Duration.ofSeconds(3)
+/**
+ * Upper bound for one assignment; it runs inside the provisioning transaction (ADR 0004). Checked before each call,
+ * so the worst case is this plus one call (connect + read timeouts), about 15 s.
+ */
 private val ASSIGN_DEADLINE: Duration = Duration.ofSeconds(10)
 /** Renew the service-account token this long before it expires. */
 private val TOKEN_MARGIN: Duration = Duration.ofSeconds(10)
@@ -140,6 +143,11 @@ class KeycloakIdentityDirectory internal constructor(
     private fun attributesOf(user: Map<String, Any?>): Map<String, List<String>> =
         (user["attributes"] as? Map<String, List<String>>).orEmpty()
 
+    /**
+     * Writes back the whole representation read by [readUser]: Keycloak 26 refuses a partial `PUT`
+     * (`error-user-attribute-required`). A profile change made between the read and this write (e.g. in the account
+     * console) is overwritten. The window is two back-to-back calls, and only right after registration.
+     */
     private fun writeUser(token: String, subject: String, user: Map<String, Any?>, attributes: Map<String, List<String>>) {
         http.put().uri("$users/{id}", subject).headers { it.setBearerAuth(token) }
             .contentType(MediaType.APPLICATION_JSON)
