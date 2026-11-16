@@ -61,3 +61,6 @@ Add a row with each new endpoint.
 | `GET /actuator/health` | public | yes | yes | yes |
 | `GET /api/plugins` | `plugins:read` | yes | yes | yes |
 | `GET /api/audit/events` | `audit:read` | yes | yes | no |
+| `POST /api/organization/registration` | `organization:register` (only `registrant`) | no | no | no |
+| `GET /api/organization/profile` | `organization:read` | yes | yes | yes |
+| `PUT /api/organization/profile` | `organization:edit` | yes | yes | no |
