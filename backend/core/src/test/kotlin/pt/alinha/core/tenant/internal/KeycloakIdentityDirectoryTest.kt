@@ -1,5 +1,6 @@
 package pt.alinha.core.tenant.internal
 
+import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers.containsString
 import org.hamcrest.Matchers.not
 import org.junit.jupiter.api.Test
@@ -7,6 +8,7 @@ import org.junit.jupiter.api.assertThrows
 import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
 import org.springframework.test.json.JsonCompareMode
+import org.springframework.test.web.client.ExpectedCount
 import org.springframework.test.web.client.MockRestServiceServer
 import org.springframework.test.web.client.match.MockRestRequestMatchers.content
 import org.springframework.test.web.client.match.MockRestRequestMatchers.header
@@ -18,6 +20,10 @@ import org.springframework.test.web.client.response.MockRestResponseCreators.wit
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.RestClientException
 import pt.alinha.pluginapi.TenantId
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneId
+import java.time.ZoneOffset
 import java.util.UUID
 
 class KeycloakIdentityDirectoryTest {
@@ -137,5 +143,29 @@ class KeycloakIdentityDirectoryTest {
         val unconfigured = KeycloakIdentityDirectory(IdentityProperties(baseUrl = "http://kc"), RestClient.builder())
 
         assertThrows<IllegalStateException> { unconfigured.assignTenant(subject, tenant) }
+    }
+
+    @Test
+    fun `an assignment that takes too long stops before the next call`() {
+        // Each reading of the clock moves it 4 s forward, so the 10 s budget runs out after a couple of calls.
+        val slowClock = object : Clock() {
+            private var now = Instant.parse("2026-11-16T10:00:00Z")
+            override fun instant(): Instant = now.also { now = now.plusSeconds(4) }
+            override fun getZone(): ZoneId = ZoneOffset.UTC
+            override fun withZone(zone: ZoneId?): Clock = this
+        }
+        val slowBuilder = RestClient.builder()
+        val slowServer = MockRestServiceServer.bindTo(slowBuilder).ignoreExpectOrder(true).build()
+        slowServer.expect(ExpectedCount.between(0, 1), requestTo("http://kc/realms/alinha/protocol/openid-connect/token"))
+            .andRespond(withSuccess("""{"access_token":"tok","expires_in":300}""", MediaType.APPLICATION_JSON))
+        slowServer.expect(ExpectedCount.between(0, 1), requestTo(users)).andExpect(method(HttpMethod.GET))
+            .andRespond(withSuccess(user, MediaType.APPLICATION_JSON))
+        slowServer.expect(ExpectedCount.between(0, 1), requestTo(users)).andExpect(method(HttpMethod.PUT))
+            .andRespond(withNoContent())
+        val slow = KeycloakIdentityDirectory(IdentityProperties(baseUrl = "http://kc", clientSecret = "s3cret"), slowBuilder, slowClock)
+
+        val error = assertThrows<IllegalStateException> { slow.assignTenant(subject, tenant) }
+
+        assertThat(error.message).contains("exceeded")
     }
 }

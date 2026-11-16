@@ -19,6 +19,8 @@ private const val DEFAULT_ROLES = "default-roles-"
 private const val RESPONSIBLE_ROLE = "responsible"
 private val CONNECT_TIMEOUT: Duration = Duration.ofSeconds(5)
 private val READ_TIMEOUT: Duration = Duration.ofSeconds(5)
+/** Upper bound for one assignment; it runs inside the provisioning transaction (ADR 0004). */
+private val ASSIGN_DEADLINE: Duration = Duration.ofSeconds(10)
 /** Renew the service-account token this long before it expires. */
 private val TOKEN_MARGIN: Duration = Duration.ofSeconds(10)
 
@@ -68,15 +70,20 @@ class KeycloakIdentityDirectory internal constructor(
     private val users = "/admin/realms/${properties.realm}/users"
 
     override fun assignTenant(subject: String, tenantId: TenantId) {
-        val token = token()
-        setTenantAttribute(token, subject) { it + (TENANT_CLAIM to listOf(tenantId.value.toString())) }
-        val mapped = mappedRealmRoles(token, subject)
-        if (mapped.none { it.name == RESPONSIBLE_ROLE }) {
-            val responsible = availableRealmRoles(token, subject).filter { it.name == RESPONSIBLE_ROLE }
-            check(responsible.isNotEmpty()) { "Realm role '$RESPONSIBLE_ROLE' is missing" }
-            mapRoles(token, subject, responsible)
+        val deadline = clock.instant().plus(ASSIGN_DEADLINE)
+        fun <T> step(call: () -> T): T {
+            check(clock.instant().isBefore(deadline)) { "Identity assignment exceeded $ASSIGN_DEADLINE" }
+            return call()
         }
-        unmapRoles(token, subject, mapped.filter { it.name == defaultRoles() })
+        val token = step { token() }
+        step { setTenantAttribute(token, subject) { it + (TENANT_CLAIM to listOf(tenantId.value.toString())) } }
+        val mapped = step { mappedRealmRoles(token, subject) }
+        if (mapped.none { it.name == RESPONSIBLE_ROLE }) {
+            val responsible = step { availableRealmRoles(token, subject) }.filter { it.name == RESPONSIBLE_ROLE }
+            check(responsible.isNotEmpty()) { "Realm role '$RESPONSIBLE_ROLE' is missing" }
+            step { mapRoles(token, subject, responsible) }
+        }
+        step { unmapRoles(token, subject, mapped.filter { it.name == defaultRoles() }) }
     }
 
     override fun revokeTenant(subject: String, tenantId: TenantId) {
