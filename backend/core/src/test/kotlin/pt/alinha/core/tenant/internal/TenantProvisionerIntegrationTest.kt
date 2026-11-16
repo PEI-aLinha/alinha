@@ -73,6 +73,7 @@ class TenantProvisionerIntegrationTest {
     @Autowired private lateinit var directory: FakeIdentityDirectory
     @Autowired private lateinit var jdbc: JdbcTemplate
     @Autowired private lateinit var meters: SimpleMeterRegistry
+    @Autowired private lateinit var provisioner: TenantProvisioner
 
     private fun orphanedCount() = meters.counter(ORPHANED_METRIC).count()
 
@@ -231,6 +232,17 @@ class TenantProvisionerIntegrationTest {
 
         assertThat(error.statusCode).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE)
         assertThat(directory.revoked).hasSize(1)
+        assertThat(orphanedCount()).isEqualTo(before + 1)
+    }
+
+    @Test
+    fun `an unknown commit outcome is reported, never revoked`() {
+        val tenant = TenantId(UUID.randomUUID())
+        val before = orphanedCount()
+
+        provisioner.RevokeOnRollback(subject, tenant).afterCompletion(TransactionSynchronization.STATUS_UNKNOWN)
+
+        assertThat(directory.revoked).isEmpty()
         assertThat(orphanedCount()).isEqualTo(before + 1)
     }
 

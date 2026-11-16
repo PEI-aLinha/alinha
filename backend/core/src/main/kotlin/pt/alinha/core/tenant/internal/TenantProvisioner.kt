@@ -101,12 +101,27 @@ class TenantProvisioner(
         }
     }
 
-    private inner class RevokeOnRollback(
+    /**
+     * Undoes the identity assignment only when the transaction is known to have rolled back. With an unknown outcome
+     * (e.g. the connection dropped during COMMIT) the tenant may exist, and revoking would lock the account out for
+     * good, so it is only reported as possibly orphaned.
+     */
+    internal inner class RevokeOnRollback(
         private val subject: String,
         private val tenantId: TenantId,
     ) : TransactionSynchronization {
         override fun afterCompletion(status: Int) {
-            if (status == TransactionSynchronization.STATUS_COMMITTED) return
+            when (status) {
+                TransactionSynchronization.STATUS_COMMITTED -> Unit
+                TransactionSynchronization.STATUS_ROLLED_BACK -> revoke()
+                else -> {
+                    orphaned.increment()
+                    log.error("Unknown commit outcome for tenant {}: check its identity assignment", tenantId.value)
+                }
+            }
+        }
+
+        private fun revoke() {
             runCatching { directory.revokeTenant(subject, tenantId) }.onFailure {
                 // The account may point to a tenant that does not exist until #92's reconciliation clears it.
                 orphaned.increment()
