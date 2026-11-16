@@ -117,6 +117,9 @@ paths:
           description: |
             Too many registration attempts from this client (`code` = `TOO_MANY_REGISTRATIONS`): at most 5 per hour,
             one at a time. Nothing was created.
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
           content:
             application/problem+json:
               schema:
@@ -126,6 +129,9 @@ paths:
             Nothing was created; try again later. `code` tells why:
             - `IDENTITY_UNAVAILABLE`: the identity provider failed;
             - `REGISTRATION_BUSY`: too many registrations at once, or this account's registration is still running.
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
           content:
             application/problem+json:
               schema:
@@ -577,6 +583,13 @@ components:
         status:
           type: string
           enum: [ok]
+
+  headers:
+    RetryAfter:
+      description: Seconds to wait before trying again.
+      schema:
+        type: integer
+        minimum: 1
 
   responses:
     BadRequest:

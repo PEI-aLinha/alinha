@@ -16,10 +16,10 @@ import org.springframework.transaction.support.TransactionSynchronization
 import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.transaction.support.TransactionTemplate
 import org.springframework.web.client.RestClientException
-import org.springframework.web.server.ResponseStatusException
 import pt.alinha.core.audit.AuditTrail
 import pt.alinha.core.tenant.TenantProvisioning
 import pt.alinha.pluginapi.TenantId
+import java.time.Duration
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Semaphore
@@ -38,6 +38,12 @@ private const val EMAIL_VERIFIED_CLAIM = "email_verified"
  * (up to about 15 s), so this bounds how much of the pool a slow Keycloak can take from everyone else.
  */
 internal const val MAX_CONCURRENT_PROVISIONING = 4
+
+/** `Retry-After` when registrations are busy: about one registration's worst case (see [MAX_CONCURRENT_PROVISIONING]). */
+internal val BUSY_RETRY_AFTER: Duration = Duration.ofSeconds(15)
+
+/** `Retry-After` when the identity provider failed: long enough for a restart or a network blip to pass. */
+internal val IDENTITY_RETRY_AFTER: Duration = Duration.ofSeconds(60)
 
 /** Creates a tenant for the registering account (ADR 0004). See [TenantProvisioning]. */
 @Component
@@ -137,16 +143,13 @@ class TenantProvisioner(
         }
     }
 
-    private fun busy() =
-        ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Too many registrations at once").apply {
-            body.setProperty("code", REGISTRATION_BUSY)
-        }
+    private fun busy() = RegistrationProblem(
+        HttpStatus.SERVICE_UNAVAILABLE, "Too many registrations at once", REGISTRATION_BUSY, BUSY_RETRY_AFTER,
+    )
 
-    private fun identityUnavailable(cause: Exception): ResponseStatusException {
-        return ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Identity provider unavailable", cause).apply {
-            body.setProperty("code", IDENTITY_UNAVAILABLE)
-        }
-    }
+    private fun identityUnavailable(cause: Exception) = RegistrationProblem(
+        HttpStatus.SERVICE_UNAVAILABLE, "Identity provider unavailable", IDENTITY_UNAVAILABLE, IDENTITY_RETRY_AFTER, cause,
+    )
 
     /**
      * Undoes the identity assignment only when the transaction is known to have rolled back. With an unknown outcome
@@ -179,7 +182,5 @@ class TenantProvisioner(
 
     /** Carries `code` in its Problem Details body, so the client can tell it from other 409s. */
     private fun alreadyRegistered() =
-        ResponseStatusException(HttpStatus.CONFLICT, "This account already has an organization").apply {
-            body.setProperty("code", ORGANIZATION_ALREADY_EXISTS)
-        }
+        RegistrationProblem(HttpStatus.CONFLICT, "This account already has an organization", ORGANIZATION_ALREADY_EXISTS)
 }

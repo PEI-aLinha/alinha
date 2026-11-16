@@ -370,7 +370,10 @@ export interface components {
         PageSize: number;
     };
     requestBodies: never;
-    headers: never;
+    headers: {
+        /** @description Seconds to wait before trying again. */
+        RetryAfter: number;
+    };
     pathItems: never;
 }
 export type $defs = Record<string, never>;
@@ -470,6 +473,7 @@ export interface operations {
              */
             429: {
                 headers: {
+                    "Retry-After": components["headers"]["RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -483,6 +487,7 @@ export interface operations {
              */
             503: {
                 headers: {
+                    "Retry-After": components["headers"]["RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {

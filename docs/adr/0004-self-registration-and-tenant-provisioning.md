@@ -36,7 +36,7 @@ handler cannot pick a tenant either. Nothing in the platform creates a tenant.
 - **Registration is limited** because each one holds a database connection while it calls the identity provider:
   at most 4 at once on the instance, one in flight per account, and per client IP one in flight and 5 attempts per
   hour (`alinha.provisioning.max-per-client-per-hour`). Over the limits: 503 `REGISTRATION_BUSY` or 429
-  `TOO_MANY_REGISTRATIONS`. The IP comes from `X-Forwarded-For` only through an internal proxy. The limits are in
+  `TOO_MANY_REGISTRATIONS`, both with `Retry-After` (as is 503 `IDENTITY_UNAVAILABLE`). The IP comes from `X-Forwarded-For` only through an internal proxy. The limits are in
   memory, per instance; with several instances they move to the BFF on Redis (#14).
 - **The token is stale after provisioning.** The new `tenant_id` and role appear in the next token, so the BFF
   refreshes the session (or the shell re-authenticates silently) after a successful registration (#14).

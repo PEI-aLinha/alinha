@@ -11,6 +11,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.security.access.AccessDeniedException
@@ -147,6 +148,7 @@ class TenantProvisionerIntegrationTest {
 
         assertThat(error.statusCode).isEqualTo(HttpStatus.CONFLICT)
         assertThat(error.body.properties?.get("code")).isEqualTo(ORGANIZATION_ALREADY_EXISTS)
+        assertThat(error.headers.getFirst(HttpHeaders.RETRY_AFTER)).isNull()
         assertThat(jdbc.queryForObject("select count(*) from core.tenant where owner_subject = ?", Long::class.java, subject)).isEqualTo(1)
         assertThat(directory.assigned).containsExactly(subject to first)
     }
@@ -204,6 +206,7 @@ class TenantProvisionerIntegrationTest {
 
         assertThat(error.statusCode).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE)
         assertThat(error.body.properties?.get("code")).isEqualTo(IDENTITY_UNAVAILABLE)
+        assertThat(error.headers.getFirst(HttpHeaders.RETRY_AFTER)).isEqualTo("60")
         val created = checkNotNull(tenant)
         assertThat(tenantRows(created)).isZero()
         assertThat(auditRows(created)).isZero()
@@ -266,6 +269,7 @@ class TenantProvisionerIntegrationTest {
 
             assertThat(error.statusCode).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE)
             assertThat(error.body.properties?.get("code")).isEqualTo(REGISTRATION_BUSY)
+            assertThat(error.headers.getFirst(HttpHeaders.RETRY_AFTER)).isEqualTo("15")
             assertThat(jdbc.queryForObject("select count(*) from core.tenant where owner_subject = ?", Long::class.java, subject)).isZero()
             release.countDown()
             running.forEach { it.get(30, TimeUnit.SECONDS) }

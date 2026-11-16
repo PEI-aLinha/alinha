@@ -7,7 +7,6 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.stereotype.Component
 import org.springframework.web.context.request.RequestContextHolder
 import org.springframework.web.context.request.ServletRequestAttributes
-import org.springframework.web.server.ResponseStatusException
 import java.net.Inet6Address
 import java.net.InetAddress
 import java.time.Clock
@@ -50,34 +49,41 @@ class RegistrationRateLimiter internal constructor(
     private val inFlight: MutableSet<String> = ConcurrentHashMap.newKeySet()
     private val calls = AtomicInteger()
 
-    /** Runs [block] if this client may start a registration now; otherwise throws 429 `TOO_MANY_REGISTRATIONS`. */
+    /**
+     * Runs [block] if this client may start a registration now; otherwise throws 429 `TOO_MANY_REGISTRATIONS` with
+     * `Retry-After`: the time until its oldest attempt leaves the hour, or [BUSY_RETRY_AFTER] while one is running.
+     */
     fun <T> limit(block: () -> T): T {
         val client = currentClient() ?: return block()
-        if (!inFlight.add(client)) throw tooMany()
+        if (!inFlight.add(client)) throw tooMany(BUSY_RETRY_AFTER)
         try {
-            if (!record(client)) throw tooMany()
+            record(client)?.let { throw tooMany(it) }
             return block()
         } finally {
             inFlight.remove(client)
         }
     }
 
-    private fun tooMany() =
-        ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Too many registrations from this client").apply {
-            body.setProperty("code", TOO_MANY_REGISTRATIONS)
-        }
+    private fun tooMany(retryAfter: Duration) = RegistrationProblem(
+        HttpStatus.TOO_MANY_REQUESTS, "Too many registrations from this client", TOO_MANY_REGISTRATIONS, retryAfter,
+    )
 
-    private fun record(client: String): Boolean {
+    /** Records an attempt and returns null, or, over the limit, how long until the client may try again. */
+    private fun record(client: String): Duration? {
         val now = clock.instant()
         val since = now.minus(WINDOW)
-        var allowed = false
+        var wait: Duration? = null
         attempts.compute(client) { _, previous ->
             val recent = previous.orEmpty().filter { it.isAfter(since) }
-            allowed = recent.size < properties.maxPerClientPerHour
-            if (allowed) recent + now else recent
+            if (recent.size < properties.maxPerClientPerHour) {
+                recent + now
+            } else {
+                wait = recent.minOrNull()?.let { Duration.between(now, it.plus(WINDOW)) } ?: WINDOW
+                recent
+            }
         }
         if (calls.incrementAndGet() % SWEEP_EVERY == 0) sweep(since)
-        return allowed
+        return wait
     }
 
     private fun sweep(since: Instant) {

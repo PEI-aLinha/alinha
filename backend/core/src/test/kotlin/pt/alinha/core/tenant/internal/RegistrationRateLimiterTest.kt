@@ -4,6 +4,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.mock.web.MockHttpServletRequest
 import org.springframework.web.context.request.RequestContextHolder
@@ -34,12 +35,15 @@ class RegistrationRateLimiterTest {
     fun `a client over its hourly attempts gets 429 until the window passes`() {
         from("10.0.0.1")
         repeat(2) { limiter.limit { } }
+        clock.now = clock.now.plusSeconds(600)
 
         val error = assertThrows<ResponseStatusException> { limiter.limit { } }
 
         assertThat(error.statusCode).isEqualTo(HttpStatus.TOO_MANY_REQUESTS)
         assertThat(error.body.properties?.get("code")).isEqualTo(TOO_MANY_REGISTRATIONS)
-        clock.now = clock.now.plusSeconds(3601)
+        // The oldest attempt leaves the hour 3000 s from now.
+        assertThat(error.headers.getFirst(HttpHeaders.RETRY_AFTER)).isEqualTo("3000")
+        clock.now = clock.now.plusSeconds(3001)
         assertThat(limiter.limit { "ok" }).isEqualTo("ok")
     }
 
@@ -67,11 +71,19 @@ class RegistrationRateLimiterTest {
         val error = assertThrows<ResponseStatusException> { limiter.limit { limiter.limit { } } }
 
         assertThat(error.statusCode).isEqualTo(HttpStatus.TOO_MANY_REQUESTS)
+        assertThat(error.headers.getFirst(HttpHeaders.RETRY_AFTER)).isEqualTo(BUSY_RETRY_AFTER.seconds.toString())
     }
 
     @Test
     fun `calls outside an HTTP request are not limited`() {
         repeat(5) { limiter.limit { } }
+    }
+
+    @Test
+    fun `Retry-After is whole seconds, rounded up and never 0`() {
+        assertThat(retryAfterSeconds(java.time.Duration.ofMillis(1))).isEqualTo(1)
+        assertThat(retryAfterSeconds(java.time.Duration.ofMillis(1500))).isEqualTo(2)
+        assertThat(retryAfterSeconds(java.time.Duration.ZERO)).isEqualTo(1)
     }
 
     @Test
