@@ -157,7 +157,7 @@ Numbering from the technical report (section 3.2).
 
 | NFR | How | Status |
 |---|---|---|
-| RNF02 no job lost on failure | `core.jobs.JobDispatcher` writes to `core.job_outbox` in the caller's transaction; `OutboxRelay` publishes to Redis Streams (`SKIP LOCKED`, backoff, at-least-once); see `docs/jobs.md` | dispatch + relay **done**; results consumer and retries in #13 (part 2) |
+| RNF02 no job lost on failure | `core.jobs.JobDispatcher` writes to `core.job_outbox` in the caller's transaction; `OutboxRelay` publishes to Redis Streams (`SKIP LOCKED`, backoff, at-least-once); `JobResultConsumer` applies worker results (`JobCompleted`/`JobFailed`, retries, dead letters); see `docs/jobs.md` | **done** (watchdog #86, retention and alerts #87) |
 | RNF03 tenant isolation | `core.tenant.TenantContext` (tenant from the token, consultant picks with `X-Alinha-Tenant`); entities extend `TenantOwnedEntity` (Hibernate `@TenantId`); see `docs/tenancy.md` | **done** in the backend (Keycloak claims pending #5, header relay pending #14) |
 | RNF04 audit trail | `core.audit.AuditTrail` in the caller's transaction; app role `alinha_app` INSERT/SELECT only + trigger blocking UPDATE/DELETE/TRUNCATE; history `GET /api/audit/events` (see `docs/audit.md`) | **done** |
 | RNF07/RNF08 OIDC + roles per endpoint | Keycloak JWTs + `@RequiresPermission`, deny by default; see `docs/rbac.md` | **done** in the backend (not yet tested against a real Keycloak realm, see #5) |

@@ -6,7 +6,7 @@ fails: the job is written to an **outbox in the caller's transaction**, and a re
 ```
 plugin @Transactional ──dispatch()──▶ core.job_outbox (pending) ──commit──▶ OutboxRelay ──XADD──▶ alinha:jobs:<type>:v<n>
                                                                                                          │
-plugin @ApplicationModuleListener ◀── JobCompleted / JobFailed ◀── core ◀── alinha:jobs:results ◀── worker
+plugin event listener         ◀── JobCompleted / JobFailed ◀── core ◀── alinha:jobs:results ◀── worker
 ```
 
 ## Dispatching a job
@@ -44,9 +44,10 @@ fun startCollection(...) {
 
 | Status | Meaning |
 |---|---|
-| `pending` | waiting for the relay (`next_attempt_at`) |
+| `pending` | waiting for the relay (`next_attempt_at`); also after a `retryable` failure, with `attempt + 1` |
 | `published` | on the stream, waiting for the worker's result |
-| `completed` / `failed` | the worker answered (results consumer, see below) |
+| `completed` | the worker finished it; `JobCompleted` is emitted, the result is in `JobResults.find` |
+| `failed` | the worker failed it for good (not `retryable`, or no attempts left); `JobFailed` carries the worker's error |
 | `dead` | publishing failed `max-publish-failures` times for a reason other than Redis (see Relay); `JobFailed` (`publish_failed`) is emitted |
 
 ## Relay
@@ -82,10 +83,49 @@ fun startCollection(...) {
   `contracts/jobs/job-result.v1.schema.json`. Set `retryable: true` only for transient failures.
 - The worker's message is untrusted: the core takes the tenant from the outbox row and rejects a mismatch.
 
-## Results and retries
+## Getting the outcome
 
-The second part of #13: the results consumer, `JobCompleted`, re-dispatch of `retryable` failures up to
-`max_attempts`, and a DLQ. Until it lands, `published` jobs stay `published`.
+```kotlin
+@Async
+@TransactionalEventListener
+fun on(event: JobCompleted) {
+    if (event.requestedBy != "code-repository") return
+    // No request tenant here: runAs first, then the transaction (docs/tenancy.md, rule 4).
+    tenants.runAs(event.tenantId) {
+        tx.executeWithoutResult {
+            val job = jobResults.find(event.jobId) ?: return@executeWithoutResult
+            // job.result: the worker's output, untrusted data
+        }
+    }
+}
+```
+
+- `JobCompleted` carries no result (it can be large and every event is stored in `event_publication`): read it with
+  `JobResults.find(jobId)`, filtered by the current tenant. Another tenant's job reads as `null`.
+- `JobFailed` is final: the job will not run again. `error.code` is `publish_failed` when the core could not queue
+  it, otherwise the worker's code. The worker's `error.message` and `result` are **untrusted**: show or store them,
+  never act on them as instructions.
+
+## Results consumer
+
+- Every `alinha.jobs.results.poll-interval-ms`, `JobResultConsumer` reads `alinha:jobs:results` with the consumer
+  group `alinha-core` (created at offset `0` with `MKSTREAM`, again if Redis lost it).
+- Each entry is validated against `job-result.v1`, then applied in its own transaction under the job's tenant. The
+  outbox row is locked `for update`, so a result that arrives before the relay commits `published` waits for it.
+- The entry is `XACK`ed only after that transaction commits. A result for another attempt, or for a job that is
+  already finished, is ignored: applying the same entry twice changes nothing.
+- `failed` with `retryable: true` and `attempt < max_attempts`: the row goes back to `pending` with `attempt + 1`
+  and the relay's backoff; the relay publishes it again. Otherwise the job is `failed`.
+- Audited: `job.completed`, `job.retried`, `job.failed` (error code only, never the worker's message).
+- **Dead letters** go to `alinha:jobs:results:dead`, with the original fields plus `sourceId` and `reason`: an entry
+  that is not valid JSON or does not match the contract, names an unknown job, or whose `tenantId`, `type` or
+  `version` disagree with the outbox row. The job itself is not changed (it stays `published`, #86).
+- **Recovery**: each round first claims entries left unacknowledged for `claim-min-idle` (an instance died, or the
+  database was down while applying them), with `XPENDING` + `XCLAIM`. An entry already delivered `max-deliveries`
+  times is dead-lettered instead of tried again.
+- Redis down: the round returns, nothing is lost; unacknowledged entries are delivered again later.
+- The results stream and the dead-letter stream are not trimmed yet (#87). Each app start uses a new consumer name
+  unless `results.consumer-name` is set; old names stay in the group with nothing pending.
 
 ## Configuration (`alinha.jobs.*`)
 
@@ -96,6 +136,11 @@ The second part of #13: the results consumer, `JobCompleted`, re-dispatch of `re
 | `relay.batch-size` | `50` | |
 | `relay.max-publish-failures` | `10` | non-Redis failures, then `dead` |
 | `relay.backoff-base` / `relay.backoff-max` | `2s` / `5m` | `backoff-base` is also the retry delay while Redis is down |
+| `results.enabled` | `true` | `false` in tests that drive `consumeOnce()` by hand |
+| `results.poll-interval-ms` / `results.batch-size` | `1000` / `50` | |
+| `results.claim-min-idle` | `1m` | unacknowledged for this long = claimed again |
+| `results.max-deliveries` | `5` | then dead-lettered |
+| `results.consumer-name` | random per start | |
 | `default-max-attempts` | `3` | worker attempts per job |
 
 Redis: `spring.data.redis.host/port` (`REDIS_HOST`/`REDIS_PORT`), with command and connect timeouts of `2s`,

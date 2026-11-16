@@ -18,7 +18,7 @@ data class JobError(val code: String, val message: String) {
 
 /**
  * The worker finished the job. The result is not in the event (it can be large): read it with
- * [JobResults.find]. Listen with @ApplicationModuleListener and filter by [requestedBy]/[type].
+ * [JobResults.find] inside `runAs(tenantId)`. Filter by [requestedBy]/[type]; listener recipe in docs/jobs.md.
  */
 data class JobCompleted(
     override val tenantId: TenantId,
@@ -29,7 +29,7 @@ data class JobCompleted(
     val attempt: Int,
 ) : DomainEvent
 
-/** The job will not run again. Listen with @ApplicationModuleListener and filter by [requestedBy]/[type]. */
+/** The job will not run again. Filter by [requestedBy]/[type]; listener recipe in docs/jobs.md. */
 data class JobFailed(
     override val tenantId: TenantId,
     override val occurredAt: Instant,
