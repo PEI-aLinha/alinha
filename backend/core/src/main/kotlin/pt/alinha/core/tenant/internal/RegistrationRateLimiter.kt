@@ -8,6 +8,8 @@ import org.springframework.stereotype.Component
 import org.springframework.web.context.request.RequestContextHolder
 import org.springframework.web.context.request.ServletRequestAttributes
 import org.springframework.web.server.ResponseStatusException
+import java.net.Inet6Address
+import java.net.InetAddress
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
@@ -83,5 +85,19 @@ class RegistrationRateLimiter internal constructor(
     }
 
     private fun currentClient(): String? =
-        (RequestContextHolder.getRequestAttributes() as? ServletRequestAttributes)?.request?.remoteAddr
+        (RequestContextHolder.getRequestAttributes() as? ServletRequestAttributes)?.request?.remoteAddr?.let(::clientKey)
+}
+
+private val IP_LITERAL = Regex("^[0-9a-fA-F:.]+$")
+private const val IPV6_PREFIX_BYTES = 8
+
+/**
+ * The key a client is limited by: an IPv4 address as is (IPv4-mapped IPv6 included), an IPv6 address by its /64,
+ * since one subscriber usually gets a whole /64 and could otherwise rotate addresses freely.
+ */
+internal fun clientKey(address: String): String {
+    if (!IP_LITERAL.matches(address)) return address // never resolve a name
+    val ip = runCatching { InetAddress.getByName(address) }.getOrNull() ?: return address
+    if (ip !is Inet6Address) return ip.hostAddress
+    return "v6:" + ip.address.take(IPV6_PREFIX_BYTES).joinToString("") { "%02x".format(it) } + "::/64"
 }

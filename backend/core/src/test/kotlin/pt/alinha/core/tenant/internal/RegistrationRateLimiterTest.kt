@@ -73,4 +73,13 @@ class RegistrationRateLimiterTest {
     fun `calls outside an HTTP request are not limited`() {
         repeat(5) { limiter.limit { } }
     }
+
+    @Test
+    fun `IPv6 clients are limited by their 64-bit prefix`() {
+        assertThat(clientKey("2001:db8:1:2:aaaa::1")).isEqualTo(clientKey("2001:db8:1:2:bbbb::9"))
+        assertThat(clientKey("2001:db8:1:2::1")).isNotEqualTo(clientKey("2001:db8:1:3::1"))
+        assertThat(clientKey("::ffff:10.0.0.1")).isEqualTo("10.0.0.1")
+        assertThat(clientKey("10.0.0.1")).isEqualTo("10.0.0.1")
+        assertThat(clientKey("not-an-ip.example")).isEqualTo("not-an-ip.example")
+    }
 }
