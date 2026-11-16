@@ -82,3 +82,16 @@ test('the generated api-client exposes the v1 operations', () => {
     assert.ok(generated.includes(expected), expected)
   }
 })
+
+test('every plugin operation documents 401 and 403', () => {
+  const core = new Set(['/api/me', '/api/plugins'])
+  for (const [path, item] of Object.entries(contract.paths)) {
+    if (core.has(path)) continue
+    for (const method of ['get', 'post', 'put', 'patch', 'delete']) {
+      const operation = item[method]
+      if (!operation) continue
+      assert.ok(operation.responses['401'], `${method.toUpperCase()} ${path} has no 401`)
+      assert.ok(operation.responses['403'], `${method.toUpperCase()} ${path} has no 403`)
+    }
+  }
+})
