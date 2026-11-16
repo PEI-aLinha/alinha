@@ -4,7 +4,8 @@ import org.springframework.stereotype.Component
 import pt.alinha.core.registry.PluginRegistry
 import pt.alinha.pluginapi.PluginManifest
 
-private val KNOWN_ROLES = setOf("consultant", "responsible", "analyst")
+// `registrant`: account created through self-registration, no organization yet (ADR 0004).
+private val KNOWN_ROLES = setOf("consultant", "responsible", "analyst", "registrant")
 private val CORE_PERMISSIONS = setOf("plugins:read")
 // Analysts excluded: least privilege, same rule as results/roadmap (docs/rbac.md).
 private val CORE_ROLE_PERMISSIONS = mapOf(
