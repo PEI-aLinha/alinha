@@ -59,7 +59,7 @@ class OutboxJobDispatcher(
     /** Only reached on an idempotency conflict, so the key is set and the row exists. */
     private fun existingJob(tenantId: UUID, request: JobRequest): UUID {
         val key = checkNotNull(request.idempotencyKey) { "Outbox insert skipped without an idempotency key" }
-        return checkNotNull(outbox.findIdByIdempotencyKey(tenantId, request.type, key)) {
+        return checkNotNull(outbox.findIdByIdempotencyKey(tenantId, request.type, request.requestedBy, key)) {
             "Idempotency conflict but no job found for type ${request.type}"
         }
     }

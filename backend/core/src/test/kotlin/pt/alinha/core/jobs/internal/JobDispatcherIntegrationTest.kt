@@ -107,6 +107,15 @@ class JobDispatcherIntegrationTest {
     }
 
     @Test
+    fun `another plugin reusing a key gets its own job`() {
+        val mine = dispatcher.dispatchAs(tenants, tx, tenantA, collectRequest(key = "collect:1"))
+        val theirs = dispatcher.dispatchAs(tenants, tx, tenantA, collectRequest(key = "collect:1", requestedBy = "assessment"))
+
+        assertThat(theirs).isNotEqualTo(mine)
+        assertThat(auditCount(theirs)).isEqualTo(1)
+    }
+
+    @Test
     fun `jobs without a key never clash`() {
         val a = dispatcher.dispatchAs(tenants, tx, tenantA, collectRequest())
         val b = dispatcher.dispatchAs(tenants, tx, tenantA, collectRequest())

@@ -51,7 +51,7 @@ class JobOutboxRuntimeRoleTest {
 
             val id = checkNotNull(repo.insert(newJob(tenant, "grants")))
             assertThat(repo.insert(newJob(tenant, "grants"))).isNull() // on conflict do nothing
-            assertThat(repo.findIdByIdempotencyKey(tenant, TYPE, "grants")).isEqualTo(id)
+            assertThat(repo.findIdByIdempotencyKey(tenant, TYPE, "code-repository", "grants")).isEqualTo(id)
 
             // FOR UPDATE needs UPDATE privilege as well as SELECT.
             tx.executeWithoutResult { assertThat(repo.lockDuePending(1_000).map { it.id }).contains(id) }

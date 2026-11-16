@@ -46,7 +46,7 @@ data class OutboxJobState(
 @Repository
 class JobOutboxRepository(private val jdbc: JdbcClient) {
 
-    /** @return the id, or null when (tenant, type, idempotencyKey) already exists. */
+    /** @return the id, or null when (tenant, type, requestedBy, idempotencyKey) already exists. */
     fun insert(job: NewOutboxJob): UUID? =
         jdbc.sql(
             """
@@ -68,10 +68,16 @@ class JobOutboxRepository(private val jdbc: JdbcClient) {
             .optional()
             .orElse(null)
 
-    fun findIdByIdempotencyKey(tenantId: UUID, type: String, key: String): UUID? =
-        jdbc.sql("select id from core.job_outbox where tenant_id = :tenant and type = :type and idempotency_key = :key")
+    fun findIdByIdempotencyKey(tenantId: UUID, type: String, requestedBy: String, key: String): UUID? =
+        jdbc.sql(
+            """
+              select id from core.job_outbox
+              where tenant_id = :tenant and type = :type and requested_by = :requestedBy and idempotency_key = :key
+              """.trimIndent(),
+        )
             .param("tenant", tenantId)
             .param("type", type)
+            .param("requestedBy", requestedBy)
             .param("key", key)
             .query(UUID::class.java)
             .optional()

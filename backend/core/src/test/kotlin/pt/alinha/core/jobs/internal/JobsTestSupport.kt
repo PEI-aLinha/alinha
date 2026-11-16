@@ -62,10 +62,14 @@ object JobsInfrastructure {
 
 const val COLLECT_STREAM = "alinha:jobs:evidence.collect:v1"
 
-fun collectRequest(key: String? = null, payload: Map<String, Any?> = validCollectPayload()) = JobRequest(
+fun collectRequest(
+    key: String? = null,
+    payload: Map<String, Any?> = validCollectPayload(),
+    requestedBy: String = "code-repository",
+) = JobRequest(
     type = "evidence.collect",
     payload = payload,
-    requestedBy = "code-repository",
+    requestedBy = requestedBy,
     idempotencyKey = key,
 )
 

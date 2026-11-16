@@ -22,8 +22,9 @@ create table core.job_outbox (
     created_at       timestamptz not null default now(),
     published_at     timestamptz,
     finished_at      timestamptz,                          -- set once JobCompleted/JobFailed is emitted
-    -- NULL keys are distinct, so jobs without a key never clash.
-    constraint job_outbox_idempotency unique (tenant_id, type, idempotency_key)
+    -- Keys are per plugin: another plugin reusing a key gets its own job. NULL keys are distinct, so jobs without
+    -- a key never clash.
+    constraint job_outbox_idempotency unique (tenant_id, type, requested_by, idempotency_key)
 );
 
 -- Relay: due pending jobs, oldest first.
