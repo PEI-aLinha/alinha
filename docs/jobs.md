@@ -57,6 +57,8 @@ fun startCollection(...) {
   `publish_failures + 1` and exponential backoff (`backoff-base` × 2ⁿ, at most `backoff-max`). A row that always
   fails therefore ends `dead` instead of blocking the rows behind it.
 - **At-least-once**: a crash after `XADD` but before the row is marked `published` publishes the job again.
+- Once a row is `published`, the job lives only in Redis. Redis must keep its data across restarts (AOF, as in
+  `deploy/docker-compose.dev.yml`). Until the watchdog (#86) exists, a job Redis loses stays `published` forever.
 
 ## What workers must do (#28)
 
