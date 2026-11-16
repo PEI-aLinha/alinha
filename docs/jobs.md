@@ -97,5 +97,5 @@ The second part of #13: the results consumer, `JobCompleted`, re-dispatch of `re
 | `relay.backoff-base` / `relay.backoff-max` | `2s` / `5m` | `backoff-base` is also the retry delay while Redis is down |
 | `default-max-attempts` | `3` | worker attempts per job |
 
-Redis: `spring.data.redis.host/port` (`REDIS_HOST`/`REDIS_PORT`), with a timeout of `2s`, because the relay holds
-row locks while it publishes.
+Redis: `spring.data.redis.host/port` (`REDIS_HOST`/`REDIS_PORT`), with command and connect timeouts of `2s`,
+because the relay holds row locks while it publishes.

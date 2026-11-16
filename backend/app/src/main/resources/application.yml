@@ -46,6 +46,7 @@ spring:
       port: ${REDIS_PORT:6379}
       # Short: the outbox relay holds row locks while it publishes (RNF02, docs/jobs.md).
       timeout: 2s
+      connect-timeout: 2s         # Lettuce defaults to 10s when Redis is unreachable
   task:
     scheduling:
       pool:
