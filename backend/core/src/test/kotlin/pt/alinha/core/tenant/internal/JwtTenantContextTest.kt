@@ -3,7 +3,10 @@ package pt.alinha.core.tenant.internal
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import jakarta.persistence.EntityManager
 import org.springframework.mock.web.MockHttpServletRequest
+import org.springframework.orm.jpa.EntityManagerHolder
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.web.context.request.RequestContextHolder
 import org.springframework.web.context.request.ServletRequestAttributes
 import pt.alinha.pluginapi.TenantId
@@ -50,6 +53,22 @@ class JwtTenantContextTest {
 
         assertEquals(otherTenant, context.runAsNewTenant(otherTenant) { context.current() })
         assertNull(context.currentOrNull())
+    }
+
+    @Test
+    fun `a new tenant cannot be bound while an open-in-view JPA session is bound to the thread`() {
+        RequestContextHolder.setRequestAttributes(ServletRequestAttributes(MockHttpServletRequest()))
+        val session = java.lang.reflect.Proxy.newProxyInstance(
+            EntityManager::class.java.classLoader, arrayOf(EntityManager::class.java),
+        ) { _, _, _ -> null } as EntityManager
+        val key = Any()
+        TransactionSynchronizationManager.bindResource(key, EntityManagerHolder(session))
+        try {
+            assertThrows<IllegalStateException> { context.runAsNewTenant(otherTenant) { } }
+            assertNull(context.currentOrNull())
+        } finally {
+            TransactionSynchronizationManager.unbindResource(key)
+        }
     }
 
     @Test

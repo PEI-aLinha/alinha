@@ -1,5 +1,6 @@
 package pt.alinha.core.tenant.internal
 
+import org.springframework.orm.jpa.EntityManagerHolder
 import org.springframework.stereotype.Component
 import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.web.context.request.RequestAttributes
@@ -41,6 +42,10 @@ class JwtTenantContext : TenantContext {
     private fun <T> bind(tenantId: TenantId, block: () -> T): T {
         check(!TransactionSynchronizationManager.isActualTransactionActive()) {
             "runAs must start outside a transaction: the open JPA session keeps its tenant"
+        }
+        // Open-session-in-view binds a session for the whole request, with no transaction: it would keep its tenant too.
+        check(TransactionSynchronizationManager.getResourceMap().values.none { it is EntityManagerHolder }) {
+            "runAs must start without an open JPA session (spring.jpa.open-in-view must stay false)"
         }
         val previous = scoped.get()
         scoped.set(tenantId)
