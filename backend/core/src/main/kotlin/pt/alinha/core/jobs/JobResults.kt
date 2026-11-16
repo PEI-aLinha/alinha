@@ -5,7 +5,13 @@ import java.util.UUID
 
 /** Reads the state and outcome of a job dispatched in the current tenant. See docs/jobs.md. */
 interface JobResults {
-    /** @return null when the job does not exist in the current tenant (TenantContext). */
+    /**
+     * @return null when the job does not exist in the current tenant (TenantContext).
+     *
+     * Tenant-scoped only: any plugin in the tenant can read any of its jobs, whoever dispatched them. Scoping to the
+     * dispatching plugin needs the caller binding of #60 (`requestedBy` is not checked yet). Until then, ask only for
+     * your own jobs (`event.requestedBy`), and treat the result as untrusted.
+     */
     fun find(jobId: UUID): JobResult?
 }
 

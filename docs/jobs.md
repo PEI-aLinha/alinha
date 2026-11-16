@@ -102,7 +102,8 @@ fun on(event: JobCompleted) {
 ```
 
 - `JobCompleted` carries no result (it can be large and every event is stored in `event_publication`): read it with
-  `JobResults.find(jobId)`, filtered by the current tenant. Another tenant's job reads as `null`.
+  `JobResults.find(jobId)`, filtered by the current tenant. Another tenant's job reads as `null`. It is **not**
+  filtered by plugin yet: another plugin's job in the same tenant can be read. That waits for the caller binding (#60).
 - `JobFailed` is final: the job will not run again. `error.code` is `publish_failed` when the core could not queue
   it, otherwise the worker's code. The worker's `error.message` and `result` are **untrusted**: show or store them,
   never act on them as instructions.
