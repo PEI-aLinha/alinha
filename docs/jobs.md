@@ -30,9 +30,12 @@ fun startCollection(...) {
 - Pass only the type-specific fields. The core adds `jobId`, `type`, `tenantId` (from `TenantContext`, never
   from you) and `requestedAt`, then validates the whole envelope against
   `contracts/jobs/<type with dots as dashes>.v<version>.schema.json`. An invalid envelope throws, and your
-  transaction rolls back.
+  transaction rolls back. Because dots become dashes, `a-b.c` and `a.b-c` would share one contract file: never
+  register two types that differ only there.
 - `idempotencyKey`: the same `(tenant, type, key)` returns the **existing** jobId and writes nothing. The payload of
-  the second call is ignored.
+  the second call is ignored, but it is still validated first (an invalid one throws).
+  The key never expires while the row exists (until retention, #87), **even if that job is `dead` or `failed`**: put
+  something in the key that changes when you really want a new job (e.g. `collect:<assessmentId>:<runId>`).
 - Every new job is audited (`job.dispatched`) in the same transaction.
 - Never put credentials in the payload: use `connectionRef` (OpenBao, `TenantSecretStore`).
 
@@ -56,6 +59,8 @@ fun startCollection(...) {
 - If the publish fails, for any reason, the batch stops (Redis is probably down), and the row gets
   `publish_failures + 1` and exponential backoff (`backoff-base` × 2ⁿ, at most `backoff-max`). A row that always
   fails therefore ends `dead` instead of blocking the rows behind it.
+- Row locks are held while publishing, so a slow-but-alive Redis keeps one transaction open for up to
+  `batch-size` × the Redis timeout. Lower `batch-size` if that matters.
 - **At-least-once**: a crash after `XADD` but before the row is marked `published` publishes the job again.
 - Once a row is `published`, the job lives only in Redis. Redis must keep its data across restarts (AOF, as in
   `deploy/docker-compose.dev.yml`). Until the watchdog (#86) exists, a job Redis loses stays `published` forever.
@@ -80,7 +85,7 @@ The second part of #13: the results consumer, `JobCompleted`, re-dispatch of `re
 
 | Property | Default | |
 |---|---|---|
-| `relay.enabled` | `true` | `false` in tests that drive the relay by hand |
+| `relay.enabled` | `true` | also turns off the `JobFailed` notifier for dead jobs; `false` in tests that drive both by hand |
 | `relay.poll-interval-ms` | `1000` | |
 | `relay.batch-size` | `50` | |
 | `relay.max-publish-failures` | `10` | then `dead` |
