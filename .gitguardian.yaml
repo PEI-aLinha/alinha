@@ -1,0 +1,9 @@
+# GitGuardian (GitHub app and ggshield). Mirrors the allowlist in .gitleaks.toml.
+# Only the files that hold dev-only credentials for local docker compose, on purpose.
+# List files, not folders: a real secret added next to them must still be flagged.
+version: 2
+secret:
+  ignored_paths:
+    - deploy/docker-compose.dev.yml
+    - deploy/openbao/init.sh
+    - deploy/postgres/init/01-app-role.sh

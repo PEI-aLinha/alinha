@@ -7,6 +7,7 @@ import org.mockito.Mockito.`when`
 import org.springframework.boot.test.context.runner.ApplicationContextRunner
 import org.springframework.vault.core.VaultOperations
 import org.springframework.vault.core.VaultVersionedKeyValueOperations
+import pt.alinha.core.audit.AuditTrail
 import pt.alinha.core.tenant.internal.JwtTenantContext
 import pt.alinha.pluginapi.TenantSecretStore
 
@@ -14,6 +15,7 @@ class OpenBaoTenantSecretStoreConditionTest {
 
     private val runner = ApplicationContextRunner()
         .withUserConfiguration(JwtTenantContext::class.java, OpenBaoTenantSecretStore::class.java)
+        .withBean(AuditTrail::class.java, { mock(AuditTrail::class.java) })
 
     @Test
     fun `is not created when vault is disabled`() {

@@ -1,5 +1,6 @@
 package pt.alinha.core.aigateway
 
+import pt.alinha.core.audit.AiProvenance
 import java.time.Instant
 
 /**
@@ -23,4 +24,6 @@ data class AiDraft(
     val generatedAt: Instant,
     val aiGenerated: Boolean = true,          // mandatory labelling (AI Act)
     val requiresHumanReview: Boolean = true,
-)
+) {
+    fun provenance() = AiProvenance(model, promptVersion, sources, generatedAt)
+}

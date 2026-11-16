@@ -62,6 +62,7 @@ git clone --recurse-submodules git@github.com:PEI-aLinha/alinha.git
 cd alinha
 cp deploy/.env.example deploy/.env                     # optional: dev defaults work without it
 docker compose -f deploy/docker-compose.dev.yml up -d  # Postgres, Redis, Keycloak, Mailpit, OpenBao
+# Existing volume from before #10? See docs/audit.md (DB role alinha_app needs LOGIN)
 BAO_TOKEN=dev-app-token ./gradlew :app:bootRun         # backend on :8080
 pnpm install && pnpm dev                               # frontend on :5173
 ```
@@ -157,10 +158,10 @@ Numbering from the technical report (section 3.2).
 | NFR | How | Status |
 |---|---|---|
 | RNF03 tenant isolation | `core.tenant.TenantContext` (tenant from the token, consultant picks with `X-Alinha-Tenant`); entities extend `TenantOwnedEntity` (Hibernate `@TenantId`); see `docs/tenancy.md` | **done** in the backend (Keycloak claims pending #5, header relay pending #14) |
-| RNF04 audit trail | `core.audit.AuditTrail`, same transaction; `audit.audit_event` table INSERT-only | same |
+| RNF04 audit trail | `core.audit.AuditTrail` in the caller's transaction; app role `alinha_app` INSERT/SELECT only + trigger blocking UPDATE/DELETE/TRUNCATE; history `GET /api/audit/events` (see `docs/audit.md`) | **done** |
 | RNF07/RNF08 OIDC + roles per endpoint | Keycloak JWTs + `@RequiresPermission`, deny by default; see `docs/rbac.md` | **done** in the backend (not yet tested against a real Keycloak realm, see #5) |
 | RNF09 no secrets in code/config | OpenBao (`secret/alinha/app` via Spring Cloud Vault); per-tenant provider credentials via `pluginapi.TenantSecretStore`; gitleaks job in CI | **done** (AI Service reads it once implemented) |
-| RNF12/RNF14 AI approval and provenance | `core.aigateway.AiDraft` (model, prompt version, sources, date) | contract defined |
+| RNF12/RNF14 AI approval and provenance | `core.aigateway.AiDraft` (model, prompt version, sources, date); `AiDraft.provenance()` stored in the audit trail | provenance recorded; approval to do |
 | RNF17 new plugin without touching the core | `settings.gradle.kts` and `gen-frontend-plugins.mjs` discover the submodules; `ModularityTest` | **done** |
 | RNF18 catalogues as data | `frameworks/` read from disk at start-up by `core.compliance.CatalogueRegistry` (`CatalogueLoader`); schema in `contracts/frameworks/`; released versions frozen by `scripts/check-immutable-frameworks.sh` | **done** for loading and versioning; see `frameworks/README.md` |
 | RNF19 coverage ≥ 70% and CI blocks merge | missing: Kover (Kotlin) + Vitest coverage in CI; branch protection/rulesets are available because all nine repos are public, and are applied in #4 | **to do** |
