@@ -1,6 +1,6 @@
 # ADR 0004 — Self-registration and tenant provisioning
 
-- **Status:** proposed
+- **Status:** accepted
 - **Date:** 2026-11-16
 - **Issues:** #91 (tenant provisioning), PEI-aLinha/alinha-plugin-organization#2 (organization registration),
   #14 (BFF)
