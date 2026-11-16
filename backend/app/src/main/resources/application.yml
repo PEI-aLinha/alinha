@@ -56,3 +56,9 @@ alinha:
   frameworks:
     # Folder with the framework catalogues (RNF18). Mounted into the container in production.
     dir: ${FRAMEWORKS_DIR:../../frameworks}
+  identity:
+    # Admin access to Keycloak for tenant provisioning (ADR 0004). The secret comes from OpenBao.
+    base-url: ${KEYCLOAK_URL:http://localhost:8180}
+    realm: alinha
+    client-id: alinha-provisioner
+    client-secret: ${identity.provisioner-secret:}
