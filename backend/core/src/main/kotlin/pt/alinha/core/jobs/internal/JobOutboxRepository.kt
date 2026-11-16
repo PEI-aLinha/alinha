@@ -2,6 +2,7 @@ package pt.alinha.core.jobs.internal
 
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Repository
+import java.time.Instant
 import java.util.UUID
 
 data class NewOutboxJob(
@@ -24,6 +25,18 @@ data class OutboxJob(
     val envelope: String,
     val attempt: Int,
     val publishFailures: Int,
+    val status: String,
+    val maxAttempts: Int,
+)
+
+/** A job as its tenant sees it; [document] is the worker's last result (job-result.v1) once the job has finished. */
+data class OutboxJobState(
+    val id: UUID,
+    val type: String,
+    val status: String,
+    val attempt: Int,
+    val document: String?,
+    val finishedAt: Instant?,
 )
 
 /**
@@ -129,6 +142,83 @@ class JobOutboxRepository(private val jdbc: JdbcClient) {
             .param("id", id)
             .update() == 1
 
+    /**
+     * Locks one job to apply a worker result. Waits (no SKIP LOCKED) while the relay holds the row, so a result that
+     * arrives before the relay commits `published` is applied after it, not lost. Must run inside a transaction.
+     */
+    fun lockForResult(id: UUID): OutboxJob? =
+        jdbc.sql("$SELECT_JOB where id = :id for update").param("id", id).query(::mapJob).optional().orElse(null)
+
+    /** Stores the worker's result [document] (job-result.v1) and ends the job. */
+    fun markCompleted(id: UUID, document: String) {
+        finish(id, "completed", document, error = null)
+    }
+
+    fun markFailed(id: UUID, document: String, error: String) {
+        finish(id, "failed", document, error)
+    }
+
+    private fun finish(id: UUID, status: String, document: String, error: String?) {
+        jdbc.sql(
+            """
+              update core.job_outbox
+              set status      = :status,
+                  result      = cast(:document as jsonb),
+                  last_error  = :error,
+                  finished_at = now()
+              where id = :id
+              """.trimIndent(),
+        )
+            .param("id", id)
+            .param("status", status)
+            .param("document", document)
+            .param("error", error)
+            .update()
+    }
+
+    /** Back to `pending` with the next attempt number; the relay publishes it again after the delay. */
+    fun scheduleRetry(id: UUID, error: String, retryInMillis: Long) {
+        jdbc.sql(
+            """
+              update core.job_outbox
+              set status          = 'pending',
+                  attempt         = attempt + 1,
+                  published_at    = null,
+                  last_error      = :error,
+                  next_attempt_at = now() + :delay * interval '1 millisecond'
+              where id = :id
+              """.trimIndent(),
+        )
+            .param("id", id)
+            .param("error", error)
+            .param("delay", retryInMillis)
+            .update()
+    }
+
+    /** Filtered by [tenantId] here: this is the read plugins reach through JobResults. */
+    fun findState(id: UUID, tenantId: UUID): OutboxJobState? =
+        jdbc.sql(
+            """
+              select id, type, status, attempt, result::text as document, finished_at
+              from core.job_outbox
+              where id = :id and tenant_id = :tenant
+              """.trimIndent(),
+        )
+            .param("id", id)
+            .param("tenant", tenantId)
+            .query { rs, _ ->
+                OutboxJobState(
+                    id = rs.getObject("id", UUID::class.java),
+                    type = rs.getString("type"),
+                    status = rs.getString("status"),
+                    attempt = rs.getInt("attempt"),
+                    document = rs.getString("document"),
+                    finishedAt = rs.getTimestamp("finished_at")?.toInstant(),
+                )
+            }
+            .optional()
+            .orElse(null)
+
     private fun mapJob(rs: java.sql.ResultSet, @Suppress("UNUSED_PARAMETER") row: Int) = OutboxJob(
         id = rs.getObject("id", UUID::class.java),
         tenantId = rs.getObject("tenant_id", UUID::class.java),
@@ -138,11 +228,13 @@ class JobOutboxRepository(private val jdbc: JdbcClient) {
         envelope = rs.getString("envelope"),
         attempt = rs.getInt("attempt"),
         publishFailures = rs.getInt("publish_failures"),
+        status = rs.getString("status"),
+        maxAttempts = rs.getInt("max_attempts"),
     )
 
     private companion object {
         const val SELECT_JOB =
-            "select id, tenant_id, type, version, requested_by, envelope::text as envelope, attempt, publish_failures " +
-                    "from core.job_outbox"
+            "select id, tenant_id, type, version, requested_by, envelope::text as envelope, attempt, publish_failures, " +
+                    "status, max_attempts from core.job_outbox"
     }
 }

@@ -58,6 +58,14 @@ class JobOutboxRuntimeRoleTest {
             repo.markPublishFailed(id, "boom", retryInMillis = 0, dead = true)
             assertThat(repo.findDeadUnnotified(1_000).map { it.id }).contains(id)
             assertThat(repo.markNotified(id)).isTrue()
+            repo.deferPublish(id, "redis down", retryInMillis = 0)
+
+            // Results consumer and JobResults.
+            tx.executeWithoutResult { assertThat(repo.lockForResult(id)?.id).isEqualTo(id) }
+            repo.scheduleRetry(id, "worker: retry", retryInMillis = 0)
+            repo.markFailed(id, "{}", "worker: failed")
+            repo.markCompleted(id, "{}")
+            assertThat(repo.findState(id, tenant)?.status).isEqualTo("completed")
         } finally {
             dataSource.destroy()
         }

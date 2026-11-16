@@ -58,7 +58,7 @@ class DeadJobNotifier(
                 type = job.type,
                 requestedBy = job.requestedBy,
                 attempts = job.attempt,
-                error = JobError(JobError.PUBLISH_FAILED, "Job could not be queued for the workers"),
+                error = JobError.PUBLISH_FAILED_ERROR,
             ),
         )
         return true
