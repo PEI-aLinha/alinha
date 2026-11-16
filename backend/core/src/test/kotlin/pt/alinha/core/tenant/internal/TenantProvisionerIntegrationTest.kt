@@ -236,6 +236,39 @@ class TenantProvisionerIntegrationTest {
     }
 
     @Test
+    fun `registrations above the concurrency limit get 503 and create nothing`() {
+        val inside = CountDownLatch(MAX_CONCURRENT_PROVISIONING)
+        val release = CountDownLatch(1)
+        val auth = SecurityContextHolder.getContext().authentication
+        val pool = Executors.newFixedThreadPool(MAX_CONCURRENT_PROVISIONING)
+        try {
+            val running = List(MAX_CONCURRENT_PROVISIONING) { i ->
+                pool.submit<TenantId> {
+                    signIn("$subject-$i", listOf("registrant"))
+                    try {
+                        provisioning.provisionForCurrentUser { inside.countDown(); release.await(); it }
+                    } finally {
+                        SecurityContextHolder.clearContext()
+                    }
+                }
+            }
+            assertThat(inside.await(30, TimeUnit.SECONDS)).isTrue()
+            SecurityContextHolder.getContext().authentication = auth
+
+            val error = assertThrows<ResponseStatusException> { provisioning.provisionForCurrentUser { } }
+
+            assertThat(error.statusCode).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE)
+            assertThat(error.body.properties?.get("code")).isEqualTo(REGISTRATION_BUSY)
+            assertThat(jdbc.queryForObject("select count(*) from core.tenant where owner_subject = ?", Long::class.java, subject)).isZero()
+            release.countDown()
+            running.forEach { it.get(30, TimeUnit.SECONDS) }
+        } finally {
+            release.countDown()
+            pool.shutdownNow()
+        }
+    }
+
+    @Test
     fun `an unknown commit outcome is reported, never revoked`() {
         val tenant = TenantId(UUID.randomUUID())
         val before = orphanedCount()

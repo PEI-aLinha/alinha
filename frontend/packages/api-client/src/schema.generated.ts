@@ -465,8 +465,9 @@ export interface operations {
                 };
             };
             /**
-             * @description The identity provider is unavailable (`code` = `IDENTITY_UNAVAILABLE`); nothing was created. Try again
-             *     later.
+             * @description Nothing was created; try again later. `code` tells why:
+             *     - `IDENTITY_UNAVAILABLE`: the identity provider failed;
+             *     - `REGISTRATION_BUSY`: too many registrations at once.
              */
             503: {
                 headers: {

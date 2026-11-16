@@ -20,6 +20,7 @@ import pt.alinha.core.audit.AuditTrail
 import pt.alinha.core.tenant.TenantProvisioning
 import pt.alinha.pluginapi.TenantId
 import java.util.UUID
+import java.util.concurrent.Semaphore
 
 internal const val REGISTRANT_AUTHORITY = "ROLE_registrant"
 private const val CONSULTANT_AUTHORITY = "ROLE_consultant"
@@ -27,6 +28,13 @@ internal const val TENANT_PROVISIONED = "tenant.provisioned"
 internal const val ORPHANED_METRIC = "alinha.tenant.provisioning.orphaned"
 internal const val ORGANIZATION_ALREADY_EXISTS = "ORGANIZATION_ALREADY_EXISTS"
 internal const val IDENTITY_UNAVAILABLE = "IDENTITY_UNAVAILABLE"
+internal const val REGISTRATION_BUSY = "REGISTRATION_BUSY"
+
+/**
+ * Registrations that may run at once. Each one holds a database connection while it calls the identity provider
+ * (up to about 15 s), so this bounds how much of the pool a slow Keycloak can take from everyone else.
+ */
+internal const val MAX_CONCURRENT_PROVISIONING = 4
 
 /** Creates a tenant for the registering account (ADR 0004). See [TenantProvisioning]. */
 @Component
@@ -40,6 +48,7 @@ class TenantProvisioner(
 ) : TenantProvisioning {
 
     private val log = LoggerFactory.getLogger(javaClass)
+    private val slots = Semaphore(MAX_CONCURRENT_PROVISIONING)
 
     /** Accounts left pointing to a rolled-back tenant; alert on any increase (#92 reconciles them). */
     private val orphaned: Counter = Counter.builder(ORPHANED_METRIC)
@@ -55,9 +64,14 @@ class TenantProvisioner(
         }
         val subject = auth.token.subject
         val tenantId = TenantId(UUID.randomUUID())
-        return tenants.runAsNewTenant(tenantId) {
-            @Suppress("UNCHECKED_CAST")
-            tx.execute { provision(subject, tenantId, block) } as T
+        if (!slots.tryAcquire()) throw busy()
+        try {
+            return tenants.runAsNewTenant(tenantId) {
+                @Suppress("UNCHECKED_CAST")
+                tx.execute { provision(subject, tenantId, block) } as T
+            }
+        } finally {
+            slots.release()
         }
     }
 
@@ -88,14 +102,21 @@ class TenantProvisioner(
         try {
             directory.assignTenant(subject, tenantId)
         } catch (e: RestClientException) {
-            throw identityUnavailable(tenantId, e)
+            log.error("Identity provider unreachable or failing while assigning tenant {}", tenantId.value, e)
+            throw identityUnavailable(e)
         } catch (e: IllegalStateException) {
-            throw identityUnavailable(tenantId, e)
+            // Not an outage: missing secret, unknown account, missing role or the time budget ran out.
+            log.error("Identity assignment refused for tenant {}: {}", tenantId.value, e.message, e)
+            throw identityUnavailable(e)
         }
     }
 
-    private fun identityUnavailable(tenantId: TenantId, cause: Exception): ResponseStatusException {
-        log.error("Identity provider failed while assigning tenant {}", tenantId.value, cause)
+    private fun busy() =
+        ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Too many registrations at once").apply {
+            body.setProperty("code", REGISTRATION_BUSY)
+        }
+
+    private fun identityUnavailable(cause: Exception): ResponseStatusException {
         return ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Identity provider unavailable", cause).apply {
             body.setProperty("code", IDENTITY_UNAVAILABLE)
         }
