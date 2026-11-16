@@ -88,7 +88,8 @@ export interface paths {
         /**
          * Update the current organization's data
          * @description Replaces the organization's data. `version` must be the one that was read; otherwise the answer is
-         *     `409` (`code` = `VERSION_CONFLICT`) and nothing changes. Permission `organization:edit`
+         *     `409` (`code` = `VERSION_CONFLICT`) and nothing changes. The NIF identifies the organization and cannot
+         *     change after registration: a different `nif` is a `422`. Permission `organization:edit`
          *     (Designated Officer, consultant).
          */
         put: operations["updateOrganizationProfile"];
@@ -541,11 +542,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            /**
-             * @description `code` tells the cases apart:
-             *     - `VERSION_CONFLICT`: the data changed since it was read (reload and edit again);
-             *     - `NIF_ALREADY_REGISTERED`: another organization already uses this NIF.
-             */
+            /** @description The data changed since it was read (`code` = `VERSION_CONFLICT`): reload and edit again. */
             409: {
                 headers: {
                     [name: string]: unknown;
