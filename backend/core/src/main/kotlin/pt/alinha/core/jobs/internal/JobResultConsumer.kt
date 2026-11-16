@@ -10,8 +10,9 @@ import java.util.UUID
 
 /**
  * Reads worker results from `alinha:jobs:results` with the consumer group `alinha-core`, applies each one in its own
- * transaction and acknowledges it only after that commits. A result applied twice is ignored the second time, so
- * redelivery is safe. See docs/jobs.md.
+ * transaction and acknowledges it only after that commits. Each round first claims entries left unacknowledged
+ * (XPENDING + XCLAIM; Spring Data Redis has no XAUTOCLAIM), then reads new ones. A result applied twice is ignored
+ * the second time, so redelivery is safe. See docs/jobs.md.
  */
 @Component
 class JobResultConsumer(
@@ -36,12 +37,32 @@ class JobResultConsumer(
             streams.ensureResultsGroup()
             groupReady = true
         }
-        streams.readResults(consumerName, properties.results.batchSize).count(::process)
+        recover() + streams.readResults(consumerName, properties.results.batchSize).count(::process)
     } catch (e: DataAccessException) {
         // Redis down: like the relay, wait for it. Anything read but not acknowledged is delivered again.
         if (e.isNoGroup()) groupReady = false
         log.warn("Reading job results failed: {}", e.message)
         0
+    }
+
+    /**
+     * Claims entries nobody acknowledged within claim-min-idle: their consumer died, or applying them failed (the
+     * database was down). One delivered max-deliveries times already is dead-lettered instead of tried again.
+     */
+    private fun recover(): Int {
+        val settings = properties.results
+        val stale = streams.staleResults(settings.claimMinIdle, settings.batchSize)
+        val exhausted = stale.filter { it.totalDeliveryCount >= settings.maxDeliveries }.map { it.id }.toSet()
+        return streams.claimResults(consumerName, settings.claimMinIdle, stale.map { it.id }).count { record ->
+            if (record.id in exhausted) {
+                log.error("Job result {} not applied after {} deliveries, dead-lettered", record.id, settings.maxDeliveries)
+                streams.deadLetter(record, "not applied after ${settings.maxDeliveries} deliveries")
+                streams.ack(record.id)
+                true
+            } else {
+                process(record)
+            }
+        }
     }
 
     /** @return true when the entry was acknowledged. */

@@ -1,14 +1,17 @@
 package pt.alinha.core.jobs.internal
 
 import org.springframework.dao.DataAccessException
+import org.springframework.data.domain.Range
 import org.springframework.data.redis.connection.stream.Consumer
 import org.springframework.data.redis.connection.stream.MapRecord
+import org.springframework.data.redis.connection.stream.PendingMessage
 import org.springframework.data.redis.connection.stream.ReadOffset
 import org.springframework.data.redis.connection.stream.RecordId
 import org.springframework.data.redis.connection.stream.StreamOffset
 import org.springframework.data.redis.connection.stream.StreamReadOptions
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.stereotype.Component
+import java.time.Duration
 
 typealias ResultRecord = MapRecord<String, String, String>
 
@@ -44,6 +47,15 @@ class RedisJobStreams(private val redis: StringRedisTemplate) {
             StreamReadOptions.empty().count(count.toLong()),
             StreamOffset.create(RESULTS_STREAM, ReadOffset.lastConsumed()),
         ).orEmpty()
+
+    /** XPENDING … IDLE: entries delivered at least [minIdle] ago and never acknowledged, by any consumer. */
+    fun staleResults(minIdle: Duration, count: Int): List<PendingMessage> =
+        streams.pending(RESULTS_STREAM, RESULTS_GROUP, Range.unbounded<String>(), count.toLong(), minIdle).toList()
+
+    /** XCLAIM with the same [minIdle]: an entry another consumer took in the meantime is left to it. */
+    fun claimResults(consumer: String, minIdle: Duration, ids: List<RecordId>): List<ResultRecord> =
+        if (ids.isEmpty()) emptyList()
+        else streams.claim(RESULTS_STREAM, RESULTS_GROUP, consumer, minIdle, *ids.toTypedArray()).orEmpty()
 
     fun ack(id: RecordId) {
         streams.acknowledge(RESULTS_STREAM, RESULTS_GROUP, id)

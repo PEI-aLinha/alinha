@@ -85,4 +85,6 @@ alinha:
       enabled: true
       poll-interval-ms: 1000
       batch-size: 50
+      claim-min-idle: 1m
+      max-deliveries: 5
     default-max-attempts: 3

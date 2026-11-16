@@ -31,15 +31,20 @@ data class JobsProperties(
     /**
      * Consumer of `alinha:jobs:results`. poll-interval-ms is read by @Scheduled directly.
      * [consumerName] blank = a random name per start (several instances never share one).
+     * An entry left unacknowledged for [claimMinIdle] (its consumer died, or applying it failed) is claimed again;
+     * after [maxDeliveries] deliveries it goes to the dead-letter stream instead.
      */
     data class Results(
         val enabled: Boolean = true,
         val pollIntervalMs: Long = 1_000,
         val batchSize: Int = 50,
+        val claimMinIdle: Duration = Duration.ofMinutes(1),
+        val maxDeliveries: Int = 5,
         val consumerName: String = "",
     ) {
         init {
-            require(pollIntervalMs > 0 && batchSize > 0) { "Invalid alinha.jobs.results settings" }
+            require(pollIntervalMs > 0 && batchSize > 0 && maxDeliveries >= 1) { "Invalid alinha.jobs.results settings" }
+            require(!claimMinIdle.isNegative) { "alinha.jobs.results.claim-min-idle must not be negative" }
         }
     }
 }
