@@ -49,7 +49,9 @@ handler cannot pick a tenant either. Nothing in the platform creates a tenant.
   (organization#5), actor names in the audit view (#75).
 - (−) A distributed write (database + Keycloak) without a shared transaction: a crash between the Keycloak call and
   the commit can leave an account pointing to a tenant that does not exist. The account then has no data and the
-  registration can be repeated by an admin clearing `tenant_id`. Logged as ERROR.
+  registration can be repeated by an admin clearing `tenant_id`. Logged as ERROR and counted in
+  `alinha.tenant.provisioning.orphaned`: `outcome=revoke_failed` (the undo failed: alert) or
+  `outcome=unknown_commit` (the commit outcome is unknown, so the account may be right: check it).
 - (−) Accounts that never finish registration stay as `registrant` (cleanup: #92).
 - (−) The app holds a credential that can manage users. It is scoped to one realm and stored in OpenBao, but
   `manage-users` can map any realm role, `consultant` included, so it is as sensitive as an admin password.

@@ -28,6 +28,11 @@ internal const val REGISTRANT_AUTHORITY = "ROLE_registrant"
 private const val CONSULTANT_AUTHORITY = "ROLE_consultant"
 internal const val TENANT_PROVISIONED = "tenant.provisioned"
 internal const val ORPHANED_METRIC = "alinha.tenant.provisioning.orphaned"
+internal const val ORPHANED_OUTCOME_TAG = "outcome"
+/** The undo failed: the account points to a tenant that was rolled back. Alert on any increase. */
+internal const val ORPHANED_REVOKE_FAILED = "revoke_failed"
+/** The commit outcome is unknown: the tenant may exist and the account be correct. Check it by hand. */
+internal const val ORPHANED_UNKNOWN_COMMIT = "unknown_commit"
 internal const val ORGANIZATION_ALREADY_EXISTS = "ORGANIZATION_ALREADY_EXISTS"
 internal const val IDENTITY_UNAVAILABLE = "IDENTITY_UNAVAILABLE"
 internal const val REGISTRATION_BUSY = "REGISTRATION_BUSY"
@@ -64,10 +69,18 @@ class TenantProvisioner(
     /** Accounts with a registration in flight on this instance: one account cannot take several slots. */
     private val inFlight: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
+    private val meterRegistry: MeterRegistry = meters.getIfAvailable { SimpleMeterRegistry() }
+
     /** Accounts left pointing to a rolled-back tenant; alert on any increase (#92 reconciles them). */
-    private val orphaned: Counter = Counter.builder(ORPHANED_METRIC)
-        .description("Identity assignments that could not be undone after a rollback")
-        .register(meters.getIfAvailable { SimpleMeterRegistry() })
+    private val revokeFailed: Counter = orphanedCounter(ORPHANED_REVOKE_FAILED)
+
+    /** Commits with an unknown outcome: the assignment may be right, so this is a check, not an alert. */
+    private val unknownCommit: Counter = orphanedCounter(ORPHANED_UNKNOWN_COMMIT)
+
+    private fun orphanedCounter(outcome: String): Counter = Counter.builder(ORPHANED_METRIC)
+        .description("Identity assignments that may point to a tenant that does not exist")
+        .tag(ORPHANED_OUTCOME_TAG, outcome)
+        .register(meterRegistry)
 
     override fun <T> provisionForCurrentUser(block: (TenantId) -> T): T {
         val auth = SecurityContextHolder.getContext().authentication as? JwtAuthenticationToken
@@ -154,7 +167,7 @@ class TenantProvisioner(
     /**
      * Undoes the identity assignment only when the transaction is known to have rolled back. With an unknown outcome
      * (e.g. the connection dropped during COMMIT) the tenant may exist, and revoking would lock the account out for
-     * good, so it is only reported as possibly orphaned.
+     * good, so it is only reported (`outcome=unknown_commit`), apart from the failed undos (`outcome=revoke_failed`).
      */
     internal inner class RevokeOnRollback(
         private val subject: String,
@@ -165,7 +178,7 @@ class TenantProvisioner(
                 TransactionSynchronization.STATUS_COMMITTED -> Unit
                 TransactionSynchronization.STATUS_ROLLED_BACK -> revoke()
                 else -> {
-                    orphaned.increment()
+                    unknownCommit.increment()
                     log.error("Unknown commit outcome for tenant {}: check its identity assignment", tenantId.value)
                 }
             }
@@ -174,7 +187,7 @@ class TenantProvisioner(
         private fun revoke() {
             runCatching { directory.revokeTenant(subject, tenantId) }.onFailure {
                 // The account may point to a tenant that does not exist until #92's reconciliation clears it.
-                orphaned.increment()
+                revokeFailed.increment()
                 log.error("Could not undo the identity assignment of rolled-back tenant {}", tenantId.value, it)
             }
         }

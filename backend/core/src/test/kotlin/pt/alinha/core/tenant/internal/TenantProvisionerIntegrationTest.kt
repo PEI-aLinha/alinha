@@ -80,7 +80,7 @@ class TenantProvisionerIntegrationTest {
     @Autowired private lateinit var meters: SimpleMeterRegistry
     @Autowired private lateinit var provisioner: TenantProvisioner
 
-    private fun orphanedCount() = meters.counter(ORPHANED_METRIC).count()
+    private fun orphanedCount(outcome: String) = meters.counter(ORPHANED_METRIC, ORPHANED_OUTCOME_TAG, outcome).count()
 
     private lateinit var subject: String
 
@@ -236,13 +236,15 @@ class TenantProvisionerIntegrationTest {
     fun `a failing undo keeps the original error and raises the orphan alert`() {
         directory.failOnAssign = true
         directory.failOnRevoke = true
-        val before = orphanedCount()
+        val before = orphanedCount(ORPHANED_REVOKE_FAILED)
+        val unknownBefore = orphanedCount(ORPHANED_UNKNOWN_COMMIT)
 
         val error = assertThrows<ResponseStatusException> { provisioning.provisionForCurrentUser { } }
 
         assertThat(error.statusCode).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE)
         assertThat(directory.revoked).hasSize(1)
-        assertThat(orphanedCount()).isEqualTo(before + 1)
+        assertThat(orphanedCount(ORPHANED_REVOKE_FAILED)).isEqualTo(before + 1)
+        assertThat(orphanedCount(ORPHANED_UNKNOWN_COMMIT)).isEqualTo(unknownBefore)
     }
 
     @Test
@@ -353,12 +355,14 @@ class TenantProvisionerIntegrationTest {
     @Test
     fun `an unknown commit outcome is reported, never revoked`() {
         val tenant = TenantId(UUID.randomUUID())
-        val before = orphanedCount()
+        val before = orphanedCount(ORPHANED_UNKNOWN_COMMIT)
+        val revokeFailedBefore = orphanedCount(ORPHANED_REVOKE_FAILED)
 
         provisioner.RevokeOnRollback(subject, tenant).afterCompletion(TransactionSynchronization.STATUS_UNKNOWN)
 
         assertThat(directory.revoked).isEmpty()
-        assertThat(orphanedCount()).isEqualTo(before + 1)
+        assertThat(orphanedCount(ORPHANED_UNKNOWN_COMMIT)).isEqualTo(before + 1)
+        assertThat(orphanedCount(ORPHANED_REVOKE_FAILED)).isEqualTo(revokeFailedBefore)
     }
 
     @Test
