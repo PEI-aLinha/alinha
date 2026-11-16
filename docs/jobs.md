@@ -50,7 +50,9 @@ fun startCollection(...) {
 - Every `alinha.jobs.relay.poll-interval-ms`, one transaction runs
   `select … where status = 'pending' and next_attempt_at <= now() for update skip locked limit batch-size`.
   Several app instances never publish the same row in the same round.
-- `XADD alinha:jobs:<type>:v<n> MAXLEN ~ stream-max-length` with the fields `envelope` (JSON) and `attempt`.
+- `XADD alinha:jobs:<type>:v<n>` with the fields `envelope` (JSON) and `attempt`. There is **no `MAXLEN`**:
+  trimming by length also drops entries no worker has read yet, and the row already says `published`, so the job
+  would be lost. Streams grow until acknowledged entries are trimmed (#87).
 - If the publish fails, the batch stops (Redis is probably down), and the row gets `publish_failures + 1` and
   exponential backoff (`backoff-base` × 2ⁿ, at most `backoff-max`).
 - **At-least-once**: a crash after `XADD` but before the row is marked `published` publishes the job again.
@@ -79,7 +81,6 @@ The second part of #13: the results consumer, `JobCompleted`, re-dispatch of `re
 | `relay.max-publish-failures` | `10` | then `dead` |
 | `relay.backoff-base` / `relay.backoff-max` | `2s` / `5m` | |
 | `default-max-attempts` | `3` | worker attempts per job |
-| `stream-max-length` | `10000` | approximate `MAXLEN` per stream |
 
 Redis: `spring.data.redis.host/port` (`REDIS_HOST`/`REDIS_PORT`), with a timeout of `2s`, because the relay holds
 row locks while it publishes.

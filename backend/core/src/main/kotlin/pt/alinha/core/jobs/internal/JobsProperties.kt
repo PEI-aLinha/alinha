@@ -7,11 +7,9 @@ import java.time.Duration
 data class JobsProperties(
     val relay: Relay = Relay(),
     val defaultMaxAttempts: Int = 3,
-    val streamMaxLength: Long = 10_000,
 ) {
     init {
         require(defaultMaxAttempts >= 1) { "alinha.jobs.default-max-attempts must be >= 1" }
-        require(streamMaxLength > 0) { "alinha.jobs.stream-max-length must be > 0" }
     }
 
     /** poll-interval-ms is read by @Scheduled directly; it is here so it is documented and bound. */

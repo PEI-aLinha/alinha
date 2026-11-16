@@ -73,4 +73,3 @@ alinha:
       backoff-base: 2s
       backoff-max: 5m
     default-max-attempts: 3
-    stream-max-length: 10000
