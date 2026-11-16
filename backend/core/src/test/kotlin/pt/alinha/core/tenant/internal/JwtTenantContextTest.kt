@@ -45,6 +45,23 @@ class JwtTenantContextTest {
     }
 
     @Test
+    fun `a new tenant can be bound inside a tenant-agnostic request, and only for the block`() {
+        RequestContextHolder.setRequestAttributes(ServletRequestAttributes(MockHttpServletRequest()))
+
+        assertEquals(otherTenant, context.runAsNewTenant(otherTenant) { context.current() })
+        assertNull(context.currentOrNull())
+    }
+
+    @Test
+    fun `a new tenant cannot be bound inside a tenant-scoped request`() {
+        val request = MockHttpServletRequest().apply { setAttribute(TENANT_ATTRIBUTE, requestTenant) }
+        RequestContextHolder.setRequestAttributes(ServletRequestAttributes(request))
+
+        assertThrows<IllegalStateException> { context.runAsNewTenant(otherTenant) { } }
+        assertEquals(requestTenant, context.current())
+    }
+
+    @Test
     fun `a thread started from a request does not inherit the request tenant`() {
         val request = MockHttpServletRequest().apply { setAttribute(TENANT_ATTRIBUTE, requestTenant) }
         RequestContextHolder.setRequestAttributes(ServletRequestAttributes(request))
