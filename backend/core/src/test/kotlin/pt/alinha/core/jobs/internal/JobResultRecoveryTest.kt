@@ -3,6 +3,9 @@ package pt.alinha.core.jobs.internal
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.mockito.ArgumentMatchers.any
+import org.mockito.Mockito.mock
+import org.mockito.Mockito.`when`
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.data.domain.Range
@@ -12,8 +15,10 @@ import org.springframework.data.redis.connection.stream.RecordId
 import org.springframework.data.redis.connection.stream.StreamOffset
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
+import org.springframework.transaction.CannotCreateTransactionException
 import org.springframework.transaction.support.TransactionTemplate
 import pt.alinha.core.jobs.JobDispatcher
 import pt.alinha.core.jobs.internal.RedisJobStreams.Companion.REASON
@@ -52,6 +57,9 @@ class JobResultRecoveryTest {
     @Autowired private lateinit var jdbc: JdbcTemplate
     @Autowired private lateinit var redis: StringRedisTemplate
     @Autowired private lateinit var json: JsonMapper
+    @Autowired private lateinit var handler: JobResultHandler
+    @Autowired private lateinit var jdbcClient: JdbcClient
+    @Autowired private lateinit var properties: JobsProperties
 
     private val tenant = TenantId(UUID.randomUUID())
     private val ops get() = redis.opsForStream<String, String>()
@@ -89,6 +97,31 @@ class JobResultRecoveryTest {
 
     private fun unacknowledged() = ops.pending(RESULTS_STREAM, RESULTS_GROUP).totalPendingMessages
 
+    private fun deliveries(entry: RecordId) =
+        ops.pending(RESULTS_STREAM, RESULTS_GROUP, Range.unbounded<String>(), 10).single { it.id == entry }.totalDeliveryCount
+
+    private fun deadLetters() = ops.range(RESULTS_DLQ, Range.unbounded()).orEmpty()
+
+    /**
+     * A consumer whose database is up while [up] says so. The handler fails while it is down, and when it is called
+     * with [failNext] set it takes the database down first, as an outage in the middle of a round would.
+     */
+    private inner class Outage {
+        var up = true
+        var failNext = false
+        private val outbox = object : JobOutboxRepository(jdbcClient) {
+            override fun isReachable() = up
+        }
+        private val flakyHandler = mock(JobResultHandler::class.java).also {
+            `when`(it.handle(any())).thenAnswer { call ->
+                if (failNext) up = false
+                if (!up) throw CannotCreateTransactionException("database down")
+                handler.handle(call.getArgument(0))
+            }
+        }
+        val consumer = JobResultConsumer(streams, flakyHandler, outbox, properties)
+    }
+
     @Test
     fun `an entry a crashed instance never acknowledged is claimed and applied`() {
         val id = published()
@@ -99,6 +132,37 @@ class JobResultRecoveryTest {
 
         assertThat(status(id)).isEqualTo("completed")
         assertThat(unacknowledged()).isZero()
+    }
+
+    @Test
+    fun `a database outage never uses up the deliveries of a result`() {
+        val id = published()
+        val entry = sendCompleted(id)
+        readByCrashedInstance() // delivery 1
+        val outage = Outage().apply { up = false }
+
+        repeat(5) { assertThat(outage.consumer.consumeOnce()).isZero() } // max-deliveries is 3
+
+        assertThat(deliveries(entry)).isEqualTo(1)
+        assertThat(deadLetters()).isEmpty()
+        outage.up = true
+        assertThat(outage.consumer.consumeOnce()).isEqualTo(1)
+        assertThat(status(id)).isEqualTo("completed")
+    }
+
+    @Test
+    fun `the database going down mid-round stops the round before reading more`() {
+        val stale = sendCompleted(published())
+        readByCrashedInstance()
+        sendCompleted(published())
+        val outage = Outage().apply { failNext = true }
+
+        repeat(5) { assertThat(outage.consumer.consumeOnce()).isZero() }
+
+        assertThat(deliveries(stale)).isEqualTo(2) // claimed once, then the database went down
+        assertThat(ops.pending(RESULTS_STREAM, RESULTS_GROUP, Range.unbounded<String>(), 10).map { it.id })
+            .containsExactly(stale) // the fresh entry was never read
+        assertThat(deadLetters()).isEmpty()
     }
 
     @Test

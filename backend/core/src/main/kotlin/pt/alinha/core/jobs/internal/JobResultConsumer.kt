@@ -12,12 +12,14 @@ import java.util.UUID
  * Reads worker results from `alinha:jobs:results` with the consumer group `alinha-core`, applies each one in its own
  * transaction and acknowledges it only after that commits. Each round first claims entries left unacknowledged
  * (XPENDING + XCLAIM; Spring Data Redis has no XAUTOCLAIM), then reads new ones. A result applied twice is ignored
- * the second time, so redelivery is safe. See docs/jobs.md.
+ * the second time, so redelivery is safe. While the database is down nothing is read or claimed, so a database
+ * outage never uses up an entry's deliveries. See docs/jobs.md.
  */
 @Component
 class JobResultConsumer(
     private val streams: RedisJobStreams,
     private val handler: JobResultHandler,
+    private val outbox: JobOutboxRepository,
     private val properties: JobsProperties,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -32,17 +34,28 @@ class JobResultConsumer(
     }
 
     /** @return entries acknowledged in this round (applied, ignored or dead-lettered). */
-    fun consumeOnce(): Int = try {
-        if (!groupReady) {
-            streams.ensureResultsGroup()
-            groupReady = true
+    fun consumeOnce(): Int {
+        // Every read or claim counts as a delivery. With the database down none could be applied, and enough rounds
+        // would dead-letter valid results: wait for it instead, as the relay waits for Redis (RNF02).
+        if (!outbox.isReachable()) {
+            log.warn("Database unreachable, job results wait in Redis")
+            return 0
         }
-        recover() + streams.readResults(consumerName, properties.results.batchSize).count(::process)
-    } catch (e: DataAccessException) {
-        // Redis down: like the relay, wait for it. Anything read but not acknowledged is delivered again.
-        if (e.isNoGroup()) groupReady = false
-        log.warn("Reading job results failed: {}", e.message)
-        0
+        return try {
+            if (!groupReady) {
+                streams.ensureResultsGroup()
+                groupReady = true
+            }
+            recover() + streams.readResults(consumerName, properties.results.batchSize).count(::process)
+        } catch (e: DataAccessException) {
+            // Redis down: like the relay, wait for it. Anything read but not acknowledged is delivered again.
+            if (e.isNoGroup()) groupReady = false
+            log.warn("Reading job results failed: {}", e.message)
+            0
+        } catch (e: DatabaseUnavailable) {
+            log.warn("Database went down while applying job results, the rest wait in Redis")
+            0
+        }
     }
 
     /**
@@ -70,8 +83,10 @@ class JobResultConsumer(
         val handling = try {
             handler.handle(record.value[RESULT])
         } catch (e: RuntimeException) {
-            // Database down or a bug: leave the entry pending, it is delivered again later.
+            // Leave the entry pending, it is delivered again later. A bug counts towards max-deliveries; the database
+            // going down does not: stop the round before reading or claiming anything else.
             log.error("Applying job result {} failed, it stays pending", record.id, e)
+            if (!outbox.isReachable()) throw DatabaseUnavailable()
             return false
         }
         when (handling) {
@@ -85,4 +100,7 @@ class JobResultConsumer(
         streams.ack(record.id)
         return true
     }
+
+    /** Ends the round; the entries already read stay pending and are delivered again. */
+    private class DatabaseUnavailable : RuntimeException()
 }

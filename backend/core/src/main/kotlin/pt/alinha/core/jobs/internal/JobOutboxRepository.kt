@@ -1,5 +1,6 @@
 package pt.alinha.core.jobs.internal
 
+import org.springframework.dao.DataAccessException
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Repository
 import java.time.Instant
@@ -199,6 +200,14 @@ class JobOutboxRepository(private val jdbc: JdbcClient) {
             .param("error", error)
             .param("delay", retryInMillis)
             .update()
+    }
+
+    /** One cheap round trip. @return false when the database cannot be reached. */
+    fun isReachable(): Boolean = try {
+        jdbc.sql("select 1").query(Int::class.javaObjectType).single()
+        true
+    } catch (e: DataAccessException) {
+        false
     }
 
     /** Filtered by [tenantId] here: this is the read plugins reach through JobResults. */

@@ -123,8 +123,11 @@ fun on(event: JobCompleted) {
   `version` disagree with the outbox row. The job itself is not changed (it stays `published`, #86).
 - **Recovery**: each round first claims entries left unacknowledged for `claim-min-idle` (an instance died, or the
   database was down while applying them), with `XPENDING` + `XCLAIM`. An entry already delivered `max-deliveries`
-  times is dead-lettered instead of tried again.
+  times is dead-lettered instead of tried again (see "Database down" below).
 - Redis down: the round returns, nothing is lost; unacknowledged entries are delivered again later.
+- Database down: every read or claim counts as a delivery, so a round starts only after a `select 1` succeeds, and
+  stops when applying an entry fails and the database no longer answers. However long the outage, it never
+  dead-letters a result. A failure while the database is up (a bug) does count towards `max-deliveries`.
 - The results stream and the dead-letter stream are not trimmed yet (#87). Each app start uses a new consumer name
   unless `results.consumer-name` is set; old names stay in the group with nothing pending.
 
