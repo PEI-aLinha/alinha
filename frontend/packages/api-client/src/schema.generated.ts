@@ -240,7 +240,7 @@ export interface components {
         /**
          * @description Organization data for the NIS2 classification (FR01). Every field is required; they are all listed in
          *     `required` but validated by the server, which answers `422` with one message per missing or invalid
-         *     field. NIF, CAE and phones may contain spaces.
+         *     field. NIF, CAE and phones may contain spaces, dots or dashes, never letters.
          */
         OrganizationProfileInput: {
             /** @description Official name, as in the permanent certificate. */

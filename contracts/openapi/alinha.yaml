@@ -415,12 +415,14 @@ components:
       properties:
         street:
           type: string
+          maxLength: 300
         postalCode:
           type: string
           pattern: '^\d{4}-\d{3}$'
           examples: ['3750-750']
         city:
           type: string
+          maxLength: 120
 
     OrganizationContacts:
       type: object
@@ -432,6 +434,7 @@ components:
         email:
           type: string
           format: email
+          maxLength: 254
 
     PermanentContact:
       type: object
@@ -440,6 +443,7 @@ components:
       properties:
         name:
           type: string
+          maxLength: 120
         phone:
           type: string
 
@@ -448,11 +452,12 @@ components:
       description: |
         Organization data for the NIS2 classification (FR01). Every field is required; they are all listed in
         `required` but validated by the server, which answers `422` with one message per missing or invalid
-        field. NIF, CAE and phones may contain spaces.
+        field. NIF, CAE and phones may contain spaces, dots or dashes, never letters.
       required: [name, nif, cae, sector, services, employees, turnover, address, contacts, permanentContact]
       properties:
         name:
           type: string
+          maxLength: 200
           description: Official name, as in the permanent certificate.
         nif:
           type: string
@@ -469,9 +474,11 @@ components:
         services:
           type: string
           minLength: 10
+          maxLength: 2000
         employees:
           type: integer
           minimum: 1
+          maximum: 10000000
         turnover:
           type: integer
           minimum: 0
