@@ -22,32 +22,44 @@ class OutboxRelay(
         if (properties.relay.enabled) relayOnce()
     }
 
-    /** One batch in one transaction (row locks held until commit). @return jobs published. */
-    fun relayOnce(): Int = tx.execute { publishDue() } ?: 0
-
-    private fun publishDue(): Int {
+    /**
+     * Up to batch-size jobs, each in its own transaction: a row lock is held for one XADD at most (the Redis timeout),
+     * so JobResultConsumer, which waits on that lock, never waits for a whole batch. @return jobs published.
+     */
+    fun relayOnce(): Int {
         var published = 0
-        for (job in outbox.lockDuePending(properties.relay.batchSize)) {
-            try {
-                streams.publish(job)
-            } catch (e: DataAccessException) {
-                // Spring Data Redis reports every Redis-side problem (down, timeout, refusing writes) this way. That is
-                // the infrastructure, not this job: never count it towards `dead`, or an outage longer than the
-                // backoff would kill every pending job (RNF02).
-                deferForOutage(job, e)
-                break // Redis is probably down: the rest of the batch waits for the next round
-            } catch (e: RuntimeException) {
-                // Anything else is a problem with this job or with our code. Catch it here, otherwise the batch rolls
-                // back, publish_failures never grows, and the same row blocks every round. Redis answered, so the
-                // rest of the batch still goes.
-                recordFailure(job, e)
-                continue
+        repeat(properties.relay.batchSize) {
+            when (tx.execute { publishNext() }) {
+                Outcome.PUBLISHED -> published++
+                Outcome.FAILED -> Unit
+                Outcome.REDIS_DOWN, Outcome.NONE_DUE, null -> return published
             }
-            outbox.markPublished(job.id)
-            published++
         }
         return published
     }
+
+    private fun publishNext(): Outcome {
+        val job = outbox.lockDuePending(1).firstOrNull() ?: return Outcome.NONE_DUE
+        try {
+            streams.publish(job)
+        } catch (e: DataAccessException) {
+            // Spring Data Redis reports every Redis-side problem (down, timeout, refusing writes) this way. That is
+            // the infrastructure, not this job: never count it towards `dead`, or an outage longer than the
+            // backoff would kill every pending job (RNF02).
+            deferForOutage(job, e)
+            return Outcome.REDIS_DOWN // the other due jobs wait for the next round
+        } catch (e: RuntimeException) {
+            // Anything else is a problem with this job or with our code. Catch it here, otherwise the transaction
+            // rolls back, publish_failures never grows, and the same row heads every round. Redis answered, so the
+            // other due jobs still go; this one is backing off and is not picked again in this round.
+            recordFailure(job, e)
+            return Outcome.FAILED
+        }
+        outbox.markPublished(job.id)
+        return Outcome.PUBLISHED
+    }
+
+    private enum class Outcome { PUBLISHED, FAILED, REDIS_DOWN, NONE_DUE }
 
     /** Short fixed delay, no failure counted: the row goes behind the other due rows and never ends `dead`. */
     private fun deferForOutage(job: OutboxJob, e: DataAccessException) {

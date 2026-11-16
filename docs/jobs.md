@@ -53,22 +53,22 @@ fun startCollection(...) {
 
 ## Relay
 
-- Every `alinha.jobs.relay.poll-interval-ms`, one transaction runs
-  `select … where status = 'pending' and next_attempt_at <= now() for update skip locked limit batch-size`.
-  Several app instances never publish the same row in the same round.
+- Every `alinha.jobs.relay.poll-interval-ms`, the relay publishes up to `batch-size` due jobs, **each in its own
+  transaction**: `select … where status = 'pending' and next_attempt_at <= now() for update skip locked limit 1`,
+  `XADD`, mark `published`, commit. Several app instances never publish the same row.
 - `XADD alinha:jobs:<type>:v<n>` with the fields `envelope` (JSON) and `attempt`. There is **no `MAXLEN`**:
   trimming by length also drops entries no worker has read yet, and the row already says `published`, so the job
   would be lost. Streams grow until acknowledged entries are trimmed (#87).
 - If the publish fails, what happens depends on the error:
   - **Redis** (down, timing out, refusing writes: any `DataAccessException`): the row stays `pending`, retried after
-    `backoff-base`, and **no failure is counted**. The batch stops and the rest waits for the next round. However
+    `backoff-base`, and **no failure is counted**. The round stops and the other due jobs wait for the next one. However
     long the outage, no job dies because of it; the relay catches up when Redis is back. The error is kept in
     `last_error`.
   - **Anything else** (a bug, an unexpected exception): `publish_failures + 1` and exponential backoff
-    (`backoff-base` × 2ⁿ, at most `backoff-max`), and the relay goes on with the rest of the batch. A row that
+    (`backoff-base` × 2ⁿ, at most `backoff-max`), and the relay goes on with the other due jobs. A row that
     always fails ends `dead`.
-- Row locks are held while publishing, so a slow-but-alive Redis keeps one transaction open for up to
-  `batch-size` × the Redis timeout. Lower `batch-size` if that matters.
+- A row lock is held only while its own `XADD` runs, so at most one Redis timeout. The results consumer, which waits
+  on that lock (see below), never waits for a whole batch.
 - **At-least-once**: a crash after `XADD` but before the row is marked `published` publishes the job again.
 - Once a row is `published`, the job lives only in Redis. Redis must keep its data across restarts (AOF, as in
   `deploy/docker-compose.dev.yml`). Until the watchdog (#86) exists, a job Redis loses stays `published` forever.
@@ -148,4 +148,4 @@ fun on(event: JobCompleted) {
 | `default-max-attempts` | `3` | worker attempts per job |
 
 Redis: `spring.data.redis.host/port` (`REDIS_HOST`/`REDIS_PORT`), with command and connect timeouts of `2s`,
-because the relay holds row locks while it publishes.
+because the relay holds a row lock while it publishes.

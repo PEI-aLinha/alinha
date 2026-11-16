@@ -109,6 +109,29 @@ class OutboxRelayIntegrationTest {
     }
 
     @Test
+    fun `each job is committed before the next one is published`() {
+        val (first, second) = (1..2).map { dispatcher.dispatchAs(tenants, tx, tenant, collectRequest()) }
+        var firstSeenAs: String? = null
+        val streams = object : RedisJobStreams(redis) {
+            override fun publish(job: OutboxJob) = super.publish(job).also {
+                // Another connection, as JobResultConsumer would use: NOWAIT fails if the relay still held the lock.
+                if (job.id == second) {
+                    firstSeenAs = CompletableFuture.supplyAsync {
+                        tx.execute {
+                            jdbc.queryForObject(
+                                "select status from core.job_outbox where id = ? for update nowait", String::class.java, first,
+                            )
+                        }
+                    }.join()
+                }
+            }
+        }
+
+        assertThat(OutboxRelay(outbox, streams, tx, properties).relayOnce()).isEqualTo(2)
+        assertThat(firstSeenAs).isEqualTo("published")
+    }
+
+    @Test
     fun `a job that fails with any error backs off without holding up the rest`() {
         val ids = (1..3).map { dispatcher.dispatchAs(tenants, tx, tenant, collectRequest()) }
         val poison = ids.first() // oldest, so it heads every batch
