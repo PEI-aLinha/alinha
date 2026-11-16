@@ -16,7 +16,9 @@ import org.springframework.test.web.client.match.MockRestRequestMatchers.method
 import org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo
 import org.springframework.test.web.client.response.MockRestResponseCreators.withNoContent
 import org.springframework.test.web.client.response.MockRestResponseCreators.withServerError
+import org.springframework.test.web.client.response.MockRestResponseCreators.withUnauthorizedRequest
 import org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess
+import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.RestClientException
 import pt.alinha.pluginapi.TenantId
@@ -181,5 +183,18 @@ class KeycloakIdentityDirectoryTest {
         val error = assertThrows<IllegalStateException> { slow.assignTenant(subject, tenant) }
 
         assertThat(error.message).contains("exceeded")
+    }
+
+    @Test
+    fun `a rejected token is dropped and a new one is fetched next time`() {
+        expectToken()
+        server.expect(requestTo(users)).andExpect(method(HttpMethod.GET)).andRespond(withUnauthorizedRequest())
+        expectToken()
+        expectGet(users, """{"id":"$subject","attributes":{}}""")
+
+        assertThrows<HttpClientErrorException.Unauthorized> { directory.assignTenant(subject, tenant) }
+        directory.revokeTenant(subject, tenant) // not ours: stops after reading the user
+
+        server.verify()
     }
 }

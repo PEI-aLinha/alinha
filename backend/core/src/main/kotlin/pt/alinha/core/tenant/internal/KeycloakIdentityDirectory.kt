@@ -8,6 +8,7 @@ import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Component
 import org.springframework.util.LinkedMultiValueMap
+import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.body
 import pt.alinha.pluginapi.TenantId
@@ -72,7 +73,7 @@ class KeycloakIdentityDirectory internal constructor(
     private val http = restClientBuilder.baseUrl(properties.baseUrl.trimEnd('/')).build()
     private val users = "/admin/realms/${properties.realm}/users"
 
-    override fun assignTenant(subject: String, tenantId: TenantId) {
+    override fun assignTenant(subject: String, tenantId: TenantId) = forgettingRejectedToken {
         val deadline = clock.instant().plus(ASSIGN_DEADLINE)
         fun <T> step(call: () -> T): T {
             check(clock.instant().isBefore(deadline)) { "Identity assignment exceeded $ASSIGN_DEADLINE" }
@@ -89,18 +90,28 @@ class KeycloakIdentityDirectory internal constructor(
         step { unmapRoles(token, subject, mapped.filter { it.name == defaultRoles() }) }
     }
 
-    override fun revokeTenant(subject: String, tenantId: TenantId) {
+    override fun revokeTenant(subject: String, tenantId: TenantId) = forgettingRejectedToken {
         val token = token()
         val user = readUser(token, subject)
         // Only undo our own assignment: if the attribute holds another tenant (or none), a later request already
         // owns the account, or the assignment never got this far. Roles follow the attribute, so leave them too.
         val own = attributesOf(user)[TENANT_CLAIM].orEmpty().any { it.equals(tenantId.value.toString(), ignoreCase = true) }
-        if (!own) return
+        if (!own) return@forgettingRejectedToken
         // Restore `registrant` first and drop the attribute last: a failure halfway leaves the attribute in place, so
         // a retry (or #92's reconciliation) still recognises the account, and it is never left without any role.
         mapRoles(token, subject, availableRealmRoles(token, subject).filter { it.name == defaultRoles() })
         unmapRoles(token, subject, mappedRealmRoles(token, subject).filter { it.name == RESPONSIBLE_ROLE })
         writeUser(token, subject, user, attributesOf(user) - TENANT_CLAIM)
+    }
+
+    /** A 401 means the cached token was revoked or the secret rotated: fetch a new one on the next call. */
+    private fun forgettingRejectedToken(block: () -> Unit) {
+        try {
+            block()
+        } catch (e: HttpClientErrorException.Unauthorized) {
+            cached = null
+            throw e
+        }
     }
 
     private fun defaultRoles() = DEFAULT_ROLES + properties.realm
