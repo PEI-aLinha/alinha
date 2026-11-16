@@ -1,6 +1,10 @@
 package pt.alinha.core.tenant.internal
 
+import io.micrometer.core.instrument.Counter
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.http.HttpStatus
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.security.access.AccessDeniedException
@@ -20,6 +24,9 @@ import java.util.UUID
 internal const val REGISTRANT_AUTHORITY = "ROLE_registrant"
 private const val CONSULTANT_AUTHORITY = "ROLE_consultant"
 internal const val TENANT_PROVISIONED = "tenant.provisioned"
+internal const val ORPHANED_METRIC = "alinha.tenant.provisioning.orphaned"
+internal const val ORGANIZATION_ALREADY_EXISTS = "ORGANIZATION_ALREADY_EXISTS"
+internal const val IDENTITY_UNAVAILABLE = "IDENTITY_UNAVAILABLE"
 
 /** Creates a tenant for the registering account (ADR 0004). See [TenantProvisioning]. */
 @Component
@@ -29,9 +36,15 @@ class TenantProvisioner(
     private val jdbc: JdbcClient,
     private val audit: AuditTrail,
     private val directory: IdentityDirectory,
+    meters: ObjectProvider<MeterRegistry>,
 ) : TenantProvisioning {
 
     private val log = LoggerFactory.getLogger(javaClass)
+
+    /** Accounts left pointing to a rolled-back tenant; alert on any increase (#92 reconciles them). */
+    private val orphaned: Counter = Counter.builder(ORPHANED_METRIC)
+        .description("Identity assignments that could not be undone after a rollback")
+        .register(meters.getIfAvailable { SimpleMeterRegistry() })
 
     override fun <T> provisionForCurrentUser(block: (TenantId) -> T): T {
         val auth = SecurityContextHolder.getContext().authentication as? JwtAuthenticationToken
@@ -83,7 +96,9 @@ class TenantProvisioner(
 
     private fun identityUnavailable(tenantId: TenantId, cause: Exception): ResponseStatusException {
         log.error("Identity provider failed while assigning tenant {}", tenantId.value, cause)
-        return ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Identity provider unavailable", cause)
+        return ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Identity provider unavailable", cause).apply {
+            body.setProperty("code", IDENTITY_UNAVAILABLE)
+        }
     }
 
     private inner class RevokeOnRollback(
@@ -93,12 +108,16 @@ class TenantProvisioner(
         override fun afterCompletion(status: Int) {
             if (status == TransactionSynchronization.STATUS_COMMITTED) return
             runCatching { directory.revokeTenant(subject, tenantId) }.onFailure {
-                // The account may point to a tenant that does not exist: an admin must clear tenant_id (ADR 0004).
+                // The account may point to a tenant that does not exist until #92's reconciliation clears it.
+                orphaned.increment()
                 log.error("Could not undo the identity assignment of rolled-back tenant {}", tenantId.value, it)
             }
         }
     }
 
+    /** Carries `code` in its Problem Details body, so the client can tell it from other 409s. */
     private fun alreadyRegistered() =
-        ResponseStatusException(HttpStatus.CONFLICT, "This account already has an organization")
+        ResponseStatusException(HttpStatus.CONFLICT, "This account already has an organization").apply {
+            body.setProperty("code", ORGANIZATION_ALREADY_EXISTS)
+        }
 }

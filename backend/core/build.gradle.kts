@@ -19,6 +19,7 @@ dependencies {
     implementation(libs.jackson.module.kotlin)
     implementation(libs.jackson.dataformat.yaml)
     implementation(libs.spring.vault.core) // TenantSecretStore on OpenBao (KV v2)
+    implementation(libs.micrometer.core) // alerts on provisioning failures
 
     implementation(libs.spring.boot.starter.security.oauth2.resource.server) // Keycloak JWTs + RBAC
 

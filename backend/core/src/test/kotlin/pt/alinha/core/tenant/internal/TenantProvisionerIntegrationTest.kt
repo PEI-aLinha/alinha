@@ -5,6 +5,7 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.TestConfiguration
@@ -54,6 +55,7 @@ class FakeIdentityDirectory : IdentityDirectory {
 @TestConfiguration
 class ProvisioningTestConfig {
     @Bean fun identityDirectory() = FakeIdentityDirectory()
+    @Bean fun meterRegistry() = SimpleMeterRegistry()
 }
 
 // No mock web environment: provisioning also works outside a request, and the test thread stays request-free.
@@ -70,6 +72,9 @@ class TenantProvisionerIntegrationTest {
     @Autowired private lateinit var tenants: TenantContext
     @Autowired private lateinit var directory: FakeIdentityDirectory
     @Autowired private lateinit var jdbc: JdbcTemplate
+    @Autowired private lateinit var meters: SimpleMeterRegistry
+
+    private fun orphanedCount() = meters.counter(ORPHANED_METRIC).count()
 
     private lateinit var subject: String
 
@@ -133,6 +138,7 @@ class TenantProvisionerIntegrationTest {
         val error = assertThrows<ResponseStatusException> { provisioning.provisionForCurrentUser { it } }
 
         assertThat(error.statusCode).isEqualTo(HttpStatus.CONFLICT)
+        assertThat(error.body.properties?.get("code")).isEqualTo(ORGANIZATION_ALREADY_EXISTS)
         assertThat(jdbc.queryForObject("select count(*) from core.tenant where owner_subject = ?", Long::class.java, subject)).isEqualTo(1)
         assertThat(directory.assigned).containsExactly(subject to first)
     }
@@ -189,6 +195,7 @@ class TenantProvisionerIntegrationTest {
         val error = assertThrows<ResponseStatusException> { provisioning.provisionForCurrentUser { tenant = it } }
 
         assertThat(error.statusCode).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE)
+        assertThat(error.body.properties?.get("code")).isEqualTo(IDENTITY_UNAVAILABLE)
         val created = checkNotNull(tenant)
         assertThat(tenantRows(created)).isZero()
         assertThat(auditRows(created)).isZero()
@@ -215,14 +222,16 @@ class TenantProvisionerIntegrationTest {
     }
 
     @Test
-    fun `a failing undo is only logged and keeps the original error`() {
+    fun `a failing undo keeps the original error and raises the orphan alert`() {
         directory.failOnAssign = true
         directory.failOnRevoke = true
+        val before = orphanedCount()
 
         val error = assertThrows<ResponseStatusException> { provisioning.provisionForCurrentUser { } }
 
         assertThat(error.statusCode).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE)
         assertThat(directory.revoked).hasSize(1)
+        assertThat(orphanedCount()).isEqualTo(before + 1)
     }
 
     @Test
