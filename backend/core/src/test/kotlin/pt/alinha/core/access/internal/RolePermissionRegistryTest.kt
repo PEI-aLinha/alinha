@@ -53,6 +53,13 @@ class RolePermissionRegistryTest {
     }
 
     @Test
+    fun `fails when a plugin declares a core role permission`() {
+        assertThatThrownBy { registry(plugin("a", setOf("audit:read"), emptyMap())) }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("core permissions")
+    }
+
+    @Test
     fun `grants nothing to unknown or missing roles`() {
         assertThat(registry().permissionsFor(setOf("intruder"))).isEmpty()
         assertThat(registry().permissionsFor(emptySet())).isEmpty()
@@ -95,6 +102,6 @@ class RolePermissionRegistryTest {
     fun `exposes core and plugin permissions as declared`() {
         val registry = registry(plugin("a", setOf("a:read", "a:edit"), emptyMap()))
 
-        assertThat(registry.declaredPermissions).containsExactlyInAnyOrder("plugins:read", "a:read", "a:edit")
+        assertThat(registry.declaredPermissions).containsExactlyInAnyOrder("plugins:read", "audit:read", "a:read", "a:edit")
     }
 }

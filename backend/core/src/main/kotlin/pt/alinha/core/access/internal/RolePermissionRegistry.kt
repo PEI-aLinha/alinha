@@ -11,6 +11,7 @@ private val CORE_ROLE_PERMISSIONS = mapOf(
     "consultant" to setOf("audit:read"),
     "responsible" to setOf("audit:read"),
 )
+private val CORE_OWNED_PERMISSIONS = CORE_PERMISSIONS + CORE_ROLE_PERMISSIONS.values.flatten()
 
 /** Role -> permission map built from the plugin manifests. Invalid manifests stop the application at startup. */
 @Component
@@ -21,7 +22,7 @@ class RolePermissionRegistry(plugins: PluginRegistry) {
     }
 
     /** Every permission an endpoint may require: the core's plus each plugin's. */
-    val declaredPermissions: Set<String> = CORE_PERMISSIONS + plugins.manifests.flatMap { it.permissions }
+    val declaredPermissions: Set<String> = CORE_OWNED_PERMISSIONS + plugins.manifests.flatMap { it.permissions }
 
     private val byRole: Map<String, Set<String>> = plugins.manifests
         .flatMap { it.rolePermissions.entries }
@@ -38,7 +39,7 @@ class RolePermissionRegistry(plugins: PluginRegistry) {
         require(unknownRoles.isEmpty()) { "Plugin ${manifest.id} maps unknown roles: $unknownRoles" }
         val undeclared = manifest.rolePermissions.values.flatten().toSet() - manifest.permissions
         require(undeclared.isEmpty()) { "Plugin ${manifest.id} maps undeclared permissions: $undeclared" }
-        val reserved = manifest.permissions intersect CORE_PERMISSIONS
+        val reserved = manifest.permissions intersect CORE_OWNED_PERMISSIONS
         require(reserved.isEmpty()) { "Plugin ${manifest.id} declares core permissions: $reserved" }
     }
 
