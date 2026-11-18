@@ -59,16 +59,36 @@ export interface HostOrganization {
   name: string
 }
 
-/** A failed call to /api. `status` is the HTTP status (403: no permission, 404: not found, ...). */
+/** One invalid field of a request: `field` is the JSON path (e.g. `address.postalCode`), `message` is for the user. */
+export interface FieldProblem {
+  field: string
+  message: string
+}
+
+/** RFC 9457 Problem Details as the backend sends them (ADR 0003). `detail` is in Portuguese, safe to show. */
+export interface Problem {
+  title?: string
+  detail?: string
+  /** Stable machine code, e.g. `VALIDATION_FAILED`, `NIF_ALREADY_REGISTERED`. */
+  code?: string
+  errors?: FieldProblem[]
+}
+
+/**
+ * A failed call to /api. `status` is the HTTP status (403: no permission, 404: not found, ...).
+ * `problem` is the response's Problem Details body, when it had one.
+ */
 export class ApiError extends Error {
   readonly status: number
   readonly path: string
+  readonly problem?: Problem
 
-  constructor(status: number, path: string, message?: string) {
-    super(message ?? `HTTP ${status} on ${path}`)
+  constructor(status: number, path: string, message?: string, problem?: Problem) {
+    super(message ?? problem?.detail ?? `HTTP ${status} on ${path}`)
     this.name = 'ApiError'
     this.status = status
     this.path = path
+    this.problem = problem
   }
 }
 
@@ -86,6 +106,12 @@ export interface PluginHost {
    * only if that also answers 401 does the user go to the login page; otherwise this call just fails.
    */
   api: <T>(path: string, init?: RequestInit) => Promise<T>
+  /**
+   * Signs in again to get a fresh token, then comes back to `returnTo` (a same-origin path, default the current page).
+   * Use it when the backend changed the account's roles or organization (e.g. right after registering an
+   * organization, ADR 0004): until then `/api/me` still shows the old session. Leaves the page.
+   */
+  reauthenticate: (returnTo?: string) => void
 }
 
 export const PluginHostContext = createContext<PluginHost | null>(null)

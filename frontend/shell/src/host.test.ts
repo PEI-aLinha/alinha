@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { ApiError } from '@alinha/plugin-sdk'
-import { createApi, retryUnlessClientError, TENANT_HEADER } from './host'
+import { createApi, reauthenticate, retryUnlessClientError, TENANT_HEADER } from './host'
+import { login } from './session/login'
 import { NotJsonError } from './http'
 
 const ok = (body: unknown = {}, init: ResponseInit = {}) => new Response(JSON.stringify(body), { status: 200, ...init })
@@ -89,5 +90,37 @@ describe('createApi', () => {
     const fetchFn = vi.fn(async () => ok())
     await api(null, fetchFn)('/x', { credentials: 'omit' })
     expect((fetchFn.mock.calls[0] as unknown as [string, RequestInit])[1].credentials).toBe('include')
+  })
+
+  it('keeps the Problem Details body of an error', async () => {
+    const body = { detail: 'Há dados por corrigir.', code: 'VALIDATION_FAILED', errors: [{ field: 'nif', message: 'NIF inválido' }] }
+    const error = await api(null, async () => new Response(JSON.stringify(body), {
+      status: 422, headers: { 'Content-Type': 'application/problem+json' },
+    }))('/x').catch((e: unknown) => e)
+    expect(error).toMatchObject({ status: 422, message: 'Há dados por corrigir.', problem: body })
+  })
+
+  it('ignores error bodies that are not Problem Details', async () => {
+    const html = await api(null, async () => new Response('<h1>502</h1>', { status: 502, headers: { 'Content-Type': 'text/html' } }))('/x').catch((e: unknown) => e)
+    expect((html as ApiError).problem).toBeUndefined()
+    const broken = await api(null, async () => new Response('{', { status: 500, headers: { 'Content-Type': 'application/json' } }))('/x').catch((e: unknown) => e)
+    expect((broken as ApiError).problem).toBeUndefined()
+  })
+
+  it('keeps only well-typed Problem fields', async () => {
+    const body = { detail: 7, code: 'X', errors: [{ field: 'a', message: 'm' }, { field: 1 }, 'x'] }
+    const error = await api(null, async () => new Response(JSON.stringify(body), {
+      status: 400, headers: { 'Content-Type': 'application/problem+json' },
+    }))('/x').catch((e: unknown) => e)
+    expect((error as ApiError).problem).toEqual({ title: undefined, detail: undefined, code: 'X', errors: [{ field: 'a', message: 'm' }] })
+  })
+})
+
+describe('reauthenticate', () => {
+  it('signs in again and comes back to the given page', () => {
+    const go = vi.spyOn(login, 'go').mockImplementation(() => {})
+    reauthenticate('/org/acme')
+    expect(go).toHaveBeenCalledWith('/org/acme')
+    go.mockRestore()
   })
 })

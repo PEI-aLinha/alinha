@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query'
 import { ApiError, PluginHostContext, type HostOrganization, type PluginHost } from '@alinha/plugin-sdk'
 import { API_REQUEST, isUnauthenticatedResponse, NotJsonError, readJson } from './http'
+import { login } from './session/login'
 import { ME_QUERY_KEY, useSession } from './session/SessionGate'
 
 /**
@@ -42,6 +43,14 @@ export const retryUnlessClientError = (failureCount: number, error: unknown) =>
   !(error instanceof ApiError && error.status >= 400 && error.status < 500) && !(error instanceof NotJsonError) && failureCount < 3
 
 /**
+ * `host.reauthenticate`: a new login, so the BFF gets a fresh token (new roles, new `tenant_id`). Keycloak's SSO
+ * session answers without asking for the password again. Until the BFF can refresh the session itself (#14).
+ */
+export function reauthenticate(returnTo?: string): void {
+  login.go(returnTo)
+}
+
+/**
  * Gives plugins the host for one organization (or none, e.g. on the portfolio). Each organization
  * gets its own query cache, so data from one client is never shown while looking at another.
  */
@@ -60,6 +69,7 @@ export function HostProvider({ organization, children }: { organization: HostOrg
     // A 401 from a plugin call: ask /api/me again. If the session expired, SessionGate sends the person to
     // the login (with its loop guard); if it is still valid, the call just fails and the page shows the error.
     api: createApi({ tenantId, onUnauthenticated: () => void sessionClient.invalidateQueries({ queryKey: ME_QUERY_KEY }) }),
+    reauthenticate,
   }), [tenantId, organization, me, can, sessionClient])
 
   return (

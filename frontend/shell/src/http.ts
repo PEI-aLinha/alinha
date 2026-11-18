@@ -1,4 +1,4 @@
-import { ApiError } from '@alinha/plugin-sdk'
+import { ApiError, type Problem } from '@alinha/plugin-sdk'
 
 /**
  * Options for every call to /api. Redirects are not followed: a redirect means the BFF wants a login
@@ -20,13 +20,38 @@ export class NotJsonError extends Error {
   }
 }
 
+const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v)
+const optionalString = (v: unknown) => (typeof v === 'string' ? v : undefined)
+
 /**
- * Reads a /api response: ApiError for anything that is not 2xx (401 for a redirect), undefined for an empty body
- * (204, Content-Length 0 or chunked), parsed JSON otherwise, and a clear error when the body is not JSON.
+ * The Problem Details body of an error response (ADR 0003), or undefined when there is none or it is not one.
+ * Only the known fields are kept, and only with the expected types: the body is untrusted input.
+ */
+export async function readProblem(res: Response): Promise<Problem | undefined> {
+  const type = res.headers.get('Content-Type') ?? ''
+  if (!/^application\/(problem\+)?json\b/i.test(type)) return undefined
+  let body: unknown
+  try {
+    body = JSON.parse(await res.text())
+  } catch {
+    return undefined
+  }
+  if (!isRecord(body)) return undefined
+  const errors = Array.isArray(body.errors)
+    ? body.errors.filter(isRecord).flatMap((e) =>
+        typeof e.field === 'string' && typeof e.message === 'string' ? [{ field: e.field, message: e.message }] : [])
+    : undefined
+  return { title: optionalString(body.title), detail: optionalString(body.detail), code: optionalString(body.code), errors }
+}
+
+/**
+ * Reads a /api response: ApiError for anything that is not 2xx (401 for a redirect, with the Problem Details body
+ * when there is one), undefined for an empty body (204, Content-Length 0 or chunked), parsed JSON otherwise, and a
+ * clear error when the body is not JSON.
  */
 export async function readJson<T>(res: Response, path: string): Promise<T> {
   if (isUnauthenticatedResponse(res)) throw new ApiError(401, path)
-  if (!res.ok) throw new ApiError(res.status, path)
+  if (!res.ok) throw new ApiError(res.status, path, undefined, await readProblem(res))
   const text = await res.text()
   if (!text) return undefined as T
   try {
