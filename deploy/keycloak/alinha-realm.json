@@ -71,7 +71,8 @@
       "rootUrl": "http://localhost:8081",
       "baseUrl": "http://localhost:8081",
       "redirectUris": [
-        "http://localhost:8081/*"
+        "http://localhost:8081/*",
+        "http://localhost:5173/*"
       ],
       "webOrigins": [
         "http://localhost:5173"
@@ -112,7 +113,7 @@
             "claim.name": "tenant_id",
             "jsonType.label": "String",
             "access.token.claim": "true",
-            "id.token.claim": "false",
+            "id.token.claim": "true",
             "userinfo.token.claim": "false",
             "introspection.token.claim": "true",
             "multivalued": "false",
@@ -129,7 +130,7 @@
             "claim.name": "tenants",
             "jsonType.label": "String",
             "access.token.claim": "true",
-            "id.token.claim": "false",
+            "id.token.claim": "true",
             "userinfo.token.claim": "false",
             "introspection.token.claim": "true",
             "multivalued": "true",
