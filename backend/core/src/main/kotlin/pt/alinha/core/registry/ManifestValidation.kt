@@ -1,6 +1,7 @@
 package pt.alinha.core.registry
 
 import pt.alinha.core.access.internal.CorePermissions
+import pt.alinha.core.access.internal.Roles
 import pt.alinha.pluginapi.PluginManifest
 
 private val PLUGIN_ID = Regex("^[a-z][a-z0-9]*(-[a-z0-9]+)*$")
@@ -19,7 +20,7 @@ internal fun validateManifests(manifests: List<PluginManifest>) {
 
     manifests.forEach(::validateOwnFields)
 
-    val known = manifests.flatMap { it.permissions }.toSet() + CorePermissions.ALL
+    val known = knownPermissions(manifests)
     manifests.forEach { manifest ->
         val unknown = manifest.nav.mapNotNull { it.permission }.toSet() - known
         require(unknown.isEmpty()) { "Plugin ${manifest.id} shows menu entries behind unknown permissions: $unknown" }
@@ -35,10 +36,18 @@ internal fun validateManifests(manifests: List<PluginManifest>) {
     }
 }
 
+/** Every permission that exists: declared by a plugin or owned by the core. */
+internal fun knownPermissions(manifests: List<PluginManifest>): Set<String> =
+    manifests.flatMap { it.permissions }.toSet() + CorePermissions.ALL
+
 private fun validateOwnFields(manifest: PluginManifest) {
     require(PLUGIN_ID.matches(manifest.id)) { "Plugin id '${manifest.id}' must be kebab-case" }
     val malformed = manifest.permissions.filterNot(PERMISSION::matches)
     require(malformed.isEmpty()) { "Plugin ${manifest.id} declares permissions not in resource:action form: $malformed" }
+    val unknownRoles = manifest.rolePermissions.keys - Roles.KNOWN
+    require(unknownRoles.isEmpty()) { "Plugin ${manifest.id} maps unknown roles: $unknownRoles" }
+    val undeclared = manifest.rolePermissions.values.flatten().toSet() - manifest.permissions
+    require(undeclared.isEmpty()) { "Plugin ${manifest.id} maps undeclared permissions: $undeclared" }
     manifest.nav.forEach {
         require(it.label.isNotBlank()) { "Plugin ${manifest.id} has a menu entry without label: $it" }
         require(NAV_PATH.matches(it.path)) {

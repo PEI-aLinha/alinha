@@ -1,5 +1,6 @@
 package pt.alinha.core.access.internal
 
+import org.springframework.beans.factory.BeanFactoryUtils
 import org.springframework.context.event.ContextRefreshedEvent
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
@@ -15,8 +16,9 @@ import pt.alinha.core.access.RequiresPermission
 class PermissionCatalogVerifier(private val registry: RolePermissionRegistry) {
     @EventListener
     fun onRefresh(event: ContextRefreshedEvent) {
-        val handlers = event.applicationContext
-            .getBeansOfType(RequestMappingHandlerMapping::class.java).values
+        // Including ancestors, so a child context (e.g. management) still sees the app's mappings.
+        val handlers = BeanFactoryUtils
+            .beansOfTypeIncludingAncestors(event.applicationContext, RequestMappingHandlerMapping::class.java).values
             .flatMap { it.handlerMethods.values }
         verify(handlers)
     }

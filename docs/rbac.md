@@ -38,7 +38,8 @@ Declare permissions, their roles and the plugin's menu entries in its `PluginMan
 - two plugins have the same id, or an id is not kebab-case;
 - a permission is not in `resource:action` form;
 - a role is unknown, or a mapped permission is not in `permissions`;
-- a menu entry (`nav`) needs a permission no plugin declares and the core does not own;
+- a menu path is not relative kebab-case (`risks/assets`, never `/assets` or `..`);
+- a menu entry (`nav`) needs a permission no plugin declares and the core does not own. An entry may use another plugin's permission (e.g. a dashboard entry behind `assessment:read`), but prefer the plugin's own;
 - two menu entries share the same area and path;
 - an endpoint's `@RequiresPermission` names a permission no plugin declares and the core does not own.
 
