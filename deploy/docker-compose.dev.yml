@@ -11,6 +11,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-alinha}
       POSTGRES_USER: ${POSTGRES_USER:-alinha}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-alinha}
+      # runtime role, see postgres/init (fresh volume only)
+      ALINHA_APP_DB_PASSWORD: ${ALINHA_APP_DB_PASSWORD:-alinha_app}
     healthcheck:
       # TCP, not the unix socket: the temporary initdb server only listens on the socket.
       test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
@@ -18,7 +20,9 @@ services:
       timeout: 3s
       retries: 30
     ports: ["127.0.0.1:5432:5432"]
-    volumes: [pgdata:/var/lib/postgresql/data]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
 
   redis:
     image: redis:8
@@ -68,6 +72,10 @@ services:
     environment:
       BAO_ADDR: http://openbao:8200
       BAO_TOKEN: dev-root-token
+      # Same values as the postgres service, so the seeded db.* secrets follow deploy/.env.
+      POSTGRES_USER: ${POSTGRES_USER:-alinha}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-alinha}
+      ALINHA_APP_DB_PASSWORD: ${ALINHA_APP_DB_PASSWORD:-alinha_app}
     volumes: [./openbao:/init:ro]
     restart: "no"
 

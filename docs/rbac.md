@@ -62,6 +62,7 @@ Add a row with each new endpoint.
 |---|---|---|---|---|---|
 | `GET /actuator/health` | public | yes | yes | yes | yes |
 | `GET /api/plugins` | `plugins:read` | yes | yes | yes | yes |
+| `GET /api/audit/events` | `audit:read` | yes | yes | no | no |
 | `GET /api/me` | authenticated (BFF) | yes | yes | yes | yes |
 | `GET /internal/me` | `session:read` (BFF only) | yes | yes | yes | yes |
 | `POST /auth/refresh` | authenticated (BFF) | yes | yes | yes | yes |

@@ -7,8 +7,10 @@ until bao status >/dev/null 2>&1; do sleep 1; done
 
 # Platform secrets read by the app at startup (spring.cloud.vault, context alinha/app).
 bao kv put secret/alinha/app \
-  db.username=alinha \
-  db.password=alinha \
+  db.username=alinha_app \
+  db.password="${ALINHA_APP_DB_PASSWORD:-alinha_app}" \
+  db.migration-username="${POSTGRES_USER:-alinha}" \
+  db.migration-password="${POSTGRES_PASSWORD:-alinha}" \
   smtp.password=change-me
 
 # Secrets read by the AI Service (see ai-service/README.md).

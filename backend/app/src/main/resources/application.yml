@@ -32,6 +32,10 @@ spring:
     hibernate:
       ddl-auto: validate          # the schema is ALWAYS created by Flyway migrations
   flyway:
+    # Migrations run as the schema owner; the app runs as alinha_app, which cannot change
+    # audit.audit_event (RNF04) or create tables. Both credentials come from OpenBao.
+    user: ${db.migration-username}
+    password: ${db.migration-password}
     # Each plugin puts its migrations in db/migration/<plugin>/ — Flyway
     # scans recursively. Timestamp versions so they never collide:
     #   V202611071530__assessment_init.sql
@@ -40,7 +44,7 @@ spring:
     events:
       jdbc:
         schema-initialization:
-          enabled: true           # Modulith event publication table
+          enabled: false          # table created by core migration V20261116090100
 
 management:
   endpoints:
