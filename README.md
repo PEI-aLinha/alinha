@@ -63,6 +63,7 @@ cd alinha
 cp deploy/.env.example deploy/.env                     # optional: dev defaults work without it
 docker compose -f deploy/docker-compose.dev.yml up -d  # Postgres, Redis, Keycloak, Mailpit, OpenBao
 BAO_TOKEN=dev-app-token ./gradlew :app:bootRun         # backend on :8080
+./gradlew :bff:bootRun                                  # BFF on :8081 (OIDC login, session)
 pnpm install && pnpm dev                               # frontend on :5173
 ```
 
@@ -84,7 +85,8 @@ on macOS use Docker Desktop and the same commands.
 `pnpm test` needs the plugin submodules (it checks that every plugin frontend is registered). If you cloned without
 `--recurse-submodules`, run `git submodule update --init --recursive` first.
 
-Until the BFF exists (#14), the shell has no real login. To open it locally with a fake session, choose a role
+The shell logs in through the BFF (`/oauth2/authorization/keycloak`); in dev, Vite proxies `/api`, `/oauth2` and
+`/auth` to `localhost:8081`. Without the BFF you can open it with a fake session: choose a role
 (`consultant`, `responsible`, `analyst`, or `anonymous` to see the login redirect). This only affects `pnpm dev`, never a build:
 
 ```bash
@@ -156,9 +158,9 @@ Numbering from the technical report (section 3.2).
 
 | NFR | How | Status |
 |---|---|---|
-| RNF03 tenant isolation | `core.tenant.TenantContext` (tenant from the token, consultant picks with `X-Alinha-Tenant`); entities extend `TenantOwnedEntity` (Hibernate `@TenantId`); see `docs/tenancy.md` | **done** in the backend (Keycloak claims pending #5, header relay pending #14) |
+| RNF03 tenant isolation | `core.tenant.TenantContext` (tenant from the token, consultant picks with `X-Alinha-Tenant`); entities extend `TenantOwnedEntity` (Hibernate `@TenantId`); see `docs/tenancy.md` | **done** in the backend (Keycloak claims pending #5); the BFF relays the header |
 | RNF04 audit trail | `core.audit.AuditTrail`, same transaction; `audit.audit_event` table INSERT-only | same |
-| RNF07/RNF08 OIDC + roles per endpoint | Keycloak JWTs + `@RequiresPermission`, deny by default; see `docs/rbac.md` | **done** in the backend (not yet tested against a real Keycloak realm, see #5) |
+| RNF07/RNF08 OIDC + roles per endpoint | Keycloak JWTs + `@RequiresPermission`, deny by default; the BFF owns the login and relays tokens; see `docs/rbac.md` | **done** in the backend (not yet tested against a real Keycloak realm, see #5) |
 | RNF09 no secrets in code/config | OpenBao (`secret/alinha/app` via Spring Cloud Vault); per-tenant provider credentials via `pluginapi.TenantSecretStore`; gitleaks job in CI | **done** (AI Service reads it once implemented) |
 | RNF12/RNF14 AI approval and provenance | `core.aigateway.AiDraft` (model, prompt version, sources, date) | contract defined |
 | RNF17 new plugin without touching the core | `settings.gradle.kts` and `gen-frontend-plugins.mjs` discover the submodules; `ModularityTest` | **done** |
