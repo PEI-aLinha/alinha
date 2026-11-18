@@ -5,8 +5,10 @@ import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.TestFactory
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider
 import org.springframework.core.type.filter.AssignableTypeFilter
+import org.springframework.stereotype.Component
 import pt.alinha.pluginapi.AlinhaPlugin
 import pt.alinha.pluginapi.PluginManifest
+import tools.jackson.databind.DeserializationFeature
 import tools.jackson.dataformat.yaml.YAMLMapper
 import tools.jackson.module.kotlin.kotlinModule
 import tools.jackson.module.kotlin.readValue
@@ -19,34 +21,59 @@ import kotlin.io.path.listDirectoryEntries
 /**
  * Every plugin's `plugin.yaml` says the same as its `AlinhaPlugin` bean (CLAUDE.md: "its PluginManifest
  * must match plugin.yaml"). Runs in the main repo's CI and in every plugin's CI, like [ModularityTest].
+ *
+ * Compared: id, name, kind, version, publishes, consumes, permissions and nav. Not compared: `rolePermissions`,
+ * which lives only in Kotlin (plugin.yaml says so), and `path`, which is for tooling.
  */
 class PluginYamlConsistencyTest {
-    private val yaml = YAMLMapper.builder().addModule(kotlinModule()).build()
+    // Jackson 3 ignores unknown keys by default; a typo such as `permisions:` must fail instead.
+    private val yaml = YAMLMapper.builder()
+        .addModule(kotlinModule())
+        .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+        .build()
 
     @TestFactory
     fun `plugin yaml matches the Kotlin manifest`(): List<DynamicTest> {
         val beans = pluginBeans().associateBy { it.id }
-        val files = pluginYamlFiles()
-        assertThat(files).describedAs("plugin.yaml files under plugins/").isNotEmpty
+        val files = pluginYamlFiles().associateBy { read(it).id }
 
-        return files.map { file ->
+        val perFile = files.map { (id, file) ->
             DynamicTest.dynamicTest(repoRoot().relativize(file).toString()) {
-                val declared = yaml.readValue<YamlManifest>(Files.readString(file))
-                val bean = requireNotNull(beans[declared.id]) { "No AlinhaPlugin bean with id '${declared.id}'" }
-                assertThat(declared.comparable()).isEqualTo(bean.comparable())
+                val bean = requireNotNull(beans[id]) { "$file declares id '$id' but no AlinhaPlugin bean has that id" }
+                assertThat(read(file).comparable()).isEqualTo(bean.comparable())
             }
-        } + DynamicTest.dynamicTest("every plugin bean has a plugin.yaml") {
-            val yamlIds = files.map { yaml.readValue<YamlManifest>(Files.readString(it)).id }
-            assertThat(yamlIds).containsExactlyInAnyOrderElementsOf(beans.keys)
         }
+        val perBean = beans.keys.map { id ->
+            DynamicTest.dynamicTest("plugin '$id' has a plugin.yaml") {
+                assertThat(files).describedAs(
+                    "No plugin.yaml with id '$id' under plugins/. Is the submodule initialised " +
+                        "(git submodule update --init --recursive)?",
+                ).containsKey(id)
+            }
+        }
+        return perFile + perBean
     }
 
+    private fun read(file: Path): YamlManifest = yaml.readValue(Files.readString(file))
+
+    /** Plugin beans: concrete `@Component` classes implementing [AlinhaPlugin] (test fixtures are not components). */
     private fun pluginBeans(): List<PluginManifest> =
         ClassPathScanningCandidateComponentProvider(false)
             .apply { addIncludeFilter(AssignableTypeFilter(AlinhaPlugin::class.java)) }
+            .apply { addExcludeFilter { reader, _ -> !reader.annotationMetadata.isAnnotated(Component::class.java.name) } }
             .findCandidateComponents("pt.alinha")
-            .map { Class.forName(it.beanClassName).getDeclaredConstructor().newInstance() as AlinhaPlugin }
-            .map { it.manifest }
+            .map { instantiate(Class.forName(it.beanClassName)).manifest }
+
+    private fun instantiate(type: Class<*>): AlinhaPlugin {
+        val constructor = runCatching { type.getDeclaredConstructor() }.getOrElse {
+            throw IllegalStateException(
+                "${type.name} needs a no-argument constructor: the AlinhaPlugin bean only describes the plugin, " +
+                    "inject dependencies elsewhere",
+                it,
+            )
+        }
+        return constructor.newInstance() as AlinhaPlugin
+    }
 
     private fun pluginYamlFiles(): List<Path> =
         listOf("feature", "provider", "framework")
@@ -64,7 +91,7 @@ class PluginYamlConsistencyTest {
 
     private fun PluginManifest.comparable() = Comparable(
         id, name, kind.name.lowercase(), version, publishes, consumes, permissions,
-        nav.map { NavYaml(it.label, it.path, it.area.name.lowercase(), it.permission, it.order) },
+        nav.map { NavYaml(it.label, it.path, it.area.name.lowercase(), it.resource, it.action, it.order) },
     )
 
     private fun YamlManifest.comparable() = Comparable(
@@ -82,7 +109,7 @@ class PluginYamlConsistencyTest {
         val nav: List<NavYaml>,
     )
 
-    /** `plugin.yaml`; `path` is for tooling and is not part of the manifest. */
+    /** `plugin.yaml`. Defaults match [PluginManifest] and `NavEntry`, so omitted keys mean the same in both. */
     private data class YamlManifest(
         val id: String,
         val name: String,
@@ -99,7 +126,8 @@ class PluginYamlConsistencyTest {
         val label: String,
         val path: String,
         val area: String,
-        val permission: String? = null,
-        val order: Int = 0,
+        val resource: String? = null,
+        val action: String = "read",
+        val order: Int = 100,
     )
 }
