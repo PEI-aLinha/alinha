@@ -18,7 +18,7 @@ export function OnboardingLayout() {
         <a href="#conteudo" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:rounded-md focus:bg-white focus:px-4 focus:py-2">
           Saltar para o conteúdo
         </a>
-        <header className="flex items-center justify-between border-b px-6 py-4">
+        <header className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
           <span className="text-lg font-semibold">aLinha</span>
           <span className="text-sm text-gray-600">{me.user.name}</span>
         </header>
