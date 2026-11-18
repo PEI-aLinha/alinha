@@ -21,6 +21,7 @@ class PluginViewTest {
                 NavEntry("Carteira", "portfolio", NavArea.CONSULTANT, order = 0),
             ),
             granted = emptySet(),
+            areas = NavArea.entries.toSet(),
         )
 
         assertThat(view.nav.map { it.path }).containsExactly("first", "ethics", "zone", "portfolio")
@@ -31,10 +32,26 @@ class PluginViewTest {
         val view = PluginView.of(
             manifest(NavEntry("Ver", "view", NavArea.CLIENT, "a"), NavEntry("Editar", "edit", NavArea.CLIENT, "a", "edit")),
             granted = setOf("a:read"),
+            areas = setOf(NavArea.CLIENT),
         )
 
         assertThat(view.nav.map { it.path }).containsExactly("view")
         assertThat(view.nav.single().resource).isEqualTo("a")
         assertThat(view.nav.single().action).isEqualTo("read")
+    }
+
+    @Test
+    fun `keeps only entries in an area the caller opens, even without a permission`() {
+        val view = PluginView.of(
+            manifest(
+                NavEntry("Cliente", "client", NavArea.CLIENT),
+                NavEntry("Carteira", "portfolio", NavArea.CONSULTANT),
+                NavEntry("Registo", "register", NavArea.ONBOARDING),
+            ),
+            granted = setOf("a:read"),
+            areas = setOf(NavArea.ONBOARDING),
+        )
+
+        assertThat(view.nav.map { it.path }).containsExactly("register")
     }
 }

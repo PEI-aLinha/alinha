@@ -58,7 +58,7 @@ PluginManifest(
 )
 ```
 
-`GET /api/plugins` returns every manifest with `nav` limited to the entries the caller's roles may see. Role mappings stay on the server.
+`GET /api/plugins` returns every manifest with `nav` limited to the entries the caller may see: in an area its roles open (`consultant` → consultant, `responsible`/`analyst` → client, `registrant` → onboarding, as the shell routes them) and behind a permission it holds. Role mappings stay on the server.
 
 Analysts follow least privilege: never grant them global results or roadmap permissions.
 

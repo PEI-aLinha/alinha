@@ -93,20 +93,30 @@ class AccessControlIntegrationTest {
         getAs("analyst", "/api/plugins").andExpect { status { isOk() } }
     }
 
-    @Test
-    fun `plugin registry shows only the menu entries the role may see`() {
-        getAs("analyst", "/api/plugins").andExpect {
-            jsonPath("$[0].nav.length()") { value(2) }
-            jsonPath("$[0].nav[0].path") { value("assessment") }
-            jsonPath("$[0].nav[1].path") { value("help") }
+    @ParameterizedTest(name = "{0} sees {1}")
+    @CsvSource(
+        "analyst, assessment help",
+        "responsible, assessment results help",
+        "consultant, portfolio",
+        "registrant, register",
+    )
+    fun `plugin registry shows only the menu entries the role may see`(role: String, paths: String) {
+        val expected = paths.split(" ")
+        getAs(role, "/api/plugins").andExpect {
+            status { isOk() }
+            jsonPath("$[0].nav.length()") { value(expected.size) }
+            expected.forEachIndexed { i, path -> jsonPath("$[0].nav[$i].path") { value(path) } }
         }
-        getAs("consultant", "/api/plugins").andExpect {
-            jsonPath("$[0].nav.length()") { value(3) }
-            jsonPath("$[0].nav[0].path") { value("assessment") }
-            jsonPath("$[0].nav[0].area") { value("client") }
+    }
+
+    @Test
+    fun `plugin registry sends menu entries in the contract shape`() {
+        getAs("responsible", "/api/plugins").andExpect {
             jsonPath("$[0].nav[0].label") { value("Avaliação") }
-            jsonPath("$[0].nav[1].path") { value("results") }
-            jsonPath("$[0].nav[2].path") { value("help") }
+            jsonPath("$[0].nav[0].area") { value("client") }
+            jsonPath("$[0].nav[0].resource") { value("assessment") }
+            jsonPath("$[0].nav[0].action") { value("read") }
+            jsonPath("$[0].nav[0].order") { value(1) }
             jsonPath("$[0].nav[2].resource") { doesNotExist() }
         }
     }
@@ -195,6 +205,8 @@ class AccessControlTestApplication {
                 NavEntry("Ajuda", "help", NavArea.CLIENT, order = 9),
                 NavEntry("Resultados", "results", NavArea.CLIENT, "results", order = 2),
                 NavEntry("Avaliação", "assessment", NavArea.CLIENT, "assessment", order = 1),
+                NavEntry("Carteira", "portfolio", NavArea.CONSULTANT, "assessment"),
+                NavEntry("Registo", "register", NavArea.ONBOARDING),
             ),
         )
     }

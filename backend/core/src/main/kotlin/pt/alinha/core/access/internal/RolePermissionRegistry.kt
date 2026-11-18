@@ -2,6 +2,7 @@ package pt.alinha.core.access.internal
 
 import org.springframework.stereotype.Component
 import pt.alinha.core.registry.PluginRegistry
+import pt.alinha.pluginapi.NavArea
 import pt.alinha.pluginapi.PluginManifest
 
 // `registrant`: account created through self-registration, no organization yet (ADR 0004).
@@ -26,6 +27,9 @@ class RolePermissionRegistry(plugins: PluginRegistry) {
 
     /** Permissions of the caller of the current request. */
     fun permissionsOfCurrentUser(): Set<String> = permissionsFor(currentRoles())
+
+    /** Shell areas the caller of the current request may open. */
+    fun areasOfCurrentUser(): Set<NavArea> = RoleAreas.areasFor(currentRoles().filter { it in KNOWN_ROLES }.toSet())
 
     private fun validate(manifest: PluginManifest) {
         val unknownRoles = manifest.rolePermissions.keys - KNOWN_ROLES

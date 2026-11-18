@@ -13,6 +13,7 @@ import pt.alinha.core.access.RequiresPermission
 import pt.alinha.core.access.internal.RolePermissionRegistry
 import pt.alinha.core.tenant.TenantAgnostic
 import pt.alinha.pluginapi.AlinhaPlugin
+import pt.alinha.pluginapi.NavArea
 import pt.alinha.pluginapi.NavEntry
 import pt.alinha.pluginapi.PluginKind
 import pt.alinha.pluginapi.PluginManifest
@@ -40,12 +41,16 @@ class PluginRegistryController(
     private val registry: PluginRegistry,
     private val permissions: RolePermissionRegistry,
 ) {
-    /** Every plugin, with only the menu entries the caller may see. Role mappings stay on the server. */
+    /**
+     * Every plugin, with only the menu entries the caller may see: in an area the caller's roles open, and
+     * behind a permission the caller holds. Role mappings stay on the server.
+     */
     @RequiresPermission("plugins")
     @GetMapping("/api/plugins")
     fun list(): List<PluginView> {
         val granted = permissions.permissionsOfCurrentUser()
-        return registry.manifests.map { PluginView.of(it, granted) }
+        val areas = permissions.areasOfCurrentUser()
+        return registry.manifests.map { PluginView.of(it, granted, areas) }
     }
 }
 
@@ -61,7 +66,7 @@ data class PluginView(
     val nav: List<NavView>,
 ) {
     companion object {
-        fun of(manifest: PluginManifest, granted: Set<String>) = PluginView(
+        fun of(manifest: PluginManifest, granted: Set<String>, areas: Set<NavArea>) = PluginView(
             id = manifest.id,
             name = manifest.name,
             kind = manifest.kind,
@@ -70,7 +75,7 @@ data class PluginView(
             consumes = manifest.consumes,
             permissions = manifest.permissions,
             nav = manifest.nav
-                .filter { entry -> entry.permission?.let { it in granted } ?: true }
+                .filter { entry -> entry.area in areas && entry.permission?.let { it in granted } ?: true }
                 .sortedWith(compareBy<NavEntry>({ it.area }, { it.order }).thenBy(PT_COLLATOR) { it.label })
                 .map(NavView::of),
         )
