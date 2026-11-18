@@ -220,6 +220,20 @@ export interface components {
             consumes: string[];
             /** @description RBAC resources the plugin declares. */
             permissions: string[];
+            /** @description Menu entries visible to the caller, sorted by area, order and label. */
+            nav: components["schemas"]["NavEntry"][];
+        };
+        NavEntry: {
+            /** @description Text shown in the menu (European Portuguese). */
+            label: string;
+            /** @description Path relative to the area root, e.g. `organization`. */
+            path: string;
+            /** @enum {string} */
+            area: "client" | "consultant" | "onboarding";
+            /** @description Permission (`resource:action`) needed to see the entry; absent when anyone in the area may. */
+            permission?: string;
+            /** @description Lower comes first. */
+            order: number;
         };
         OrganizationAddress: {
             street: string;
@@ -408,7 +422,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Every plugin manifest, sorted by id. */
+            /** @description Every plugin manifest, sorted by id. `nav` holds only the menu entries the caller's roles may see. */
             200: {
                 headers: {
                     [name: string]: unknown;

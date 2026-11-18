@@ -25,6 +25,8 @@ import pt.alinha.core.access.RequiresPermission
 import pt.alinha.core.registry.PluginRegistry
 import pt.alinha.core.registry.PluginRegistryController
 import pt.alinha.pluginapi.AlinhaPlugin
+import pt.alinha.pluginapi.NavArea
+import pt.alinha.pluginapi.NavEntry
 import pt.alinha.pluginapi.PluginKind
 import pt.alinha.pluginapi.PluginManifest
 
@@ -89,6 +91,37 @@ class AccessControlIntegrationTest {
     @Test
     fun `plugin registry is readable by a role with plugins read`() {
         getAs("analyst", "/api/plugins").andExpect { status { isOk() } }
+    }
+
+    @Test
+    fun `plugin registry shows only the menu entries the role may see`() {
+        getAs("analyst", "/api/plugins").andExpect {
+            jsonPath("$[0].nav.length()") { value(2) }
+            jsonPath("$[0].nav[0].path") { value("assessment") }
+            jsonPath("$[0].nav[1].path") { value("help") }
+        }
+        getAs("consultant", "/api/plugins").andExpect {
+            jsonPath("$[0].nav.length()") { value(3) }
+            jsonPath("$[0].nav[0].path") { value("assessment") }
+            jsonPath("$[0].nav[0].area") { value("client") }
+            jsonPath("$[0].nav[0].label") { value("Avaliação") }
+            jsonPath("$[0].nav[1].path") { value("results") }
+            jsonPath("$[0].nav[2].path") { value("help") }
+            jsonPath("$[0].nav[2].permission") { doesNotExist() }
+        }
+    }
+
+    @Test
+    fun `plugin registry does not expose role mappings`() {
+        getAs("consultant", "/api/plugins").andExpect {
+            jsonPath("$[0].id") { value("fixture") }
+            jsonPath("$[0].rolePermissions") { doesNotExist() }
+        }
+    }
+
+    @Test
+    fun `plugin registry is closed to tokens without known roles`() {
+        getAs("intruder", "/api/plugins").andExpect { status { isForbidden() } }
     }
 
     @ParameterizedTest(name = "{0} on {1} gives {2}")
@@ -157,6 +190,11 @@ class AccessControlTestApplication {
                 "consultant" to read,
                 "responsible" to read + "assessment:edit",
                 "analyst" to setOf("assessment:read", "assessment:edit"),
+            ),
+            nav = listOf(
+                NavEntry("Ajuda", "help", NavArea.CLIENT, order = 9),
+                NavEntry("Resultados", "results", NavArea.CLIENT, "results:read", order = 2),
+                NavEntry("Avaliação", "assessment", NavArea.CLIENT, "assessment:read", order = 1),
             ),
         )
     }
