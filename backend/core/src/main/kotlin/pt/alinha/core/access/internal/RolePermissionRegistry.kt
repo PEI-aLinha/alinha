@@ -6,16 +6,13 @@ import pt.alinha.pluginapi.PluginManifest
 
 // `registrant`: account created through self-registration, no organization yet (ADR 0004).
 private val KNOWN_ROLES = setOf("consultant", "responsible", "analyst", "registrant")
-private val CORE_PERMISSIONS = setOf("plugins:read")
-// Analysts excluded: least privilege, same rule as results/roadmap (docs/rbac.md).
-private val CORE_ROLE_PERMISSIONS = mapOf(
-    "consultant" to setOf("audit:read"),
-    "responsible" to setOf("audit:read"),
-)
 
 /** Role -> permission map built from the plugin manifests. Invalid manifests stop the application at startup. */
 @Component
 class RolePermissionRegistry(plugins: PluginRegistry) {
+    /** Every permission that exists: declared by a plugin or owned by the core. */
+    val knownPermissions: Set<String> = plugins.manifests.flatMap { it.permissions }.toSet() + CorePermissions.ALL
+
     private val byRole: Map<String, Set<String>> = plugins.manifests
         .onEach(::validate)
         .flatMap { it.rolePermissions.entries }
@@ -24,8 +21,11 @@ class RolePermissionRegistry(plugins: PluginRegistry) {
 
     fun permissionsFor(roles: Set<String>): Set<String> =
         roles.filter { it in KNOWN_ROLES }
-            .flatMap { byRole[it].orEmpty() + CORE_PERMISSIONS + CORE_ROLE_PERMISSIONS[it].orEmpty() }
+            .flatMap { byRole[it].orEmpty() + CorePermissions.EVERY_ROLE + CorePermissions.BY_ROLE[it].orEmpty() }
             .toSet()
+
+    /** Permissions of the caller of the current request. */
+    fun permissionsOfCurrentUser(): Set<String> = permissionsFor(currentRoles())
 
     private fun validate(manifest: PluginManifest) {
         val unknownRoles = manifest.rolePermissions.keys - KNOWN_ROLES

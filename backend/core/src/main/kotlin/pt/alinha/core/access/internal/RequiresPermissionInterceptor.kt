@@ -5,7 +5,6 @@ import jakarta.servlet.http.HttpServletResponse
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.annotation.AnnotatedElementUtils
 import org.springframework.security.access.AccessDeniedException
-import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Component
 import org.springframework.web.method.HandlerMethod
 import org.springframework.web.servlet.HandlerInterceptor
@@ -21,24 +20,18 @@ class RequiresPermissionInterceptor(private val registry: RolePermissionRegistry
         if (handler is ResourceHttpRequestHandler) return true
         val required = (handler as? HandlerMethod)?.let(::requiredPermission)
             ?: throw AccessDeniedException("Endpoint does not declare a permission")
-        if (required !in registry.permissionsFor(currentRoles())) {
+        if (required !in registry.permissionsOfCurrentUser()) {
             throw AccessDeniedException("Missing permission $required")
         }
         return true
     }
+}
 
-    private fun requiredPermission(handler: HandlerMethod): String? {
-        val annotation = AnnotatedElementUtils.findMergedAnnotation(handler.method, RequiresPermission::class.java)
-            ?: AnnotatedElementUtils.findMergedAnnotation(handler.beanType, RequiresPermission::class.java)
-        return annotation?.let { "${it.resource}:${it.action}" }
-    }
-
-    private fun currentRoles(): Set<String> =
-        SecurityContextHolder.getContext().authentication?.authorities.orEmpty()
-            .mapNotNull { it.authority }
-            .filter { it.startsWith(ROLE_PREFIX) }
-            .map { it.removePrefix(ROLE_PREFIX) }
-            .toSet()
+/** "resource:action" declared by [RequiresPermission] on the method, else on its class; null when absent. */
+internal fun requiredPermission(handler: HandlerMethod): String? {
+    val annotation = AnnotatedElementUtils.findMergedAnnotation(handler.method, RequiresPermission::class.java)
+        ?: AnnotatedElementUtils.findMergedAnnotation(handler.beanType, RequiresPermission::class.java)
+    return annotation?.let { "${it.resource}:${it.action}" }
 }
 
 @Configuration
