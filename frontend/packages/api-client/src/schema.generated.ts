@@ -116,8 +116,12 @@ export interface components {
             /** @description Total number of matching items across all pages. */
             total: number;
         };
-        /** @enum {string} */
-        Role: "consultant" | "responsible" | "analyst";
+        /**
+         * @description `registrant` is an account created through self-registration that has not registered its
+         *     organization yet (ADR 0004). It has no organizations until it does.
+         * @enum {string}
+         */
+        Role: "consultant" | "responsible" | "analyst" | "registrant";
         OrganizationRef: {
             /**
              * Format: uuid

@@ -13,8 +13,10 @@ export default defineConfig(({ mode }) => ({
   },
   server: {
     proxy: {
-      // In production this is Nginx → BFF. In dev, point it at the BFF (or the app).
-      '/api': 'http://localhost:8080',
+      // In production this is Nginx → BFF. In dev, the BFF owns /api, the OIDC login and /auth.
+      '/api': 'http://localhost:8081',
+      '/oauth2': 'http://localhost:8081',
+      '/auth': 'http://localhost:8081',
     },
   },
   test: {
