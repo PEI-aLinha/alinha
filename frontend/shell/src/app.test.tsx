@@ -42,6 +42,9 @@ const testPlugin = definePlugin({
       { path: 'dois', Component: TwoCalls },
       { path: 'preguicoso', handle: { resource: 'risk' }, lazy: async () => ({ Component: () => <h1>Página carregada à parte</h1> }) },
     ],
+    onboarding: [
+      { path: 'registo', Component: TenantProbe },
+    ],
     consultant: [
       { path: 'painel', Component: () => <h1>Painel do cliente</h1> },
       { path: 'sonda', Component: TenantProbe },
@@ -351,5 +354,33 @@ describe('error pages', () => {
   it('shows the no-access page when a plugin page gets a 403', async () => {
     renderApp({ url: '/org/acme/negado', plugins })
     expect(await screen.findByRole('heading', { name: 'Não tem acesso a esta página' })).toBeInTheDocument()
+  })
+})
+
+describe('onboarding (/onboarding)', () => {
+  const registrant = () => meFor('registrant', { organizations: [], permissions: ['organization:register'] })
+
+  it('sends a new account without an organization to the first onboarding page, with no tenant', async () => {
+    const { router, calls } = renderApp({ url: '/', plugins, me: registrant(), api: () => json({ value: 'ok' }) })
+    expect(await screen.findByText('Dados de : ok')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/onboarding/registo')
+    expect(screen.queryByRole('navigation', { name: 'Navegação principal' })).not.toBeInTheDocument()
+    const probe = calls.find((c) => c.url === '/api/probe')
+    expect(new Headers(probe?.init.headers).has('X-Alinha-Tenant')).toBe(false)
+  })
+
+  it('keeps the "not ready" page when no plugin has an onboarding page', async () => {
+    renderApp({ url: '/', plugins: [], me: registrant() })
+    expect(await screen.findByRole('heading', { name: 'A sua conta ainda não está pronta' })).toBeInTheDocument()
+  })
+
+  it('sends anyone who already has an organization back home', async () => {
+    const { router } = renderApp({ url: '/onboarding/registo', plugins })
+    await waitFor(() => expect(router.state.location.pathname).toBe('/org/acme/ativos'))
+  })
+
+  it('sends the onboarding root home, and from there to the first page', async () => {
+    const { router } = renderApp({ url: '/onboarding', plugins, me: registrant(), api: () => json({ value: 'ok' }) })
+    await waitFor(() => expect(router.state.location.pathname).toBe('/onboarding/registo'))
   })
 })

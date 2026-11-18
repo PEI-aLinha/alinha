@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isClientUser, isConsultant, makeCan, roleLabel } from './permissions'
+import { isClientUser, isConsultant, makeCan, needsOnboarding, roleLabel } from './permissions'
 
 describe('makeCan', () => {
   const can = makeCan(['asset:read', 'asset:edit', 'risk:read'])
@@ -35,6 +35,16 @@ describe('roles', () => {
     expect(roleLabel(['consultant'])).toBe('Consultoria aLinha')
     expect(roleLabel(['responsible'])).toBe('Responsável')
     expect(roleLabel(['analyst'])).toBe('Analista')
+    expect(roleLabel(['registrant'])).toBe('Registo')
     expect(roleLabel([])).toBe('')
+  })
+})
+
+describe('needsOnboarding', () => {
+  it('is true only for a registrant without an organization', () => {
+    expect(needsOnboarding(['registrant'], [])).toBe(true)
+    expect(needsOnboarding(['registrant'], [{}])).toBe(false)
+    expect(needsOnboarding(['responsible'], [])).toBe(false)
+    expect(needsOnboarding([], [])).toBe(false)
   })
 })

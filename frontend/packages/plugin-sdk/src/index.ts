@@ -9,6 +9,7 @@ import type { RouteObject } from 'react-router'
 export type Area =
   | 'client'      // /org/:org/<path>        — designated responsible person and analysts
   | 'consultant'  // /portfolio/:org/<path>  — consultant (service provider), for one client organization
+  | 'onboarding'  // /onboarding/<path>      — full page, no organization yet (a `registrant` setting one up)
 
 export interface NavItem {
   /** Visible text — in Portuguese (UI requirement). */
