@@ -6,6 +6,36 @@
 - Tokens never reach the browser (HttpOnly cookie); token relay to the aLinha Application.
 - Rate limiting backed by Redis.
 
+## Running it (dev)
+
+```bash
+docker compose -f deploy/docker-compose.dev.yml up -d   # Redis + Keycloak
+BAO_TOKEN=dev-app-token ./gradlew :app:bootRun          # app on :8080
+./gradlew :bff:bootRun                                  # BFF on :8081
+```
+
+Vite proxies `/api`, `/oauth2` and `/auth` to `:8081`. The Keycloak client is `bff`
+(`dev-bff-secret`), callback `http://localhost:8081/login/oauth2/code/keycloak`.
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `ALINHA_APP_URL` | `http://localhost:8080` | the application behind the gateway |
+| `REDIS_HOST` / `REDIS_PORT` | `localhost` / `6379` | session store and rate limiter |
+| `BFF_CLIENT_ID` / `BFF_CLIENT_SECRET` | `bff` / `dev-bff-secret` | Keycloak client |
+| `BFF_REDIRECT_URI` | `http://localhost:8081/login/oauth2/code/keycloak` | OIDC callback |
+| `BFF_AFTER_LOGIN_URI` / `BFF_POST_LOGOUT_URI` | `http://localhost:5173/` | where the browser returns |
+| `BFF_COOKIE_SECURE` | `false` | must be `true` over HTTPS |
+| `BFF_RATE_LIMIT_ENABLED` / `BFF_RATE_LIMIT_REQUESTS` / `BFF_RATE_LIMIT_WINDOW` | `true` / `120` / `1m` | fixed-window limit per user or IP |
+
+## Sessions and tokens
+
+- Cookie `ALINHA_SESSION` (`HttpOnly`, `SameSite=Lax`, 8 h) holds only the session id; the tokens live in Redis.
+- CSRF is Spring's double-submit cookie: the BFF sets `XSRF-TOKEN` (readable), the shell echoes it in
+  `X-XSRF-TOKEN` on writes. The shell does this in `withCsrf` (`frontend/shell/src/http.ts`).
+- `POST /auth/logout` (CSRF-protected) clears the session and ends the Keycloak SSO session (RP-initiated logout).
+- `POST /auth/refresh` forces a new access token from the stored refresh token (used after registration, #102).
+- Rate limiting applies to `/api/**` and `/auth/**`; it fails open when Redis is unavailable.
+
 ## What the frontend shell expects (issue #14)
 
 - `GET /api/me` → `200` with `MeDto` (`frontend/packages/api-client/src/index.ts`): user, roles,
