@@ -107,7 +107,7 @@ class AccessControlIntegrationTest {
             jsonPath("$[0].nav[0].label") { value("Avaliação") }
             jsonPath("$[0].nav[1].path") { value("results") }
             jsonPath("$[0].nav[2].path") { value("help") }
-            jsonPath("$[0].nav[2].permission") { doesNotExist() }
+            jsonPath("$[0].nav[2].resource") { doesNotExist() }
         }
     }
 
@@ -193,8 +193,8 @@ class AccessControlTestApplication {
             ),
             nav = listOf(
                 NavEntry("Ajuda", "help", NavArea.CLIENT, order = 9),
-                NavEntry("Resultados", "results", NavArea.CLIENT, "results:read", order = 2),
-                NavEntry("Avaliação", "assessment", NavArea.CLIENT, "assessment:read", order = 1),
+                NavEntry("Resultados", "results", NavArea.CLIENT, "results", order = 2),
+                NavEntry("Avaliação", "assessment", NavArea.CLIENT, "assessment", order = 1),
             ),
         )
     }

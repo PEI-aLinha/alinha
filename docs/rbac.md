@@ -54,7 +54,7 @@ PluginManifest(
         "responsible" to setOf("assessment:read", "assessment:edit"),
         "analyst" to setOf("assessment:read", "assessment:edit"),
     ),
-    nav = listOf(NavEntry("Avaliação", "assessment", NavArea.CLIENT, "assessment:read")),
+    nav = listOf(NavEntry("Avaliação", "assessment", NavArea.CLIENT, resource = "assessment")),
 )
 ```
 

@@ -2,6 +2,8 @@ package pt.alinha.core.registry
 
 import com.fasterxml.jackson.annotation.JsonInclude
 import org.slf4j.LoggerFactory
+import java.text.Collator
+import java.util.Locale
 import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Component
@@ -69,22 +71,27 @@ data class PluginView(
             permissions = manifest.permissions,
             nav = manifest.nav
                 .filter { entry -> entry.permission?.let { it in granted } ?: true }
-                .sortedWith(compareBy({ it.area }, { it.order }, { it.label }))
+                .sortedWith(compareBy<NavEntry>({ it.area }, { it.order }).thenBy(PT_COLLATOR) { it.label })
                 .map(NavView::of),
         )
     }
 }
 
-/** `NavEntry` in the OpenAPI contract; the area is lowercase, as in `@alinha/plugin-sdk`. */
+/** Same label order as the shell's `localeCompare(…, 'pt')`. */
+private val PT_COLLATOR: Collator = Collator.getInstance(Locale.forLanguageTag("pt-PT"))
+
+/** `NavEntry` in the OpenAPI contract: the fields of `NavItem` in `@alinha/plugin-sdk`, area in lowercase. */
 data class NavView(
     val label: String,
     val path: String,
     val area: String,
     /** Left out of the JSON when null: the contract makes it optional, not nullable. */
-    @field:JsonInclude(JsonInclude.Include.NON_NULL) val permission: String?,
+    @field:JsonInclude(JsonInclude.Include.NON_NULL) val resource: String?,
+    val action: String,
     val order: Int,
 ) {
     companion object {
-        fun of(entry: NavEntry) = NavView(entry.label, entry.path, entry.area.name.lowercase(), entry.permission, entry.order)
+        fun of(entry: NavEntry) =
+            NavView(entry.label, entry.path, entry.area.name.lowercase(), entry.resource, entry.action, entry.order)
     }
 }

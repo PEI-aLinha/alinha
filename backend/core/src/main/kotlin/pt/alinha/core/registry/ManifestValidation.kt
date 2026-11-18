@@ -5,6 +5,9 @@ import pt.alinha.pluginapi.PluginManifest
 
 private val PLUGIN_ID = Regex("^[a-z][a-z0-9]*(-[a-z0-9]+)*$")
 private val PERMISSION = Regex("^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$")
+private val SEGMENT = "[a-z0-9]+(-[a-z0-9]+)*"
+/** Relative, lowercase kebab-case segments: no leading slash, no "..", no spaces. */
+private val NAV_PATH = Regex("^$SEGMENT(/$SEGMENT)*$")
 
 /**
  * Checks the manifests as a whole and throws [IllegalArgumentException] on the first broken rule,
@@ -37,8 +40,9 @@ private fun validateOwnFields(manifest: PluginManifest) {
     val malformed = manifest.permissions.filterNot(PERMISSION::matches)
     require(malformed.isEmpty()) { "Plugin ${manifest.id} declares permissions not in resource:action form: $malformed" }
     manifest.nav.forEach {
-        require(it.label.isNotBlank() && it.path.isNotBlank()) {
-            "Plugin ${manifest.id} has a menu entry without label or path: $it"
+        require(it.label.isNotBlank()) { "Plugin ${manifest.id} has a menu entry without label: $it" }
+        require(NAV_PATH.matches(it.path)) {
+            "Plugin ${manifest.id} has menu path '${it.path}': use relative kebab-case segments, e.g. 'risks/assets'"
         }
     }
 }

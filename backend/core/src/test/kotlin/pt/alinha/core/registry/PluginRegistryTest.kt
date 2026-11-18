@@ -3,6 +3,8 @@ package pt.alinha.core.registry
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import pt.alinha.pluginapi.AlinhaPlugin
 import pt.alinha.pluginapi.NavArea
 import pt.alinha.pluginapi.NavEntry
@@ -30,8 +32,8 @@ class PluginRegistryTest {
     @Test
     fun `accepts valid manifests and sorts them by id`() {
         val registry = registry(
-            plugin("risk-assets", setOf("risk:read"), listOf(NavEntry("Riscos", "risks", NavArea.CLIENT, "risk:read"))),
-            plugin("assessment", nav = listOf(NavEntry("Auditoria", "audit", NavArea.CLIENT, "audit:read"))),
+            plugin("risk-assets", setOf("risk:read"), listOf(NavEntry("Riscos", "risks", NavArea.CLIENT, "risk"))),
+            plugin("assessment", nav = listOf(NavEntry("Auditoria", "audit", NavArea.CLIENT, "audit"))),
         )
 
         assertThat(registry.manifests.map { it.id }).containsExactly("assessment", "risk-assets")
@@ -60,7 +62,7 @@ class PluginRegistryTest {
 
     @Test
     fun `fails on menu entry behind an unknown permission`() {
-        val nav = listOf(NavEntry("A", "a", NavArea.CLIENT, "a:edit"))
+        val nav = listOf(NavEntry("A", "a", NavArea.CLIENT, "a", "edit"))
 
         assertThatThrownBy { registry(plugin("a", setOf("a:read"), nav)) }
             .isInstanceOf(IllegalArgumentException::class.java)
@@ -71,7 +73,7 @@ class PluginRegistryTest {
     fun `menu entry may use a permission declared by another plugin`() {
         val registry = registry(
             plugin("a", setOf("a:read")),
-            plugin("b", nav = listOf(NavEntry("B", "b", NavArea.CONSULTANT, "a:read"))),
+            plugin("b", nav = listOf(NavEntry("B", "b", NavArea.CONSULTANT, "a"))),
         )
 
         assertThat(registry.manifests).hasSize(2)
@@ -103,6 +105,30 @@ class PluginRegistryTest {
     fun `fails on menu entry without label`() {
         assertThatThrownBy { registry(plugin("a", nav = listOf(NavEntry(" ", "a", NavArea.CLIENT)))) }
             .isInstanceOf(IllegalArgumentException::class.java)
-            .hasMessageContaining("without label or path")
+            .hasMessageContaining("without label")
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["", "/assets", "assets/", "Assets", "risk assets", "../admin", "risks//assets", "risks_assets"])
+    fun `fails on menu path that is not relative kebab-case`(path: String) {
+        assertThatThrownBy { registry(plugin("a", nav = listOf(NavEntry("A", path, NavArea.CLIENT)))) }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("menu path")
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["organization", "risk-assets", "risks/assets", "reports/2026"])
+    fun `accepts relative kebab-case menu paths`(path: String) {
+        assertThat(registry(plugin("a", nav = listOf(NavEntry("A", path, NavArea.CLIENT)))).manifests).hasSize(1)
+    }
+
+    @Test
+    fun `menu entry defaults match the frontend NavItem`() {
+        val entry = NavEntry("A", "a", NavArea.CLIENT, "a")
+
+        assertThat(entry.action).isEqualTo("read")
+        assertThat(entry.order).isEqualTo(100)
+        assertThat(entry.permission).isEqualTo("a:read")
+        assertThat(NavEntry("A", "a", NavArea.CLIENT).permission).isNull()
     }
 }
