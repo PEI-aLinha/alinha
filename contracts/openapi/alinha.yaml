@@ -210,7 +210,10 @@ components:
 
     Role:
       type: string
-      enum: [consultant, responsible, analyst]
+      description: |
+        `registrant` is an account created through self-registration that has not registered its
+        organization yet (ADR 0004). It has no organizations until it does.
+      enum: [consultant, responsible, analyst, registrant]
 
     OrganizationRef:
       type: object

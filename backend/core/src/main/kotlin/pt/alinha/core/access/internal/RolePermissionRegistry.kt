@@ -4,8 +4,9 @@ import org.springframework.stereotype.Component
 import pt.alinha.core.registry.PluginRegistry
 import pt.alinha.pluginapi.PluginManifest
 
-private val KNOWN_ROLES = setOf("consultant", "responsible", "analyst")
-private val CORE_PERMISSIONS = setOf("plugins:read")
+// `registrant`: account created through self-registration, no organization yet (ADR 0004).
+internal val KNOWN_ROLES = setOf("consultant", "responsible", "analyst", "registrant")
+private val CORE_PERMISSIONS = setOf("plugins:read", "session:read")
 
 /** Role -> permission map built from the plugin manifests. Invalid manifests stop the application at startup. */
 @Component
