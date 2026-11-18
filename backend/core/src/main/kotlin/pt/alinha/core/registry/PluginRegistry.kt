@@ -19,8 +19,7 @@ class PluginRegistry(plugins: List<AlinhaPlugin>) {
     val manifests: List<PluginManifest> = plugins.map { it.manifest }.sortedBy { it.id }
 
     init {
-        val duplicated = manifests.groupBy { it.id }.filterValues { it.size > 1 }.keys
-        require(duplicated.isEmpty()) { "Duplicate plugin ids: $duplicated" }
+        validateManifests(manifests)
     }
 
     @EventListener(ApplicationReadyEvent::class)
