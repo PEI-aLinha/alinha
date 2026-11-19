@@ -69,7 +69,7 @@ class CorrelationTest {
 
         val ids = tenants.runAs(event.tenantId) {
             val job = correlation.current()
-            val inEvent = CorrelationScope.runWith(event.correlationId) { correlation.current() }
+            val inEvent = tenants.runAs(event) { correlation.current() }
             Triple(job, inEvent, correlation.current())
         }
 
