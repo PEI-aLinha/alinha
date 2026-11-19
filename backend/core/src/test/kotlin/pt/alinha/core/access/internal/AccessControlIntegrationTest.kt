@@ -99,6 +99,8 @@ class AccessControlIntegrationTest {
         "responsible, assessment results help",
         "consultant, portfolio",
         "registrant, register",
+        "analyst+responsible, assessment results help",
+        "consultant+registrant, portfolio register",
     )
     fun `plugin registry shows only the menu entries the role may see`(role: String, paths: String) {
         val expected = paths.split(" ")
@@ -175,7 +177,7 @@ class AccessControlIntegrationTest {
     FixtureClassLevelController::class,
 )
 class AccessControlTestApplication {
-    /** The token value names the role, so requests run the real converter without Keycloak. */
+    /** The token value names the roles (`a+b` for several), so requests run the real converter without Keycloak. */
     @Bean
     @Primary
     fun testJwtDecoder(): JwtDecoder = JwtDecoder { token ->
@@ -183,7 +185,7 @@ class AccessControlTestApplication {
         Jwt.withTokenValue(token)
             .header("alg", "none")
             .subject("user-1")
-            .claim("realm_access", mapOf("roles" to listOf(token)))
+            .claim("realm_access", mapOf("roles" to token.split("+")))
             .build()
     }
 
