@@ -61,6 +61,7 @@ class FakeIdentityDirectory : IdentityDirectory {
 class ProvisioningTestConfig {
     @Bean fun identityDirectory() = FakeIdentityDirectory()
     @Bean fun meterRegistry() = SimpleMeterRegistry()
+    @Bean fun registrationRateLimiter() = RegistrationRateLimiter(ProvisioningProperties())
 }
 
 // No mock web environment: provisioning also works outside a request, and the test thread stays request-free.
@@ -271,7 +272,7 @@ class TenantProvisionerIntegrationTest {
 
             assertThat(error.statusCode).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE)
             assertThat(error.body.properties?.get("code")).isEqualTo(REGISTRATION_BUSY)
-            assertThat(error.headers.getFirst(HttpHeaders.RETRY_AFTER)).isEqualTo("15")
+            assertThat(error.headers.getFirst(HttpHeaders.RETRY_AFTER)).isEqualTo(BUSY_RETRY_AFTER.seconds.toString())
             assertThat(jdbc.queryForObject("select count(*) from core.tenant where owner_subject = ?", Long::class.java, subject)).isZero()
             release.countDown()
             running.forEach { it.get(30, TimeUnit.SECONDS) }
