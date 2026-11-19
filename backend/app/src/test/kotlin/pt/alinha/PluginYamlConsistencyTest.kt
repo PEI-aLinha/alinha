@@ -34,10 +34,20 @@ class PluginYamlConsistencyTest {
 
     @TestFactory
     fun `plugin yaml matches the Kotlin manifest`(): List<DynamicTest> {
-        val beans = pluginBeans().associateBy { it.id }
-        val files = pluginYamlFiles().associateBy { read(it).id }
+        val beanList = pluginBeans()
+        val fileList = pluginYamlFiles().map { read(it).id to it }
+        // Not associateBy: a second plugin.yaml or bean with the same id would be dropped, never compared.
+        val beans = beanList.associateBy { it.id }
+        val files = fileList.toMap()
 
-        val perFile = files.map { (id, file) ->
+        val unique = DynamicTest.dynamicTest("every plugin id is declared once") {
+            val duplicateFiles = fileList.groupBy({ it.first }, { repoRoot().relativize(it.second).toString() })
+                .filterValues { it.size > 1 }
+            val duplicateBeans = beanList.groupBy { it.id }.filterValues { it.size > 1 }.keys
+            assertThat(duplicateFiles).describedAs("plugin.yaml files sharing an id").isEmpty()
+            assertThat(duplicateBeans).describedAs("AlinhaPlugin beans sharing an id").isEmpty()
+        }
+        val perFile = fileList.map { (id, file) ->
             DynamicTest.dynamicTest(repoRoot().relativize(file).toString()) {
                 val bean = requireNotNull(beans[id]) { "$file declares id '$id' but no AlinhaPlugin bean has that id" }
                 assertThat(read(file).comparable()).isEqualTo(bean.comparable())
@@ -51,7 +61,7 @@ class PluginYamlConsistencyTest {
                 ).containsKey(id)
             }
         }
-        return perFile + perBean
+        return listOf(unique) + perFile + perBean
     }
 
     private fun read(file: Path): YamlManifest = yaml.readValue(Files.readString(file))
