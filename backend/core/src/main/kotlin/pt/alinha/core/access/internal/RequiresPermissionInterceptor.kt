@@ -11,7 +11,6 @@ import org.springframework.web.method.HandlerMethod
 import org.springframework.web.servlet.HandlerInterceptor
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
-import org.springframework.web.servlet.resource.ResourceHttpRequestHandler
 import pt.alinha.core.access.RequiresPermission
 
 /** The `resource:action` an endpoint requires; a method annotation replaces the class one. */
@@ -25,7 +24,6 @@ internal fun requiredPermission(handler: HandlerMethod): String? {
 @Component
 class RequiresPermissionInterceptor(private val registry: RolePermissionRegistry) : HandlerInterceptor {
     override fun preHandle(request: HttpServletRequest, response: HttpServletResponse, handler: Any): Boolean {
-        if (handler is ResourceHttpRequestHandler) return true
         val required = (handler as? HandlerMethod)?.let(::requiredPermission)
             ?: throw AccessDeniedException("Endpoint does not declare a permission")
         if (required !in registry.permissionsFor(currentRoles())) {

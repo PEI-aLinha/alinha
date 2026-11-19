@@ -82,6 +82,12 @@ class AccessControlIntegrationTest {
     }
 
     @Test
+    fun `a static resource path is denied, never served without a permission`() {
+        // Spring's resource handler would otherwise answer it for any role (here it would be a 404, not a 403).
+        getAs("analyst", "/favicon.ico").andExpect { status { isForbidden() } }
+    }
+
+    @Test
     fun `plugin registry is readable by a role with plugins read`() {
         getAs("analyst", "/api/plugins").andExpect { status { isOk() } }
     }
