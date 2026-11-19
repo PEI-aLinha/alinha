@@ -20,6 +20,7 @@ import java.time.Instant
 
 private const val DEFAULT_ROLES = "default-roles-"
 private const val RESPONSIBLE_ROLE = "responsible"
+private const val REGISTRANT_ROLE = "registrant"
 private val CONNECT_TIMEOUT: Duration = Duration.ofSeconds(2)
 private val READ_TIMEOUT: Duration = Duration.ofSeconds(3)
 /**
@@ -27,6 +28,11 @@ private val READ_TIMEOUT: Duration = Duration.ofSeconds(3)
  * so the worst case is this plus one call (connect + read timeouts), about 15 s.
  */
 private val ASSIGN_DEADLINE: Duration = Duration.ofSeconds(10)
+/**
+ * Upper bound for undoing a failed assignment. It runs after the rollback but before the transaction releases its
+ * connection and provisioning slot, so it is kept short: at most this plus one call, about 10 s.
+ */
+private val REVOKE_DEADLINE: Duration = Duration.ofSeconds(5)
 /** Renew the service-account token this long before it expires. */
 private val TOKEN_MARGIN: Duration = Duration.ofSeconds(10)
 
@@ -44,8 +50,9 @@ private data class CachedToken(val value: String, val renewAt: Instant)
  * [IdentityDirectory] on the Keycloak Admin REST API, with the `alinha-provisioner` service account
  * (client credentials). The Keycloak user id is the token's `sub`.
  *
- * A self-registered account gets `registrant` through the realm's default composite role, so assigning a tenant
- * removes that composite mapping. The whole user representation is read and written back, because a partial
+ * A self-registered account gets `registrant` through the realm's default composite role. Assigning a tenant removes
+ * that composite mapping, after mapping its other roles (`offline_access`, `uma_authorization`) directly, so only
+ * `registrant` goes away and offline sessions keep working. The whole user representation is read and written back, because a partial
  * `PUT` would fail the realm's user profile validation.
  *
  * Provisioning calls this inside its database transaction, so the calls are kept short: the service-account
@@ -79,34 +86,56 @@ class KeycloakIdentityDirectory internal constructor(
     private val users = "/admin/realms/${properties.realm}/users"
 
     override fun assignTenant(subject: String, tenantId: TenantId) = forgettingRejectedToken {
-        val deadline = clock.instant().plus(ASSIGN_DEADLINE)
-        fun <T> step(call: () -> T): T {
-            check(clock.instant().isBefore(deadline)) { "Identity assignment exceeded $ASSIGN_DEADLINE" }
-            return call()
-        }
+        val deadline = Deadline(ASSIGN_DEADLINE, "assignment")
+        fun <T> step(call: () -> T): T = deadline.step(call)
         val token = step { token() }
         step { setTenantAttribute(token, subject) { it + (TENANT_CLAIM to listOf(tenantId.value.toString())) } }
         val mapped = step { mappedRealmRoles(token, subject) }
-        if (mapped.none { it.name == RESPONSIBLE_ROLE }) {
-            val responsible = step { availableRealmRoles(token, subject) }.filter { it.name == RESPONSIBLE_ROLE }
-            check(responsible.isNotEmpty()) { "Realm role '$RESPONSIBLE_ROLE' is missing" }
-            step { mapRoles(token, subject, responsible) }
+        val toMap = buildList {
+            if (mapped.none { it.name == RESPONSIBLE_ROLE }) {
+                val responsible = step { availableRealmRoles(token, subject) }.filter { it.name == RESPONSIBLE_ROLE }
+                check(responsible.isNotEmpty()) { "Realm role '$RESPONSIBLE_ROLE' is missing" }
+                addAll(responsible)
+            }
+            if (mapped.any { it.name == defaultRoles() }) addAll(step { rolesKeptFromDefault(token, subject, mapped) })
         }
+        step { mapRoles(token, subject, toMap) }
         step { unmapRoles(token, subject, mapped.filter { it.name == defaultRoles() }) }
     }
 
+    /** The roles the account gets through the default composite, except `registrant`, that are not mapped directly. */
+    private fun rolesKeptFromDefault(token: String, subject: String, mapped: List<RoleRepresentation>) =
+        effectiveRealmRoles(token, subject).filter { role ->
+            role.name != REGISTRANT_ROLE && role.name != defaultRoles() && mapped.none { it.id == role.id }
+        }
+
     override fun revokeTenant(subject: String, tenantId: TenantId) = forgettingRejectedToken {
-        val token = token()
-        val user = readUser(token, subject)
+        val deadline = Deadline(REVOKE_DEADLINE, "undo")
+        fun <T> step(call: () -> T): T = deadline.step(call)
+        val token = step { token() }
+        val user = step { readUser(token, subject) }
         // Only undo our own assignment: if the attribute holds another tenant (or none), a later request already
         // owns the account, or the assignment never got this far. Roles follow the attribute, so leave them too.
         val own = attributesOf(user)[TENANT_CLAIM].orEmpty().any { it.equals(tenantId.value.toString(), ignoreCase = true) }
         if (!own) return@forgettingRejectedToken
         // Restore `registrant` first and drop the attribute last: a failure halfway leaves the attribute in place, so
         // a retry (or #92's reconciliation) still recognises the account, and it is never left without any role.
-        mapRoles(token, subject, availableRealmRoles(token, subject).filter { it.name == defaultRoles() })
-        unmapRoles(token, subject, mappedRealmRoles(token, subject).filter { it.name == RESPONSIBLE_ROLE })
-        writeUser(token, subject, user, attributesOf(user) - TENANT_CLAIM)
+        // The roles mapped directly from the default composite stay: the composite grants them again anyway.
+        val default = step { availableRealmRoles(token, subject) }.filter { it.name == defaultRoles() }
+        step { mapRoles(token, subject, default) }
+        val responsible = step { mappedRealmRoles(token, subject) }.filter { it.name == RESPONSIBLE_ROLE }
+        step { unmapRoles(token, subject, responsible) }
+        step { writeUser(token, subject, user, attributesOf(user) - TENANT_CLAIM) }
+    }
+
+    /** Runs each call only while [budget] has not run out, so the worst case is the budget plus one call. */
+    private inner class Deadline(private val budget: Duration, private val what: String) {
+        private val at = clock.instant().plus(budget)
+
+        fun <T> step(call: () -> T): T {
+            check(clock.instant().isBefore(at)) { "Identity $what exceeded $budget" }
+            return call()
+        }
     }
 
     /** A 401 means the cached token was revoked or the secret rotated: fetch a new one on the next call. */
@@ -179,6 +208,10 @@ class KeycloakIdentityDirectory internal constructor(
 
     private fun availableRealmRoles(token: String, subject: String): List<RoleRepresentation> =
         realmRoles(token, "$users/{id}/role-mappings/realm/available", subject)
+
+    /** Every realm role the account has, composites expanded. */
+    private fun effectiveRealmRoles(token: String, subject: String): List<RoleRepresentation> =
+        realmRoles(token, "$users/{id}/role-mappings/realm/composite", subject)
 
     private fun realmRoles(token: String, uri: String, subject: String): List<RoleRepresentation> =
         http.get().uri(uri, subject).headers { it.setBearerAuth(token) }.retrieve()

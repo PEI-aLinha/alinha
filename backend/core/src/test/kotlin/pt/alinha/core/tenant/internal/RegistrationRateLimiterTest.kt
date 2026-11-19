@@ -65,13 +65,12 @@ class RegistrationRateLimiterTest {
     }
 
     @Test
-    fun `one client cannot run two registrations at once`() {
+    fun `overlapping attempts from one client are only counted, not refused`() {
+        // A double submit is the provisioner's 503 REGISTRATION_BUSY (one per account), not a 429 from here.
         from("10.0.0.1")
 
-        val error = assertThrows<ResponseStatusException> { limiter.limit { limiter.limit { } } }
-
-        assertThat(error.statusCode).isEqualTo(HttpStatus.TOO_MANY_REQUESTS)
-        assertThat(error.headers.getFirst(HttpHeaders.RETRY_AFTER)).isEqualTo(BUSY_RETRY_AFTER.seconds.toString())
+        assertThat(limiter.limit { limiter.limit { "ok" } }).isEqualTo("ok")
+        assertThrows<ResponseStatusException> { limiter.limit { } }
     }
 
     @Test
@@ -93,5 +92,15 @@ class RegistrationRateLimiterTest {
         assertThat(clientKey("::ffff:10.0.0.1")).isEqualTo("10.0.0.1")
         assertThat(clientKey("10.0.0.1")).isEqualTo("10.0.0.1")
         assertThat(clientKey("not-an-ip.example")).isEqualTo("not-an-ip.example")
+    }
+
+    @Test
+    fun `hex-only names are not IP literals and are kept as they are`() {
+        // These would otherwise reach InetAddress.getByName and be looked up in DNS.
+        assertThat(clientKey("cafe")).isEqualTo("cafe")
+        assertThat(clientKey("dead.beef")).isEqualTo("dead.beef")
+        assertThat(clientKey("cafe1")).isEqualTo("cafe1")
+        assertThat(clientKey("1.2.3")).isEqualTo("1.2.3")
+        assertThat(clientKey("256.0.0.1")).isEqualTo("256.0.0.1")
     }
 }

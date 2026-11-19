@@ -29,8 +29,8 @@ data class ProvisioningProperties(
 )
 
 /**
- * One registration in flight and [ProvisioningProperties.maxPerClientPerHour] attempts per hour for each client IP,
- * so many accounts from one place cannot take every provisioning slot. The IP is the request's remote address; with
+ * [ProvisioningProperties.maxPerClientPerHour] attempts per hour for each client IP, so many accounts from one place
+ * cannot keep taking the provisioning slots. One registration at a time per account is [TenantProvisioner]'s job. The IP is the request's remote address; with
  * `server.forward-headers-strategy: native` Tomcat replaces it with `X-Forwarded-For` only when the request comes from
  * an internal proxy (the BFF), so a client cannot choose its own.
  *
@@ -46,22 +46,16 @@ class RegistrationRateLimiter internal constructor(
     @Autowired constructor(properties: ProvisioningProperties) : this(properties, Clock.systemUTC())
 
     private val attempts = ConcurrentHashMap<String, List<Instant>>()
-    private val inFlight: MutableSet<String> = ConcurrentHashMap.newKeySet()
     private val calls = AtomicInteger()
 
     /**
      * Runs [block] if this client may start a registration now; otherwise throws 429 `TOO_MANY_REGISTRATIONS` with
-     * `Retry-After`: the time until its oldest attempt leaves the hour, or [BUSY_RETRY_AFTER] while one is running.
+     * `Retry-After`: the time until its oldest attempt leaves the hour.
      */
     fun <T> limit(block: () -> T): T {
         val client = currentClient() ?: return block()
-        if (!inFlight.add(client)) throw tooMany(BUSY_RETRY_AFTER)
-        try {
-            record(client)?.let { throw tooMany(it) }
-            return block()
-        } finally {
-            inFlight.remove(client)
-        }
+        record(client)?.let { throw tooMany(it) }
+        return block()
     }
 
     private fun tooMany(retryAfter: Duration) = RegistrationProblem(
@@ -94,15 +88,21 @@ class RegistrationRateLimiter internal constructor(
         (RequestContextHolder.getRequestAttributes() as? ServletRequestAttributes)?.request?.remoteAddr?.let(::clientKey)
 }
 
-private val IP_LITERAL = Regex("^[0-9a-fA-F:.]+$")
+private const val OCTET = "(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])"
+private val IPV4_LITERAL = Regex("^$OCTET(\\.$OCTET){3}$")
+/** Hex groups and colons, optionally ending in a dotted IPv4 address; must contain a colon. */
+private val IPV6_LITERAL = Regex("^(?=.*:)[0-9a-fA-F:]+(:$OCTET(\\.$OCTET){3})?$")
 private const val IPV6_PREFIX_BYTES = 8
 
 /**
  * The key a client is limited by: an IPv4 address as is (IPv4-mapped IPv6 included), an IPv6 address by its /64,
- * since one subscriber usually gets a whole /64 and could otherwise rotate addresses freely.
+ * since one subscriber usually gets a whole /64 and could otherwise rotate addresses freely. Anything that is not a
+ * strict IP literal is kept as is and never resolved, so a name never triggers a DNS lookup.
  */
 internal fun clientKey(address: String): String {
-    if (!IP_LITERAL.matches(address)) return address // never resolve a name
+    if (IPV4_LITERAL.matches(address)) return address
+    if (!IPV6_LITERAL.matches(address)) return address
+    // A string with a colon is only ever parsed as an IPv6 literal, never looked up.
     val ip = runCatching { InetAddress.getByName(address) }.getOrNull() ?: return address
     if (ip !is Inet6Address) return ip.hostAddress
     return "v6:" + ip.address.take(IPV6_PREFIX_BYTES).joinToString("") { "%02x".format(it) } + "::/64"

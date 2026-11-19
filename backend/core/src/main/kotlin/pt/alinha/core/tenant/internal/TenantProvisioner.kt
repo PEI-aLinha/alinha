@@ -2,10 +2,7 @@ package pt.alinha.core.tenant.internal
 
 import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.MeterRegistry
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.ObjectProvider
-import org.springframework.context.annotation.Import
 import org.springframework.http.HttpStatus
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.security.access.AccessDeniedException
@@ -39,27 +36,27 @@ internal const val REGISTRATION_BUSY = "REGISTRATION_BUSY"
 private const val EMAIL_VERIFIED_CLAIM = "email_verified"
 
 /**
- * Registrations that may run at once. Each one holds a database connection while it calls the identity provider
- * (up to about 15 s), so this bounds how much of the pool a slow Keycloak can take from everyone else.
+ * Registrations that may run at once. Each one holds a database connection while it calls the identity provider:
+ * up to about 15 s for the assignment, plus about 10 s for the undo when it fails (see [KeycloakIdentityDirectory]).
+ * This bounds how much of the pool a slow Keycloak can take from everyone else.
  */
 internal const val MAX_CONCURRENT_PROVISIONING = 4
 
 /** `Retry-After` when registrations are busy: about one registration's worst case (see [MAX_CONCURRENT_PROVISIONING]). */
-internal val BUSY_RETRY_AFTER: Duration = Duration.ofSeconds(15)
+internal val BUSY_RETRY_AFTER: Duration = Duration.ofSeconds(25)
 
 /** `Retry-After` when the identity provider failed: long enough for a restart or a network blip to pass. */
 internal val IDENTITY_RETRY_AFTER: Duration = Duration.ofSeconds(60)
 
 /** Creates a tenant for the registering account (ADR 0004). See [TenantProvisioning]. */
 @Component
-@Import(RegistrationRateLimiter::class)
 class TenantProvisioner(
     private val tenants: JwtTenantContext,
     private val tx: TransactionTemplate,
     private val jdbc: JdbcClient,
     private val audit: AuditTrail,
     private val directory: IdentityDirectory,
-    meters: ObjectProvider<MeterRegistry>,
+    private val meterRegistry: MeterRegistry,
     private val clients: RegistrationRateLimiter,
 ) : TenantProvisioning {
 
@@ -68,8 +65,6 @@ class TenantProvisioner(
 
     /** Accounts with a registration in flight on this instance: one account cannot take several slots. */
     private val inFlight: MutableSet<String> = ConcurrentHashMap.newKeySet()
-
-    private val meterRegistry: MeterRegistry = meters.getIfAvailable { SimpleMeterRegistry() }
 
     /** Accounts left pointing to a rolled-back tenant; alert on any increase (#92 reconciles them). */
     private val revokeFailed: Counter = orphanedCounter(ORPHANED_REVOKE_FAILED)
@@ -96,23 +91,24 @@ class TenantProvisioner(
         }
         val subject = auth.token.subject
         val tenantId = TenantId(UUID.randomUUID())
-        return clients.limit { provisionWithinSlots(subject, tenantId, block) }
+        // Checked before the client limit, so a double submit gets 503 `REGISTRATION_BUSY` and costs no attempt.
+        if (!inFlight.add(subject)) throw busy()
+        try {
+            return clients.limit { provisionWithinSlots(subject, tenantId, block) }
+        } finally {
+            inFlight.remove(subject)
+        }
     }
 
     private fun <T> provisionWithinSlots(subject: String, tenantId: TenantId, block: (TenantId) -> T): T {
-        if (!inFlight.add(subject)) throw busy()
+        if (!slots.tryAcquire()) throw busy()
         try {
-            if (!slots.tryAcquire()) throw busy()
-            try {
-                return tenants.runAsNewTenant(tenantId) {
-                    @Suppress("UNCHECKED_CAST")
-                    tx.execute { provision(subject, tenantId, block) } as T
-                }
-            } finally {
-                slots.release()
+            return tenants.runAsNewTenant(tenantId) {
+                @Suppress("UNCHECKED_CAST")
+                tx.execute { provision(subject, tenantId, block) } as T
             }
         } finally {
-            inFlight.remove(subject)
+            slots.release()
         }
     }
 
