@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.security.core.Authentication
 import org.springframework.security.oauth2.client.OAuth2AuthorizeRequest
 import org.springframework.security.oauth2.client.ReactiveOAuth2AuthorizedClientManager
+import org.springframework.security.oauth2.core.OAuth2AuthorizationException
 import org.springframework.security.oauth2.core.oidc.user.OidcUser
 import org.springframework.stereotype.Service
 import org.springframework.web.reactive.function.client.WebClientResponseException
@@ -15,6 +16,7 @@ import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 
 private const val ORGANIZATION_CONCURRENCY = 4
+private val NO_ROLES = InternalMe(emptyList(), emptyList(), emptyList())
 
 @Service
 class MeService(
@@ -36,6 +38,8 @@ class MeService(
             .flatMap { client ->
                 val token = client.accessToken.tokenValue
                 app.internalMe(token)
+                    // The app is deny-by-default: a valid token with no known role lacks session:read.
+                    .onErrorResume(WebClientResponseException.Forbidden::class.java) { Mono.just(NO_ROLES) }
                     .flatMap { internal ->
                         organizations(token, internal.tenants).map { organizations ->
                             MeResponse(
@@ -54,8 +58,15 @@ class MeService(
                     }
             }
             .onErrorMap { error ->
-                if (error is ResponseStatusException || error is MeFailure) error
-                else MeFailure("the application did not answer /internal/me", error)
+                when {
+                    error is ResponseStatusException || error is MeFailure -> error
+                    // The refresh token or the Keycloak SSO session expired, or the app refused the token:
+                    // 401 sends the shell back to login instead of the error page.
+                    error is OAuth2AuthorizationException ||
+                        error is WebClientResponseException.Unauthorized ->
+                        ResponseStatusException(HttpStatus.UNAUTHORIZED, "Session expired", error)
+                    else -> MeFailure("the application did not answer /internal/me", error)
+                }
             }
 
     private fun organizations(token: String, tenantIds: List<String>): Mono<List<MeOrganization>> =

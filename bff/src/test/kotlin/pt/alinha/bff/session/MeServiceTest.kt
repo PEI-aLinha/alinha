@@ -9,12 +9,14 @@ import org.springframework.http.HttpStatus
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest
 import org.springframework.mock.web.server.MockServerWebExchange
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.oauth2.client.ClientAuthorizationException
 import org.springframework.security.oauth2.client.OAuth2AuthorizeRequest
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient
 import org.springframework.security.oauth2.client.ReactiveOAuth2AuthorizedClientManager
 import org.springframework.security.oauth2.client.registration.ClientRegistration
 import org.springframework.security.oauth2.core.AuthorizationGrantType
 import org.springframework.security.oauth2.core.OAuth2AccessToken
+import org.springframework.security.oauth2.core.OAuth2Error
 import org.springframework.security.oauth2.core.oidc.OidcIdToken
 import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser
 import org.springframework.web.reactive.function.client.WebClientResponseException
@@ -164,6 +166,53 @@ class MeServiceTest {
             .expectErrorMatches { it is ResponseStatusException && it.statusCode == HttpStatus.UNAUTHORIZED }
             .verify()
     }
+
+    @Test
+    fun `a token with no known role is a session without roles, not an error`() {
+        givenSession()
+        Mockito.`when`(app.internalMe(token)).thenReturn(Mono.error(status(403)))
+
+        StepVerifier.create(service.me(exchange, authentication, user()))
+            .assertNext { me ->
+                assertThat(me.roles).isEmpty()
+                assertThat(me.permissions).isEmpty()
+                assertThat(me.organizations).isEmpty()
+            }
+            .verifyComplete()
+    }
+
+    @Test
+    fun `an expired refresh token or SSO session is 401, so the shell goes to login`() {
+        Mockito.`when`(clients.authorize(Mockito.any<OAuth2AuthorizeRequest>()))
+            .thenReturn(Mono.error(ClientAuthorizationException(OAuth2Error("invalid_grant"), "keycloak")))
+
+        StepVerifier.create(service.me(exchange, authentication, user()))
+            .expectErrorMatches { it is ResponseStatusException && it.statusCode == HttpStatus.UNAUTHORIZED }
+            .verify()
+    }
+
+    @Test
+    fun `a token the app refuses is 401`() {
+        givenSession()
+        Mockito.`when`(app.internalMe(token)).thenReturn(Mono.error(status(401)))
+
+        StepVerifier.create(service.me(exchange, authentication, user()))
+            .expectErrorMatches { it is ResponseStatusException && it.statusCode == HttpStatus.UNAUTHORIZED }
+            .verify()
+    }
+
+    @Test
+    fun `an app failure is still 502`() {
+        givenSession()
+        Mockito.`when`(app.internalMe(token)).thenReturn(Mono.error(serverError()))
+
+        StepVerifier.create(service.me(exchange, authentication, user()))
+            .expectError(MeFailure::class.java)
+            .verify()
+    }
+
+    private fun status(code: Int) =
+        WebClientResponseException.create(code, "status $code", HttpHeaders.EMPTY, ByteArray(0), null)
 
     private fun notFound() =
         WebClientResponseException.create(404, "Not Found", HttpHeaders.EMPTY, ByteArray(0), null)

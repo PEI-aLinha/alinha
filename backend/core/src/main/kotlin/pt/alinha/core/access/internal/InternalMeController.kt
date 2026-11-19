@@ -16,6 +16,7 @@ data class InternalMeResponse(val roles: List<String>, val permissions: List<Str
 /**
  * Internal contract with the BFF (#14). Authenticated, but not tenant-scoped: it only echoes what the token
  * already grants. `session:read` is a core permission every known role has, only used here.
+ * A token with no known role gets 403 from [RequiresPermissionInterceptor]; the BFF reads that as "no roles".
  */
 @RestController
 @TenantAgnostic

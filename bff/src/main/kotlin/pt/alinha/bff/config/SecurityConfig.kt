@@ -11,8 +11,10 @@ import org.springframework.security.config.annotation.web.reactive.EnableWebFlux
 import org.springframework.security.config.web.server.ServerHttpSecurity
 import org.springframework.security.oauth2.client.ReactiveOAuth2AuthorizedClientManager
 import org.springframework.security.oauth2.client.ReactiveOAuth2AuthorizedClientProviderBuilder
-import org.springframework.security.oauth2.client.RefreshTokenReactiveOAuth2AuthorizedClientProvider
 import org.springframework.security.oauth2.client.registration.ReactiveClientRegistrationRepository
+import org.springframework.security.oauth2.client.endpoint.OAuth2RefreshTokenGrantRequest
+import org.springframework.security.oauth2.client.endpoint.ReactiveOAuth2AccessTokenResponseClient
+import org.springframework.security.oauth2.client.endpoint.WebClientReactiveRefreshTokenTokenResponseClient
 import org.springframework.security.oauth2.client.web.DefaultReactiveOAuth2AuthorizedClientManager
 import org.springframework.security.oauth2.client.web.server.ServerOAuth2AuthorizedClientRepository
 import org.springframework.security.core.Authentication
@@ -77,8 +79,10 @@ class SecurityConfig(private val props: BffProperties) {
         }
     }
 
+    /** Used by `/auth/refresh` to get a new access token even when the current one is still valid. */
     @Bean
-    fun refreshTokenProvider() = RefreshTokenReactiveOAuth2AuthorizedClientProvider()
+    fun refreshTokenResponseClient(): ReactiveOAuth2AccessTokenResponseClient<OAuth2RefreshTokenGrantRequest> =
+        WebClientReactiveRefreshTokenTokenResponseClient()
 
     /**
      * The shell reads this cookie and sends it back as `X-XSRF-TOKEN` on writes. Getting the token from the
