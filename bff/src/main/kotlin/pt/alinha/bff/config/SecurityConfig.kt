@@ -23,6 +23,7 @@ import org.springframework.security.web.server.authentication.RedirectServerAuth
 import org.springframework.security.web.server.authentication.logout.ServerLogoutSuccessHandler
 import org.springframework.security.web.server.csrf.CookieServerCsrfTokenRepository
 import org.springframework.security.web.server.csrf.CsrfToken
+import org.springframework.security.web.server.csrf.ServerCsrfTokenRequestAttributeHandler
 import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatchers
 import org.springframework.web.server.ServerWebExchange
 import org.springframework.web.server.WebFilter
@@ -40,7 +41,11 @@ class SecurityConfig(private val props: BffProperties) {
     @Bean
     fun securityWebFilterChain(http: ServerHttpSecurity): SecurityWebFilterChain =
         http
-            .csrf { it.csrfTokenRepository(CookieServerCsrfTokenRepository.withHttpOnlyFalse()) }
+            .csrf {
+                // The shell echoes the raw cookie value in X-XSRF-TOKEN, so skip the default Xor masking.
+                it.csrfTokenRepository(CookieServerCsrfTokenRepository.withHttpOnlyFalse())
+                it.csrfTokenRequestHandler(ServerCsrfTokenRequestAttributeHandler())
+            }
             .authorizeExchange {
                 it.pathMatchers("/oauth2/**", "/login/**", "/error", "/actuator/health/**").permitAll()
                 it.pathMatchers("/api/**", "/auth/**").authenticated()

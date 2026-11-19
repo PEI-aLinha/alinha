@@ -17,6 +17,12 @@ BAO_TOKEN=dev-app-token ./gradlew :app:bootRun          # app on :8080
 Vite proxies `/api`, `/oauth2` and `/auth` to `:8081`. The Keycloak client is `bff`
 (`dev-bff-secret`), callback `http://localhost:8081/login/oauth2/code/keycloak`.
 
+### Behind Nginx
+
+`forward-headers-strategy: framework` trusts `X-Forwarded-*`. Only safe when the BFF is reachable **only** through
+Nginx: Nginx must overwrite `X-Forwarded-For` (`$proxy_add_x_forwarded_for`) and the BFF port must not be published.
+If `:8081` is reachable directly, anyone can spoof the header and dodge the IP-keyed limiter.
+
 | Variable | Default | Purpose |
 |---|---|---|
 | `ALINHA_APP_URL` | `http://localhost:8080` | the application behind the gateway |
@@ -33,8 +39,12 @@ Vite proxies `/api`, `/oauth2` and `/auth` to `:8081`. The Keycloak client is `b
 - CSRF is Spring's double-submit cookie: the BFF sets `XSRF-TOKEN` (readable), the shell echoes it in
   `X-XSRF-TOKEN` on writes. The shell does this in `withCsrf` (`frontend/shell/src/http.ts`).
 - `POST /auth/logout` (CSRF-protected) clears the session and ends the Keycloak SSO session (RP-initiated logout).
+  The answer is a redirect to Keycloak, so the shell must submit a **full-page form POST** (with the
+  `X-XSRF-TOKEN` value as a hidden `_csrf` field), not `fetch`: fetch would follow the redirect to Keycloak and fail
+  CORS instead of navigating the browser.
 - `POST /auth/refresh` forces a new access token from the stored refresh token (used after registration, #102).
-- Rate limiting applies to `/api/**` and `/auth/**`; it fails open when Redis is unavailable.
+- Rate limiting applies to `/api/**` and `/auth/**` per user (token `sub`), and to `/oauth2/**` + `/login/**` per
+  address before authentication; it fails open when Redis is unavailable.
 
 ## What the frontend shell expects (issue #14)
 
@@ -42,7 +52,8 @@ Vite proxies `/api`, `/oauth2` and `/auth` to `:8081`. The Keycloak client is `b
   `<resource>:<action>` permissions and organizations (`id` = tenant UUID, `slug`, `name`).
   `401` when there is no session — **not a 302 to the login** (Spring Security's default for browsers): `/api/**`
   must answer 401 to XHR/fetch, and no `/api/**` route ever answers 3xx. The shell does not follow redirects and treats one as "no session" too, but a 401
-  is the contract.
+  is the contract. Organizations come from `/internal/me`, which the app derives from the access token; after
+  `/auth/refresh` a changed organization list is visible without a new login.
 - Login at `/oauth2/authorization/keycloak` (`LOGIN_PATH` in `frontend/shell/src/session/login.ts`).
   After the login, send the browser to `/`; the shell returns to the page the person was opening.
 - Forward the `X-Alinha-Tenant` header to the app unchanged. The shell sends it on every call made inside an

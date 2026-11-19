@@ -1,6 +1,7 @@
 server:
   port: ${BFF_PORT:8081}
   # The BFF sits behind Nginx in production; the rate limiter needs the real client address.
+  # Nginx must overwrite X-Forwarded-For and the BFF must not be reachable except through it (see bff/README.md).
   forward-headers-strategy: framework
 
 spring:
@@ -46,6 +47,8 @@ spring:
                 - Path=/api/**
               filters:
                 - TokenRelay
+                # The app uses bearer auth; the browser's session cookie must not reach it.
+                - RemoveRequestHeader=Cookie
 
 alinha:
   bff:

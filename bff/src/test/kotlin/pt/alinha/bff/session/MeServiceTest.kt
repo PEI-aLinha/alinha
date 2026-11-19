@@ -4,6 +4,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito
 import org.mockito.Mockito.mock
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest
 import org.springframework.mock.web.server.MockServerWebExchange
@@ -16,6 +17,7 @@ import org.springframework.security.oauth2.core.AuthorizationGrantType
 import org.springframework.security.oauth2.core.OAuth2AccessToken
 import org.springframework.security.oauth2.core.oidc.OidcIdToken
 import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser
+import org.springframework.web.reactive.function.client.WebClientResponseException
 import org.springframework.web.server.ResponseStatusException
 import pt.alinha.bff.BffProperties
 import reactor.core.publisher.Mono
@@ -69,11 +71,19 @@ class MeServiceTest {
         val first = UUID.randomUUID().toString()
         val second = UUID.randomUUID().toString()
         Mockito.`when`(app.internalMe(token))
-            .thenReturn(Mono.just(InternalMe(listOf("consultant"), listOf("plugins:read", "session:read"))))
+            .thenReturn(
+                Mono.just(
+                    InternalMe(
+                        listOf("consultant"),
+                        listOf("plugins:read", "session:read"),
+                        listOf(first, second),
+                    ),
+                ),
+            )
         Mockito.`when`(app.organization(token, first)).thenReturn(Mono.just(AppOrganization("Componentes Águeda")))
         Mockito.`when`(app.organization(token, second)).thenReturn(Mono.just(AppOrganization("Metalúrgica de Aveiro")))
 
-        StepVerifier.create(service.me(exchange, authentication, user("tenants" to listOf(first, second))))
+        StepVerifier.create(service.me(exchange, authentication, user()))
             .assertNext { me ->
                 assertThat(me.user).isEqualTo(MeUser("user-1", "Rui Santos", null))
                 assertThat(me.roles).containsExactly("consultant")
@@ -86,15 +96,48 @@ class MeServiceTest {
     }
 
     @Test
+    fun `after a refresh it uses the app tenants, not the stale id token claims`() {
+        givenSession()
+        val oldTenant = UUID.randomUUID().toString()
+        val newTenant = UUID.randomUUID().toString()
+        Mockito.`when`(app.internalMe(token))
+            .thenReturn(Mono.just(InternalMe(listOf("responsible"), listOf("session:read"), listOf(newTenant))))
+        Mockito.`when`(app.organization(token, newTenant)).thenReturn(Mono.just(AppOrganization("Nova Águeda")))
+
+        StepVerifier.create(service.me(exchange, authentication, user("tenant_id" to oldTenant)))
+            .assertNext { me ->
+                assertThat(me.organizations.map { it.id }).containsExactly(newTenant)
+                assertThat(me.organizations.map { it.name }).containsExactly("Nova Águeda")
+            }
+            .verifyComplete()
+    }
+
+    @Test
     fun `falls back to the tenant id when the profile endpoint is not available`() {
         givenSession()
         val tenant = UUID.randomUUID().toString()
         Mockito.`when`(app.internalMe(token))
-            .thenReturn(Mono.just(InternalMe(listOf("responsible"), listOf("session:read"))))
+            .thenReturn(Mono.just(InternalMe(listOf("responsible"), listOf("session:read"), listOf(tenant))))
         Mockito.`when`(app.organization(token, tenant))
-            .thenReturn(Mono.error(RuntimeException("404")))
+            .thenReturn(Mono.error(notFound()))
 
-        StepVerifier.create(service.me(exchange, authentication, user("tenant_id" to tenant)))
+        StepVerifier.create(service.me(exchange, authentication, user()))
+            .assertNext { me ->
+                assertThat(me.organizations).containsExactly(MeOrganization(tenant, tenant, tenant))
+            }
+            .verifyComplete()
+    }
+
+    @Test
+    fun `a non-404 profile error is still swallowed for the login to work`() {
+        givenSession()
+        val tenant = UUID.randomUUID().toString()
+        Mockito.`when`(app.internalMe(token))
+            .thenReturn(Mono.just(InternalMe(listOf("responsible"), listOf("session:read"), listOf(tenant))))
+        Mockito.`when`(app.organization(token, tenant))
+            .thenReturn(Mono.error(serverError()))
+
+        StepVerifier.create(service.me(exchange, authentication, user()))
             .assertNext { me ->
                 assertThat(me.organizations).containsExactly(MeOrganization(tenant, tenant, tenant))
             }
@@ -105,26 +148,9 @@ class MeServiceTest {
     fun `a registrant with no organization gets an empty list`() {
         givenSession()
         Mockito.`when`(app.internalMe(token))
-            .thenReturn(Mono.just(InternalMe(listOf("registrant"), listOf("session:read"))))
+            .thenReturn(Mono.just(InternalMe(listOf("registrant"), listOf("session:read"), emptyList())))
 
         StepVerifier.create(service.me(exchange, authentication, user()))
-            .assertNext { assertThat(it.organizations).isEmpty() }
-            .verifyComplete()
-    }
-
-    @Test
-    fun `ignores malformed and nil tenant claims`() {
-        givenSession()
-        Mockito.`when`(app.internalMe(token))
-            .thenReturn(Mono.just(InternalMe(listOf("consultant"), emptyList())))
-
-        StepVerifier.create(
-            service.me(
-                exchange,
-                authentication,
-                user("tenants" to listOf("not-a-uuid", "00000000-0000-0000-0000-000000000000")),
-            ),
-        )
             .assertNext { assertThat(it.organizations).isEmpty() }
             .verifyComplete()
     }
@@ -138,4 +164,10 @@ class MeServiceTest {
             .expectErrorMatches { it is ResponseStatusException && it.statusCode == HttpStatus.UNAUTHORIZED }
             .verify()
     }
+
+    private fun notFound() =
+        WebClientResponseException.create(404, "Not Found", HttpHeaders.EMPTY, ByteArray(0), null)
+
+    private fun serverError() =
+        WebClientResponseException.create(500, "Server Error", HttpHeaders.EMPTY, ByteArray(0), null)
 }

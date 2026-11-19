@@ -5,9 +5,13 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RestController
 import pt.alinha.core.access.RequiresPermission
 import pt.alinha.core.tenant.TenantAgnostic
+import pt.alinha.core.tenant.internal.validatedTenantIds
 
-/** Roles BFF `/api/me` may show (the contract's Role enum) and their permissions. */
-data class InternalMeResponse(val roles: List<String>, val permissions: List<String>)
+/**
+ * Roles BFF `/api/me` may show (the contract's Role enum), their permissions and the organizations the access
+ * token validates.
+ */
+data class InternalMeResponse(val roles: List<String>, val permissions: List<String>, val tenants: List<String>)
 
 /**
  * Internal contract with the BFF (#14). Authenticated, but not tenant-scoped: it only echoes what the token
@@ -29,6 +33,7 @@ class InternalMeController(private val registry: RolePermissionRegistry) {
         return InternalMeResponse(
             roles = roles.sorted(),
             permissions = registry.permissionsFor(roles).sorted(),
+            tenants = validatedTenantIds(authentication).map { it.value.toString() },
         )
     }
 }

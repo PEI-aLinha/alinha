@@ -4,7 +4,10 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.core.authority.SimpleGrantedAuthority
+import org.springframework.security.oauth2.jwt.Jwt
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken
 import pt.alinha.core.registry.PluginRegistry
+import java.util.UUID
 
 class InternalMeControllerTest {
 
@@ -38,5 +41,31 @@ class InternalMeControllerTest {
 
         assertThat(me.roles).isEmpty()
         assertThat(me.permissions).isEmpty()
+        assertThat(me.tenants).isEmpty()
+    }
+
+    @Test
+    fun `answers the organizations validated from the access token`() {
+        val first = UUID.randomUUID().toString()
+        val second = UUID.randomUUID().toString()
+        val jwt = Jwt.withTokenValue("t").header("alg", "none").subject("user-1")
+            .claim("tenants", listOf(first, "not-a-uuid", second))
+            .build()
+        val auth = JwtAuthenticationToken(jwt, listOf(SimpleGrantedAuthority(ROLE_PREFIX + "consultant")))
+
+        val me = controller.me(auth)
+
+        assertThat(me.tenants).containsExactly(first, second)
+    }
+
+    @Test
+    fun `a client user gets only its own tenant`() {
+        val own = UUID.randomUUID().toString()
+        val jwt = Jwt.withTokenValue("t").header("alg", "none").subject("user-1")
+            .claim("tenant_id", own)
+            .build()
+        val auth = JwtAuthenticationToken(jwt, listOf(SimpleGrantedAuthority(ROLE_PREFIX + "responsible")))
+
+        assertThat(controller.me(auth).tenants).containsExactly(own)
     }
 }

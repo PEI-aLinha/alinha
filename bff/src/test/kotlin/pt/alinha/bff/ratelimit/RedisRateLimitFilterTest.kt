@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.mock.http.server.reactive.MockServerHttpRequest
 import org.springframework.mock.web.server.MockServerWebExchange
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
+import org.springframework.security.oauth2.core.oidc.user.OidcUser
 import org.springframework.web.server.WebFilterChain
 import pt.alinha.bff.BffProperties
 import reactor.core.publisher.Flux
@@ -23,11 +24,12 @@ class RedisRateLimitFilterTest {
     private val redis = mock(ReactiveStringRedisTemplate::class.java)
     private val chain = mock(WebFilterChain::class.java)
     private val props = BffProperties(rateLimit = BffProperties.RateLimit(requests = 2))
-    private val filter = RedisRateLimitFilter(redis, props)
+    private val guard = RateLimitGuard(redis, props)
+    private val filter = RedisRateLimitFilter(guard, props)
 
-    private fun exchange(path: String = "/api/me") =
+    private fun exchange(path: String = "/api/me", principal: Any = UsernamePasswordAuthenticationToken("rui", null, emptyList())) =
         MockServerWebExchange.builder(MockServerHttpRequest.get(path).build())
-            .principal(UsernamePasswordAuthenticationToken("rui", null, emptyList()))
+            .principal(principal as org.springframework.security.core.Authentication)
             .build()
 
     private fun redisAnswers(count: Long) {
@@ -72,6 +74,23 @@ class RedisRateLimitFilterTest {
 
         verify(chain).filter(exchange)
         verify(redis, never()).execute(Mockito.any<RedisScript<Long>>(), Mockito.anyList<String>(), Mockito.anyList<Any>())
+    }
+
+    @Test
+    fun `keys an OIDC user by sub, not the mutable preferred_username`() {
+        redisAnswers(1)
+        val oidc = mock(OidcUser::class.java)
+        Mockito.`when`(oidc.subject).thenReturn("stable-sub")
+        val auth = UsernamePasswordAuthenticationToken(oidc, null, emptyList())
+        val exchange = exchange(principal = auth)
+
+        StepVerifier.create(filter.filter(exchange, chain)).verifyComplete()
+
+        verify(redis).execute(
+            Mockito.any<RedisScript<Long>>(),
+            Mockito.eq(listOf("alinha:bff:rate:user:stable-sub")),
+            Mockito.anyList<Any>(),
+        )
     }
 
     @Test
