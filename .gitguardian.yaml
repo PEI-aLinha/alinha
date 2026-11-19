@@ -8,13 +8,6 @@ secret:
     - deploy/docker-compose.dev.yml
     - deploy/openbao/init.sh
     - deploy/postgres/init/01-app-role.sh
-    # Tests log in to throwaway Testcontainers and fake sessions, so their passwords and tokens are false positives.
-    # Never put a real secret in a test: gitleaks still scans these paths.
-    - "**/src/test/**"
-    - "**/*.test.ts"
-    - "**/*.test.tsx"
-    - "**/*.test.js"
-    - "**/*.test.mjs"
   ignored_matches:
     # Old alinha_app test password, still in the history of commit d6ebad3 (PR #88). Stored as its SHA-256.
     - name: alinha_app test login (Testcontainers)
