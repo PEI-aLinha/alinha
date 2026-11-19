@@ -48,8 +48,24 @@ class IpRateLimitFilterTest {
     }
 
     @Test
-    fun `leaves the authenticated API to the per-user filter`() {
+    fun `limits an anonymous API call by address`() {
         val exchange = exchange("/api/me")
+        Mockito.`when`(guard.allows("ip:10.0.0.7")).thenReturn(Mono.just(true))
+        Mockito.`when`(chain.filter(Mockito.any())).thenReturn(Mono.empty())
+
+        StepVerifier.create(filter.filter(exchange, chain)).verifyComplete()
+
+        verify(chain).filter(exchange)
+    }
+
+    @Test
+    fun `leaves the API with a session to the per-user filter`() {
+        val exchange = MockServerWebExchange.from(
+            MockServerHttpRequest.get("/api/me")
+                .cookie(org.springframework.http.HttpCookie("ALINHA_SESSION", "session-id"))
+                .remoteAddress(InetSocketAddress("10.0.0.7", 1234))
+                .build(),
+        )
         Mockito.`when`(chain.filter(Mockito.any())).thenReturn(Mono.empty())
 
         StepVerifier.create(filter.filter(exchange, chain)).verifyComplete()
