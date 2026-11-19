@@ -32,16 +32,20 @@ class PluginYamlConsistencyTest {
         .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
         .build()
 
+    /** Only reads the id, leniently, so one broken file fails its own test instead of the whole factory. */
+    private val lenient = YAMLMapper.builder().build()
+
     @TestFactory
     fun `plugin yaml matches the Kotlin manifest`(): List<DynamicTest> {
         val beanList = pluginBeans()
-        val fileList = pluginYamlFiles().map { read(it).id to it }
-        // Not associateBy: a second plugin.yaml or bean with the same id would be dropped, never compared.
+        // Keeps every file, also those sharing an id: `unique` below reports them, the maps would drop all but one.
+        val fileList = pluginYamlFiles().map { idOf(it) to it }
         val beans = beanList.associateBy { it.id }
-        val files = fileList.toMap()
+        val files = fileList.mapNotNull { (id, file) -> id?.let { it to file } }.toMap()
 
         val unique = DynamicTest.dynamicTest("every plugin id is declared once") {
-            val duplicateFiles = fileList.groupBy({ it.first }, { repoRoot().relativize(it.second).toString() })
+            val duplicateFiles = fileList.filter { it.first != null }
+                .groupBy({ it.first }, { repoRoot().relativize(it.second).toString() })
                 .filterValues { it.size > 1 }
             val duplicateBeans = beanList.groupBy { it.id }.filterValues { it.size > 1 }.keys
             assertThat(duplicateFiles).describedAs("plugin.yaml files sharing an id").isEmpty()
@@ -49,8 +53,10 @@ class PluginYamlConsistencyTest {
         }
         val perFile = fileList.map { (id, file) ->
             DynamicTest.dynamicTest(repoRoot().relativize(file).toString()) {
+                // Parsed strictly here, so an unknown key names this file and the other plugins are still checked.
+                val manifest = read(file)
                 val bean = requireNotNull(beans[id]) { "$file declares id '$id' but no AlinhaPlugin bean has that id" }
-                assertThat(read(file).comparable()).isEqualTo(bean.comparable())
+                assertThat(manifest.comparable()).isEqualTo(bean.comparable())
             }
         }
         val perBean = beans.keys.map { id ->
@@ -64,7 +70,11 @@ class PluginYamlConsistencyTest {
         return listOf(unique) + perFile + perBean
     }
 
-    private fun read(file: Path): YamlManifest = yaml.readValue(Files.readString(file))
+    private fun read(file: Path): YamlManifest = runCatching { yaml.readValue<YamlManifest>(Files.readString(file)) }
+        .getOrElse { throw AssertionError("$file is not a valid plugin.yaml: ${it.message}", it) }
+
+    private fun idOf(file: Path): String? =
+        runCatching { lenient.readTree(Files.readString(file)).get("id")?.asString() }.getOrNull()
 
     /** Plugin beans: concrete `@Component` classes implementing [AlinhaPlugin] (test fixtures are not components). */
     private fun pluginBeans(): List<PluginManifest> =
