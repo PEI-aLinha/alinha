@@ -1,5 +1,5 @@
 import { Navigate, useParams, type RouteObject } from 'react-router'
-import type { Area, FrontendPlugin } from '@alinha/plugin-sdk'
+import type { Area, FrontendPlugin, NavArea } from '@alinha/plugin-sdk'
 import { ClientLayout } from '../layouts/ClientLayout'
 import { ConsultantLayout, PortfolioPage } from '../layouts/ConsultantLayout'
 import { OnboardingLayout } from '../layouts/OnboardingLayout'
@@ -8,9 +8,36 @@ import { SessionGate, useSession } from '../session/SessionGate'
 import { isClientUser, needsOnboarding } from '../session/permissions'
 import { pluginNav, pluginRoutes } from './plugins'
 
+/** Where each area is mounted. A `Record`, so TypeScript flags every place a new area is missed. */
+export const AREA_BASE: Record<Area, string> = {
+  client: '/org',
+  consultant: '/portfolio',
+  onboarding: '/onboarding',
+}
+
+const isStaticPath = (path: string) => !path.split('/').some((s) => s.startsWith(':') || s.includes('*'))
+
+/**
+ * The first route with a static path, looking inside pathless layout routes and joining nested paths. Routes with a
+ * dynamic segment (`:step`) or a splat are skipped: there is no value to put in the address.
+ */
+function firstStaticPath(routes: readonly RouteObject[], prefix = ''): string | undefined {
+  for (const route of routes) {
+    if (route.index) continue
+    if (!route.path) {
+      const nested = firstStaticPath(route.children ?? [], prefix)
+      if (nested) return nested
+      continue
+    }
+    if (!isStaticPath(route.path)) continue
+    return prefix ? `${prefix}/${route.path}` : route.path
+  }
+  return undefined
+}
+
 /** Path of the first plugin onboarding page (e.g. 'organization'), if a plugin has one. */
 export function firstOnboardingPath(plugins: readonly FrontendPlugin[]): string | undefined {
-  return plugins.flatMap((p) => p.routes.onboarding ?? []).find((r) => r.path)?.path
+  return firstStaticPath(plugins.flatMap((p) => p.routes.onboarding ?? []))
 }
 
 /**
@@ -23,7 +50,7 @@ export function HomeRedirect({ plugins }: { plugins: readonly FrontendPlugin[] }
   const [own] = me.organizations
   if (isClientUser(me.roles) && own) return <Navigate to={`/org/${encodeURIComponent(own.slug)}`} replace />
   const onboarding = firstOnboardingPath(plugins)
-  if (needsOnboarding(me.roles, me.organizations) && onboarding) return <Navigate to={`/onboarding/${onboarding}`} replace />
+  if (needsOnboarding(me.roles, me.organizations) && onboarding) return <Navigate to={`${AREA_BASE.onboarding}/${onboarding}`} replace />
   return (
     <ForbiddenPage title="A sua conta ainda não está pronta">
       A sua conta ainda não está associada a nenhuma organização. Fale com o responsável da sua organização ou com o suporte.
@@ -32,15 +59,15 @@ export function HomeRedirect({ plugins }: { plugins: readonly FrontendPlugin[] }
 }
 
 /** Landing page of an organization: the first menu entry, or a short note when there is none. */
-function AreaHome({ plugins, area }: { plugins: readonly FrontendPlugin[]; area: Area }) {
+function AreaHome({ plugins, area }: { plugins: readonly FrontendPlugin[]; area: NavArea }) {
   const { can } = useSession()
   const { org = '' } = useParams()
   const [first] = pluginNav(plugins, area, can)
-  if (first) return <Navigate to={`${area === 'client' ? '/org' : '/portfolio'}/${encodeURIComponent(org)}/${first.path}`} replace />
+  if (first) return <Navigate to={`${AREA_BASE[area]}/${encodeURIComponent(org)}/${first.path}`} replace />
   return <StatusPage title="Ainda não há páginas disponíveis">Quando houver páginas para o seu perfil, aparecem no menu.</StatusPage>
 }
 
-const areaChildren = (plugins: readonly FrontendPlugin[], area: Area): RouteObject[] => [
+const areaChildren = (plugins: readonly FrontendPlugin[], area: NavArea): RouteObject[] => [
   { index: true, element: <AreaHome plugins={plugins} area={area} /> },
   ...pluginRoutes(plugins, area),
   { path: '*', element: <NotFoundPage /> },
