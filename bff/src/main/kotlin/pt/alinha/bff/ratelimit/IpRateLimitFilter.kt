@@ -9,9 +9,10 @@ import pt.alinha.bff.BffProperties
 import reactor.core.publisher.Mono
 
 /**
- * Anonymous traffic (the login endpoints, and API calls before a session exists) must be limited by address.
- * This runs before Spring Security (order -100), which otherwise answers unauthenticated requests before
- * [RedisRateLimitFilter] gets a chance to count them. Requests with a session are left to that per-user filter.
+ * Limits the login endpoints and every API call by address, before Spring Security can answer an
+ * unauthenticated request with 401 (which would stop [RedisRateLimitFilter] from counting it).
+ * A session cookie is not proof of authentication — it can be forged — so it is not trusted here.
+ * Authenticated API calls are additionally limited per user by [RedisRateLimitFilter].
  */
 @Component
 @Order(-150)
@@ -22,19 +23,16 @@ class IpRateLimitFilter(
 
     override fun filter(exchange: ServerWebExchange, chain: WebFilterChain): Mono<Void> {
         val path = exchange.request.path.value()
-        val login = path.startsWith("/oauth2/") || path.startsWith("/login/")
-        val anonymousApi =
-            (path.startsWith("/api/") || path.startsWith("/auth/")) &&
-                !exchange.request.cookies.containsKey(SESSION_COOKIE)
-        if (!props.rateLimit.enabled || !(login || anonymousApi)) {
+        val limited =
+            path.startsWith("/oauth2/") ||
+                path.startsWith("/login/") ||
+                path.startsWith("/api/") ||
+                path.startsWith("/auth/")
+        if (!props.rateLimit.enabled || !limited) {
             return chain.filter(exchange)
         }
         val ip = exchange.request.remoteAddress?.address?.hostAddress ?: "unknown"
         return guard.allows("ip:$ip")
             .flatMap { allowed -> if (allowed) chain.filter(exchange) else guard.tooManyRequests(exchange) }
-    }
-
-    private companion object {
-        const val SESSION_COOKIE = "ALINHA_SESSION"
     }
 }

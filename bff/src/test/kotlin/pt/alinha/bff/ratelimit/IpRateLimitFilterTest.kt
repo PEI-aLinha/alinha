@@ -59,18 +59,21 @@ class IpRateLimitFilterTest {
     }
 
     @Test
-    fun `leaves the API with a session to the per-user filter`() {
+    fun `counts an API call with a forged session cookie by address`() {
+        // A cookie is not proof of authentication: Security answers 401 before the per-user filter runs,
+        // so this call must still be counted here.
         val exchange = MockServerWebExchange.from(
             MockServerHttpRequest.get("/api/me")
-                .cookie(org.springframework.http.HttpCookie("ALINHA_SESSION", "session-id"))
+                .cookie(org.springframework.http.HttpCookie("ALINHA_SESSION", "x"))
                 .remoteAddress(InetSocketAddress("10.0.0.7", 1234))
                 .build(),
         )
+        Mockito.`when`(guard.allows("ip:10.0.0.7")).thenReturn(Mono.just(true))
         Mockito.`when`(chain.filter(Mockito.any())).thenReturn(Mono.empty())
 
         StepVerifier.create(filter.filter(exchange, chain)).verifyComplete()
 
+        verify(guard).allows("ip:10.0.0.7")
         verify(chain).filter(exchange)
-        verify(guard, never()).allows(Mockito.anyString())
     }
 }
