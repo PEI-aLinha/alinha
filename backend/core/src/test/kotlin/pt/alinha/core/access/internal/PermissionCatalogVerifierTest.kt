@@ -18,7 +18,10 @@ import pt.alinha.pluginapi.PluginManifest
 
 class PermissionCatalogVerifierTest {
     private val plugin = object : AlinhaPlugin {
-        override val manifest = PluginManifest("a", "A", PluginKind.FEATURE, "1.0.0", permissions = setOf("a:read"))
+        override val manifest = PluginManifest(
+            "a", "A", PluginKind.FEATURE, "1.0.0",
+            permissions = setOf("a:read"), rolePermissions = mapOf("analyst" to setOf("a:read")),
+        )
     }
     private val verifier = PermissionCatalogVerifier(RolePermissionRegistry(PluginRegistry(listOf(plugin))))
 

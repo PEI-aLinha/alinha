@@ -9,8 +9,9 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
 import pt.alinha.core.access.RequiresPermission
 
 /**
- * Stops startup when an endpoint asks for a permission no plugin declares and the core does not own.
- * Such an endpoint could never be called, which is almost always a typo in [RequiresPermission].
+ * Stops startup when an endpoint asks for a permission no role is granted: one no plugin declares and the core does
+ * not own (almost always a typo in [RequiresPermission]), or one declared but left out of every `rolePermissions`.
+ * Such an endpoint would answer 403 to everyone.
  */
 @Component
 class PermissionCatalogVerifier(private val registry: RolePermissionRegistry) {
@@ -26,9 +27,9 @@ class PermissionCatalogVerifier(private val registry: RolePermissionRegistry) {
     fun verify(handlers: Collection<HandlerMethod>) {
         val unknown = handlers
             .mapNotNull { handler -> requiredPermission(handler)?.let { it to handler.shortLogMessage } }
-            .filter { (permission, _) -> permission !in registry.knownPermissions }
+            .filter { (permission, _) -> permission !in registry.grantedPermissions }
         check(unknown.isEmpty()) {
-            "Endpoints require permissions no plugin declares: " +
+            "Endpoints require permissions no role is granted (undeclared, or missing from rolePermissions): " +
                 unknown.joinToString { (permission, endpoint) -> "$permission on $endpoint" }
         }
     }

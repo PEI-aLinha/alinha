@@ -98,12 +98,13 @@ class AccessControlIntegrationTest {
         "analyst, assessment help",
         "responsible, assessment results help",
         "consultant, portfolio",
-        "registrant, register",
+        "registrant, ''",
         "analyst+responsible, assessment results help",
-        "consultant+registrant, portfolio register",
+        "consultant+registrant, portfolio",
     )
-    fun `plugin registry shows only the menu entries the role may see`(role: String, paths: String) {
-        val expected = paths.split(" ")
+    fun `plugin registry shows only the menu entries the role may see`(role: String, paths: String?) {
+        // The onboarding has no menu, so a registrant sees none.
+        val expected = paths.orEmpty().split(" ").filter { it.isNotBlank() }
         getAs(role, "/api/plugins").andExpect {
             status { isOk() }
             jsonPath("$[0].nav.length()") { value(expected.size) }
@@ -208,7 +209,6 @@ class AccessControlTestApplication {
                 NavEntry("Resultados", "results", NavArea.CLIENT, "results", order = 2),
                 NavEntry("Avaliação", "assessment", NavArea.CLIENT, "assessment", order = 1),
                 NavEntry("Carteira", "portfolio", NavArea.CONSULTANT, "assessment"),
-                NavEntry("Registo", "register", NavArea.ONBOARDING),
             ),
         )
     }

@@ -16,6 +16,8 @@ class PluginRegistryTest {
         id: String,
         permissions: Set<String> = emptySet(),
         nav: List<NavEntry> = emptyList(),
+        // By default every declared permission is reachable in both areas with a menu.
+        rolePermissions: Map<String, Set<String>> = mapOf("responsible" to permissions, "consultant" to permissions),
     ) = object : AlinhaPlugin {
         override val manifest = PluginManifest(
             id = id,
@@ -23,6 +25,7 @@ class PluginRegistryTest {
             kind = PluginKind.FEATURE,
             version = "1.0.0",
             permissions = permissions,
+            rolePermissions = rolePermissions.filterValues { it.isNotEmpty() },
             nav = nav,
         )
     }
@@ -130,5 +133,36 @@ class PluginRegistryTest {
         assertThat(entry.order).isEqualTo(100)
         assertThat(entry.permission).isEqualTo("a:read")
         assertThat(NavEntry("A", "a", NavArea.CLIENT).permission).isNull()
+    }
+
+    @Test
+    fun `fails on a declared permission no role is granted`() {
+        assertThatThrownBy { registry(plugin("risk-assets", setOf("risk:read", "risk:edit"), rolePermissions = mapOf("responsible" to setOf("risk:read")))) }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("no role is granted")
+            .hasMessageContaining("risk:edit")
+    }
+
+    @Test
+    fun `fails on a menu entry no role of its area can see`() {
+        // Only analysts and responsibles hold it, but the entry is in the consultant area.
+        val nav = listOf(NavEntry("Riscos", "risks", NavArea.CONSULTANT, "risk"))
+        assertThatThrownBy { registry(plugin("risk-assets", setOf("risk:read"), nav, mapOf("responsible" to setOf("risk:read")))) }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("no role that opens the consultant area holds it")
+    }
+
+    @Test
+    fun `fails on a menu entry in the onboarding area`() {
+        assertThatThrownBy { registry(plugin("organization", nav = listOf(NavEntry("Registo", "organization", NavArea.ONBOARDING)))) }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("onboarding area, which has no menu")
+    }
+
+    @Test
+    fun `a menu entry with an action but no resource is refused`() {
+        assertThatThrownBy { NavEntry("Riscos", "risks", NavArea.CLIENT, action = "edit") }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("no resource")
     }
 }

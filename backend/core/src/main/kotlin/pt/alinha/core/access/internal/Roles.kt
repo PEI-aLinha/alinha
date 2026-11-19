@@ -18,4 +18,7 @@ object Roles {
     val KNOWN: Set<String> = AREA.keys
 
     fun areasFor(roles: Set<String>): Set<NavArea> = roles.mapNotNull(AREA::get).toSet()
+
+    /** Roles that open [area]. */
+    fun opening(area: NavArea): Set<String> = AREA.filterValues { it == area }.keys
 }

@@ -9,15 +9,12 @@ class RolePermissionRegistry(plugins: ValidatedManifests) {
     /** Every permission that exists: declared by a plugin or owned by the core. */
     val knownPermissions: Set<String> = knownPermissions(plugins.manifests)
 
-    private val byRole: Map<String, Set<String>> = plugins.manifests
-        .flatMap { it.rolePermissions.entries }
-        .groupBy({ it.key }, { it.value })
-        .mapValues { (_, permissions) -> permissions.flatten().toSet() }
+    private val byRole: Map<String, Set<String>> = permissionsByRole(plugins.manifests)
 
-    fun permissionsFor(roles: Set<String>): Set<String> =
-        roles.filter { it in Roles.KNOWN }
-            .flatMap { byRole[it].orEmpty() + CorePermissions.EVERY_ROLE + CorePermissions.BY_ROLE[it].orEmpty() }
-            .toSet()
+    /** Every permission at least one role holds. Startup validation makes this every known permission. */
+    val grantedPermissions: Set<String> = byRole.values.flatten().toSet()
+
+    fun permissionsFor(roles: Set<String>): Set<String> = roles.flatMap { byRole[it].orEmpty() }.toSet()
 
     /** Permissions of the caller of the current request. */
     fun permissionsOfCurrentUser(): Set<String> = permissionsFor(currentRoles())
