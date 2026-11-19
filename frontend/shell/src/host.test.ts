@@ -97,7 +97,8 @@ describe('createApi', () => {
     const error = await api(null, async () => new Response(JSON.stringify(body), {
       status: 422, headers: { 'Content-Type': 'application/problem+json' },
     }))('/x').catch((e: unknown) => e)
-    expect(error).toMatchObject({ status: 422, message: 'Há dados por corrigir.', problem: body })
+    // The server's text is in `problem.detail`; `message` stays technical, for logs.
+    expect(error).toMatchObject({ status: 422, message: 'HTTP 422 on /x', problem: body })
   })
 
   it('ignores error bodies that are not Problem Details', async () => {
@@ -105,6 +106,14 @@ describe('createApi', () => {
     expect((html as ApiError).problem).toBeUndefined()
     const broken = await api(null, async () => new Response('{', { status: 500, headers: { 'Content-Type': 'application/json' } }))('/x').catch((e: unknown) => e)
     expect((broken as ApiError).problem).toBeUndefined()
+  })
+
+  it('ignores a plain JSON error body with none of the Problem fields', async () => {
+    const spring = { timestamp: '2026-11-19T10:00:00Z', status: 500, error: 'Internal Server Error', path: '/api/x' }
+    const error = await api(null, async () => new Response(JSON.stringify(spring), {
+      status: 500, headers: { 'Content-Type': 'application/json' },
+    }))('/x').catch((e: unknown) => e)
+    expect((error as ApiError).problem).toBeUndefined()
   })
 
   it('keeps only well-typed Problem fields', async () => {

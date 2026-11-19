@@ -54,8 +54,9 @@ assigned to this consultant" (403) can be exercised locally.
   hold the user's data, a forgotten password goes through *Esqueceu-se da palavra-passe?* on the login page, and a
   lost TOTP device is reset by an admin (*Credentials* → delete OTP; the user enrols again on the next login).
 - `alinha-provisioner` is a confidential client with a service account (`realm-management`: `manage-users`,
-  `view-users`). When an organization is registered, the app sets `tenant_id`, maps `responsible` and removes
-  `default-roles-alinha` (so `registrant` goes away). It cannot create roles or read clients, but `manage-users`
+  `view-users`). When an organization is registered, the app sets `tenant_id`, maps `responsible`, maps the other
+  roles of `default-roles-alinha` (`offline_access`, `uma_authorization`) directly and then removes the composite, so
+  only `registrant` goes away. It cannot create roles or read clients, but `manage-users`
   can map **any** realm role (`consultant` included) to any user: treat its secret like an admin credential.
 - `tenant_id` and `tenants` are admin-only in the user profile (view and edit `admin`), and unmanaged attributes are
   off, so a user cannot set them in the registration form (or an account console, if one is ever enabled). Keep it that way: a user who could

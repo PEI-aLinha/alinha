@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Outlet, type RouteObject } from 'react-router'
-import type { Area, FrontendPlugin, NavItem, RouteHandle } from '@alinha/plugin-sdk'
+import type { Area, FrontendPlugin, NavArea, NavItem, RouteHandle } from '@alinha/plugin-sdk'
 import { ForbiddenPage } from '../pages/StatusPages'
 import { useSession } from '../session/SessionGate'
 import type { Can } from '../session/permissions'
@@ -33,7 +33,7 @@ export function pluginRoutes(plugins: readonly FrontendPlugin[], area: Area): Ro
 }
 
 /** Menu entries for one area that the user may see, by `order` then label. */
-export function pluginNav(plugins: readonly FrontendPlugin[], area: Area, can: Can): NavItem[] {
+export function pluginNav(plugins: readonly FrontendPlugin[], area: NavArea, can: Can): NavItem[] {
   return plugins
     .flatMap((p) => p.nav ?? [])
     .filter((n) => n.area === area && (!n.resource || can(n.resource, n.action)))

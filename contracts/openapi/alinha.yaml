@@ -117,8 +117,9 @@ paths:
                 $ref: '#/components/schemas/Problem'
         '429':
           description: |
-            Too many registration attempts from this client (`code` = `TOO_MANY_REGISTRATIONS`): at most 5 per hour,
-            one at a time. Nothing was created.
+            Too many registration attempts from this client (`code` = `TOO_MANY_REGISTRATIONS`): at most 5 per hour.
+            Nothing was created. A second submit while this account's registration is still running is a `503`
+            `REGISTRATION_BUSY` instead, and does not count as an attempt.
           headers:
             Retry-After:
               $ref: '#/components/headers/RetryAfter'
@@ -506,9 +507,9 @@ components:
     OrganizationProfileInput:
       type: object
       description: |
-        Organization data for the NIS2 classification (FR01). Every field is required; they are all listed in
-        `required` but validated by the server, which answers `422` with one message per missing or invalid
-        field. NIF, CAE and phones may contain spaces, dots or dashes, never letters.
+        Organization data for the NIS2 classification (FR01). Every field listed in `required` is required, and
+        `subsector` too when the chosen `sector` has subsectors (a conditional the schema does not express). The
+        server validates all of them and answers `422` with one message per missing or invalid field. NIF, CAE and phones may contain spaces, dots or dashes, never letters.
       required: [name, nif, cae, sector, services, employees, turnover, address, contacts, permanentContact]
       properties:
         name:

@@ -57,7 +57,7 @@ class KeycloakIdentityDirectoryTest {
     }
 
     @Test
-    fun `assigns the tenant, maps responsible and removes the default roles`() {
+    fun `assigns the tenant, maps responsible and removes only registrant from the default roles`() {
         expectToken()
         expectGet(users, user)
         server.expect(requestTo(users)).andExpect(method(HttpMethod.PUT))
@@ -66,8 +66,18 @@ class KeycloakIdentityDirectoryTest {
             .andRespond(withNoContent())
         expectGet("$users/role-mappings/realm", "[$defaultRoles]")
         expectGet("$users/role-mappings/realm/available", """[$responsible,{"id":"r-cons","name":"consultant"}]""")
+        expectGet(
+            "$users/role-mappings/realm/composite",
+            """[$defaultRoles,{"id":"r-reg","name":"registrant"},{"id":"r-off","name":"offline_access"},{"id":"r-uma","name":"uma_authorization"}]""",
+        )
+        // offline_access and uma_authorization are mapped directly before the composite goes, so offline sessions survive
         server.expect(requestTo("$users/role-mappings/realm")).andExpect(method(HttpMethod.POST))
-            .andExpect(content().json("""[{"id":"r-resp","name":"responsible"}]""", JsonCompareMode.STRICT))
+            .andExpect(
+                content().json(
+                    """[{"id":"r-resp","name":"responsible"},{"id":"r-off","name":"offline_access"},{"id":"r-uma","name":"uma_authorization"}]""",
+                    JsonCompareMode.STRICT,
+                ),
+            )
             .andRespond(withNoContent())
         server.expect(requestTo("$users/role-mappings/realm")).andExpect(method(HttpMethod.DELETE))
             .andExpect(content().json("""[{"id":"r-default","name":"default-roles-alinha"}]"""))
@@ -181,6 +191,30 @@ class KeycloakIdentityDirectoryTest {
         val slow = KeycloakIdentityDirectory(IdentityProperties(baseUrl = "http://kc", clientSecret = "s3cret"), slowBuilder, slowClock)
 
         val error = assertThrows<IllegalStateException> { slow.assignTenant(subject, tenant) }
+
+        assertThat(error.message).contains("exceeded")
+    }
+
+    @Test
+    fun `an undo that takes too long stops before the next call`() {
+        // Each reading of the clock moves it 2 s forward, so the 5 s budget runs out after a couple of calls.
+        val slowClock = object : Clock() {
+            private var now = Instant.parse("2026-11-16T10:00:00Z")
+            override fun instant(): Instant = now.also { now = now.plusSeconds(2) }
+            override fun getZone(): ZoneId = ZoneOffset.UTC
+            override fun withZone(zone: ZoneId?): Clock = this
+        }
+        val slowBuilder = RestClient.builder()
+        val slowServer = MockRestServiceServer.bindTo(slowBuilder).ignoreExpectOrder(true).build()
+        slowServer.expect(ExpectedCount.between(0, 1), requestTo("http://kc/realms/alinha/protocol/openid-connect/token"))
+            .andRespond(withSuccess("""{"access_token":"tok","expires_in":300}""", MediaType.APPLICATION_JSON))
+        slowServer.expect(ExpectedCount.between(0, 1), requestTo(users)).andExpect(method(HttpMethod.GET))
+            .andRespond(withSuccess("""{"id":"$subject","attributes":{"tenant_id":["${tenant.value}"]}}""", MediaType.APPLICATION_JSON))
+        slowServer.expect(ExpectedCount.between(0, 1), requestTo("$users/role-mappings/realm/available"))
+            .andRespond(withSuccess("[$defaultRoles]", MediaType.APPLICATION_JSON))
+        val slow = KeycloakIdentityDirectory(IdentityProperties(baseUrl = "http://kc", clientSecret = "s3cret"), slowBuilder, slowClock)
+
+        val error = assertThrows<IllegalStateException> { slow.revokeTenant(subject, tenant) }
 
         assertThat(error.message).contains("exceeded")
     }
