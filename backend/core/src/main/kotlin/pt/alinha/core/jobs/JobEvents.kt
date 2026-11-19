@@ -36,6 +36,6 @@ data class JobFailed(
     val jobId: UUID,
     val type: String,
     val requestedBy: String,
-    val attempts: Int,
+    val attempt: Int,
     val error: JobError,
 ) : DomainEvent

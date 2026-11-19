@@ -170,7 +170,7 @@ class JobResultConsumerTest {
         consumer.consumeOnce()
 
         assertThat(row(id)["status"]).isEqualTo("failed")
-        assertThat(events.stream(JobFailed::class.java).toList().single().attempts).isEqualTo(1)
+        assertThat(events.stream(JobFailed::class.java).toList().single().attempt).isEqualTo(1)
     }
 
     @Test

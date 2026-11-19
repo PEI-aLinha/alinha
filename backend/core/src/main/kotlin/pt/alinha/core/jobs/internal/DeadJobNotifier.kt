@@ -57,7 +57,7 @@ class DeadJobNotifier(
                 jobId = job.id,
                 type = job.type,
                 requestedBy = job.requestedBy,
-                attempts = job.attempt,
+                attempt = job.attempt,
                 error = JobError.PUBLISH_FAILED_ERROR,
             ),
         )
