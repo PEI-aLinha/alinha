@@ -32,7 +32,7 @@ class IpRateLimitFilter(
             return chain.filter(exchange)
         }
         val ip = exchange.request.remoteAddress?.address?.hostAddress ?: "unknown"
-        return guard.allows("ip:$ip")
-            .flatMap { allowed -> if (allowed) chain.filter(exchange) else guard.tooManyRequests(exchange) }
+        return guard.retryAfterSeconds("ip:$ip")
+            .flatMap { wait -> if (wait == 0L) chain.filter(exchange) else guard.tooManyRequests(exchange, wait) }
     }
 }

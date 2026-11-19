@@ -30,7 +30,7 @@ class RedisRateLimitFilter(
             // `sub` is stable; the OIDC name is preferred_username, which a person can change.
             .map { "user:${(it.principal as? OidcUser)?.subject ?: it.name}" }
             .defaultIfEmpty("ip:${exchange.request.remoteAddress?.address?.hostAddress ?: "unknown"}")
-            .flatMap(guard::allows)
-            .flatMap { allowed -> if (allowed) chain.filter(exchange) else guard.tooManyRequests(exchange) }
+            .flatMap(guard::retryAfterSeconds)
+            .flatMap { wait -> if (wait == 0L) chain.filter(exchange) else guard.tooManyRequests(exchange, wait) }
     }
 }

@@ -32,20 +32,21 @@ class RedisRateLimitFilterTest {
             .principal(principal as org.springframework.security.core.Authentication)
             .build()
 
-    private fun redisAnswers(count: Long) {
+    /** What the script answers: 0 under the limit, otherwise the milliseconds left in the window. */
+    private fun redisAnswers(waitMillis: Long) {
         Mockito.`when`(
             redis.execute(
                 Mockito.any<RedisScript<Long>>(),
                 Mockito.anyList<String>(),
                 Mockito.anyList<Any>(),
             ),
-        ).thenReturn(Flux.just(count))
+        ).thenReturn(Flux.just(waitMillis))
         Mockito.`when`(chain.filter(Mockito.any())).thenReturn(Mono.empty())
     }
 
     @Test
     fun `allows a request under the limit`() {
-        redisAnswers(2)
+        redisAnswers(0)
         val exchange = exchange()
 
         StepVerifier.create(filter.filter(exchange, chain)).verifyComplete()
@@ -54,20 +55,31 @@ class RedisRateLimitFilterTest {
     }
 
     @Test
-    fun `answers 429 with Retry-After over the limit and does not call the application`() {
-        redisAnswers(3)
+    fun `answers 429 with the time left in the window and does not call the application`() {
+        redisAnswers(12_300)
         val exchange = exchange()
 
         StepVerifier.create(filter.filter(exchange, chain)).verifyComplete()
 
         assertThat(exchange.response.statusCode).isEqualTo(HttpStatus.TOO_MANY_REQUESTS)
-        assertThat(exchange.response.headers.getFirst("Retry-After")).isEqualTo("60")
+        assertThat(exchange.response.headers.getFirst("Retry-After")).isEqualTo("13")
         verify(chain, never()).filter(Mockito.any())
+    }
+
+    /** Rounding down would send 0 and the client would retry in a tight loop. */
+    @Test
+    fun `less than a second left is Retry-After 1`() {
+        redisAnswers(300)
+        val exchange = exchange()
+
+        StepVerifier.create(filter.filter(exchange, chain)).verifyComplete()
+
+        assertThat(exchange.response.headers.getFirst("Retry-After")).isEqualTo("1")
     }
 
     @Test
     fun `ignores paths outside the API`() {
-        redisAnswers(3)
+        redisAnswers(1_000)
         val exchange = exchange("/actuator/health")
 
         StepVerifier.create(filter.filter(exchange, chain)).verifyComplete()
@@ -78,7 +90,7 @@ class RedisRateLimitFilterTest {
 
     @Test
     fun `keys an OIDC user by sub, not the mutable preferred_username`() {
-        redisAnswers(1)
+        redisAnswers(0)
         val oidc = mock(OidcUser::class.java)
         Mockito.`when`(oidc.subject).thenReturn("stable-sub")
         val auth = UsernamePasswordAuthenticationToken(oidc, null, emptyList())
