@@ -258,3 +258,11 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* DataTable cell: links, buttons and fields stay above the row's stretched open button, so they keep their own click. */
+@layer components {
+  .row-cell :is(a, button, input, select, textarea, summary, [tabindex]):not([data-row-open]) {
+    position: relative;
+    z-index: 10;
+  }
+}
