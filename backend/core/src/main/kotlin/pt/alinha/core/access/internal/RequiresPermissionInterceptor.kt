@@ -1,5 +1,6 @@
 package pt.alinha.core.access.internal
 
+import jakarta.servlet.DispatcherType
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.context.annotation.Configuration
@@ -24,6 +25,9 @@ internal fun requiredPermission(handler: HandlerMethod): String? {
 @Component
 class RequiresPermissionInterceptor(private val registry: RolePermissionRegistry) : HandlerInterceptor {
     override fun preHandle(request: HttpServletRequest, response: HttpServletResponse, handler: Any): Boolean {
+        // Spring's internal error dispatch renders the error of a request that was already checked (or refused).
+        // A direct GET /error is a REQUEST dispatch and is checked like any other endpoint, so it is denied.
+        if (request.dispatcherType == DispatcherType.ERROR) return true
         val required = (handler as? HandlerMethod)?.let(::requiredPermission)
             ?: throw AccessDeniedException("Endpoint does not declare a permission")
         if (required !in registry.permissionsFor(currentRoles())) {
@@ -43,6 +47,6 @@ class RequiresPermissionInterceptor(private val registry: RolePermissionRegistry
 @Configuration
 class AccessWebConfig(private val interceptor: RequiresPermissionInterceptor) : WebMvcConfigurer {
     override fun addInterceptors(registry: InterceptorRegistry) {
-        registry.addInterceptor(interceptor).excludePathPatterns("/error")
+        registry.addInterceptor(interceptor)
     }
 }
