@@ -9,6 +9,7 @@ dependencies {
     implementation(platform(libs.spring.cloud.bom))
 
     implementation(libs.spring.boot.starter.webflux)
+    implementation(libs.spring.boot.starter.webclient)
     implementation(libs.spring.cloud.starter.gateway.server.webflux)
     implementation(libs.spring.boot.starter.security.oauth2.client)
     implementation(libs.spring.boot.starter.data.redis.reactive)

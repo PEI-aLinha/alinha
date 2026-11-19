@@ -7,6 +7,8 @@ import java.time.Duration
 data class BffProperties(
     /** The aLinha application behind the BFF. */
     val appUrl: String = "http://localhost:8080",
+    /** How long /api/me waits for each call to the application before answering 502. */
+    val appTimeout: Duration = Duration.ofSeconds(5),
     /** Where the browser goes after the login (the shell). */
     val afterLoginUri: String = "/",
     /** Where Keycloak sends the browser after the logout. */

@@ -211,6 +211,16 @@ class MeServiceTest {
             .verify()
     }
 
+    @Test
+    fun `an application that does not answer in time is 502`() {
+        givenSession()
+        Mockito.`when`(app.internalMe(token)).thenReturn(Mono.error(java.util.concurrent.TimeoutException()))
+
+        StepVerifier.create(service.me(exchange, authentication, user()))
+            .expectError(MeFailure::class.java)
+            .verify()
+    }
+
     private fun status(code: Int) =
         WebClientResponseException.create(code, "status $code", HttpHeaders.EMPTY, ByteArray(0), null)
 
