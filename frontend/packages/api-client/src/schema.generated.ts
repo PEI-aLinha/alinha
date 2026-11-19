@@ -220,7 +220,7 @@ export interface components {
             consumes: string[];
             /** @description Permissions the plugin declares, as `resource:action`. */
             permissions: string[];
-            /** @description Menu entries the caller may see: only areas the caller's roles open, and only entries whose permission the caller holds. Sorted by area (client, consultant, onboarding), then `order`, then label (Portuguese collation). */
+            /** @description Menu entries the caller may see: only areas the caller's roles open, and only entries whose permission the caller holds. Sorted within this plugin by area (client, consultant), then `order`, then label (Portuguese collation); a menu built from several plugins has to sort the merged list again. Never in the onboarding area, which has no menu. */
             nav: components["schemas"]["NavEntry"][];
         };
         /** @description Same fields as `NavItem` in `@alinha/plugin-sdk`, minus the icon. */

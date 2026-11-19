@@ -27,8 +27,14 @@ data class PluginManifest(
     val nav: List<NavEntry> = emptyList(),
 )
 
-/** Area of the shell a menu entry belongs to. Mirrors `Area` in `@alinha/plugin-sdk`. */
+/**
+ * Area of the shell. Mirrors `Area` in `@alinha/plugin-sdk`. [ONBOARDING] has no menu: the registry refuses menu
+ * entries there (the frontend's `NavItem` takes `NavArea`, which excludes it).
+ */
 enum class NavArea { CLIENT, CONSULTANT, ONBOARDING }
+
+/** The action a menu entry needs when none is given. */
+const val DEFAULT_NAV_ACTION = "read"
 
 /** One menu entry of a plugin. Same fields and defaults as `NavItem` in `@alinha/plugin-sdk`. */
 data class NavEntry(
@@ -39,10 +45,18 @@ data class NavEntry(
     val area: NavArea,
     /** RBAC resource needed to see the entry, checked as "resource:action"; null means anyone who can open the area. */
     val resource: String? = null,
-    val action: String = "read",
+    /** Only meaningful with [resource]; without one it must stay the default. */
+    val action: String = DEFAULT_NAV_ACTION,
     /** Lower comes first. */
     val order: Int = 100,
 ) {
+    init {
+        // An action without a resource would be silently dropped and the entry shown to everyone in the area.
+        require(resource != null || action == DEFAULT_NAV_ACTION) {
+            "Menu entry '$path' has action '$action' but no resource: set the resource it applies to"
+        }
+    }
+
     /** "resource:action" needed to see the entry, or null when anyone in the area may. */
     val permission: String? get() = resource?.let { "$it:$action" }
 }
