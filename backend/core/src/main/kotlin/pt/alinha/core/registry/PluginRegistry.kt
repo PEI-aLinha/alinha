@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RestController
 import pt.alinha.core.access.RequiresPermission
 import pt.alinha.core.access.internal.RolePermissionRegistry
+import pt.alinha.core.access.internal.ValidatedManifests
 import pt.alinha.core.tenant.TenantAgnostic
 import pt.alinha.pluginapi.AlinhaPlugin
 import pt.alinha.pluginapi.NavArea
@@ -20,10 +21,10 @@ import pt.alinha.pluginapi.PluginManifest
 
 /** Module Registry: knows every plugin present in the build. */
 @Component
-class PluginRegistry(plugins: List<AlinhaPlugin>) {
+class PluginRegistry(plugins: List<AlinhaPlugin>) : ValidatedManifests {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    val manifests: List<PluginManifest> = plugins.map { it.manifest }.sortedBy { it.id }
+    override val manifests: List<PluginManifest> = plugins.map { it.manifest }.sortedBy { it.id }
 
     init {
         validateManifests(manifests)

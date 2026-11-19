@@ -1,13 +1,11 @@
 package pt.alinha.core.access.internal
 
 import org.springframework.stereotype.Component
-import pt.alinha.core.registry.PluginRegistry
-import pt.alinha.core.registry.knownPermissions
 import pt.alinha.pluginapi.NavArea
 
-/** Role -> permission map built from the plugin manifests, which [PluginRegistry] has already validated. */
+/** Role -> permission map built from the plugin manifests, already validated by the Module Registry. */
 @Component
-class RolePermissionRegistry(plugins: PluginRegistry) {
+class RolePermissionRegistry(plugins: ValidatedManifests) {
     /** Every permission that exists: declared by a plugin or owned by the core. */
     val knownPermissions: Set<String> = knownPermissions(plugins.manifests)
 

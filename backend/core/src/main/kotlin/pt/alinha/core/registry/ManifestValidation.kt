@@ -1,7 +1,7 @@
 package pt.alinha.core.registry
 
-import pt.alinha.core.access.internal.CorePermissions
 import pt.alinha.core.access.internal.Roles
+import pt.alinha.core.access.internal.knownPermissions
 import pt.alinha.pluginapi.PluginManifest
 
 private val PLUGIN_ID = Regex("^[a-z][a-z0-9]*(-[a-z0-9]+)*$")
@@ -35,10 +35,6 @@ internal fun validateManifests(manifests: List<PluginManifest>) {
             clashes.entries.joinToString { (key, ids) -> "${key.first.name.lowercase()}/${key.second} in $ids" }
     }
 }
-
-/** Every permission that exists: declared by a plugin or owned by the core. */
-internal fun knownPermissions(manifests: List<PluginManifest>): Set<String> =
-    manifests.flatMap { it.permissions }.toSet() + CorePermissions.ALL
 
 private fun validateOwnFields(manifest: PluginManifest) {
     require(PLUGIN_ID.matches(manifest.id)) { "Plugin id '${manifest.id}' must be kebab-case" }
