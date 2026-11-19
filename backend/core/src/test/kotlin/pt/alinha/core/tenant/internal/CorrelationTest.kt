@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.slf4j.MDC
 import org.springframework.mock.web.MockHttpServletRequest
 import org.springframework.mock.web.MockHttpServletResponse
@@ -87,6 +88,29 @@ class CorrelationTest {
         assertEquals(event.correlationId, id)
         assertNull(tenants.currentOrNull())
         assertNull(CorrelationScope.currentOrNull())
+    }
+
+    @Test
+    fun `tenant, correlation id and log key are restored when the block throws`() {
+        val event = FixtureEvent(TenantId(UUID.randomUUID()), UUID.randomUUID())
+
+        assertThrows<IllegalStateException> { tenants.runAs(event) { error("listener failed") } }
+
+        assertNull(tenants.currentOrNull())
+        assertNull(CorrelationScope.currentOrNull())
+        assertNull(MDC.get(CORRELATION_MDC_KEY))
+    }
+
+    @Test
+    fun `the request's id and log key are cleared when the request throws`() {
+        assertThrows<IllegalStateException> {
+            CorrelationIdFilter().doFilter(MockHttpServletRequest(), MockHttpServletResponse()) { _, _ ->
+                error("handler failed")
+            }
+        }
+
+        assertNull(CorrelationScope.currentOrNull())
+        assertNull(MDC.get(CORRELATION_MDC_KEY))
     }
 
     private fun seenBy(header: String): UUID {
