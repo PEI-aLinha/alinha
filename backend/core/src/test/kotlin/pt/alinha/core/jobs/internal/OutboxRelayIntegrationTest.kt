@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.data.domain.Range
+import org.springframework.data.redis.RedisSystemException
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.DynamicPropertyRegistry
@@ -147,6 +148,26 @@ class OutboxRelayIntegrationTest {
         assertThat(publishedJobIds()).containsExactlyInAnyOrderElementsOf(ids - poison)
         assertThat(status(poison)).isEqualTo("pending")
         assertThat(jdbc.queryForObject("select publish_failures from core.job_outbox where id = ?", Int::class.java, poison))
+            .isEqualTo(1)
+    }
+
+    @Test
+    fun `a stream Redis refuses counts as a job failure, not an outage`() {
+        val ids = (1..3).map { dispatcher.dispatchAs(tenants, tx, tenant, collectRequest()) }
+        val refused = ids.first()
+        val streams = object : RedisJobStreams(redis) {
+            override fun publish(job: OutboxJob) =
+                if (job.id == refused) {
+                    throw RedisSystemException("WRONGTYPE Operation against a key holding the wrong kind of value", null)
+                } else {
+                    super.publish(job)
+                }
+        }
+
+        assertThat(OutboxRelay(outbox, streams, tx, properties).relayOnce()).isEqualTo(2)
+
+        assertThat(publishedJobIds()).containsExactlyInAnyOrderElementsOf(ids - refused)
+        assertThat(jdbc.queryForObject("select publish_failures from core.job_outbox where id = ?", Int::class.java, refused))
             .isEqualTo(1)
     }
 }

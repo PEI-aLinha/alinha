@@ -64,6 +64,8 @@ fun startCollection(...) {
     `backoff-base`, and **no failure is counted**. The round stops and the other due jobs wait for the next one. However
     long the outage, no job dies because of it; the relay catches up when Redis is back. The error is kept in
     `last_error`.
+  - **Redis refusing this stream** (`WRONGTYPE`: the key holds another type; `NOPERM`: an ACL forbids it): Redis is
+    up, so this counts as a failure of the job, like the case below. `OOM` stays an outage: it affects every key.
   - **Anything else** (a bug, an unexpected exception): `publish_failures + 1` and exponential backoff
     (`backoff-base` × 2ⁿ, at most `backoff-max`), and the relay goes on with the other due jobs. A row that
     always fails ends `dead`.

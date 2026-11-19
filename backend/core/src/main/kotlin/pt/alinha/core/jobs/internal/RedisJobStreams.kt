@@ -88,12 +88,20 @@ class RedisJobStreams(private val redis: StringRedisTemplate) {
 
         private const val BUSYGROUP = "BUSYGROUP"
         private const val NOGROUP = "NOGROUP"
+        private const val WRONGTYPE = "WRONGTYPE"
+        private const val NOPERM = "NOPERM"
         private const val MAX_REASON = 500
 
         fun streamKey(type: String, version: Int) = "alinha:jobs:$type:v$version"
 
         /** The results group is gone (Redis lost its data): create it again. */
         fun DataAccessException.isNoGroup() = redisError(NOGROUP)
+
+        /**
+         * Redis answered but refuses this job's stream: the key holds another type, or an ACL forbids it. That is a
+         * problem with this job type, not an outage, so it counts towards `dead`. OOM stays an outage (all keys).
+         */
+        fun DataAccessException.isStreamRefused() = redisError(WRONGTYPE) || redisError(NOPERM)
 
         private fun DataAccessException.redisError(code: String) =
             generateSequence<Throwable>(this) { it.cause }.any { it.message.orEmpty().contains(code) }
