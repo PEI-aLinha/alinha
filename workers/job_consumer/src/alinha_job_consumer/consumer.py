@@ -17,6 +17,10 @@ from . import collectors, contracts, results
 
 log = logging.getLogger(__name__)
 
+# Provider exception text can carry URLs or tokens; keep it in logs, never in the results stream.
+SAFE_COLLECTOR_MESSAGE = "collector failed"
+
+
 def stream_name(type_: str, version: int) -> str:
     return f"alinha:jobs:{type_}:v{version}"
 
@@ -163,18 +167,21 @@ class Consumer:
     def _run_collector(
         self, envelope: dict[str, Any], type_: str, version: int, attempt: int
     ) -> dict[str, Any]:
-        collector = self._collector_lookup(envelope["provider"])
-        if collector is None:
-            return results.failed(
-                envelope, type_, version, attempt, "unknown_provider", f"no collector for {envelope['provider']}"
-            )
         try:
+            collector = self._collector_lookup(envelope["provider"])
+            if collector is None:
+                return results.failed(
+                    envelope, type_, version, attempt, "unknown_provider", f"no collector for {envelope['provider']}"
+                )
             output = collector(envelope)
         except collectors.TransientError as error:
-            return results.failed(envelope, type_, version, attempt, "transient_error", str(error), retryable=True)
-        except Exception as error:  # collector bugs and bad credentials are not retryable
+            log.warning("collector for %s transient failure: %s", envelope["provider"], error)
+            return results.failed(
+                envelope, type_, version, attempt, "transient_error", SAFE_COLLECTOR_MESSAGE, retryable=True
+            )
+        except Exception:  # collector bugs and bad credentials are not retryable
             log.exception("collector for %s failed", envelope["provider"])
-            return results.failed(envelope, type_, version, attempt, "collector_error", str(error))
+            return results.failed(envelope, type_, version, attempt, "collector_error", SAFE_COLLECTOR_MESSAGE)
         return results.completed(envelope, type_, version, attempt, output)
 
     def _publish(
@@ -184,10 +191,15 @@ class Consumer:
             results.publish(self.redis, outcome)
         except results.InvalidResult:
             log.exception("collector output does not match job-result.v1")
-            results.publish(
-                self.redis,
-                results.failed(envelope, type_, version, attempt, "invalid_result", "worker produced an invalid result"),
-            )
+            try:
+                results.publish(
+                    self.redis,
+                    results.failed(
+                        envelope, type_, version, attempt, "invalid_result", "worker produced an invalid result"
+                    ),
+                )
+            except results.InvalidResult:
+                log.exception("no valid result could be produced for %s attempt %s", envelope.get("jobId"), attempt)
 
     def _ack(self, stream: str, entry_id: str) -> None:
         self.redis.xack(stream, self.config.group, entry_id)

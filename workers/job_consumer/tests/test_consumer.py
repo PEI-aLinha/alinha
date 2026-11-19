@@ -5,7 +5,7 @@ import fakeredis
 import pytest
 from redis.exceptions import ConnectionError
 
-from alinha_job_consumer import collectors
+from alinha_job_consumer import collectors, results
 from alinha_job_consumer.consumer import Config, Consumer, stream_name
 
 STREAM = stream_name("evidence.collect", 1)
@@ -93,6 +93,8 @@ def test_transient_error_is_retryable(redis):
     assert result["status"] == "failed"
     assert result["retryable"] is True
     assert result["error"]["code"] == "transient_error"
+    assert result["error"]["message"] == "collector failed"
+    assert "connection reset" not in result["error"]["message"]
     assert pending(redis) == 0
 
 
@@ -106,7 +108,36 @@ def test_other_collector_errors_are_not_retryable(redis):
     [result] = published(redis)
     assert result["status"] == "failed"
     assert result["retryable"] is False
-    assert result["error"]["message"] == "bad credentials"
+    assert result["error"]["message"] == "collector failed"
+    assert "bad credentials" not in result["error"]["message"]
+
+
+def test_a_broken_provider_package_does_not_crash_the_worker(redis):
+    def broken_lookup(_):
+        raise ImportError("half-installed provider at https://user:token@example.org")
+
+    worker = Consumer(redis, Config(name="test"), collector_lookup=broken_lookup)
+    add_job(redis, envelope())
+    run_once(worker)
+
+    [result] = published(redis)
+    assert result["status"] == "failed"
+    assert result["error"]["code"] == "collector_error"
+    assert "half-installed provider" not in result["error"]["message"]
+    assert "user:token" not in result["error"]["message"]
+    assert pending(redis) == 0
+
+
+def test_a_second_invalid_result_does_not_escape_handle_entry(redis, monkeypatch):
+    def always_invalid(*args, **kwargs):
+        raise results.InvalidResult("invalid")
+
+    monkeypatch.setattr(results, "publish", always_invalid)
+    add_job(redis, envelope())
+    worker = consumer(redis, lambda _: {"items": []})
+    run_once(worker)
+
+    assert pending(redis) == 0
 
 
 def test_invalid_envelope_is_not_retried(redis):
