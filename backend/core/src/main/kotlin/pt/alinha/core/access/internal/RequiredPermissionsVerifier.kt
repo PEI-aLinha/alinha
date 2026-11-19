@@ -1,28 +1,30 @@
 package pt.alinha.core.access.internal
 
 import org.springframework.beans.factory.SmartInitializingSingleton
-import org.springframework.boot.webmvc.error.ErrorController
+import org.springframework.boot.webmvc.autoconfigure.error.BasicErrorController
 import org.springframework.stereotype.Component
 import org.springframework.web.method.HandlerMethod
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping
 
 /**
- * Endpoints whose `@RequiresPermission` names a permission no manifest declares, as handler -> permission.
- * Such an endpoint would answer 403 to every role, which looks exactly like a real refusal.
+ * Endpoints whose `@RequiresPermission` names a permission no role is granted, as handler -> permission: one no
+ * manifest declares (a typo), or one declared but missing from every `rolePermissions`. Such an endpoint would answer
+ * 403 to every role, which looks exactly like a real refusal.
  */
-internal fun undeclaredPermissions(handlers: Collection<HandlerMethod>, declared: Set<String>): Map<String, String> =
+internal fun ungrantedPermissions(handlers: Collection<HandlerMethod>, granted: Set<String>): Map<String, String> =
     handlers
         .mapNotNull { handler -> requiredPermission(handler)?.let { handler.shortLogMessage to it } }
-        .filter { (_, permission) -> permission !in declared }
+        .filter { (_, permission) -> permission !in granted }
         .toMap()
 
 /**
  * Endpoints with no `@RequiresPermission` at all. The interceptor would deny them at request time; this finds
- * them at startup. Spring's error controller is exempt (`/error` is excluded from the interceptor).
+ * them at startup. Only Spring's own [BasicErrorController] is exempt, the same rule as the interceptor, which lets
+ * error dispatches through: any other controller, an `ErrorController` included, needs a permission.
  */
 internal fun unannotatedEndpoints(handlers: Collection<HandlerMethod>): List<String> =
     handlers
-        .filterNot { ErrorController::class.java.isAssignableFrom(it.beanType) }
+        .filterNot { BasicErrorController::class.java.isAssignableFrom(it.beanType) }
         .filter { requiredPermission(it) == null }
         .map { it.shortLogMessage }
 
@@ -36,7 +38,9 @@ class RequiredPermissionsVerifier(
         val handlers = handlerMappings.flatMap { it.handlerMethods.values }
         val unannotated = unannotatedEndpoints(handlers)
         require(unannotated.isEmpty()) { "Endpoints without @RequiresPermission: $unannotated" }
-        val undeclared = undeclaredPermissions(handlers, registry.declaredPermissions)
-        require(undeclared.isEmpty()) { "Endpoints require permissions no plugin declares: $undeclared" }
+        val ungranted = ungrantedPermissions(handlers, registry.grantedPermissions)
+        require(ungranted.isEmpty()) {
+            "Endpoints require permissions no role is granted (undeclared, or missing from rolePermissions): $ungranted"
+        }
     }
 }

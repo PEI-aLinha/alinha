@@ -29,6 +29,10 @@ class RolePermissionRegistry(plugins: PluginRegistry) {
         .groupBy({ it.key }, { it.value })
         .mapValues { (_, permissions) -> permissions.flatten().toSet() }
 
+    /** Every permission at least one known role holds. */
+    val grantedPermissions: Set<String> = byRole.filterKeys { it in KNOWN_ROLES }.values.flatten().toSet() +
+        CORE_PERMISSIONS + CORE_ROLE_PERMISSIONS.values.flatten()
+
     fun permissionsFor(roles: Set<String>): Set<String> =
         roles.filter { it in KNOWN_ROLES }
             .flatMap { byRole[it].orEmpty() + CORE_PERMISSIONS + CORE_ROLE_PERMISSIONS[it].orEmpty() }
