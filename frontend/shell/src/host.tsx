@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query'
 import { ApiError, PluginHostContext, type HostOrganization, type PluginHost } from '@alinha/plugin-sdk'
 import { API_REQUEST, isUnauthenticatedResponse, NotJsonError, readJson } from './http'
-import { login } from './session/login'
+import { login, reauthentication } from './session/login'
 import { ME_QUERY_KEY, useSession } from './session/SessionGate'
 
 /**
@@ -47,6 +47,7 @@ export const retryUnlessClientError = (failureCount: number, error: unknown) =>
  * session answers without asking for the password again. Until the BFF can refresh the session itself (#14).
  */
 export function reauthenticate(returnTo?: string): void {
+  reauthentication.started()
   login.go(returnTo)
 }
 

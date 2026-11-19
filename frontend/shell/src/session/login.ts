@@ -52,3 +52,27 @@ export const login = {
     storage()?.removeItem(ATTEMPT_KEY)
   },
 }
+
+const REAUTH_KEY = 'alinha.reauthenticated-at'
+/** How long after a re-authentication an unchanged session still counts as "not updated yet". */
+const REAUTH_WINDOW_MS = 5 * 60_000
+
+/**
+ * Remembers that the page asked for a fresh token (`host.reauthenticate`), so the onboarding can tell "the new
+ * organization is not in the token yet" from a first visit.
+ */
+export const reauthentication = {
+  started(now: number = Date.now()): void {
+    storage()?.setItem(REAUTH_KEY, String(now))
+  },
+
+  /** True when a re-authentication started in the last few minutes. Read-only, so it is safe to call during render. */
+  recent(now: number = Date.now()): boolean {
+    const at = Number(storage()?.getItem(REAUTH_KEY))
+    return Number.isFinite(at) && at > 0 && now - at < REAUTH_WINDOW_MS
+  },
+
+  forget(): void {
+    storage()?.removeItem(REAUTH_KEY)
+  },
+}

@@ -43,7 +43,7 @@ const testPlugin = definePlugin({
       { path: 'preguicoso', handle: { resource: 'risk' }, lazy: async () => ({ Component: () => <h1>Página carregada à parte</h1> }) },
     ],
     onboarding: [
-      { path: 'registo', Component: TenantProbe },
+      { path: 'registration', Component: TenantProbe },
     ],
     consultant: [
       { path: 'painel', Component: () => <h1>Painel do cliente</h1> },
@@ -363,7 +363,7 @@ describe('onboarding (/onboarding)', () => {
   it('sends a new account without an organization to the first onboarding page, with no tenant', async () => {
     const { router, calls } = renderApp({ url: '/', plugins, me: registrant(), api: () => json({ value: 'ok' }) })
     expect(await screen.findByText('Dados de : ok')).toBeInTheDocument()
-    expect(router.state.location.pathname).toBe('/onboarding/registo')
+    expect(router.state.location.pathname).toBe('/onboarding/registration')
     expect(screen.queryByRole('navigation', { name: 'Navegação principal' })).not.toBeInTheDocument()
     const probe = calls.find((c) => c.url === '/api/probe')
     expect(new Headers(probe?.init.headers).has('X-Alinha-Tenant')).toBe(false)
@@ -375,12 +375,21 @@ describe('onboarding (/onboarding)', () => {
   })
 
   it('sends anyone who already has an organization back home', async () => {
-    const { router } = renderApp({ url: '/onboarding/registo', plugins })
+    const { router } = renderApp({ url: '/onboarding/registration', plugins })
     await waitFor(() => expect(router.state.location.pathname).toBe('/org/acme/ativos'))
+  })
+
+  it('does not show the form again when the account signed in again but has no organization yet', async () => {
+    window.sessionStorage.setItem('alinha.reauthenticated-at', String(Date.now()))
+    renderApp({ url: '/onboarding/registration', plugins, me: registrant(), api: () => json({ value: 'ok' }) })
+    expect(await screen.findByRole('heading', { name: 'Quase pronto' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Entrar novamente' })).toBeInTheDocument()
+    expect(screen.queryByText('Dados de : ok')).not.toBeInTheDocument()
+    expect(window.sessionStorage.getItem('alinha.reauthenticated-at')).toBeNull()
   })
 
   it('sends the onboarding root home, and from there to the first page', async () => {
     const { router } = renderApp({ url: '/onboarding', plugins, me: registrant(), api: () => json({ value: 'ok' }) })
-    await waitFor(() => expect(router.state.location.pathname).toBe('/onboarding/registo'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/onboarding/registration'))
   })
 })
