@@ -122,7 +122,8 @@ fun on(event: JobCompleted) {
   and the relay's backoff; the relay publishes it again. Otherwise the job is `failed`.
 - Audited: `job.completed`, `job.retried`, `job.failed` (error code only, never the worker's message).
 - A `result` field over `max-result-bytes` (UTF-8) is dead-lettered **without** that field (`reason` says why),
-  before it is parsed: it would otherwise be stored as is in `core.job_outbox`. The job stays `published`.
+  before it is parsed: it would otherwise be stored as is in `core.job_outbox`. The job stays `published` until the
+  watchdog (#86) fails it; workers must keep `result` under the limit (1 MiB by default).
 - **Dead letters** go to `alinha:jobs:results:dead`, with the original fields plus `sourceId` and `reason`: an entry
   that is not valid JSON or does not match the contract, names an unknown job, or whose `tenantId`, `type` or
   `version` disagree with the outbox row. The job itself is not changed (it stays `published`, #86).
