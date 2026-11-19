@@ -25,12 +25,8 @@ class InternalMeController(private val registry: RolePermissionRegistry) {
     @RequiresPermission("session")
     @GetMapping("/internal/me")
     fun me(authentication: Authentication): InternalMeResponse {
-        val roles = authentication.authorities.orEmpty()
-            .mapNotNull { it.authority }
-            .filter { it.startsWith(ROLE_PREFIX) }
-            .map { it.removePrefix(ROLE_PREFIX) }
-            .filter { it in KNOWN_ROLES }
-            .toSet()
+        // Same roles the interceptor enforces; only the contract's known ones are shown.
+        val roles = rolesOf(authentication).filter { it in KNOWN_ROLES }.toSet()
         return InternalMeResponse(
             roles = roles.sorted(),
             permissions = registry.permissionsFor(roles).sorted(),
