@@ -24,7 +24,9 @@ data class JobsProperties(
     ) {
         init {
             require(pollIntervalMs > 0 && batchSize > 0 && maxPublishFailures >= 1) { "Invalid alinha.jobs.relay settings" }
-            require(!backoffBase.isNegative && backoffMax >= backoffBase) { "backoff-max must be >= backoff-base" }
+            // Zero would make a failed job due again at once, so one round would use up all its publish failures.
+            require(backoffBase.isPositive) { "alinha.jobs.relay.backoff-base must be positive" }
+            require(backoffMax >= backoffBase) { "backoff-max must be >= backoff-base" }
         }
     }
 
