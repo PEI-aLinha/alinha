@@ -25,7 +25,8 @@ const optionalString = (v: unknown) => (typeof v === 'string' ? v : undefined)
 
 /**
  * The Problem Details body of an error response (ADR 0003), or undefined when there is none or it is not one.
- * Only the known fields are kept, and only with the expected types: the body is untrusted input.
+ * Only the known fields are kept, and only with the expected types: the body is untrusted input. A plain JSON body
+ * (e.g. Spring's default `{timestamp,status,error,path}` or a gateway error) counts only if it has one of them.
  */
 export async function readProblem(res: Response): Promise<Problem | undefined> {
   const type = res.headers.get('Content-Type') ?? ''
@@ -41,7 +42,10 @@ export async function readProblem(res: Response): Promise<Problem | undefined> {
     ? body.errors.filter(isRecord).flatMap((e) =>
         typeof e.field === 'string' && typeof e.message === 'string' ? [{ field: e.field, message: e.message }] : [])
     : undefined
-  return { title: optionalString(body.title), detail: optionalString(body.detail), code: optionalString(body.code), errors }
+  const problem: Problem = { title: optionalString(body.title), detail: optionalString(body.detail), code: optionalString(body.code), errors }
+  const isProblemType = /^application\/problem\+json\b/i.test(type)
+  const hasKnownField = Object.values(problem).some((v) => v !== undefined)
+  return isProblemType || hasKnownField ? problem : undefined
 }
 
 /**

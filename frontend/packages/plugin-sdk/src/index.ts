@@ -11,12 +11,15 @@ export type Area =
   | 'consultant'  // /portfolio/:org/<path>  — consultant (service provider), for one client organization
   | 'onboarding'  // /onboarding/<path>      — full page, no organization yet (a `registrant` setting one up)
 
+/** Areas with a menu. The onboarding is a full page with no menu, so it takes no menu entries. */
+export type NavArea = Exclude<Area, 'onboarding'>
+
 export interface NavItem {
   /** Visible text — in Portuguese (UI requirement). */
   label: string
   /** Path relative to the area in English (e.g. 'assets' → /org/:org/assets). */
   path: string
-  area: Area
+  area: NavArea
   icon?: ComponentType<{ className?: string }>
   /** RBAC resource required to see the entry (e.g. 'asset'); checked as `<resource>:<action>`. */
   resource?: string
@@ -66,7 +69,11 @@ export interface FieldProblem {
   message: string
 }
 
-/** RFC 9457 Problem Details as the backend sends them (ADR 0003). `detail` is in Portuguese, safe to show. */
+/**
+ * RFC 9457 Problem Details as the backend sends them (ADR 0003). The platform's own errors carry a Portuguese
+ * `detail` that is safe to show, but only trust it for the `code`s and statuses a page handles: a framework or
+ * gateway error can carry English or technical text. `detail` may also be empty.
+ */
 export interface Problem {
   title?: string
   detail?: string
@@ -77,7 +84,8 @@ export interface Problem {
 
 /**
  * A failed call to /api. `status` is the HTTP status (403: no permission, 404: not found, ...).
- * `problem` is the response's Problem Details body, when it had one.
+ * `problem` is the response's Problem Details body, when it had one; read `problem.detail` to show the server's
+ * message. `message` is always `HTTP <status> on <path>`, for logs, never for the user.
  */
 export class ApiError extends Error {
   readonly status: number
@@ -85,7 +93,7 @@ export class ApiError extends Error {
   readonly problem?: Problem
 
   constructor(status: number, path: string, message?: string, problem?: Problem) {
-    super(message ?? problem?.detail ?? `HTTP ${status} on ${path}`)
+    super(message ?? `HTTP ${status} on ${path}`)
     this.name = 'ApiError'
     this.status = status
     this.path = path
