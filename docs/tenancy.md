@@ -41,6 +41,9 @@ organization through `core.tenant.TenantProvisioning.provisionForCurrentUser { t
 - Last, the account gets `tenant_id` and `responsible` in Keycloak. A Keycloak failure rolls everything back; a
   commit failure afterwards undoes the Keycloak change.
 - The caller's token is stale until it is refreshed (BFF, #14).
+- Refusals carry a `code` in their Problem Details body and, when waiting helps, `Retry-After`. Nothing global
+  renders them, so the calling plugin returns `e.body` with `e.headers` from its `@ExceptionHandler` (see
+  `TenantProvisioning`).
 
 ## How it is enforced
 
