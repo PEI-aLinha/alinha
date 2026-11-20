@@ -91,8 +91,9 @@ fun startCollection(...) {
   is a retryable failure), and a worker keeps the rest of its batch from going idle while it works
   (`workers/README.md`).
 - `attempt` is a field of the stream entry, not of the envelope: the envelope schema stays unchanged across retries.
-- Send exactly one result per attempt to `alinha:jobs:results`, field `result`, following
-  `contracts/jobs/job-result.v1.schema.json`. Set `retryable: true` only for transient failures.
+- Send a result per attempt to `alinha:jobs:results`, field `result`, following
+  `contracts/jobs/job-result.v1.schema.json`. Set `retryable: true` only for transient failures. At most one result
+  is *applied* per attempt: a crash between publish and `XACK` can send a second one, which the core ignores.
 - The worker's message is untrusted: the core takes the tenant from the outbox row and rejects a mismatch.
 
 ## Getting the outcome

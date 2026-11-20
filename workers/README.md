@@ -13,6 +13,8 @@ pip install -e "workers/job_consumer[test]"
 REDIS_URL=redis://localhost:6379/0 alinha-job-consumer
 ```
 
+Requires Redis 7 or later (`XAUTOCLAIM` returns three values from 7.0).
+
 The job and result formats, retry rules and dedupe keys are in `docs/jobs.md`; this file only covers how to run
 the consumer.
 
