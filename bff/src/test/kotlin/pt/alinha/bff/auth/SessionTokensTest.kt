@@ -75,7 +75,7 @@ class SessionTokensTest {
             .apply(springSecurity())
             .apply(mockOidcLogin())
             .build()
-        val csrfToken = client.get().uri("/actuator/health").exchange()
+        val csrfToken = client.get().uri("/actuator/health/liveness").exchange()
             .returnResult(String::class.java)
             .responseCookies.getFirst("XSRF-TOKEN")!!
             .value
@@ -86,6 +86,13 @@ class SessionTokensTest {
             .header("X-XSRF-TOKEN", csrfToken)
             .exchange()
             .expectStatus().isFound
+            // RP-initiated logout: Keycloak ends its SSO session and sends the browser back to the shell.
+            .expectHeader().value("Location") { location ->
+                assertThat(location)
+                    .startsWith("http://localhost:8180/realms/alinha/protocol/openid-connect/logout?")
+                    .contains("post_logout_redirect_uri=http://localhost:5173/")
+                    .contains("id_token_hint=")
+            }
 
         // Not just the old id: logout renames the session (changeSessionId), so check that no session is left at all.
         assertThat(STORED_SESSIONS).isEmpty()

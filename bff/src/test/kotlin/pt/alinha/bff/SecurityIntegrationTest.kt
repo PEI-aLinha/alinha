@@ -44,7 +44,7 @@ class SecurityIntegrationTest {
 
     @Test
     fun `the health check stays public`() {
-        client.get().uri("/actuator/health").exchange()
+        client.get().uri("/actuator/health/liveness").exchange()
             .expectStatus().isOk
     }
 
