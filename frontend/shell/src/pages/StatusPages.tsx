@@ -7,19 +7,19 @@ export function StatusPage({ title, children, actions }: { title: string; childr
   return (
     <section aria-labelledby="status-title" className="mx-auto flex max-w-lg flex-col items-start gap-3 py-16">
       <h1 id="status-title" className="text-2xl font-semibold">{title}</h1>
-      {children && <p className="text-gray-700">{children}</p>}
+      {children && <p className="text-ink-soft">{children}</p>}
       {actions && <div className="mt-2 flex flex-wrap gap-3">{actions}</div>}
     </section>
   )
 }
 
-const linkClass = 'rounded-md border px-4 py-2 font-medium hover:bg-gray-50'
+const linkClass = 'rounded-md border border-line px-4 py-2 font-medium hover:bg-paper-soft'
 
 export const HomeLink = () => <Link to="/" className={linkClass}>Voltar ao início</Link>
 
 export function LoadingPage({ label = 'A carregar…' }: { label?: string }) {
   return (
-    <div role="status" aria-live="polite" className="flex min-h-[40vh] items-center justify-center text-gray-600">
+    <div role="status" aria-live="polite" className="flex min-h-[40vh] items-center justify-center text-ink-soft">
       {label}
     </div>
   )

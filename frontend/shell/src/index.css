@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* aLinha design tokens, fonts and base styles (colours, focus ring, reduced motion). */
+@import "@alinha/ui/theme.css";
 /* Plugins live outside the shell: tell Tailwind to scan them too. */
 @source "../../../plugins";
 @source "../../packages/ui/src";
