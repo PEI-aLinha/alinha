@@ -13,9 +13,12 @@ import { useHost } from './index'
 /**
  * Reads from /api with the session and the current organization (`host.api`), cached by TanStack Query.
  *
- * The shell gives each organization its own query cache, so keys do not need the tenant. Start them with the
- * plugin id (`['risk-assets', 'assets']`) so plugins never share an entry. Errors are ApiError; show them with
- * `errorMessage(query.error)`. Types for core endpoints come from `@alinha/api-client` (`ApiResponse<'/api/me'>`).
+ * The path is added to the end of `queryKey`, so `/risk-assets/assets/1` and `/risk-assets/assets/2` never share a
+ * cache entry even with the same key. Start keys with the plugin id (`['risk-assets', 'assets']`) so plugins never
+ * share one, and invalidate by that prefix. The shell gives each organization its own query cache, so keys do not
+ * need the tenant. Errors are ApiError or NetworkError; show them with `errorMessage(query.error)`. Types for core
+ * endpoints come from `@alinha/api-client`; `host.api` paths leave out `/api`, which the shell adds:
+ * `useApiQuery<ApiResponse<'/api/me'>>(['core', 'me'], '/me')`.
  *
  * ```ts
  * const assets = useApiQuery<Asset[]>(['risk-assets', 'assets'], '/risk-assets/assets')
@@ -29,7 +32,7 @@ export function useApiQuery<T>(
   const { api } = useHost()
   return useQuery<T, Error, T, QueryKey>({
     ...options,
-    queryKey,
+    queryKey: [...queryKey, path],
     queryFn: ({ signal }) => api<T>(path, { signal }),
   })
 }

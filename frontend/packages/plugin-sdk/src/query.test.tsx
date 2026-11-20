@@ -29,6 +29,22 @@ describe('useApiQuery', () => {
     expect(api).toHaveBeenCalledWith('/p/items', { signal: expect.any(AbortSignal) })
   })
 
+  it('adds the path to the key, so records with the same key never share a cache entry', async () => {
+    const api = vi.fn(async (path: string) => ({ path }))
+    const { queryClient, wrapper } = setup(api as PluginHost['api'])
+    const { result, rerender } = renderHook(({ id }) => useApiQuery<{ path: string }>(['p', 'item'], `/p/items/${id}`), {
+      wrapper,
+      initialProps: { id: 1 },
+    })
+    await waitFor(() => expect(result.current.data).toEqual({ path: '/p/items/1' }))
+
+    rerender({ id: 2 })
+
+    expect(result.current.data).toBeUndefined()
+    await waitFor(() => expect(result.current.data).toEqual({ path: '/p/items/2' }))
+    expect(queryClient.getQueryData(['p', 'item', '/p/items/1'])).toEqual({ path: '/p/items/1' })
+  })
+
   it('exposes the ApiError', async () => {
     const { wrapper } = setup(vi.fn().mockRejectedValue(new ApiError(403, '/p/items')) as PluginHost['api'])
     const { result } = renderHook(() => useApiQuery(['p', 'items'], '/p/items'), { wrapper })
