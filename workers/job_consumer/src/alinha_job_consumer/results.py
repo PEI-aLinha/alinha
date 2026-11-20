@@ -10,6 +10,8 @@ import jsonschema
 from . import contracts
 
 RESULTS_STREAM = "alinha:jobs:results"
+# The core dead-letters larger `result` fields without reading them (docs/jobs.md, results.max-result-bytes).
+MAX_RESULT_BYTES = 1048576
 
 
 class InvalidResult(ValueError):
@@ -59,6 +61,12 @@ def publish(redis: Any, result: dict[str, Any]) -> None:
     """Validate then XADD. Raises `InvalidResult` before writing, or the Redis error."""
     try:
         contracts.validate_result(result)
+        payload = json.dumps(result, allow_nan=False)
     except jsonschema.ValidationError as error:
         raise InvalidResult(error.message) from error
-    redis.xadd(RESULTS_STREAM, {"result": json.dumps(result)})
+    except (TypeError, ValueError) as error:
+        raise InvalidResult("result is not JSON-serialisable") from error
+    if len(payload.encode()) > MAX_RESULT_BYTES:
+        raise InvalidResult(f"result is larger than {MAX_RESULT_BYTES} bytes")
+    redis.xadd(RESULTS_STREAM, {"result": payload})
+

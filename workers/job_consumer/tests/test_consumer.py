@@ -1,5 +1,6 @@
 import json
 import uuid
+from datetime import datetime, timezone
 
 import fakeredis
 import pytest
@@ -155,6 +156,25 @@ def test_invalid_envelope_is_not_retried(redis):
 def test_invalid_collector_output_becomes_a_failure(redis):
     add_job(redis, envelope())
     run_once(consumer(redis, lambda _: "not an object"))
+
+    [result] = published(redis)
+    assert result["status"] == "failed"
+    assert result["error"]["code"] == "invalid_result"
+    assert pending(redis) == 0
+
+
+@pytest.mark.parametrize(
+    "output",
+    [
+        {"at": datetime.now(timezone.utc)},
+        {"score": float("nan")},
+        {"blob": "x" * (results.MAX_RESULT_BYTES + 1)},
+    ],
+    ids=["datetime", "nan", "oversized"],
+)
+def test_unencodable_collector_output_becomes_a_failure(redis, output):
+    add_job(redis, envelope())
+    run_once(consumer(redis, lambda _: output))
 
     [result] = published(redis)
     assert result["status"] == "failed"
