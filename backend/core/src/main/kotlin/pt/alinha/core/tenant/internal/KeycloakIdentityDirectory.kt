@@ -89,7 +89,8 @@ class KeycloakIdentityDirectory internal constructor(
         val deadline = Deadline(ASSIGN_DEADLINE, "assignment")
         fun <T> step(call: () -> T): T = deadline.step(call)
         val token = step { token() }
-        step { setTenantAttribute(token, subject) { it + (TENANT_CLAIM to listOf(tenantId.value.toString())) } }
+        val user = step { readUser(token, subject) }
+        step { writeUser(token, subject, user, attributesOf(user) + (TENANT_CLAIM to listOf(tenantId.value.toString()))) }
         val mapped = step { mappedRealmRoles(token, subject) }
         val toMap = buildList {
             if (mapped.none { it.name == RESPONSIBLE_ROLE }) {
@@ -128,7 +129,10 @@ class KeycloakIdentityDirectory internal constructor(
         step { writeUser(token, subject, user, attributesOf(user) - TENANT_CLAIM) }
     }
 
-    /** Runs each call only while [budget] has not run out, so the worst case is the budget plus one call. */
+    /**
+     * Runs each call only while [budget] has not run out, so the worst case is the budget plus one call. A step
+     * must make exactly one HTTP call, or that bound (and `BUSY_RETRY_AFTER`, which relies on it) no longer holds.
+     */
     private inner class Deadline(private val budget: Duration, private val what: String) {
         private val at = clock.instant().plus(budget)
 
@@ -170,15 +174,6 @@ class KeycloakIdentityDirectory internal constructor(
         val renewAt = clock.instant().plusSeconds(response.expiresIn).minus(TOKEN_MARGIN)
         cached = CachedToken(response.accessToken, renewAt)
         return response.accessToken
-    }
-
-    private fun setTenantAttribute(
-        token: String,
-        subject: String,
-        change: (Map<String, List<String>>) -> Map<String, List<String>>,
-    ) {
-        val user = readUser(token, subject)
-        writeUser(token, subject, user, change(attributesOf(user)))
     }
 
     private fun readUser(token: String, subject: String): Map<String, Any?> = checkNotNull(
