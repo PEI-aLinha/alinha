@@ -1,12 +1,15 @@
 import json
+import threading
+import time
 import uuid
 from datetime import datetime, timezone
 
 import fakeredis
 import pytest
-from redis.exceptions import ConnectionError
+from redis.exceptions import ConnectionError, ResponseError
 
 from alinha_job_consumer import collectors, results
+from alinha_job_consumer import consumer as consumer_module
 from alinha_job_consumer.consumer import Config, Consumer, _parse_job_types, stream_name
 
 STREAM = stream_name("evidence.collect", 1)
@@ -320,3 +323,116 @@ def test_a_non_canonical_job_id_is_dropped(redis, form):
 
     assert published(redis) == []
     assert pending(redis) == 0
+
+
+def test_a_collector_past_its_deadline_is_a_retryable_failure_and_the_worker_goes_on(redis):
+    release = threading.Event()
+    calls = []
+
+    def collect(value):
+        calls.append(value)
+        if len(calls) == 1:
+            release.wait(5)  # hangs until the test ends
+        return {"items": []}
+
+    worker = Consumer(redis, Config(name="test", collector_timeout_s=0.05), collector_lookup=lambda _: collect)
+    add_job(redis, envelope())
+    add_job(redis, envelope())
+    try:
+        run_once(worker)
+    finally:
+        release.set()
+
+    first, second = published(redis)
+    assert first["status"] == "failed"
+    assert first["retryable"] is True
+    assert first["error"]["code"] == "transient_error"
+    assert second["status"] == "completed"
+    assert pending(redis) == 0
+
+
+def test_a_batch_entry_waiting_its_turn_is_not_claimed_by_another_worker(redis):
+    # Each run takes 0.1 s, under the 0.25 s claim idle time; the third entry waits 0.2 s for its turn.
+    runs = []
+    other = Consumer(
+        redis,
+        Config(name="other", claim_idle_ms=250, collector_timeout_s=1),
+        collector_lookup=lambda _: lambda value: runs.append("other") or {"items": []},
+    )
+
+    def slow(value):
+        time.sleep(0.1)
+        runs.append("test")
+        other.reclaim()  # another worker looks for idle entries while this one is busy
+        return {"items": []}
+
+    worker = Consumer(
+        redis, Config(name="test", claim_idle_ms=250, collector_timeout_s=1), collector_lookup=lambda _: slow
+    )
+    for _ in range(3):
+        add_job(redis, envelope())
+    run_once(worker)
+
+    assert runs == ["test", "test", "test"]
+    assert len(published(redis)) == 3
+    assert pending(redis) == 0
+
+
+def test_an_entry_acked_meanwhile_is_skipped(redis):
+    calls = []
+
+    def collect(value):
+        calls.append(value)
+        redis.xack(STREAM, "alinha-workers", second_id)
+        return {"items": []}
+
+    add_job(redis, envelope())
+    second_id = add_job(redis, envelope())
+    run_once(consumer(redis, collect))
+
+    assert len(calls) == 1
+
+
+def test_collector_timeout_must_be_below_the_claim_idle_time(monkeypatch):
+    monkeypatch.setenv("WORKER_CLAIM_IDLE_MS", "1000")
+    monkeypatch.setenv("WORKER_COLLECTOR_TIMEOUT_S", "1")
+    with pytest.raises(ValueError, match="WORKER_COLLECTOR_TIMEOUT_S"):
+        Config.from_env()
+
+    monkeypatch.setenv("WORKER_COLLECTOR_TIMEOUT_S", "0.5")
+    assert Config.from_env().collector_timeout_s == 0.5
+
+
+def test_unknown_provider_message_truncates_the_provider(redis):
+    add_job(redis, envelope(provider="p" * 500))
+    run_once(consumer(redis, None))
+
+    [result] = published(redis)
+    assert result["error"]["message"] == "no collector for " + "p" * 100
+
+
+def test_run_recreates_lost_groups_and_retries_after_redis_errors(redis, monkeypatch):
+    worker = consumer(redis, lambda _: {"items": []})
+    sleeps = []
+    monkeypatch.setattr(consumer_module.time, "sleep", sleeps.append)
+    errors = iter(
+        [
+            ResponseError("NOGROUP No such key or consumer group"),
+            ResponseError("ERR something else"),
+            ConnectionError("redis down"),
+            KeyboardInterrupt(),
+        ]
+    )
+
+    def consume_once():
+        error = next(errors)
+        if "NOGROUP" in str(error):
+            redis.delete(STREAM)  # the stream and its group are gone
+        raise error
+
+    worker.consume_once = consume_once
+    with pytest.raises(KeyboardInterrupt):
+        worker.run()
+
+    assert [group["name"] for group in redis.xinfo_groups(STREAM)] == ["alinha-workers"]
+    assert sleeps == [1, 1]

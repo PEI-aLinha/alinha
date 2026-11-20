@@ -8,6 +8,7 @@ import re
 import socket
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
@@ -55,10 +56,11 @@ class Config:
     claim_idle_ms: int = 60000
     dedupe_ttl_s: int = 86400
     max_deliveries: int = 3
+    collector_timeout_s: float = 50.0
 
     @classmethod
     def from_env(cls) -> "Config":
-        return cls(
+        config = cls(
             redis_url=os.environ.get("REDIS_URL", "redis://localhost:6379/0"),
             job_types=_parse_job_types(os.environ.get("WORKER_JOB_TYPES", "evidence.collect:1")),
             group=os.environ.get("WORKER_GROUP", "alinha-workers"),
@@ -68,7 +70,12 @@ class Config:
             claim_idle_ms=_env_int("WORKER_CLAIM_IDLE_MS", 60000),
             dedupe_ttl_s=_env_int("WORKER_DEDUPE_TTL_S", 86400),
             max_deliveries=_env_int("WORKER_MAX_DELIVERIES", 3),
+            collector_timeout_s=float(os.environ.get("WORKER_COLLECTOR_TIMEOUT_S", 50)),
         )
+        if config.collector_timeout_s * 1000 >= config.claim_idle_ms:
+            # A run longer than the claim idle time gets claimed and run again by another worker.
+            raise ValueError("WORKER_COLLECTOR_TIMEOUT_S must be below WORKER_CLAIM_IDLE_MS")
+        return config
 
     @property
     def streams(self) -> dict[str, tuple[str, int]]:
@@ -86,6 +93,7 @@ class Consumer:
         self.config = config or Config.from_env()
         self._streams = self.config.streams
         contracts.load(self.config.job_types)
+        collectors.registered()  # scan entry points now, so duplicate provider ids are logged at startup
         self._collector_lookup = collector_lookup
         self._last_claim = 0.0
 
@@ -123,8 +131,7 @@ class Consumer:
             block=self.config.block_ms,
         )
         for stream, entries in response or []:
-            for entry_id, fields in entries:
-                self._handle_safely(stream, entry_id, fields)
+            self._handle_batch(stream, entries)
 
     def reclaim(self) -> None:
         """Take over entries left pending by a worker that died."""
@@ -140,10 +147,22 @@ class Consumer:
                     start_id=cursor,
                     count=self.config.batch,
                 )
-                for entry_id, fields in entries:
-                    self._handle_safely(stream, entry_id, fields, self._deliveries(stream, entry_id))
+                self._handle_batch(stream, entries, reclaimed=True)
                 if cursor == "0-0":
                     break
+
+    def _handle_batch(self, stream: str, entries: list, reclaimed: bool = False) -> None:
+        ids = [entry_id for entry_id, _ in entries]
+        for index, (entry_id, fields) in enumerate(entries):
+            # The whole batch went pending at once: reset the idle time of the entries not run yet, so none of
+            # them reaches claim_idle_ms and gets claimed by another worker while this one is busy.
+            still_ours = self.redis.xclaim(
+                stream, self.config.group, self.config.name, min_idle_time=0, message_ids=ids[index:], justid=True
+            )
+            if entry_id not in still_ours:
+                continue  # ACKed or deleted meanwhile
+            deliveries = self._deliveries(stream, entry_id) if reclaimed else 1
+            self._handle_safely(stream, entry_id, fields, deliveries)
 
     def _deliveries(self, stream: str, entry_id: str) -> int:
         pending = self.redis.xpending_range(stream, self.config.group, min=entry_id, max=entry_id, count=1)
@@ -206,9 +225,14 @@ class Consumer:
             collector = self._collector_lookup(envelope["provider"])
             if collector is None:
                 return results.failed(
-                    envelope, type_, version, attempt, "unknown_provider", f"no collector for {envelope['provider']}"
+                    envelope,
+                    type_,
+                    version,
+                    attempt,
+                    "unknown_provider",
+                    f"no collector for {envelope['provider'][:100]}",
                 )
-            output = collector(envelope)
+            output = self._call_with_timeout(collector, envelope)
         except collectors.TransientError as error:
             log.warning("collector for %s transient failure: %s", envelope["provider"], error)
             return results.failed(
@@ -218,6 +242,17 @@ class Consumer:
             log.exception("collector for %s failed", envelope["provider"])
             return results.failed(envelope, type_, version, attempt, "collector_error", SAFE_COLLECTOR_MESSAGE)
         return results.completed(envelope, type_, version, attempt, output)
+
+    def _call_with_timeout(self, collector: collectors.Collector, envelope: dict[str, Any]) -> dict[str, Any]:
+        # shortcut: a timed-out thread cannot be killed and keeps running in the background; move collectors to a
+        # subprocess if those leaks matter.
+        executor = ThreadPoolExecutor(max_workers=1)
+        try:
+            return executor.submit(collector, envelope).result(timeout=self.config.collector_timeout_s)
+        except FutureTimeout:
+            raise collectors.TransientError(f"no answer within {self.config.collector_timeout_s}s") from None
+        finally:
+            executor.shutdown(wait=False)
 
     def _publish(
         self, outcome: dict[str, Any], envelope: dict[str, Any], type_: str, version: int, attempt: int
