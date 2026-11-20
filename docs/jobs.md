@@ -31,8 +31,9 @@ fun startCollection(...) {
   from you) and `requestedAt`, then validates the whole envelope against
   `contracts/jobs/<type with dots as dashes>.v<version>.schema.json`. An invalid envelope throws
   `IllegalArgumentException` before anything is written. It does not mark your transaction rollback-only: let it
-  propagate to roll back, or catch it and your own write still commits. Because dots become dashes, `a-b.c` and `a.b-c` would share one contract file: never
-  register two types that differ only there.
+  propagate to roll back, or catch it and your own write still commits. Because dots become dashes, `a-b.c` and
+  `a.b-c` would share one contract file, so the contract must set `properties.type.const` to its type; a dispatch
+  whose type does not match it throws.
 - `idempotencyKey`: the same `(tenant, type, requestedBy, key)` returns the **existing** jobId and writes nothing.
   Keys are per plugin: another plugin that uses the same key gets its own job. The payload of
   the second call is ignored, but it is still validated first (an invalid one throws). The contract `version` is not

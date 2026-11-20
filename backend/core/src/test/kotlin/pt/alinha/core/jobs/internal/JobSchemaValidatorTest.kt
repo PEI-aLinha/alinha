@@ -23,6 +23,16 @@ class JobSchemaValidatorTest {
     }
 
     @Test
+    fun `a type whose name maps to another type's contract is refused`() {
+        val e = assertThrows<IllegalArgumentException> {
+            validator.validateEnvelope("evidence-collect", 1, envelope() + ("type" to "evidence-collect"))
+        }
+        assertThat(e.message).contains("is not the contract of evidence-collect")
+        assertThrows<IllegalArgumentException> { validator.validateEnvelope("evidence.collect", 1, envelope() - "provider") }
+        assertDoesNotThrow { validator.validateEnvelope("evidence.collect", 1, envelope()) }
+    }
+
+    @Test
     fun `accepts a valid envelope`() {
         assertDoesNotThrow { validator.validate("evidence-collect.v1", envelope()) }
     }

@@ -36,7 +36,7 @@ class OutboxJobDispatcher(
             "tenantId" to tenantId.toString(),
             "requestedAt" to Instant.now().toString(),
         )
-        validator.validate(JobSchemaValidator.envelopeSchema(request.type, request.version), envelope)
+        validator.validateEnvelope(request.type, request.version, envelope)
 
         val inserted = outbox.insert(
             NewOutboxJob(

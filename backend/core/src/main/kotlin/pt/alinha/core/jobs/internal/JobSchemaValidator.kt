@@ -29,6 +29,23 @@ class JobSchemaValidator(private val json: JsonMapper) {
         require(errors.isEmpty()) { "$schemaName: ${errors.joinToString("; ", transform = ::describe)}" }
     }
 
+    /**
+     * [validate] against the contract of [type] v[version]. Dots become dashes in the file name, so `a-b.c` and
+     * `a.b-c` share one file: the contract must also pin `properties.type.const` to [type], or no envelope matches.
+     */
+    fun validateEnvelope(type: String, version: Int, envelope: Map<String, Any?>) {
+        val name = envelopeSchema(type, version)
+        require(declaredTypes.computeIfAbsent(name, ::declaredType) == type) {
+            "$CONTRACTS/$name.schema.json is not the contract of $type: its properties.type.const must be \"$type\""
+        }
+        validate(name, envelope)
+    }
+
+    private val declaredTypes = ConcurrentHashMap<String, String>()
+
+    private fun declaredType(name: String): String =
+        contract(name).inputStream.use { json.readTree(it) }.at("/properties/type/const").asString("")
+
     /** A `required` property name comes from the schema, so it is safe to show; any other name may come from the payload. */
     private fun describe(error: Error): String {
         val location = error.instanceLocation.toString().ifEmpty { "/" }
@@ -37,9 +54,11 @@ class JobSchemaValidator(private val json: JsonMapper) {
     }
 
     private fun schema(name: String): Schema = schemas.computeIfAbsent(name) {
-        val resource = ClassPathResource("$CONTRACTS/$name.schema.json")
-        require(resource.exists()) { "No job contract $CONTRACTS/$name.schema.json" }
-        resource.inputStream.use(registry::getSchema)
+        contract(name).inputStream.use(registry::getSchema)
+    }
+
+    private fun contract(name: String) = ClassPathResource("$CONTRACTS/$name.schema.json").also {
+        require(it.exists()) { "No job contract $CONTRACTS/$name.schema.json" }
     }
 
     companion object {
