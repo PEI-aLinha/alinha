@@ -17,6 +17,7 @@ import pt.alinha.core.compliance.Nis2Classification.IMPORTANT
 import pt.alinha.core.compliance.Nis2Classification.NOT_COVERED
 import pt.alinha.core.compliance.Nis2Classification.TO_BE_ASSESSED
 import pt.alinha.core.compliance.Nis2EntityType.CHEMICALS
+import pt.alinha.core.compliance.Nis2EntityType.CREDIT_INSTITUTION
 import pt.alinha.core.compliance.Nis2EntityType.DNS_SERVICE_PROVIDER
 import pt.alinha.core.compliance.Nis2EntityType.DRINKING_WATER
 import pt.alinha.core.compliance.Nis2EntityType.HEALTHCARE_PROVIDER
@@ -138,6 +139,27 @@ class ApplicabilityRulesTest {
             assertEquals(IMPORTANT, classify(SMALL_SIZE, CHEMICALS, TRUST_SERVICE_PROVIDER))
         }
 
+        /** RNF05: Jackson builds a HashSet, whose order may differ between runs. */
+        @Test
+        fun `the order of the entity types does not change the result`() {
+            fun withTypes(types: Set<Nis2EntityType>) = assess(MEDIUM_SIZE, Nis2Answers(entityTypes = types))
+
+            val expected = withTypes(linkedSetOf(HEALTHCARE_PROVIDER, CREDIT_INSTITUTION))
+            assertEquals(expected, withTypes(linkedSetOf(CREDIT_INSTITUTION, HEALTHCARE_PROVIDER)))
+            assertEquals(expected, withTypes(hashSetOf(CREDIT_INSTITUTION, HEALTHCARE_PROVIDER)))
+        }
+
+        /** FR03: the classification comes from the most demanding type, but every type is explained. */
+        @Test
+        fun `every entity type keeps its finding, most demanding first`() {
+            val ids = assess(LARGE_SIZE, Nis2Answers(entityTypes = linkedSetOf(CHEMICALS, HEALTHCARE_PROVIDER)))
+                .findingIds(ApplicabilityRules.NIS2)
+            assertEquals(
+                listOf("nis2.size.large", "nis2.essential.large-annex-i", "nis2.important.medium-or-annex-ii"),
+                ids,
+            )
+        }
+
         @Test
         fun `a critical entity is essential at any size, even without an annex type`() {
             val result = assess(MICRO_SIZE, Nis2Answers(criticalEntity = true))
@@ -238,6 +260,19 @@ class ApplicabilityRulesTest {
                 assertTrue("gdpr.records-required" in result.findingIds(ApplicabilityRules.GDPR))
             }
             assertTrue("gdpr.records-exempt" in assess(SizeData(249, 1 * M)).findingIds(ApplicabilityRules.GDPR))
+        }
+
+        /** A small organization that needs a DPO is never told it is exempt from the records (art. 30.º n.º 5). */
+        @Test
+        fun `large-scale monitoring or special data also require the records`() {
+            val answers = listOf(
+                GdprAnswers(processesPersonalData = true, largeScaleMonitoring = true),
+                GdprAnswers(processesPersonalData = true, largeScaleSpecialData = true),
+            )
+            for (gdpr in answers) {
+                val ids = assess(SMALL_SIZE, gdpr = gdpr).findingIds(ApplicabilityRules.GDPR)
+                assertEquals(listOf("gdpr.applies", "gdpr.records-required", "gdpr.dpo-required"), ids)
+            }
         }
 
         @Test

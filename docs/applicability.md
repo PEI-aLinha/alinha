@@ -36,8 +36,8 @@ annex II, 5.b to 5.f, which the annex itself defines by NACE Rev. 2 division (26
 
 | Situation | Classification | Basis |
 |---|---|---|
-| Public body or higher-education institution | to be assessed (consultant) | art. 3.º n.os 3 to 6, art. 7.º |
-| Critical entity (Directive (EU) 2022/2557), any size | essential | art. 3.º n.º 5, art. 6.º n.º 1 e) |
+| Critical entity (Directive (EU) 2022/2557), any size, public ones included | essential | art. 3.º n.º 5, art. 6.º n.º 1 e) |
+| Public body or higher-education institution, not a critical entity | to be assessed (consultant) | art. 3.º n.os 3 to 6, art. 7.º |
 | No annex type | not covered | art. 3.º n.º 1 |
 | Qualified trust service provider, TLD registry, DNS provider, any size | essential | art. 3.º n.º 2 a), art. 6.º n.º 1 b) |
 | Electronic communications, medium or large | essential | art. 6.º n.º 1 a) and c) |
@@ -47,7 +47,8 @@ annex II, 5.b to 5.f, which the annex itself defines by NACE Rev. 2 division (26
 | Annex I medium, or annex II medium or large | important | art. 3.º n.º 1, art. 6.º n.º 2 |
 | Annex type, micro or small | not covered | art. 3.º n.º 1 a) |
 
-- With several types, the most demanding classification wins (art. 9.º).
+- With several types, the most demanding classification wins (art. 9.º). Every type keeps its finding, most
+  demanding first and then in annex order, so the result never depends on the order the types arrived in (RNF05).
 - **Significant impact** (sole provider of an essential service, serious effect on public safety or health, systemic
   or national/regional importance) with an annex type and not already essential: `cncsMayQualify`, because the
   CNCS may still cover the organization or raise it to essential (art. 3.º n.º 2 b) to e), art. 6.º n.º 1 f) and
@@ -68,7 +69,7 @@ Contradictory answers are rejected with `IllegalArgumentException`, never answer
 |---|---|---|
 | No personal data | does not apply | art. 2.º n.º 1 |
 | Processes personal data | applies | art. 2.º n.º 1, art. 3.º n.º 1, art. 4.º 1) and 2) |
-| ≥ 250 employees, or regular/risky processing, or special or criminal data | records of processing required | art. 30.º n.os 1 and 5 |
+| ≥ 250 employees, or regular/risky processing, or special or criminal data, or large-scale monitoring or special data | records of processing required | art. 30.º n.os 1 and 5 |
 | Otherwise | records exempt | art. 30.º n.º 5 |
 | Public body, or core activity of large-scale monitoring or large-scale special data | DPO required | art. 37.º n.º 1 |
 

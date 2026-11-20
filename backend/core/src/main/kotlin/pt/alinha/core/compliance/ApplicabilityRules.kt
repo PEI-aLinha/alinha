@@ -70,28 +70,37 @@ class ApplicabilityRules {
             return Nis2Outcome(TO_BE_ASSESSED, true, FrameworkApplicability(NIS2, Applies.REVIEW, findings))
         }
 
-        val outcome = when {
-            answers.criticalEntity -> TypeOutcome(
-                ESSENTIAL,
-                Finding(
-                    "nis2.critical-entity", "RJC, art. 3.º, n.º 5, e art. 6.º, n.º 1, alínea e)",
-                    "Foi identificada como entidade crítica, por isso é entidade essencial, seja qual for a dimensão.",
+        val outcomes = when {
+            answers.criticalEntity -> listOf(
+                TypeOutcome(
+                    ESSENTIAL,
+                    Finding(
+                        "nis2.critical-entity", "RJC, art. 3.º, n.º 5, e art. 6.º, n.º 1, alínea e)",
+                        "Foi identificada como entidade crítica, por isso é entidade essencial, seja qual for a dimensão.",
+                    ),
                 ),
             )
-            answers.entityTypes.isEmpty() -> TypeOutcome(
-                NOT_COVERED,
-                Finding(
-                    "nis2.no-annex-type", "RJC, art. 3.º, n.º 1, e anexos I e II",
-                    "A atividade indicada não consta dos setores abrangidos pelo regime de cibersegurança.",
+            answers.entityTypes.isEmpty() -> listOf(
+                TypeOutcome(
+                    NOT_COVERED,
+                    Finding(
+                        "nis2.no-annex-type", "RJC, art. 3.º, n.º 1, e anexos I e II",
+                        "A atividade indicada não consta dos setores abrangidos pelo regime de cibersegurança.",
+                    ),
                 ),
             )
-            else -> answers.entityTypes.map { classify(it, size) }.maxBy { rank(it.classification) }
+            // Annex order, then most demanding first (stable sort): the same input always gives the same findings in
+            // the same order, whatever Set implementation it arrived in (RNF05). Every type keeps its finding (FR03).
+            else -> answers.entityTypes.sortedBy { it.ordinal }.map { classify(it, size) }
+                .sortedByDescending { rank(it.classification) }
         }
-        findings += outcome.finding
+        // The most demanding classification wins (art. 9.º).
+        val classification = outcomes.first().classification
+        findings += outcomes.map { it.finding }
 
         // The CNCS may still cover a small entity, or raise an important one to essential (art. 3.º n.º 2 b-e).
         val cncsMayQualify = answers.significantImpact && answers.entityTypes.isNotEmpty() &&
-            outcome.classification != ESSENTIAL
+            classification != ESSENTIAL
         if (cncsMayQualify) {
             findings += Finding(
                 "nis2.cncs-may-qualify", "RJC, art. 3.º, n.º 2, alíneas b) a e), e art. 6.º, n.º 1, alínea f), e n.º 3",
@@ -104,7 +113,7 @@ class ApplicabilityRules {
         // Art. 3.º n.º 2 covers only annex types, but an organization claiming significant impact with no type picked
         // has probably not found its type in the list: a consultant checks instead of answering "not covered".
         val checkAnnexType = answers.significantImpact && answers.entityTypes.isEmpty() &&
-            outcome.classification == NOT_COVERED
+            classification == NOT_COVERED
         if (checkAnnexType) {
             findings += Finding(
                 "nis2.check-annex-type", "RJC, art. 3.º, n.º 2, e anexos I e II",
@@ -116,11 +125,11 @@ class ApplicabilityRules {
         }
 
         val applies = when {
-            outcome.classification != NOT_COVERED -> Applies.YES
+            classification != NOT_COVERED -> Applies.YES
             cncsMayQualify || checkAnnexType -> Applies.REVIEW
             else -> Applies.NO
         }
-        return Nis2Outcome(outcome.classification, cncsMayQualify, FrameworkApplicability(NIS2, applies, findings))
+        return Nis2Outcome(classification, cncsMayQualify, FrameworkApplicability(NIS2, applies, findings))
     }
 
     private fun classify(type: Nis2EntityType, size: CompanySize): TypeOutcome {
@@ -204,7 +213,10 @@ class ApplicabilityRules {
                 "Trata dados de pessoas (clientes, trabalhadores ou contactos), por isso o RGPD aplica-se.",
             ),
         )
-        findings += if (input.size.employees >= 250 || answers.regularOrRiskyProcessing || answers.specialOrCriminalData) {
+        // Art. 30.º n.º 5: large-scale monitoring is never occasional, and large-scale special data is special data.
+        val recordsRequired = input.size.employees >= 250 || answers.regularOrRiskyProcessing ||
+            answers.specialOrCriminalData || answers.largeScaleMonitoring || answers.largeScaleSpecialData
+        findings += if (recordsRequired) {
             Finding(
                 "gdpr.records-required", "RGPD, art. 30.º, n.os 1 e 5",
                 "Tem de manter um registo das atividades de tratamento: que dados trata, para quê e por quanto tempo.",
@@ -280,7 +292,7 @@ class ApplicabilityRules {
                 review = true,
             )
         }
-        // The AI Act applies either way; only the high-risk finding needs a consultant.
+        // The AI Act applies either way; findings marked review (high risk, transparency) need a consultant.
         return FrameworkApplicability(AI_ACT, Applies.YES, findings)
     }
 
