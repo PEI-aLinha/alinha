@@ -12,20 +12,20 @@ const a = definePlugin({
   name: 'A',
   routes: {
     client: [
-      { path: 'livre', Component: Page },
-      { path: 'riscos', handle: { resource: 'risk' }, Component: Page },
-      { path: 'editar', handle: { resource: 'risk', action: 'edit' }, element: <Page /> },
-      { path: 'grupo', children: [{ path: 'interno', handle: { resource: 'asset' }, Component: Page }] },
+      { path: 'open', Component: Page },
+      { path: 'risks', handle: { resource: 'risk' }, Component: Page },
+      { path: 'edit', handle: { resource: 'risk', action: 'edit' }, element: <Page /> },
+      { path: 'group', children: [{ path: 'inner', handle: { resource: 'asset' }, Component: Page }] },
     ],
-    consultant: [{ path: 'painel', Component: Page }],
+    consultant: [{ path: 'dashboard', Component: Page }],
   },
   nav: [
     { label: 'Zeta', path: 'z', area: 'client' },
     { label: 'Alfa', path: 'a', area: 'client' },
     { label: 'Primeiro', path: 'p', area: 'client', order: 1 },
-    { label: 'Riscos', path: 'riscos', area: 'client', resource: 'risk' },
-    { label: 'Editar riscos', path: 'editar', area: 'client', resource: 'risk', action: 'edit', order: 200 },
-    { label: 'Painel', path: 'painel', area: 'consultant' },
+    { label: 'Riscos', path: 'risks', area: 'client', resource: 'risk' },
+    { label: 'Editar riscos', path: 'edit', area: 'client', resource: 'risk', action: 'edit', order: 200 },
+    { label: 'Painel', path: 'dashboard', area: 'consultant' },
   ],
 })
 const b: FrontendPlugin = { id: 'b', name: 'B', routes: {} }
@@ -39,8 +39,8 @@ describe('pluginRoutes', () => {
   const routes = pluginRoutes([a, b], 'client')
 
   it('takes only the routes of the area', () => {
-    expect(routes.map((r) => inner(r).path)).toEqual(['livre', 'riscos', 'editar', 'grupo'])
-    expect(pluginRoutes([a, b], 'consultant').map((r) => inner(r).path)).toEqual(['painel'])
+    expect(routes.map((r) => inner(r).path)).toEqual(['open', 'risks', 'edit', 'group'])
+    expect(pluginRoutes([a, b], 'consultant').map((r) => inner(r).path)).toEqual(['dashboard'])
   })
 
   it('leaves routes without a resource untouched', () => {
