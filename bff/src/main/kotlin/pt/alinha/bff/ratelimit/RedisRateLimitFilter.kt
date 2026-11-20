@@ -29,8 +29,9 @@ class RedisRateLimitFilter(
         return exchange.getPrincipal<Authentication>()
             // `sub` is stable; the OIDC name is preferred_username, which a person can change.
             .map { "user:${(it.principal as? OidcUser)?.subject ?: it.name}" }
-            .defaultIfEmpty("ip:${exchange.request.remoteAddress?.address?.hostAddress ?: "unknown"}")
-            .flatMap(guard::retryAfterSeconds)
+            .flatMap { guard.retryAfterSeconds(it, props.rateLimit.requests) }
+            // Security (order -100) already answered 401 to anonymous calls, so there is nothing to count here.
+            .defaultIfEmpty(0L)
             .flatMap { wait -> if (wait == 0L) chain.filter(exchange) else guard.tooManyRequests(exchange, wait) }
     }
 }

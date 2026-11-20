@@ -21,14 +21,14 @@ class RateLimitGuard(
     private val log = LoggerFactory.getLogger(javaClass)
 
     /**
-     * Seconds the caller must wait, rounded up: 0 when the request may proceed. Fails open (0) when Redis is
+     * Seconds the caller must wait after [limit] requests in the window, rounded up: 0 when the request may proceed. Fails open (0) when Redis is
      * unavailable.
      */
-    fun retryAfterSeconds(subject: String): Mono<Long> =
+    fun retryAfterSeconds(subject: String, limit: Long): Mono<Long> =
         redis.execute(
             CHECK,
             listOf("alinha:bff:rate:$subject"),
-            listOf(props.rateLimit.window.toMillis().toString(), props.rateLimit.requests.toString()),
+            listOf(props.rateLimit.window.toMillis().toString(), limit.toString()),
         ).next()
             .map { waitMillis -> if (waitMillis <= 0) 0L else (waitMillis + 999) / 1000 }
             .onErrorResume {

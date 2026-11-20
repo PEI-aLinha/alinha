@@ -106,6 +106,17 @@ class RedisRateLimitFilterTest {
     }
 
     @Test
+    fun `a call without a principal is not counted here`() {
+        redisAnswers(1_000)
+        val exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/api/me").build())
+
+        StepVerifier.create(filter.filter(exchange, chain)).verifyComplete()
+
+        verify(chain).filter(exchange)
+        verify(redis, never()).execute(Mockito.any<RedisScript<Long>>(), Mockito.anyList<String>(), Mockito.anyList<Any>())
+    }
+
+    @Test
     fun `fails open when Redis is unavailable`() {
         Mockito.`when`(
             redis.execute(

@@ -27,7 +27,7 @@ class IpRateLimitFilterTest {
     @Test
     fun `limits the anonymous login endpoints by address`() {
         val exchange = exchange("/login/oauth2/code/keycloak")
-        Mockito.`when`(guard.retryAfterSeconds("ip:10.0.0.7")).thenReturn(Mono.just(0L))
+        Mockito.`when`(guard.retryAfterSeconds("ip:10.0.0.7", 120)).thenReturn(Mono.just(0L))
         Mockito.`when`(chain.filter(Mockito.any())).thenReturn(Mono.empty())
 
         StepVerifier.create(filter.filter(exchange, chain)).verifyComplete()
@@ -38,7 +38,7 @@ class IpRateLimitFilterTest {
     @Test
     fun `answers 429 when the address is over the limit`() {
         val exchange = exchange("/oauth2/authorization/keycloak")
-        Mockito.`when`(guard.retryAfterSeconds("ip:10.0.0.7")).thenReturn(Mono.just(42L))
+        Mockito.`when`(guard.retryAfterSeconds("ip:10.0.0.7", 120)).thenReturn(Mono.just(42L))
         Mockito.`when`(guard.tooManyRequests(exchange, 42L)).thenReturn(Mono.empty())
 
         StepVerifier.create(filter.filter(exchange, chain)).verifyComplete()
@@ -50,7 +50,7 @@ class IpRateLimitFilterTest {
     @Test
     fun `limits an anonymous API call by address`() {
         val exchange = exchange("/api/me")
-        Mockito.`when`(guard.retryAfterSeconds("ip:10.0.0.7")).thenReturn(Mono.just(0L))
+        Mockito.`when`(guard.retryAfterSeconds("ip:10.0.0.7", 120)).thenReturn(Mono.just(0L))
         Mockito.`when`(chain.filter(Mockito.any())).thenReturn(Mono.empty())
 
         StepVerifier.create(filter.filter(exchange, chain)).verifyComplete()
@@ -68,12 +68,12 @@ class IpRateLimitFilterTest {
                 .remoteAddress(InetSocketAddress("10.0.0.7", 1234))
                 .build(),
         )
-        Mockito.`when`(guard.retryAfterSeconds("ip:10.0.0.7")).thenReturn(Mono.just(0L))
+        Mockito.`when`(guard.retryAfterSeconds("ip:10.0.0.7", 120)).thenReturn(Mono.just(0L))
         Mockito.`when`(chain.filter(Mockito.any())).thenReturn(Mono.empty())
 
         StepVerifier.create(filter.filter(exchange, chain)).verifyComplete()
 
-        verify(guard).retryAfterSeconds("ip:10.0.0.7")
+        verify(guard).retryAfterSeconds("ip:10.0.0.7", 120)
         verify(chain).filter(exchange)
     }
 }
