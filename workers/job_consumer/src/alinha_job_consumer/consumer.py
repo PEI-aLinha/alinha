@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import socket
 import time
 import uuid
@@ -20,6 +21,9 @@ log = logging.getLogger(__name__)
 # Provider exception text can carry URLs or tokens; keep it in logs, never in the results stream.
 SAFE_COLLECTOR_MESSAGE = "collector failed"
 
+# `type` follows job-result.v1's pattern; the version is a positive integer.
+_JOB_TYPE = re.compile(r"[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)+:[1-9][0-9]*")
+
 
 def stream_name(type_: str, version: int) -> str:
     return f"alinha:jobs:{type_}:v{version}"
@@ -32,7 +36,10 @@ def _env_int(name: str, default: int) -> int:
 def _parse_job_types(value: str) -> tuple[tuple[str, int], ...]:
     parsed = []
     for item in value.split(","):
-        type_, _, version = item.strip().partition(":")
+        item = item.strip()
+        if not _JOB_TYPE.fullmatch(item):
+            raise ValueError(f"WORKER_JOB_TYPES: {item!r} is not <type>:<version>, e.g. evidence.collect:1")
+        type_, _, version = item.partition(":")
         parsed.append((type_, int(version)))
     return tuple(parsed)
 
@@ -78,6 +85,7 @@ class Consumer:
         self.redis = redis
         self.config = config or Config.from_env()
         self._streams = self.config.streams
+        contracts.load(self.config.job_types)
         self._collector_lookup = collector_lookup
         self._last_claim = 0.0
 

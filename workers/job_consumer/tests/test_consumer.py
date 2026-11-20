@@ -7,7 +7,7 @@ import pytest
 from redis.exceptions import ConnectionError
 
 from alinha_job_consumer import collectors, results
-from alinha_job_consumer.consumer import Config, Consumer, stream_name
+from alinha_job_consumer.consumer import Config, Consumer, _parse_job_types, stream_name
 
 STREAM = stream_name("evidence.collect", 1)
 
@@ -295,3 +295,18 @@ def test_reclaim_processes_an_entry_a_dead_worker_left_pending(redis):
     [result] = published(redis)
     assert result["jobId"] == job["jobId"]
     assert pending(redis) == 0
+
+
+def test_job_types_parse_strictly():
+    assert _parse_job_types("evidence.collect:1, other.type:2") == (("evidence.collect", 1), ("other.type", 2))
+
+
+@pytest.mark.parametrize("value", ["evidence.collect", "evidence:1", "evidence.collect:x", "evidence.collect:0"])
+def test_a_malformed_job_type_is_rejected(value):
+    with pytest.raises(ValueError, match="WORKER_JOB_TYPES"):
+        _parse_job_types(value)
+
+
+def test_a_job_type_without_a_contract_fails_at_startup(redis):
+    with pytest.raises(ValueError, match="no contract no-such-type"):
+        Consumer(redis, Config(name="test", job_types=(("no-such.type", 1),)))
