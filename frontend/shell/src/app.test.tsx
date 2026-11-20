@@ -41,25 +41,25 @@ const testPlugin = definePlugin({
   name: 'Test',
   routes: {
     client: [
-      { path: 'ativos', handle: { title: 'Ativos' }, Component: () => <h1>Página de ativos</h1> },
-      { path: 'riscos', handle: { title: 'Riscos', resource: 'risk' }, Component: () => <h1>Página de riscos</h1> },
-      { path: 'falha', Component: Boom },
-      { path: 'negado', Component: Denied },
-      { path: 'sonda', Component: TenantProbe },
-      { path: 'dois', Component: TwoCalls },
+      { path: 'assets', handle: { title: 'Ativos' }, Component: () => <h1>Página de ativos</h1> },
+      { path: 'risks', handle: { title: 'Riscos', resource: 'risk' }, Component: () => <h1>Página de riscos</h1> },
+      { path: 'boom', Component: Boom },
+      { path: 'denied', Component: Denied },
+      { path: 'probe', Component: TenantProbe },
+      { path: 'two-calls', Component: TwoCalls },
       { path: 'guardar', Component: SaveButton },
-      { path: 'preguicoso', handle: { resource: 'risk' }, lazy: async () => ({ Component: () => <h1>Página carregada à parte</h1> }) },
+      { path: 'lazy', handle: { resource: 'risk' }, lazy: async () => ({ Component: () => <h1>Página carregada à parte</h1> }) },
     ],
     consultant: [
-      { path: 'painel', Component: () => <h1>Painel do cliente</h1> },
-      { path: 'sonda', Component: TenantProbe },
-      { path: 'rascunho', Component: Draft },
+      { path: 'dashboard', Component: () => <h1>Painel do cliente</h1> },
+      { path: 'probe', Component: TenantProbe },
+      { path: 'draft', Component: Draft },
     ],
   },
   nav: [
-    { label: 'Riscos', path: 'riscos', area: 'client', resource: 'risk', order: 2 },
-    { label: 'Ativos', path: 'ativos', area: 'client', order: 1 },
-    { label: 'Painel', path: 'painel', area: 'consultant' },
+    { label: 'Riscos', path: 'risks', area: 'client', resource: 'risk', order: 2 },
+    { label: 'Ativos', path: 'assets', area: 'client', order: 1 },
+    { label: 'Painel', path: 'dashboard', area: 'consultant' },
   ],
 })
 const plugins = [testPlugin]
@@ -84,7 +84,7 @@ describe('session bootstrap', () => {
 
   it('sends the browser to the login page when there is no session', async () => {
     const go = vi.spyOn(login, 'go').mockImplementation(() => {})
-    renderApp({ url: '/org/acme/ativos', plugins, me: 401 })
+    renderApp({ url: '/org/acme/assets', plugins, me: 401 })
     expect(await screen.findByText('A abrir a página de entrada…')).toBeInTheDocument()
     expect(go).toHaveBeenCalledTimes(1)
   })
@@ -109,32 +109,32 @@ describe('session bootstrap', () => {
   })
 
   it('goes back to the page saved before the login', async () => {
-    sessionStorage.setItem('alinha.return-to', '/org/acme/sonda')
+    sessionStorage.setItem('alinha.return-to', '/org/acme/probe')
     const { router } = renderApp({ url: '/', plugins, api: async () => json({ value: 'x' }) })
-    await waitFor(() => expect(router.state.location.pathname).toBe('/org/acme/sonda'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/org/acme/probe'))
     expect(sessionStorage.getItem('alinha.return-to')).toBeNull()
   })
 
   it('lets the person move on after going back to the saved page', async () => {
-    sessionStorage.setItem('alinha.return-to', '/org/acme/sonda')
+    sessionStorage.setItem('alinha.return-to', '/org/acme/probe')
     const { router } = renderApp({ url: '/', plugins, api: async () => json({ value: 'x' }) })
-    await waitFor(() => expect(router.state.location.pathname).toBe('/org/acme/sonda'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/org/acme/probe'))
     // The URL changes before the layout renders: wait for the menu, not just the address.
     const menu = await screen.findByRole('navigation', { name: 'Navegação principal' })
     fireEvent.click(within(menu).getByRole('link', { name: 'Ativos' }))
     expect(await screen.findByRole('heading', { name: 'Página de ativos' })).toBeInTheDocument()
     await new Promise((r) => setTimeout(r, 50))
-    expect(router.state.location.pathname).toBe('/org/acme/ativos')
+    expect(router.state.location.pathname).toBe('/org/acme/assets')
   })
 
   it('goes back to a saved page with a query string, once', async () => {
-    sessionStorage.setItem('alinha.return-to', '/org/acme/sonda?filtro=abertos')
+    sessionStorage.setItem('alinha.return-to', '/org/acme/probe?filter=open')
     const { router } = renderApp({ url: '/', plugins, api: async () => json({ value: 'x' }) })
-    await waitFor(() => expect(router.state.location.search).toBe('?filtro=abertos'))
-    await router.navigate('/org/acme/ativos')
+    await waitFor(() => expect(router.state.location.search).toBe('?filter=open'))
+    await router.navigate('/org/acme/assets')
     expect(await screen.findByRole('heading', { name: 'Página de ativos' })).toBeInTheDocument()
     await new Promise((r) => setTimeout(r, 50))
-    expect(router.state.location.pathname).toBe('/org/acme/ativos')
+    expect(router.state.location.pathname).toBe('/org/acme/assets')
   })
 
   it('explains when the account has no organization yet', async () => {
@@ -147,51 +147,51 @@ describe('client area (/org/:org)', () => {
   it('opens the user organization and its first page', async () => {
     const { router } = renderApp({ url: '/', plugins })
     expect(await screen.findByRole('heading', { name: 'Página de ativos' })).toBeInTheDocument()
-    expect(router.state.location.pathname).toBe('/org/acme/ativos')
+    expect(router.state.location.pathname).toBe('/org/acme/assets')
     expect(screen.getByText('Rui Santos')).toBeInTheDocument()
     expect(screen.getByText('Responsável')).toBeInTheDocument()
   })
 
   it('shows only the menu entries the role may see, in order', async () => {
-    renderApp({ url: '/org/acme/ativos', plugins, me: meFor('responsible', { permissions: ['risk:read'] }) })
+    renderApp({ url: '/org/acme/assets', plugins, me: meFor('responsible', { permissions: ['risk:read'] }) })
     await screen.findByRole('heading', { name: 'Página de ativos' })
     expect(nav().getAllByRole('link').map((l) => l.textContent)).toEqual(['Ativos', 'Riscos'])
-    expect(nav().getByRole('link', { name: 'Riscos' })).toHaveAttribute('href', '/org/acme/riscos')
+    expect(nav().getByRole('link', { name: 'Riscos' })).toHaveAttribute('href', '/org/acme/risks')
   })
 
   it('hides entries and blocks pages without the permission', async () => {
-    renderApp({ url: '/org/acme/riscos', plugins, me: meFor('analyst') })
+    renderApp({ url: '/org/acme/risks', plugins, me: meFor('analyst') })
     expect(await screen.findByRole('heading', { name: 'Não tem acesso a esta página' })).toBeInTheDocument()
     expect(nav().queryByRole('link', { name: 'Riscos' })).not.toBeInTheDocument()
     expect(screen.getByText('Analista')).toBeInTheDocument()
   })
 
   it('guards a lazy plugin route and still loads it with the permission', async () => {
-    renderApp({ url: '/org/acme/preguicoso', plugins, me: meFor('responsible', { permissions: ['risk:read'] }) })
+    renderApp({ url: '/org/acme/lazy', plugins, me: meFor('responsible', { permissions: ['risk:read'] }) })
     expect(await screen.findByRole('heading', { name: 'Página carregada à parte' })).toBeInTheDocument()
   })
 
   it('refuses a lazy plugin route without the permission', async () => {
-    renderApp({ url: '/org/acme/preguicoso', plugins })
+    renderApp({ url: '/org/acme/lazy', plugins })
     expect(await screen.findByRole('heading', { name: 'Não tem acesso a esta página' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Página carregada à parte' })).not.toBeInTheDocument()
   })
 
   it('refuses another organization', async () => {
-    renderApp({ url: '/org/beta/ativos', plugins })
+    renderApp({ url: '/org/beta/assets', plugins })
     expect(await screen.findByRole('heading', { name: 'Não tem acesso a esta organização' })).toBeInTheDocument()
   })
 
   it('sends a consultant to the same organization in the consultant area', async () => {
     const { router } = renderApp({ url: '/org/acme', plugins, me: meFor('consultant') })
-    await waitFor(() => expect(router.state.location.pathname).toBe('/portfolio/acme/painel'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/portfolio/acme/dashboard'))
   })
 
   it('keeps the rest of the address when sending a consultant to the consultant area', async () => {
-    const { router } = renderApp({ url: '/org/acme/painel?vista=mes#topo', plugins, me: meFor('consultant') })
-    await waitFor(() => expect(router.state.location.pathname).toBe('/portfolio/acme/painel'))
-    expect(router.state.location.search).toBe('?vista=mes')
-    expect(router.state.location.hash).toBe('#topo')
+    const { router } = renderApp({ url: '/org/acme/dashboard?view=month#top', plugins, me: meFor('consultant') })
+    await waitFor(() => expect(router.state.location.pathname).toBe('/portfolio/acme/dashboard'))
+    expect(router.state.location.search).toBe('?view=month')
+    expect(router.state.location.hash).toBe('#top')
   })
 
   it('refuses a user without a client role', async () => {
@@ -200,7 +200,7 @@ describe('client area (/org/:org)', () => {
   })
 
   it('sends the organization id to the API on every call', async () => {
-    const { calls } = renderApp({ url: '/org/acme/sonda', plugins, api: async () => json({ value: 'ok' }) })
+    const { calls } = renderApp({ url: '/org/acme/probe', plugins, api: async () => json({ value: 'ok' }) })
     expect(await screen.findByText('Dados de Acme, Lda.: ok')).toBeInTheDocument()
     const probe = calls.find((c) => c.url === '/api/probe')!
     expect(new Headers(probe.init.headers).get('X-Alinha-Tenant')).toBe(ACME.id)
@@ -228,15 +228,15 @@ describe('consultant area (/portfolio)', () => {
     const { router } = renderApp({ url: '/portfolio', plugins, me: meFor('consultant') })
     fireEvent.click(await screen.findByRole('link', { name: 'Acme, Lda.' }))
     expect(await screen.findByRole('heading', { name: 'Painel do cliente' })).toBeInTheDocument()
-    expect(router.state.location.pathname).toBe('/portfolio/acme/painel')
-    expect(nav().getByRole('link', { name: 'Painel' })).toHaveAttribute('href', '/portfolio/acme/painel')
+    expect(router.state.location.pathname).toBe('/portfolio/acme/dashboard')
+    expect(nav().getByRole('link', { name: 'Painel' })).toHaveAttribute('href', '/portfolio/acme/dashboard')
     expect(nav().getByRole('link', { name: 'Carteira de clientes' })).toHaveAttribute('href', '/portfolio')
   })
 
   it('switches organization and never shows the previous client data', async () => {
     let answerBeta: (r: Response) => void = () => {}
     const { router, calls } = renderApp({
-      url: '/portfolio/acme/sonda',
+      url: '/portfolio/acme/probe',
       plugins,
       me: meFor('consultant'),
       api: (_path, init) => new Headers(init.headers).get('X-Alinha-Tenant') === ACME.id
@@ -248,8 +248,8 @@ describe('consultant area (/portfolio)', () => {
     expect(switcher).toHaveValue('acme')
 
     fireEvent.change(switcher, { target: { value: 'beta' } })
-    await waitFor(() => expect(router.state.location.pathname).toBe('/portfolio/beta/painel'))
-    await router.navigate('/portfolio/beta/sonda')
+    await waitFor(() => expect(router.state.location.pathname).toBe('/portfolio/beta/dashboard'))
+    await router.navigate('/portfolio/beta/probe')
     // While Beta's answer is pending, Acme's cached data must not appear.
     expect(await screen.findByText('Dados de Beta, S.A.: a carregar')).toBeInTheDocument()
     expect(screen.queryByText(/dados A/)).not.toBeInTheDocument()
@@ -260,10 +260,10 @@ describe('consultant area (/portfolio)', () => {
   })
 
   it('starts plugin pages from scratch on another organization (no leftover local state)', async () => {
-    const { router } = renderApp({ url: '/portfolio/acme/rascunho', plugins, me: meFor('consultant') })
+    const { router } = renderApp({ url: '/portfolio/acme/draft', plugins, me: meFor('consultant') })
     fireEvent.change(await screen.findByRole('textbox', { name: 'Rascunho' }), { target: { value: 'notas da Acme' } })
     expect(screen.getByRole('textbox', { name: 'Rascunho' })).toHaveValue('notas da Acme')
-    await router.navigate('/portfolio/beta/rascunho')
+    await router.navigate('/portfolio/beta/draft')
     await waitFor(() => expect(screen.getByRole('combobox', { name: 'Cliente' })).toHaveValue('beta'))
     expect(screen.getByRole('textbox', { name: 'Rascunho' })).toHaveValue('')
   })
@@ -281,7 +281,7 @@ describe('consultant area (/portfolio)', () => {
 
   it('sends a client user away from the consultant area', async () => {
     const { router } = renderApp({ url: '/portfolio/acme', plugins })
-    await waitFor(() => expect(router.state.location.pathname).toBe('/org/acme/ativos'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/org/acme/assets'))
   })
 
   it('explains an empty portfolio', async () => {
@@ -296,7 +296,7 @@ describe('a 401 on a plugin call', () => {
 
   it('does not redirect while the session is still valid (no login loop)', async () => {
     const go = vi.spyOn(login, 'go').mockImplementation(() => {})
-    const { calls } = renderApp({ url: '/org/acme/dois', plugins, api: async () => json({}, 401) })
+    const { calls } = renderApp({ url: '/org/acme/two-calls', plugins, api: async () => json({}, 401) })
     expect(await screen.findByText('Pedidos recusados')).toBeInTheDocument()
     await waitFor(() => expect(meCalls(calls)).toBeGreaterThan(1))
     expect(go).not.toHaveBeenCalled()
@@ -307,7 +307,7 @@ describe('a 401 on a plugin call', () => {
     const go = vi.spyOn(login, 'go').mockImplementation(() => {})
     let sessionAlive = true
     renderApp({
-      url: '/org/acme/dois',
+      url: '/org/acme/two-calls',
       plugins,
       me: async () => (sessionAlive ? json(meFor('responsible')) : json({}, 401)),
       api: async () => { sessionAlive = false; return json({}, 401) },
@@ -319,7 +319,7 @@ describe('a 401 on a plugin call', () => {
   it('keeps the page when re-checking the session fails for another reason', async () => {
     let meAnswers = 0
     const { calls } = renderApp({
-      url: '/org/acme/dois',
+      url: '/org/acme/two-calls',
       plugins,
       me: async () => (meAnswers++ === 0 ? json(meFor('responsible')) : json({}, 503)),
       api: async () => json({}, 401),
@@ -352,13 +352,13 @@ describe('error pages', () => {
   })
 
   it('shows the error page when a plugin page breaks', async () => {
-    renderApp({ url: '/org/acme/falha', plugins })
+    renderApp({ url: '/org/acme/boom', plugins })
     expect(await screen.findByRole('heading', { name: 'Algo correu mal' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Voltar ao início' })).toHaveAttribute('href', '/')
   })
 
   it('shows the no-access page when a plugin page gets a 403', async () => {
-    renderApp({ url: '/org/acme/negado', plugins })
+    renderApp({ url: '/org/acme/denied', plugins })
     expect(await screen.findByRole('heading', { name: 'Não tem acesso a esta página' })).toBeInTheDocument()
   })
 })
