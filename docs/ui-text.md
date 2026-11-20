@@ -26,11 +26,13 @@ export function AssetsPage() {
 }
 ```
 
-- Query keys start with the plugin id. The shell gives each organization its own cache, so keys never need the
-  tenant.
+- Query keys start with the plugin id. `useApiQuery` adds the path to the end of the key, so
+  `/risk-assets/assets/1` and `/risk-assets/assets/2` never share a cache entry. Invalidate by the prefix
+  (`['risk-assets', 'assets']`). The shell gives each organization its own cache, so keys never need the tenant.
 - `useApiMutation` sends the body as JSON (POST unless you pass `method`) and then refreshes the queries in
   `invalidates`. `path` can be a function of the body: `(asset) => \`/risk-assets/assets/${asset.id}\``.
-- Types for core endpoints come from `@alinha/api-client`: `useApiQuery<ApiResponse<'/api/me'>>(...)`.
+- Types for core endpoints come from `@alinha/api-client`. Contract paths start with `/api`, but `host.api` paths
+  leave it out because the shell adds it: `useApiQuery<ApiResponse<'/api/me'>>(['core', 'me'], '/me')`.
 - Failed reads are retried only for network and 5xx errors. A 4xx fails at once.
 
 ## Errors
@@ -51,7 +53,7 @@ Show `errorMessage(error)`, never `error.message`. `error.message` is technical 
   | 413 | O ficheiro é demasiado grande. |
   | 429 | Fez muitos pedidos seguidos. Aguarde um pouco e tente de novo. |
   | 5xx | O serviço está com dificuldades. Tente de novo dentro de alguns minutos. |
-  | no connection | Não foi possível ligar ao serviço. Verifique a sua ligação à internet. |
+  | no connection (`NetworkError`) | Não foi possível ligar ao serviço. Verifique a sua ligação à internet. |
   | anything else | Ocorreu um erro inesperado. Tente de novo. |
 
 - For forms, `fieldErrors(error)` returns `{ field: message }` from the Problem `errors` list. Show each message
@@ -74,7 +76,8 @@ Use these instead. All of them show `—` when there is no value.
 | `formatPercent(0.42)` | 42% |
 | `formatCurrency(1234.5)` | 1234,50 € |
 
-A date-only string such as `2026-11-19` is a calendar day and is never moved to the day before or after.
+A date-only string such as `2026-11-19` is a calendar day: it is never moved to the day before or after, and
+`formatDateTime` shows it without a time.
 
 ## Writing UI text
 
@@ -127,7 +130,7 @@ explanation next to it the first time.
 | gap | não cumpre | Avoid "gap" and "lacuna". |
 | partially compliant | cumpre em parte | |
 | not applicable | não se aplica | |
-| evidence | prova | "Evidência" is a common anglicism, so avoid it. |
+| evidence | prova | "Evidência" only on pages for specialists (consultants know it from ISO 27001 material). |
 | asset | ativo | Explain it the first time: "equipamentos, sistemas e dados importantes para a empresa". |
 | risk | risco | |
 | threat | ameaça | |
