@@ -149,7 +149,7 @@ Avoid this unless the task needs it. Before starting, say so explicitly and list
 
 - **English** for code, comments, docs, commit messages, branch names and **URL paths** (`/org/:org/assets`,
   `/portfolio`). **European Portuguese**, plain and non-technical, for everything else the user sees in the UI
-  (labels, titles, messages).
+  (labels, titles, messages). See ADR 0005.
 - Kotlin package `pt.alinha.<pkg>`, where `<pkg>` is the plugin id without hyphens (`risk-assets` → `riskassets`).
   Each plugin has exactly one `AlinhaPlugin` bean, and its `PluginManifest` must match `plugin.yaml`.
 - Branches `feat/<topic>`, `fix/<topic>`. Keep PRs small and follow `.github/pull_request_template.md`.
