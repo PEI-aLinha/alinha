@@ -26,6 +26,7 @@ the consumer.
 | `WORKER_BATCH` | `10` | Entries per read and per claim |
 | `WORKER_CLAIM_IDLE_MS` | `60000` | Claim entries a crashed worker left pending |
 | `WORKER_DEDUPE_TTL_S` | `86400` | TTL of the `(jobId, attempt)` dedupe key |
+| `WORKER_MAX_DELIVERIES` | `3` | Deliveries of one entry that may fail unexpectedly; the next one publishes a non-retryable `too_many_deliveries` result |
 | `CONTRACTS_DIR` | repo `contracts/jobs`, else `/app/contracts/jobs` | Where the JSON Schemas live |
 
 Image: `docker build -f workers/job_consumer/Dockerfile .` from the repo root.

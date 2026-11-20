@@ -249,6 +249,38 @@ def test_an_entry_without_a_usable_envelope_is_acked_without_a_result(redis):
     assert pending(redis) == 0
 
 
+def boom(*args):
+    raise RuntimeError("unexpected")
+
+
+def test_an_unexpected_error_leaves_the_entry_pending(redis):
+    worker = consumer(redis, lambda _: {"items": []})
+    worker._run_collector = boom
+    add_job(redis, envelope())
+    run_once(worker)
+
+    assert published(redis) == []
+    assert pending(redis) == 1
+
+
+def test_a_poison_entry_fails_after_max_deliveries(redis):
+    job = envelope()
+    worker = Consumer(redis, Config(name="test", claim_idle_ms=0, max_deliveries=2))
+    worker._run_collector = boom
+    add_job(redis, job)
+    run_once(worker)
+    worker.reclaim()
+    assert published(redis) == []
+
+    worker.reclaim()
+
+    [result] = published(redis)
+    assert result["jobId"] == job["jobId"]
+    assert result["error"]["code"] == "too_many_deliveries"
+    assert result["retryable"] is False
+    assert pending(redis) == 0
+
+
 def test_reclaim_processes_an_entry_a_dead_worker_left_pending(redis):
     job = envelope()
     worker = Consumer(redis, Config(name="test", claim_idle_ms=0), collector_lookup=lambda _: lambda _: {"items": []})

@@ -47,6 +47,7 @@ class Config:
     batch: int = 10
     claim_idle_ms: int = 60000
     dedupe_ttl_s: int = 86400
+    max_deliveries: int = 3
 
     @classmethod
     def from_env(cls) -> "Config":
@@ -59,6 +60,7 @@ class Config:
             batch=_env_int("WORKER_BATCH", 10),
             claim_idle_ms=_env_int("WORKER_CLAIM_IDLE_MS", 60000),
             dedupe_ttl_s=_env_int("WORKER_DEDUPE_TTL_S", 86400),
+            max_deliveries=_env_int("WORKER_MAX_DELIVERIES", 3),
         )
 
     @property
@@ -114,7 +116,7 @@ class Consumer:
         )
         for stream, entries in response or []:
             for entry_id, fields in entries:
-                self.handle_entry(stream, entry_id, fields)
+                self._handle_safely(stream, entry_id, fields)
 
     def reclaim(self) -> None:
         """Take over entries left pending by a worker that died."""
@@ -131,11 +133,28 @@ class Consumer:
                     count=self.config.batch,
                 )
                 for entry_id, fields in entries:
-                    self.handle_entry(stream, entry_id, fields)
+                    self._handle_safely(stream, entry_id, fields, self._deliveries(stream, entry_id))
                 if cursor == "0-0":
                     break
 
-    def handle_entry(self, stream: str, entry_id: str, fields: dict[str, str] | None) -> None:
+    def _deliveries(self, stream: str, entry_id: str) -> int:
+        pending = self.redis.xpending_range(stream, self.config.group, min=entry_id, max=entry_id, count=1)
+        return pending[0]["times_delivered"] if pending else 1
+
+    def _handle_safely(
+        self, stream: str, entry_id: str, fields: dict[str, str] | None, deliveries: int = 1
+    ) -> None:
+        try:
+            self.handle_entry(stream, entry_id, fields, deliveries)
+        except RedisError:
+            raise
+        except Exception:
+            # Left pending: reclaim retries it and gives up after max_deliveries.
+            log.exception("unexpected error on %s from %s; left pending", entry_id, stream)
+
+    def handle_entry(
+        self, stream: str, entry_id: str, fields: dict[str, str] | None, deliveries: int = 1
+    ) -> None:
         type_, version = self._streams[stream]
         fields = fields or {}
         envelope = _json(fields.get("envelope"))
@@ -153,12 +172,20 @@ class Consumer:
             self._ack(stream, entry_id)
             return
 
-        try:
-            contracts.validate_envelope(envelope, type_, version)
-        except jsonschema.ValidationError as error:
-            outcome = results.failed(envelope, type_, version, attempt, "invalid_payload", results.safe_message(error))
+        if deliveries > self.config.max_deliveries:
+            log.error("giving up on %s from %s after %s deliveries", entry_id, stream, deliveries - 1)
+            outcome = results.failed(
+                envelope, type_, version, attempt, "too_many_deliveries", "the worker failed on this job repeatedly"
+            )
         else:
-            outcome = self._run_collector(envelope, type_, version, attempt)
+            try:
+                contracts.validate_envelope(envelope, type_, version)
+            except jsonschema.ValidationError as error:
+                outcome = results.failed(
+                    envelope, type_, version, attempt, "invalid_payload", results.safe_message(error)
+                )
+            else:
+                outcome = self._run_collector(envelope, type_, version, attempt)
 
         self._publish(outcome, envelope, type_, version, attempt)
         self.redis.set(dedupe_key, 1, ex=self.config.dedupe_ttl_s)
