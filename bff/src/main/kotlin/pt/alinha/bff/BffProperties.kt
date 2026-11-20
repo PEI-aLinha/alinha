@@ -17,8 +17,8 @@ data class BffProperties(
     val endSessionUri: String = "http://localhost:8180/realms/alinha/protocol/openid-connect/logout",
     /** Spring Security registration id; must match the one in application.yml. */
     val registrationId: String = "keycloak",
-    /** False only for local http development. */
-    val cookieSecure: Boolean = false,
+    /** False only for local http development (the `dev` profile). */
+    val cookieSecure: Boolean = true,
     val rateLimit: RateLimit = RateLimit(),
 ) {
     data class RateLimit(

@@ -11,11 +11,13 @@
 ```bash
 docker compose -f deploy/docker-compose.dev.yml up -d   # Redis + Keycloak
 BAO_TOKEN=dev-app-token ./gradlew :app:bootRun          # app on :8080
-./gradlew :bff:bootRun                                  # BFF on :8081
+SPRING_PROFILES_ACTIVE=dev ./gradlew :bff:bootRun       # BFF on :8081
 ```
 
-Vite proxies `/api`, `/oauth2` and `/auth` to `:8081`. The Keycloak client is `bff`
-(`dev-bff-secret`), callback `http://localhost:8081/login/oauth2/code/keycloak`.
+Vite proxies `/api`, `/oauth2` and `/auth` to `:8081`. The Keycloak client is `bff`, callback
+`http://localhost:8081/login/oauth2/code/keycloak`. The `dev` profile (`application-dev.yml`) supplies the dev client
+secret (`dev-bff-secret`) and a non-`Secure` cookie for plain http; without it the BFF needs `BFF_CLIENT_SECRET` and
+sets `Secure` cookies.
 
 ### Behind Nginx
 
@@ -28,10 +30,10 @@ If `:8081` is reachable directly, anyone can spoof the header and dodge the IP-k
 |---|---|---|
 | `ALINHA_APP_URL` | `http://localhost:8080` | the application behind the gateway |
 | `REDIS_HOST` / `REDIS_PORT` | `localhost` / `6379` | session store and rate limiter |
-| `BFF_CLIENT_ID` / `BFF_CLIENT_SECRET` | `bff` / `dev-bff-secret` | Keycloak client |
+| `BFF_CLIENT_ID` / `BFF_CLIENT_SECRET` | `bff` / none (`dev-bff-secret` in `dev`) | Keycloak client; required outside `dev` |
 | `BFF_REDIRECT_URI` | `http://localhost:8081/login/oauth2/code/keycloak` | OIDC callback |
 | `BFF_AFTER_LOGIN_URI` / `BFF_POST_LOGOUT_URI` | `http://localhost:5173/` | where the browser returns |
-| `BFF_COOKIE_SECURE` | `false` | must be `true` over HTTPS |
+| `BFF_COOKIE_SECURE` | `true` (`false` in `dev`) | `false` only for local http |
 | `BFF_RATE_LIMIT_ENABLED` / `BFF_RATE_LIMIT_REQUESTS` / `BFF_RATE_LIMIT_WINDOW` | `true` / `120` / `1m` | fixed-window limit per user, and per address on the login |
 | `BFF_RATE_LIMIT_IP_API_REQUESTS` | `1200` | per-address limit on `/api/**` + `/auth/**` (one office NAT shares it) |
 

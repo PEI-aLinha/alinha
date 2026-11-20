@@ -23,3 +23,8 @@ dependencies {
     testImplementation(libs.spring.boot.starter.security.test)
     testImplementation(libs.reactor.test)
 }
+
+// The Spring context tests run with the local dev values (Keycloak client secret, http cookie).
+tasks.test {
+    systemProperty("spring.profiles.active", "dev")
+}

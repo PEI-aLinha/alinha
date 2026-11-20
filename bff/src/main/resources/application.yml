@@ -24,7 +24,7 @@ spring:
           keycloak:
             provider: keycloak
             client-id: ${BFF_CLIENT_ID:bff}
-            client-secret: ${BFF_CLIENT_SECRET:dev-bff-secret}
+            client-secret: ${BFF_CLIENT_SECRET}
             authorization-grant-type: authorization_code
             # The callback always lands on the BFF (8081); the shell may live on another dev origin.
             redirect-uri: ${BFF_REDIRECT_URI:http://localhost:8081/login/oauth2/code/keycloak}
@@ -57,7 +57,7 @@ alinha:
     post-logout-uri: ${BFF_POST_LOGOUT_URI:http://localhost:5173/}
     end-session-uri: ${KEYCLOAK_END_SESSION_URI:http://localhost:8180/realms/alinha/protocol/openid-connect/logout}
     registration-id: keycloak
-    cookie-secure: ${BFF_COOKIE_SECURE:false}
+    cookie-secure: ${BFF_COOKIE_SECURE:true}
     rate-limit:
       enabled: ${BFF_RATE_LIMIT_ENABLED:true}
       requests: ${BFF_RATE_LIMIT_REQUESTS:120}
