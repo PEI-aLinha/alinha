@@ -67,7 +67,8 @@ export function formatRelativeTime(value: DateInput, now: Date = new Date()): st
   const seconds = (parsed.date.getTime() - now.getTime()) / 1000
   const format = new Intl.RelativeTimeFormat(LOCALE, { numeric: 'auto' })
   for (const [unit, size] of RELATIVE_UNITS) {
-    if (Math.abs(seconds) >= size) return format.format(Math.trunc(seconds / size), unit)
+    // Rounded, not truncated: 1 h 58 min is "2 horas", not "1 hora".
+    if (Math.abs(seconds) >= size) return format.format(Math.round(seconds / size), unit)
   }
   return 'agora'
 }

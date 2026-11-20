@@ -60,6 +60,8 @@ describe('formatRelativeTime', () => {
     ['2026-11-16T12:00:00Z', 'há 3 dias'],
     ['2026-11-18T11:00:00Z', 'ontem'],
     ['2026-11-19T14:00:00Z', 'dentro de 2 horas'],
+    ['2026-11-19T13:58:00Z', 'dentro de 2 horas'],
+    ['2026-11-16T13:00:00Z', 'há 3 dias'],
     ['2026-11-19T11:55:00Z', 'há 5 minutos'],
     ['2026-11-19T11:59:30Z', 'agora'],
     ['2025-11-01T12:00:00Z', 'ano passado'],
