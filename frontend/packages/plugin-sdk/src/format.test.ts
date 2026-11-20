@@ -48,8 +48,8 @@ describe('formatDateTime', () => {
     expect(formatDateTime('2026-07-19T14:30:00Z')).toBe('19/07/2026, 15:30')
   })
 
-  it('shows midnight for a date-only value', () => {
-    expect(formatDateTime('2026-03-01')).toBe('01/03/2026, 00:00')
+  it('shows only the date for a date-only value, which has no time', () => {
+    expect(formatDateTime('2026-03-01')).toBe('01/03/2026')
   })
 })
 
@@ -65,6 +65,17 @@ describe('formatRelativeTime', () => {
     ['2026-11-19T11:55:00Z', 'há 5 minutos'],
     ['2026-11-19T11:59:30Z', 'agora'],
     ['2025-11-01T12:00:00Z', 'ano passado'],
+    // Rounding moves up a unit when the rounded value fills it.
+    ['2026-11-19T11:00:20Z', 'há 1 hora'],
+    ['2026-11-18T12:20:00Z', 'ontem'],
+    ['2026-11-12T16:00:00Z', 'semana passada'],
+    ['2025-11-20T12:00:00Z', 'ano passado'],
+    // ...but never before half the larger unit.
+    ['2026-11-19T00:00:00Z', 'há 12 horas'],
+    ['2026-11-19T11:30:00Z', 'há 30 minutos'],
+    // Past and future round the same way.
+    ['2026-11-19T11:58:30Z', 'há 2 minutos'],
+    ['2026-11-19T12:01:30Z', 'dentro de 2 minutos'],
   ])('%s is "%s"', (value, expected) => {
     expect(formatRelativeTime(value, now)).toBe(expected)
   })

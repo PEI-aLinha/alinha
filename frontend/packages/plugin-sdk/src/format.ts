@@ -39,18 +39,20 @@ export function formatDate(value: DateInput, style: keyof typeof dateFormats = '
   }).format(parsed.date)
 }
 
-/** `19/11/2026, 14:30`, in Lisbon time. */
+/** `19/11/2026, 14:30`, in Lisbon time. A date-only value has no time, so it is shown as [formatDate]. */
 export function formatDateTime(value: DateInput): string {
   const parsed = toDate(value)
   if (!parsed) return EMPTY_VALUE
+  if (parsed.dateOnly) return formatDate(value)
   return new Intl.DateTimeFormat(LOCALE, {
     ...dateFormats.short,
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: parsed.dateOnly ? 'UTC' : TIME_ZONE,
+    timeZone: TIME_ZONE,
   }).format(parsed.date)
 }
 
+/** Largest first. Each unit's size in seconds. */
 const RELATIVE_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
   ['year', 365 * 24 * 3600],
   ['month', 30 * 24 * 3600],
@@ -60,17 +62,27 @@ const RELATIVE_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
   ['minute', 60],
 ]
 
-/** `há 3 dias`, `ontem`, `dentro de 2 horas`, `agora`. For "last updated" and similar; use [formatDate] for deadlines. */
+/**
+ * `há 3 dias`, `ontem`, `dentro de 2 horas`, `agora`. For "last updated" and similar; use [formatDate] for deadlines.
+ *
+ * Picks the largest unit that fits, rounds within it, and moves up a unit when the rounded value fills it:
+ * 59 min 40 s is "há 1 hora" (not "há 60 minutos"), 23 h 40 min is "ontem", 364 days is "ano passado".
+ * Past and future round the same way.
+ */
 export function formatRelativeTime(value: DateInput, now: Date = new Date()): string {
   const parsed = toDate(value)
   if (!parsed) return EMPTY_VALUE
   const seconds = (parsed.date.getTime() - now.getTime()) / 1000
-  const format = new Intl.RelativeTimeFormat(LOCALE, { numeric: 'auto' })
-  for (const [unit, size] of RELATIVE_UNITS) {
-    // Rounded, not truncated: 1 h 58 min is "2 horas", not "1 hora".
-    if (Math.abs(seconds) >= size) return format.format(Math.round(seconds / size), unit)
-  }
-  return 'agora'
+  const elapsed = Math.abs(seconds)
+  const index = RELATIVE_UNITS.findIndex(([, size]) => elapsed >= size)
+  if (index === -1) return 'agora'
+  const [unit, size] = RELATIVE_UNITS[index]
+  const amount = Math.round(elapsed / size)
+  const larger = RELATIVE_UNITS[index - 1]
+  const [finalUnit, finalAmount] = larger && amount >= Math.round(larger[1] / size)
+    ? [larger[0], Math.max(1, Math.round(elapsed / larger[1]))]
+    : [unit, amount]
+  return new Intl.RelativeTimeFormat(LOCALE, { numeric: 'auto' }).format(Math.sign(seconds) * finalAmount, finalUnit)
 }
 
 const isMissing = (value: number | null | undefined): value is null | undefined =>
