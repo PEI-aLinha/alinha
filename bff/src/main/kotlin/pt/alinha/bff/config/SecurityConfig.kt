@@ -24,6 +24,9 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUser
 import org.springframework.security.web.server.WebFilterExchange
 import org.springframework.security.web.server.SecurityWebFilterChain
 import org.springframework.security.web.server.authentication.RedirectServerAuthenticationSuccessHandler
+import org.springframework.security.web.server.authentication.logout.DelegatingServerLogoutHandler
+import org.springframework.security.web.server.authentication.logout.SecurityContextServerLogoutHandler
+import org.springframework.security.web.server.authentication.logout.WebSessionServerLogoutHandler
 import org.springframework.security.web.server.authentication.logout.ServerLogoutSuccessHandler
 import org.springframework.security.web.server.csrf.CookieServerCsrfTokenRepository
 import org.springframework.security.web.server.csrf.CsrfToken
@@ -62,6 +65,10 @@ class SecurityConfig(private val props: BffProperties) {
             .logout {
                 // POST, not GET: a link must not be able to end someone's session (CSRF).
                 it.requiresLogout(ServerWebExchangeMatchers.pathMatchers(HttpMethod.POST, "/auth/logout"))
+                // Also delete the Redis session (and the tokens in it). `csrf {}` still adds its own handler at build time.
+                it.logoutHandler(
+                    DelegatingServerLogoutHandler(SecurityContextServerLogoutHandler(), WebSessionServerLogoutHandler()),
+                )
                 it.logoutSuccessHandler(keycloakLogoutSuccessHandler())
             }
             .build()
