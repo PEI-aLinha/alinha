@@ -30,31 +30,39 @@ import java.time.Instant
 import java.util.Date
 
 /**
- * Exercises Boot's own JWT decoder with the same properties as `application.yml`, so the issuer, expiry and
- * audience checks we rely on are tested rather than assumed. Keys are served from a local JWKS endpoint.
+ * Exercises Boot's own JWT decoder with the same properties as `application.yml` (only `issuer-uri` and
+ * `audiences`), so the issuer, expiry and audience checks we rely on are tested on the decoder production uses.
+ * A local server plays the issuer: it serves the OpenID discovery document and the JWKS it points to.
  */
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class JwtValidationTest {
-    private val issuer = "https://keycloak.test/realms/alinha"
     private val audience = "alinha-api"
     private val keys = KeyPairGenerator.getInstance("RSA").apply { initialize(2048) }.generateKeyPair()
-    private lateinit var jwks: HttpServer
+    private lateinit var server: HttpServer
+    private lateinit var issuer: String
 
     @BeforeAll
-    fun startJwks() {
-        val body = JWKSet(RSAKey.Builder(keys.public as RSAPublicKey).build()).toString().toByteArray()
-        jwks = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0).apply {
-            createContext("/jwks") { exchange ->
-                exchange.responseHeaders.add("Content-Type", "application/json")
-                exchange.sendResponseHeaders(200, body.size.toLong())
-                exchange.responseBody.use { it.write(body) }
-            }
-            start()
-        }
+    fun startIssuer() {
+        server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
+        issuer = "http://127.0.0.1:${server.address.port}/realms/alinha"
+        val jwks = JWKSet(RSAKey.Builder(keys.public as RSAPublicKey).build()).toString()
+        val discovery = """{"issuer":"$issuer","jwks_uri":"$issuer/protocol/openid-connect/certs","subject_types_supported":["public"]}"""
+        server.serveJson("/realms/alinha/.well-known/openid-configuration", discovery)
+        server.serveJson("/realms/alinha/protocol/openid-connect/certs", jwks)
+        server.start()
     }
 
     @AfterAll
-    fun stopJwks() = jwks.stop(0)
+    fun stopIssuer() = server.stop(0)
+
+    private fun HttpServer.serveJson(path: String, json: String) {
+        val body = json.toByteArray()
+        createContext(path) { exchange ->
+            exchange.responseHeaders.add("Content-Type", "application/json")
+            exchange.sendResponseHeaders(200, body.size.toLong())
+            exchange.responseBody.use { it.write(body) }
+        }
+    }
 
     private fun withDecoder(audiences: String, assertions: (JwtDecoder) -> Unit) {
         WebApplicationContextRunner()
@@ -63,7 +71,6 @@ class JwtValidationTest {
             .withBean(SecurityFilterChain::class.java, { DefaultSecurityFilterChain(AnyRequestMatcher.INSTANCE) })
             .withPropertyValues(
                 "spring.security.oauth2.resourceserver.jwt.issuer-uri=$issuer",
-                "spring.security.oauth2.resourceserver.jwt.jwk-set-uri=http://127.0.0.1:${jwks.address.port}/jwks",
                 "spring.security.oauth2.resourceserver.jwt.audiences=$audiences",
             )
             .run { context -> assertions(context.getBean(JwtDecoder::class.java)) }
