@@ -3,6 +3,7 @@ package pt.alinha.core.tenant.internal
 import io.micrometer.core.instrument.Counter
 import io.micrometer.core.instrument.MeterRegistry
 import org.slf4j.LoggerFactory
+import org.springframework.core.Ordered
 import org.springframework.http.HttpStatus
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.security.access.AccessDeniedException
@@ -34,6 +35,8 @@ internal const val ORGANIZATION_ALREADY_EXISTS = "ORGANIZATION_ALREADY_EXISTS"
 internal const val IDENTITY_UNAVAILABLE = "IDENTITY_UNAVAILABLE"
 internal const val REGISTRATION_BUSY = "REGISTRATION_BUSY"
 private const val EMAIL_VERIFIED_CLAIM = "email_verified"
+/** Namespace of the per-account advisory lock key, so it cannot collide with other advisory locks. */
+private const val ACCOUNT_LOCK_PREFIX = "alinha.tenant.provisioning:"
 
 /**
  * Registrations that may run at once. Each one holds a database connection while it calls the identity provider:
@@ -119,6 +122,7 @@ class TenantProvisioner(
     }
 
     private fun <T> provision(subject: String, tenantId: TenantId, block: (TenantId) -> T): T {
+        lockAccount(subject)
         // One tenant per account: a repeated or concurrent registration waits on the unique key, then gets 409.
         val inserted = jdbc.sql("insert into core.tenant (id, owner_subject) values (?, ?) on conflict (owner_subject) do nothing")
             .params(tenantId.value, subject)
@@ -132,6 +136,42 @@ class TenantProvisioner(
         TransactionSynchronizationManager.registerSynchronization(RevokeOnRollback(subject, tenantId))
         assignInDirectory(subject, tenantId) // last: everything else can still roll back
         return result
+    }
+
+    /**
+     * Holds the account across instances until the transaction **and** its undo have finished. The tenant row's
+     * lock is not enough: a rollback releases it before [RevokeOnRollback] runs, so another instance could assign
+     * a new tenant that the undo then strips. A session-level advisory lock on this transaction's connection
+     * outlives the rollback; [ReleaseAccountLock] releases it after the undo. A registration that finds it held
+     * gets 503 `REGISTRATION_BUSY`, like a double submit on one instance.
+     */
+    private fun lockAccount(subject: String) {
+        val locked = jdbc.sql("select pg_try_advisory_lock(hashtextextended(?, 0))")
+            .param(ACCOUNT_LOCK_PREFIX + subject)
+            .query(Boolean::class.java)
+            .single()
+        if (!locked) throw busy()
+        TransactionSynchronizationManager.registerSynchronization(ReleaseAccountLock(subject))
+    }
+
+    /** Runs after every other synchronization of the transaction, so after [RevokeOnRollback]'s undo. */
+    internal inner class ReleaseAccountLock(private val subject: String) : TransactionSynchronization {
+        override fun getOrder(): Int = Ordered.LOWEST_PRECEDENCE
+
+        override fun afterCompletion(status: Int) {
+            // Still the transaction's connection: it is released only after the synchronizations have run.
+            runCatching {
+                jdbc.sql("select pg_advisory_unlock(hashtextextended(?, 0))")
+                    .param(ACCOUNT_LOCK_PREFIX + subject)
+                    .query(Boolean::class.java)
+                    .single()
+            }.onFailure {
+                // A broken connection drops the lock with its session; otherwise the pool's maxLifetime does.
+                log.error("Could not release the registration lock of an account", it)
+            }.onSuccess { released ->
+                if (!released) log.error("The registration lock of an account was not held at release")
+            }
+        }
     }
 
     /** An identity provider failure is the platform's problem, not the user's: 503, details only in the log. */
@@ -169,6 +209,9 @@ class TenantProvisioner(
         private val subject: String,
         private val tenantId: TenantId,
     ) : TransactionSynchronization {
+        /** Before [ReleaseAccountLock], so the account stays locked until the undo is done. */
+        override fun getOrder(): Int = Ordered.LOWEST_PRECEDENCE - 1
+
         override fun afterCompletion(status: Int) {
             when (status) {
                 TransactionSynchronization.STATUS_COMMITTED -> Unit

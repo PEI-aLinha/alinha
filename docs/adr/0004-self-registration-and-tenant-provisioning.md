@@ -36,7 +36,8 @@ handler cannot pick a tenant either. Nothing in the platform creates a tenant.
   Keycloak gives the default role (and so `registrant`) to every account it creates, except imported ones, so any
   `IdentityDirectory` method that creates accounts (invitations, consultants) must remove that role.
 - **Registration is limited** because each one holds a database connection while it calls the identity provider:
-  at most 4 at once on the instance, one in flight per account (checked first, so a double submit is a 503), and 5 attempts per client IP per
+  at most 4 at once on the instance, one in flight per account (checked first, so a double submit is a 503; across instances an advisory lock held until
+  the rollback undo ends, so a retry cannot be assigned a tenant that the undo then strips), and 5 attempts per client IP per
   hour (`alinha.provisioning.max-per-client-per-hour`). Over the limits: 503 `REGISTRATION_BUSY` or 429
   `TOO_MANY_REGISTRATIONS`, both with `Retry-After` (as is 503 `IDENTITY_UNAVAILABLE`). The IP comes from `X-Forwarded-For` only through an internal proxy. The limits are in
   memory, per instance; with several instances they move to the BFF on Redis (#14).
