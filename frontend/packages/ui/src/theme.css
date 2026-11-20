@@ -8,7 +8,9 @@
 
 /* Tokens from docs/design-spec.md (same names as the Figma color/* variables). */
 @theme {
-  --color-*: initial;
+  /* Tailwind's default palette (gray-*, red-*, ...) stays available until the plugins that still use it move to the
+     tokens below (the organization wizard does). Turning it off now would make their text and borders vanish
+     without any failing check. New code uses only the tokens. */
   --color-white: #ffffff;
   --color-transparent: transparent;
   --color-paper: #ffffff;

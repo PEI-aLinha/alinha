@@ -12,8 +12,9 @@ import { Button, DataTable, Field, PageHeader, TextInput, useToast } from '@alin
 - **Use the components first.** Write your own markup only for layout (grids, spacing). If you need a component
   that is missing, add it here instead of inside your plugin.
 - **Colours come from the tokens** (`bg-paper`, `text-ink`, `text-ink-soft`, `border-line-soft`, `bg-brand`,
-  `text-danger`, `bg-risk-high`, ...). Tailwind's default palette (`gray-500`, `red-600`, ...) is turned off on
-  purpose: it does not pass the contrast checks in dark mode or the colour-vision modes.
+  `text-danger`, `bg-risk-high`, ...). Do not use Tailwind's default palette (`gray-500`, `red-600`, ...): it does
+  not pass the contrast checks in dark mode or the colour-vision modes. It is still enabled only so pages written
+  before the kit keep working while they move to the tokens.
 - **Never use colour alone to say something.** Pair it with text or an icon (`RiskBadge` does this for you).
 - **Text the user sees is European Portuguese, plain and non-technical.** Components that have their own text
   (`Fechar`, `Escolher…`, `A carregar…`, `Tentar de novo`) already use it.
