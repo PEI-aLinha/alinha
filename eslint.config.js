@@ -3,7 +3,17 @@ import tseslint from 'typescript-eslint'
 import pluginBoundaries from './eslint-rules/plugin-boundaries.js'
 
 export default tseslint.config(
-  { ignores: ['**/dist/**', '**/build/**', '**/node_modules/**', '**/*.generated.ts'] },
+  {
+    ignores: [
+      '**/dist/**',
+      '**/build/**',
+      '**/node_modules/**',
+      '**/*.generated.ts',
+      // Keycloakify: generated entry point and the Keycloak scripts it copies for `vite dev`.
+      'frontend/keycloak-theme/src/kc.gen.tsx',
+      'frontend/keycloak-theme/public/keycloakify-dev-resources/**',
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
