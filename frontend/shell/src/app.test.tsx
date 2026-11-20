@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { useQuery } from '@tanstack/react-query'
 import { ApiError, definePlugin, useHost } from '@alinha/plugin-sdk'
+import { useToast } from '@alinha/ui'
 import { login } from './session/login'
 import { ACME, BETA, json, meFor, renderApp } from './test-utils'
 
@@ -29,6 +30,12 @@ function Draft() {
 const Boom = () => { throw new Error('boom') }
 const Denied = () => { throw new ApiError(403, '/x') }
 
+/** A plugin page that confirms an action with a toast. */
+function SaveButton() {
+  const toast = useToast()
+  return <button onClick={() => toast.show('Ativo guardado')}>Guardar</button>
+}
+
 const testPlugin = definePlugin({
   id: 'test',
   name: 'Test',
@@ -40,6 +47,7 @@ const testPlugin = definePlugin({
       { path: 'negado', Component: Denied },
       { path: 'sonda', Component: TenantProbe },
       { path: 'dois', Component: TwoCalls },
+      { path: 'guardar', Component: SaveButton },
       { path: 'preguicoso', handle: { resource: 'risk' }, lazy: async () => ({ Component: () => <h1>Página carregada à parte</h1> }) },
     ],
     onboarding: [
@@ -73,7 +81,8 @@ afterEach(() => {
 describe('session bootstrap', () => {
   it('shows a loading message while /api/me answers', () => {
     renderApp({ url: '/', plugins, me: () => new Promise(() => {}) })
-    expect(screen.getByRole('status')).toHaveTextContent('A preparar a sua sessão…')
+    // The toast region is also a (still empty) status region, so find this one by its text.
+    expect(screen.getByText('A preparar a sua sessão…')).toHaveAttribute('role', 'status')
   })
 
   it('sends the browser to the login page when there is no session', async () => {
@@ -391,5 +400,13 @@ describe('onboarding (/onboarding)', () => {
   it('sends the onboarding root home, and from there to the first page', async () => {
     const { router } = renderApp({ url: '/onboarding', plugins, me: registrant(), api: () => json({ value: 'ok' }) })
     await waitFor(() => expect(router.state.location.pathname).toBe('/onboarding/registration'))
+  })
+})
+
+describe('toasts', () => {
+  it('a plugin page can confirm an action with useToast()', async () => {
+    renderApp({ url: '/org/acme/guardar', plugins })
+    fireEvent.click(await screen.findByRole('button', { name: 'Guardar' }))
+    expect(screen.getByText('Ativo guardado').closest('[role="status"]')).not.toBeNull()
   })
 })
