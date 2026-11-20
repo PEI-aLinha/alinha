@@ -38,8 +38,8 @@ class RolePermissionRegistryTest {
     fun `grants core permission to every role`() {
         val registry = registry()
 
-        listOf("consultant", "responsible", "analyst").forEach {
-            assertThat(registry.permissionsFor(setOf(it))).contains("plugins:read")
+        listOf("consultant", "responsible", "analyst", "registrant").forEach {
+            assertThat(registry.permissionsFor(setOf(it))).contains("plugins:read", "session:read")
         }
     }
 
@@ -58,7 +58,7 @@ class RolePermissionRegistryTest {
             plugin("org", setOf("org:register", "org:read"), mapOf("registrant" to setOf("org:register"))),
         )
 
-        assertThat(registry.permissionsFor(setOf("registrant"))).containsExactlyInAnyOrder("org:register", "plugins:read")
+        assertThat(registry.permissionsFor(setOf("registrant"))).containsExactlyInAnyOrder("org:register", "plugins:read", "session:read")
     }
 
     @Test

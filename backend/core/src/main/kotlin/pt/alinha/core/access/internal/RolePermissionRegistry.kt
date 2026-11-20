@@ -5,8 +5,8 @@ import pt.alinha.core.registry.PluginRegistry
 import pt.alinha.pluginapi.PluginManifest
 
 // `registrant`: account created through self-registration, no organization yet (ADR 0004).
-private val KNOWN_ROLES = setOf("consultant", "responsible", "analyst", "registrant")
-private val CORE_PERMISSIONS = setOf("plugins:read")
+internal val KNOWN_ROLES = setOf("consultant", "responsible", "analyst", "registrant")
+private val CORE_PERMISSIONS = setOf("plugins:read", "session:read")
 // Analysts excluded: least privilege, same rule as results/roadmap (docs/rbac.md).
 private val CORE_ROLE_PERMISSIONS = mapOf(
     "consultant" to setOf("audit:read"),
