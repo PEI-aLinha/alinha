@@ -129,11 +129,16 @@ fun on(event: JobCompleted) {
   that is not valid JSON or does not match the contract, names an unknown job, or whose `tenantId`, `type` or
   `version` disagree with the outbox row. The job itself is not changed (it stays `published`, #86).
 - **Recovery**: each round first claims entries left unacknowledged for `claim-min-idle` (an instance died, or the
-  database was down while applying them), with `XPENDING` + `XCLAIM`. An entry already delivered `max-deliveries`
-  times is dead-lettered instead of tried again (see "Database down" below).
+  database was down while applying them), with `XPENDING` + `XCLAIM`.
+- **Attempts**: `max-deliveries` counts the times the core actually tried to apply an entry, kept in the hash
+  `alinha:jobs:results:attempts` (field = entry id, removed on `XACK`). It is not the stream's delivery count:
+  `XCLAIM`/`XREADGROUP` add a delivery to every entry of a batch, including the ones a round stops before. An
+  attempt is counted before applying, so an instance that dies mid-apply still uses one up. An entry with
+  `max-deliveries` attempts is dead-lettered instead of tried again.
 - Redis down: the round returns, nothing is lost; unacknowledged entries are delivered again later.
-- Database down: every read or claim counts as a delivery, so a round starts only after a `select 1` succeeds, and
-  stops when applying an entry fails and the database no longer answers. However long the outage, it never
+- Database down: a round starts only after a `select 1` succeeds. Applying an entry that fails because the database
+  cannot take writes (SQLState `25006` read-only, class `53` such as a full disk, `57P0x`, class `08`), or after
+  which `select 1` fails, gives the attempt back and stops the round. However long the outage, it never
   dead-letters a result. A failure while the database is up (a bug) does count towards `max-deliveries`.
 - Every entry is deleted (`XDEL`) right after its `XACK`: the outcome is in the outbox row, and a result may hold
   collected evidence. The dead-letter stream is not trimmed yet (#87). Each app start uses a new consumer name
@@ -151,7 +156,7 @@ fun on(event: JobCompleted) {
 | `results.enabled` | `true` | `false` in tests that drive `consumeOnce()` by hand |
 | `results.poll-interval-ms` / `results.batch-size` | `1000` / `50` | |
 | `results.claim-min-idle` | `1m` | unacknowledged for this long = claimed again |
-| `results.max-deliveries` | `5` | then dead-lettered |
+| `results.max-deliveries` | `5` | attempts that reached a working database, then dead-lettered |
 | `results.consumer-name` | random per start | |
 | `results.max-result-bytes` | `1048576` | larger `result` fields are dead-lettered without the payload |
 | `default-max-attempts` | `3` | worker attempts per job |

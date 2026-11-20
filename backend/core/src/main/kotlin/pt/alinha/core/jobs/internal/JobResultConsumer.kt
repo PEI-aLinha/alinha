@@ -13,8 +13,9 @@ import java.util.UUID
  * Reads worker results from `alinha:jobs:results` with the consumer group `alinha-core`, applies each one in its own
  * transaction and acknowledges it only after that commits. Each round first claims entries left unacknowledged
  * (XPENDING + XCLAIM; Spring Data Redis has no XAUTOCLAIM), then reads new ones. A result applied twice is ignored
- * the second time, so redelivery is safe. While the database is down nothing is read or claimed, so a database
- * outage never uses up an entry's deliveries. See docs/jobs.md.
+ * the second time, so redelivery is safe. Only attempts that reached a working database count towards
+ * max-deliveries (kept in `alinha:jobs:results:attempts`, not the stream's delivery count), so a database outage
+ * never uses up a result. See docs/jobs.md.
  */
 @Component
 class JobResultConsumer(
@@ -61,22 +62,13 @@ class JobResultConsumer(
 
     /**
      * Claims entries nobody acknowledged within claim-min-idle: their consumer died, or applying them failed (the
-     * database was down). One delivered max-deliveries times already is dead-lettered instead of tried again.
+     * database was down). Claiming adds a delivery, so max-deliveries is checked against [RedisJobStreams.attempts]
+     * in [process], never against the delivery count.
      */
     private fun recover(): Int {
         val settings = properties.results
         val stale = streams.staleResults(settings.claimMinIdle, settings.batchSize)
-        val exhausted = stale.filter { it.totalDeliveryCount >= settings.maxDeliveries }.map { it.id }.toSet()
-        return streams.claimResults(consumerName, settings.claimMinIdle, stale.map { it.id }).count { record ->
-            if (record.id in exhausted) {
-                log.error("Job result {} not applied after {} deliveries, dead-lettered", record.id, settings.maxDeliveries)
-                streams.deadLetter(record, "not applied after ${settings.maxDeliveries} deliveries")
-                streams.ack(record.id)
-                true
-            } else {
-                process(record)
-            }
-        }
+        return streams.claimResults(consumerName, settings.claimMinIdle, stale.map { it.id }).count(::process)
     }
 
     /** @return true when the entry was acknowledged. */
@@ -88,14 +80,23 @@ class JobResultConsumer(
             streams.ack(record.id)
             return true
         }
+        val maxAttempts = properties.results.maxDeliveries
+        if (streams.attempts(record.id) >= maxAttempts) {
+            log.error("Job result {} not applied after {} attempts, dead-lettered", record.id, maxAttempts)
+            streams.deadLetter(record, "not applied after $maxAttempts attempts")
+            streams.ack(record.id)
+            return true
+        }
+        streams.beginAttempt(record.id)
         val handling = try {
             handler.handle(record.value[RESULT])
         } catch (e: RuntimeException) {
             // Leave the entry pending, it is delivered again later. A bug counts towards max-deliveries; the database
-            // going down does not: stop the round before reading or claiming anything else.
+            // going down does not: give the attempt back and stop the round before reading or claiming anything else.
             // `select 1` passes on a read-only standby or a full disk, so the error itself is checked first.
             if (e.isDatabaseUnavailable() || !outbox.isReachable()) {
                 log.warn("Database unavailable while applying job result {}: {}", record.id, e.message)
+                streams.giveBackAttempt(record.id)
                 throw DatabaseUnavailable()
             }
             log.error("Applying job result {} failed, it stays pending", record.id, e)

@@ -24,6 +24,7 @@ import org.springframework.transaction.support.TransactionTemplate
 import pt.alinha.core.jobs.JobDispatcher
 import pt.alinha.core.jobs.internal.RedisJobStreams.Companion.REASON
 import pt.alinha.core.jobs.internal.RedisJobStreams.Companion.RESULT
+import pt.alinha.core.jobs.internal.RedisJobStreams.Companion.RESULTS_ATTEMPTS
 import pt.alinha.core.jobs.internal.RedisJobStreams.Companion.RESULTS_DLQ
 import pt.alinha.core.jobs.internal.RedisJobStreams.Companion.RESULTS_GROUP
 import pt.alinha.core.jobs.internal.RedisJobStreams.Companion.RESULTS_STREAM
@@ -69,7 +70,7 @@ class JobResultRecoveryTest {
     @BeforeEach
     fun clean() {
         jdbc.update("delete from core.job_outbox")
-        redis.delete(listOf(RESULTS_STREAM, RESULTS_DLQ, COLLECT_STREAM))
+        redis.delete(listOf(RESULTS_STREAM, RESULTS_DLQ, RESULTS_ATTEMPTS, COLLECT_STREAM))
         streams.ensureResultsGroup()
     }
 
@@ -189,20 +190,70 @@ class JobResultRecoveryTest {
     }
 
     @Test
-    fun `an entry delivered max-deliveries times is dead-lettered instead`() {
+    fun `a read-only database never uses up the attempts of a result`() {
+        val id = published()
+        sendCompleted(id)
+        val outage = Outage().apply { up = false; sqlState = "25006" }
+
+        repeat(5) { assertThat(outage.consumer.consumeOnce()).isZero() } // max-deliveries is 3
+
+        assertThat(deadLetters()).isEmpty()
+        outage.up = true
+        assertThat(outage.consumer.consumeOnce()).isEqualTo(1)
+        assertThat(status(id)).isEqualTo("completed")
+    }
+
+    @Test
+    fun `entries a flapping database never let us try are not dead-lettered`() {
+        val first = published()
+        val second = published()
+        sendCompleted(first)
+        sendCompleted(second)
+        readByCrashedInstance() // both pending; every round claims both but only tries the first
+        val outage = Outage().apply { up = false; sqlState = "08006" }
+
+        repeat(5) { assertThat(outage.consumer.consumeOnce()).isZero() }
+
+        assertThat(deadLetters()).isEmpty()
+        outage.up = true
+        assertThat(outage.consumer.consumeOnce()).isEqualTo(2)
+        assertThat(status(first)).isEqualTo("completed")
+        assertThat(status(second)).isEqualTo("completed")
+    }
+
+    @Test
+    fun `a result that keeps failing is dead-lettered after max-deliveries attempts`() {
         val id = published()
         val entry = sendCompleted(id)
-        readByCrashedInstance() // delivery 1
-        ops.claim(RESULTS_STREAM, RESULTS_GROUP, CRASHED, Duration.ZERO, entry) // delivery 2
-        ops.claim(RESULTS_STREAM, RESULTS_GROUP, CRASHED, Duration.ZERO, entry) // delivery 3 = max-deliveries
+        var tries = 0
+        val buggy = mock(JobResultHandler::class.java).also {
+            `when`(it.handle(any())).thenAnswer { tries++; throw IllegalStateException("bug") }
+        }
+        val consumer = JobResultConsumer(streams, buggy, JobOutboxRepository(jdbcClient), properties)
+
+        repeat(3) { assertThat(consumer.consumeOnce()).isZero() } // max-deliveries is 3
+        assertThat(consumer.consumeOnce()).isEqualTo(1)
+
+        assertThat(tries).isEqualTo(3)
+        assertThat(status(id)).isEqualTo("published")
+        val dead = deadLetters().single()
+        assertThat(dead.value[REASON]).isEqualTo("not applied after 3 attempts")
+        assertThat(dead.value[RedisJobStreams.SOURCE_ID]).isEqualTo(entry.value)
+        assertThat(unacknowledged()).isZero()
+        assertThat(ops.size(RESULTS_STREAM)).isZero()
+        assertThat(redis.opsForHash<String, String>().hasKey(RESULTS_ATTEMPTS, entry.value)).isFalse()
+    }
+
+    @Test
+    fun `claims by other instances do not count as attempts`() {
+        val id = published()
+        val entry = sendCompleted(id)
+        readByCrashedInstance()
+        repeat(4) { ops.claim(RESULTS_STREAM, RESULTS_GROUP, CRASHED, Duration.ZERO, entry) } // 5 deliveries, 0 attempts
 
         assertThat(consumer.consumeOnce()).isEqualTo(1)
 
-        assertThat(status(id)).isEqualTo("published")
-        val dead = ops.range(RESULTS_DLQ, Range.unbounded()).orEmpty().single()
-        assertThat(dead.value[REASON]).isEqualTo("not applied after 3 deliveries")
-        assertThat(dead.value[RedisJobStreams.SOURCE_ID]).isEqualTo(entry.value)
-        assertThat(unacknowledged()).isZero()
-        assertThat(redis.opsForStream<String, String>().size(RESULTS_STREAM)).isZero() // deleted once applied
+        assertThat(status(id)).isEqualTo("completed")
+        assertThat(deadLetters()).isEmpty()
     }
 }

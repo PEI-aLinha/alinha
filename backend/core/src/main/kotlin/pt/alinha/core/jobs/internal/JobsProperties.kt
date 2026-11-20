@@ -34,7 +34,8 @@ data class JobsProperties(
      * Consumer of `alinha:jobs:results`. poll-interval-ms is read by @Scheduled directly.
      * [consumerName] blank = a random name per start (several instances never share one).
      * An entry left unacknowledged for [claimMinIdle] (its consumer died, or applying it failed) is claimed again;
-     * after [maxDeliveries] deliveries it goes to the dead-letter stream instead. A `result` field longer than
+     * after [maxDeliveries] attempts that reached a working database (not stream deliveries) it goes to the
+     * dead-letter stream instead. A `result` field longer than
      * [maxResultBytes] (UTF-8) is dead-lettered without it: it would be stored as is in core.job_outbox.
      */
     data class Results(

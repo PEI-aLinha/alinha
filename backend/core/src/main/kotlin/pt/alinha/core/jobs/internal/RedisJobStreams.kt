@@ -18,6 +18,7 @@ typealias ResultRecord = MapRecord<String, String, String>
 @Component
 class RedisJobStreams(private val redis: StringRedisTemplate) {
     private val streams get() = redis.opsForStream<String, String>()
+    private val attemptCounts get() = redis.opsForHash<String, String>()
 
     /**
      * XADD without MAXLEN: trimming by length would also drop entries no worker has read yet, and the outbox
@@ -58,11 +59,28 @@ class RedisJobStreams(private val redis: StringRedisTemplate) {
         else streams.claim(RESULTS_STREAM, RESULTS_GROUP, consumer, minIdle, *ids.toTypedArray()).orEmpty()
 
     /**
+     * Times the core actually tried to apply this entry. Not the stream's delivery count: XCLAIM and XREADGROUP add
+     * a delivery to every entry of a batch, including the ones a round never reached.
+     */
+    fun attempts(id: RecordId): Long = attemptCounts.get(RESULTS_ATTEMPTS, id.value)?.toLongOrNull() ?: 0
+
+    /** Counted before applying, so an instance that dies while applying a result still uses up one attempt. */
+    fun beginAttempt(id: RecordId) {
+        attemptCounts.increment(RESULTS_ATTEMPTS, id.value, 1)
+    }
+
+    /** The attempt never reached a working database: it does not count. */
+    fun giveBackAttempt(id: RecordId) {
+        attemptCounts.increment(RESULTS_ATTEMPTS, id.value, -1)
+    }
+
+    /**
      * XACK, then XDEL: an applied result is in the outbox row, so Redis need not keep it (it may hold collected
      * evidence). Should XDEL fail, the entry is only left behind; it is acknowledged, so never read again.
      */
     fun ack(id: RecordId) {
         streams.acknowledge(RESULTS_STREAM, RESULTS_GROUP, id)
+        attemptCounts.delete(RESULTS_ATTEMPTS, id.value)
         streams.delete(RESULTS_STREAM, id)
     }
 
@@ -81,6 +99,7 @@ class RedisJobStreams(private val redis: StringRedisTemplate) {
 
         const val RESULTS_STREAM = "alinha:jobs:results"
         const val RESULTS_DLQ = "alinha:jobs:results:dead"
+        const val RESULTS_ATTEMPTS = "alinha:jobs:results:attempts"
         const val RESULTS_GROUP = "alinha-core"
         const val RESULT = "result"
         const val SOURCE_ID = "sourceId"

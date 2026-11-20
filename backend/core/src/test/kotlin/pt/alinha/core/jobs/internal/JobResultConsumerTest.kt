@@ -53,7 +53,7 @@ class JobResultConsumerTest {
     @BeforeEach
     fun clean() {
         jdbc.update("delete from core.job_outbox")
-        redis.delete(listOf(RESULTS_STREAM, RESULTS_DLQ, COLLECT_STREAM))
+        redis.delete(listOf(RESULTS_STREAM, RESULTS_DLQ, RedisJobStreams.RESULTS_ATTEMPTS, COLLECT_STREAM))
         streams.ensureResultsGroup()
     }
 
