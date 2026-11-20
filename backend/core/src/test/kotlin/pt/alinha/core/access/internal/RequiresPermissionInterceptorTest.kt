@@ -8,6 +8,7 @@ import org.springframework.mock.web.MockHttpServletRequest
 import org.springframework.mock.web.MockHttpServletResponse
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.web.method.HandlerMethod
+import org.springframework.web.servlet.resource.ResourceHttpRequestHandler
 import pt.alinha.core.registry.PluginRegistry
 
 class RequiresPermissionInterceptorTest {
@@ -36,6 +37,16 @@ class RequiresPermissionInterceptorTest {
 
         assertThat(interceptor.preHandle(errorDispatch, MockHttpServletResponse(), handler)).isTrue()
         assertThatThrownBy { interceptor.preHandle(direct, MockHttpServletResponse(), handler) }
+            .isInstanceOf(AccessDeniedException::class.java)
+    }
+
+    @Test
+    fun `denies a static resource handler`() {
+        // If the resource mappings were turned back on, static files would still need a permission.
+        val interceptor = RequiresPermissionInterceptor(RolePermissionRegistry(PluginRegistry(emptyList())))
+        val request = MockHttpServletRequest("GET", "/favicon.ico")
+
+        assertThatThrownBy { interceptor.preHandle(request, MockHttpServletResponse(), ResourceHttpRequestHandler()) }
             .isInstanceOf(AccessDeniedException::class.java)
     }
 }

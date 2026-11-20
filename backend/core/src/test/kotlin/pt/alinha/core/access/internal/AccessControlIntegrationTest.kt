@@ -36,6 +36,8 @@ private const val INVALID_TOKEN = "invalid"
         "spring.security.oauth2.resourceserver.jwt.issuer-uri=https://keycloak.test/realms/alinha",
         "spring.security.oauth2.resourceserver.jwt.audiences=alinha-api",
         "management.endpoints.web.exposure.include=health,info",
+        // Same as application.yml: the app serves no static files.
+        "spring.web.resources.add-mappings=false",
         "spring.autoconfigure.exclude=" +
             "org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration," +
             "org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration",
@@ -82,9 +84,9 @@ class AccessControlIntegrationTest {
     }
 
     @Test
-    fun `a static resource path is denied, never served without a permission`() {
-        // Spring's resource handler would otherwise answer it for any role (here it would be a 404, not a 403).
-        getAs("analyst", "/favicon.ico").andExpect { status { isForbidden() } }
+    fun `a static resource path is not served`() {
+        // With the resource mappings off, as in application.yml, no handler matches and nothing is served.
+        getAs("analyst", "/favicon.ico").andExpect { status { isNotFound() } }
     }
 
     @Test
