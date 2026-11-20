@@ -56,6 +56,20 @@ class RegistrationRateLimiterTest {
     }
 
     @Test
+    fun `an attempt the platform could not serve (503) costs the client nothing`() {
+        from("10.0.0.1")
+        val outage = RegistrationProblem(
+            HttpStatus.SERVICE_UNAVAILABLE, "Identity provider unavailable", IDENTITY_UNAVAILABLE, IDENTITY_RETRY_AFTER,
+        )
+        // A user following Retry-After through a Keycloak outage must not end up with an hour-long 429.
+        repeat(5) { assertThrows<ResponseStatusException> { limiter.limit { throw outage } } }
+
+        assertThat(limiter.limit { "ok" }).isEqualTo("ok")
+        assertThat(limiter.limit { "ok" }).isEqualTo("ok")
+        assertThrows<ResponseStatusException> { limiter.limit { } }
+    }
+
+    @Test
     fun `other clients keep their own allowance`() {
         from("10.0.0.1")
         repeat(2) { limiter.limit { } }

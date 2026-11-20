@@ -39,7 +39,8 @@ handler cannot pick a tenant either. Nothing in the platform creates a tenant.
   at most 4 at once on the instance, one in flight per account (checked first, so a double submit is a 503; across instances an advisory lock held until
   the rollback undo ends, so a retry cannot be assigned a tenant that the undo then strips), and 5 attempts per client IP per
   hour (`alinha.provisioning.max-per-client-per-hour`). Over the limits: 503 `REGISTRATION_BUSY` or 429
-  `TOO_MANY_REGISTRATIONS`, both with `Retry-After` (as is 503 `IDENTITY_UNAVAILABLE`). The IP comes from `X-Forwarded-For` only through an internal proxy. The limits are in
+  `TOO_MANY_REGISTRATIONS`, both with `Retry-After` (as is 503 `IDENTITY_UNAVAILABLE`). An attempt that ends in a 503 is not
+  counted against the client: the platform could not serve it. The IP comes from `X-Forwarded-For` only through an internal proxy. The limits are in
   memory, per instance; with several instances they move to the BFF on Redis (#14).
 - **The token is stale after provisioning.** The new `tenant_id` and role appear in the next token, so the BFF
   refreshes the session (or the shell re-authenticates silently) after a successful registration (#14).
