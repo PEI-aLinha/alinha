@@ -12,7 +12,8 @@ interface JobDispatcher {
      * @return the new jobId, or the existing one when [JobRequest.idempotencyKey] was already used for this
      *   tenant, type and [JobRequest.requestedBy] (the second payload is ignored). The contract version is not part
      *   of the key; another plugin's key never matches.
-     * @throws IllegalArgumentException if the envelope does not match contracts/jobs/<type>.v<version>.schema.json.
+     * @throws IllegalArgumentException if the envelope does not match contracts/jobs/<type>.v<version>.schema.json,
+     *   or the payload holds a value that cannot be written as JSON.
      *   Nothing is written and the caller's transaction is not marked rollback-only, so it may catch this and commit.
      */
     fun dispatch(request: JobRequest): UUID

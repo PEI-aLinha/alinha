@@ -111,6 +111,14 @@ class JobDispatcherIntegrationTest {
     }
 
     @Test
+    fun `a payload value that is not JSON throws IllegalArgumentException`() {
+        assertThrows<IllegalArgumentException> {
+            dispatcher.dispatchAs(tenants, tx, tenantA, collectRequest(payload = validCollectPayload() + ("scope" to Unserializable())))
+        }
+        assertThat(jdbc.queryForObject("select count(*) from core.job_outbox", Int::class.java)).isZero()
+    }
+
+    @Test
     fun `same idempotency key returns the same job, per tenant`() {
         val first = dispatcher.dispatchAs(tenants, tx, tenantA, collectRequest(key = "collect:1"))
         val again = dispatcher.dispatchAs(tenants, tx, tenantA, collectRequest(key = "collect:1"))
@@ -137,4 +145,10 @@ class JobDispatcherIntegrationTest {
         val b = dispatcher.dispatchAs(tenants, tx, tenantA, collectRequest())
         assertThat(a).isNotEqualTo(b)
     }
+}
+
+/** Jackson fails on its getter. */
+private class Unserializable {
+    @Suppress("unused")
+    val value: String get() = error("cannot be read")
 }

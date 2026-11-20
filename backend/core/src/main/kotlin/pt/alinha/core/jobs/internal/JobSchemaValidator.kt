@@ -7,6 +7,7 @@ import com.networknt.schema.SchemaRegistryConfig
 import com.networknt.schema.SpecificationVersion
 import org.springframework.core.io.ClassPathResource
 import org.springframework.stereotype.Component
+import tools.jackson.core.JacksonException
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.json.JsonMapper
 import java.util.concurrent.ConcurrentHashMap
@@ -23,9 +24,16 @@ class JobSchemaValidator(private val json: JsonMapper) {
     /**
      * @throws IllegalArgumentException listing each violation as `location: keyword`. Never the library's message: it
      * can quote the payload (unknown property names, for one), and this text reaches logs and the dead-letter stream.
+     * Also when [document] holds a value Jackson cannot turn into JSON.
      */
     fun validate(schemaName: String, document: Map<String, Any?>) {
-        val errors = schema(schemaName).validate(json.valueToTree<JsonNode>(document))
+        val tree = try {
+            json.valueToTree<JsonNode>(document)
+        } catch (e: JacksonException) {
+            // Not e.message: it can name the payload's classes and values.
+            throw IllegalArgumentException("$schemaName: document is not JSON (${e.javaClass.simpleName})")
+        }
+        val errors = schema(schemaName).validate(tree)
         require(errors.isEmpty()) { "$schemaName: ${errors.joinToString("; ", transform = ::describe)}" }
     }
 

@@ -29,8 +29,8 @@ fun startCollection(...) {
 - `dispatch` must run **inside a transaction** (`MANDATORY`). The job commits or rolls back with your write.
 - Pass only the type-specific fields. The core adds `jobId`, `type`, `tenantId` (from `TenantContext`, never
   from you) and `requestedAt`, then validates the whole envelope against
-  `contracts/jobs/<type with dots as dashes>.v<version>.schema.json`. An invalid envelope throws
-  `IllegalArgumentException` before anything is written. It does not mark your transaction rollback-only: let it
+  `contracts/jobs/<type with dots as dashes>.v<version>.schema.json`. An invalid envelope (or a payload value that is
+  not JSON) throws `IllegalArgumentException` before anything is written. It does not mark your transaction rollback-only: let it
   propagate to roll back, or catch it and your own write still commits. Because dots become dashes, `a-b.c` and
   `a.b-c` would share one contract file, so the contract must set `properties.type.const` to its type; a dispatch
   whose type does not match it throws.
