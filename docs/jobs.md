@@ -122,6 +122,8 @@ fun on(event: JobCompleted) {
 - `failed` with `retryable: true` and `attempt < max_attempts`: the row goes back to `pending` with `attempt + 1`
   and the relay's backoff; the relay publishes it again. Otherwise the job is `failed`.
 - Audited: `job.completed`, `job.retried`, `job.failed` (error code only, never the worker's message).
+- A NUL character (`\u0000`) anywhere in the result, keys included, is replaced with U+FFFD before it is read:
+  PostgreSQL `text` and `jsonb` cannot store it, and the job would otherwise never finish.
 - A `result` field over `max-result-bytes` (UTF-8) is dead-lettered **without** that field (`reason` says why),
   before it is parsed: it would otherwise be stored as is in `core.job_outbox`. The job stays `published` until the
   watchdog (#86) fails it; workers must keep `result` under the limit (1 MiB by default).

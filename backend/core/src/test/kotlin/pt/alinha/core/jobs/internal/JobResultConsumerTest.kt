@@ -192,6 +192,36 @@ class JobResultConsumerTest {
     }
 
     @Test
+    fun `a NUL character in a result is replaced, so the job still completes`() {
+        val id = published()
+        val withNul = json.readValue(result(id, "completed"), Map::class.java)
+            .plus("result" to mapOf("path" to "a\u0000b", "k\u0000" to 1))
+        send(json.writeValueAsString(withNul))
+
+        assertThat(consumer.consumeOnce()).isEqualTo(1)
+
+        row(id).let {
+            assertThat(it["status"]).isEqualTo("completed")
+            val stored = json.readTree(it["result"] as String).get("result")
+            assertThat(stored.get("path").asString()).isEqualTo("a\uFFFDb")
+            assertThat(stored.has("k\uFFFD")).isTrue()
+        }
+        assertThat(deadLetters()).isEmpty()
+    }
+
+    @Test
+    fun `a NUL character in the worker's error is replaced, so the job still fails`() {
+        val id = published()
+        send(result(id, "failed", error = mapOf("code" to "auth", "message" to "bad\u0000token")))
+
+        assertThat(consumer.consumeOnce()).isEqualTo(1)
+
+        assertThat(row(id)["status"]).isEqualTo("failed")
+        assertThat(row(id)["last_error"]).isEqualTo("auth: bad\uFFFDtoken")
+        assertThat(events.stream(JobFailed::class.java).toList().single().error.message).isEqualTo("bad\uFFFDtoken")
+    }
+
+    @Test
     fun `the same result delivered twice is applied once`() {
         val id = published()
         val result = result(id, "completed")

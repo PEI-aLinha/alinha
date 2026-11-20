@@ -104,7 +104,18 @@ class JobResultHandler(
         } catch (e: JacksonException) {
             null
         }
-        return document?.let(::WorkerResult)
+        return document?.let { WorkerResult(withoutNul(it) as Map<String, Any?>) }
+    }
+
+    /**
+     * PostgreSQL text and jsonb cannot hold U+0000, so storing it would fail on every delivery and the job would
+     * never finish. Replace it, in keys and values, before anything else reads the document.
+     */
+    private fun withoutNul(value: Any?): Any? = when (value) {
+        is String -> value.replace(NUL, REPLACEMENT)
+        is Map<*, *> -> value.entries.associate { (k, v) -> withoutNul(k) to withoutNul(v) }
+        is List<*> -> value.map(::withoutNul)
+        else -> value
     }
 
     /** Field access is safe only after the schema check. */
@@ -131,5 +142,7 @@ class JobResultHandler(
         const val MAX_ERROR_LENGTH = 500
         val OPEN_STATUSES = setOf("pending", "published")
         val NIL = UUID(0, 0)
+        const val NUL = '\u0000'
+        const val REPLACEMENT = '\uFFFD'
     }
 }
