@@ -59,10 +59,11 @@ handler cannot pick a tenant either. Nothing in the platform creates a tenant.
 - (−) Accounts that never finish registration stay as `registrant` (cleanup: #92).
 - (−) The app holds a credential that can manage users. It is scoped to one realm and stored in OpenBao, but
   `manage-users` can map any realm role, `consultant` included, so it is as sensitive as an admin password.
-- (−) The per-IP limit trusts `X-Forwarded-For` from internal proxies (Tomcat's default: private and loopback
-  ranges). In production the backend must be reachable only through the BFF, which sets `X-Forwarded-For` from the
-  socket peer, and `server.tomcat.remoteip.internal-proxies` should name only the BFF. Otherwise every registration
-  shares the proxy's address and one limit (#14).
+- (−) The per-IP limit trusts `X-Forwarded-For` only from the proxies in `server.tomcat.remoteip.internal-proxies`
+  (`ALINHA_TRUSTED_PROXIES`; loopback by default, not Tomcat's every-private-range default). In production that
+  must match only the BFF, the backend must be reachable only through it, and the BFF must set `X-Forwarded-For` from
+  the socket peer. Otherwise every registration shares the BFF's address and one limit (#14). `TrustedProxiesTest`
+  checks this on a real Tomcat.
 
 ## Alternatives considered
 - **Consultant registers the client (`/portfolio`):** still needs Keycloak admin access and a tenant switch inside a
