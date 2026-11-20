@@ -8,6 +8,9 @@ import rule from './plugin-boundaries.js'
 
 const root = resolve(import.meta.dirname, '..')
 const plugin = (file) => resolve(root, 'plugins/feature/assessment/frontend', file)
+// A plugin whose package.json declares path dependencies and @types packages (eslint-rules/__fixtures__).
+const fixtures = resolve(import.meta.dirname, '__fixtures__/repo')
+const fixture = (file) => resolve(fixtures, 'plugins/feature/linked/frontend', file)
 
 RuleTester.describe = describe
 RuleTester.it = it
@@ -47,6 +50,18 @@ tester.run('plugin-boundaries', rule, {
     },
     // A function that merely has a method called resolve is not require.
     { filename: plugin('src/index.ts'), code: 'const p = (n: string) => Promise.resolve(n)' },
+    // Other properties of require do not resolve paths.
+    { filename: plugin('src/index.ts'), code: 'const isMain = require.main === module' },
+    { filename: plugin('src/index.ts'), code: "const hasRequire = typeof require === 'function'" },
+    // Vite query suffixes on packages.
+    { filename: plugin('src/index.ts'), code: "import css from '@alinha/ui?inline'" },
+    { filename: plugin('src/index.ts'), code: "import url from 'react?url'" },
+    // Types from @types/<name> are imported as <name>.
+    ...["import type { Program } from 'estree'", "import type { PluginObj } from '@babel/core'", "import { useState } from 'react'"].map((code) => ({
+      filename: fixture('src/a.ts'),
+      options: [{ root: fixtures }],
+      code,
+    })),
     // Files outside plugins are not restricted by this rule.
     { filename: resolve(root, 'frontend/shell/src/main.tsx'), code: "import x from '@alinha/shell'" },
     { filename: resolve(root, 'frontend/shell/src/main.tsx'), code: "import x from '../../../plugins/feature/assessment/frontend/src/index.ts'" },
@@ -84,13 +99,55 @@ tester.run('plugin-boundaries', rule, {
     {
       filename: plugin('src/index.ts'),
       code: "import { createRequire } from 'node:module'\nconst req = (f: string) => createRequire(f)",
-      ...err('dynamic'),
+      // Both the dynamic base and the returned require, which escapes the check.
+      errors: [{ messageId: 'dynamic' }, { messageId: 'dynamic' }],
     },
     {
       filename: plugin('src/index.ts'),
       code: "import { createRequire } from 'node:module'\nconst x = createRequire(import.meta.url)('../../../risk-assets/frontend/src/index.ts')",
       ...err('outside'),
     },
+    // Calls without arguments are reported, not a crash.
+    { filename: plugin('src/index.ts'), code: 'const p = require.resolve()', ...err('dynamic') },
+    { filename: plugin('src/index.ts'), code: "import { createRequire } from 'node:module'\nconst req = createRequire()", ...err('dynamic') },
+    { filename: plugin('src/index.ts'), code: 'const pages = import.meta.glob()', ...err('dynamic') },
+    // require and createRequire cannot be aliased away from the check.
+    { filename: plugin('src/index.ts'), code: "const r = require\nr('../../../risk-assets/frontend/src/index.ts')", ...err('dynamic') },
+    { filename: plugin('src/index.ts'), code: "const { resolve } = require\nresolve('../../../risk-assets/frontend/src/index.ts')", ...err('dynamic') },
+    { filename: plugin('src/index.ts'), code: "const r = require.resolve\nr('../../../risk-assets/frontend/src/index.ts')", ...err('dynamic') },
+    { filename: plugin('src/index.ts'), code: "const p = require['resolve']('../../../risk-assets/frontend/src/index.ts')", ...err('outside') },
+    { filename: plugin('src/index.ts'), code: "const p = (k: string) => require[k]('../../../risk-assets/frontend/src/index.ts')", ...err('dynamic') },
+    {
+      filename: plugin('src/index.ts'),
+      code: "import { createRequire as cr } from 'node:module'\nconst req = cr(import.meta.url)\nconst p = req.resolve('../../../risk-assets/frontend/src/index.ts')",
+      ...err('outside'),
+    },
+    {
+      filename: plugin('src/index.ts'),
+      code: "import { createRequire } from 'node:module'\nlet req\nreq = createRequire(import.meta.url)\nreq('../../../risk-assets/frontend/src/index.ts')",
+      ...err('outside'),
+    },
+    {
+      filename: plugin('src/index.ts'),
+      code: "import { createRequire } from 'node:module'\nfunction f() { return req('../../../risk-assets/frontend/src/index.ts') }\nconst req = createRequire(import.meta.url)",
+      ...err('outside'),
+    },
+    {
+      filename: plugin('src/index.ts'),
+      code: "import { createRequire } from 'node:module'\nconst make = createRequire",
+      ...err('dynamic'),
+    },
+    // A package subpath with ".." climbs out of the package folder.
+    { filename: plugin('src/index.ts'), code: "import x from '@alinha/ui/../../../../frontend/shell/src/host.tsx'", ...err('outside') },
+    { filename: plugin('src/index.ts'), code: "import x from 'react/../../../frontend/shell/src/main.tsx'", ...err('outside') },
+    { filename: plugin('vitest.config.ts'), code: "import x from 'path/../../x'", ...err('outside') },
+    // A dependency installed from a path (link:, file:, ../) is repo code, not a package.
+    ...['shell/src/host.tsx', 'local', 'relative/src/main.tsx'].map((spec) => ({
+      filename: fixture('src/a.ts'),
+      options: [{ root: fixtures }],
+      code: `import x from '${spec}'`,
+      ...err('undeclared'),
+    })),
     { filename: plugin('src/index.ts'), code: "type T = import('@alinha/plugin-risk-assets').Thing", ...err('platformPackage') },
     { filename: plugin('src/index.ts'), code: "import x from '../../../risk-assets/frontend/src/index.ts'", ...err('outside') },
     { filename: plugin('src/pages/a/b/Page.tsx'), code: "import x from '../../../../../../risk-assets/frontend/src/index.ts'", ...err('outside') },

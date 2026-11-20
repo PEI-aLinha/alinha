@@ -7,7 +7,7 @@
 // alias (Vite resolve.alias, tsconfig paths: `@/`, `~/`, `#x`) cannot reach into the repo dressed as a package name.
 // Option `root`: the repo root (eslint.config.js passes its own folder). Without it, ESLint's cwd is used,
 // and the rule would not recognise plugin files when ESLint runs from inside a plugin.
-import { readFileSync } from 'node:fs'
+import { readFileSync, statSync } from 'node:fs'
 import { builtinModules } from 'node:module'
 import { dirname, isAbsolute, join, posix, relative, resolve, sep } from 'node:path'
 
@@ -34,21 +34,32 @@ const isImportMetaProperty = (node, names) =>
   node?.type === 'MemberExpression' && isImportMeta(node.object) && node.property.type === 'Identifier' && names.includes(node.property.name)
 
 const DEPENDENCY_FIELDS = ['dependencies', 'peerDependencies', 'devDependencies', 'optionalDependencies']
+// A dependency installed from a path is code from the repo, not a package: `link:../x`, `file:../x`, `../x`, `/x`.
+const PATH_VERSION = /^(link:|file:|portal:|\.|\/|~)/
+// package.json contents per plugin, keyed by its mtime so an IDE's long-running ESLint sees edits.
 const declaredPackagesCache = new Map()
 
 /** Package names in `<pluginRoot>/package.json`. Empty when it is missing or unreadable, so the rule fails closed. */
 export function declaredPackagesOf(pluginRoot) {
-  if (!declaredPackagesCache.has(pluginRoot)) {
-    let names = []
-    try {
-      const manifest = JSON.parse(readFileSync(join(pluginRoot, 'package.json'), 'utf8'))
-      names = DEPENDENCY_FIELDS.flatMap((field) => Object.keys(manifest[field] ?? {}))
-    } catch {
-      // No package.json (or invalid JSON): nothing is declared, every bare name is reported.
-    }
-    declaredPackagesCache.set(pluginRoot, new Set(names))
+  const file = join(pluginRoot, 'package.json')
+  let mtime
+  try {
+    mtime = statSync(file).mtimeMs
+  } catch {
+    return new Set() // No package.json: nothing is declared, every bare name is reported. Not cached.
   }
-  return declaredPackagesCache.get(pluginRoot)
+  const cached = declaredPackagesCache.get(pluginRoot)
+  if (cached?.mtime === mtime) return cached.names
+  let names = new Set()
+  try {
+    const manifest = JSON.parse(readFileSync(file, 'utf8'))
+    const entries = DEPENDENCY_FIELDS.flatMap((field) => Object.entries(manifest[field] ?? {}))
+    names = new Set(entries.filter(([, version]) => !PATH_VERSION.test(String(version))).map(([name]) => name))
+  } catch {
+    // Invalid JSON: nothing is declared until it is fixed.
+  }
+  declaredPackagesCache.set(pluginRoot, { mtime, names })
+  return names
 }
 
 /** `react` for 'react/jsx-runtime', `@scope/name` for '@scope/name/sub'; null if `spec` is not a valid package name. */
@@ -58,7 +69,18 @@ export function packageNameOf(spec) {
   return first.length > 1 && second ? `${first}/${second}` : null
 }
 
+/** TypeScript resolves `name` (and `@scope/name`) to `@types/name` (`@types/scope__name`) as well. */
+const typesPackageOf = (name) => `@types/${name.startsWith('@') ? name.slice(1).replace('/', '__') : name}`
+
+const isDeclared = (name, pluginRoot) => {
+  const declared = declaredPackagesOf(pluginRoot)
+  return name !== null && (declared.has(name) || declared.has(typesPackageOf(name)))
+}
+
 const isNodeBuiltin = (spec) => spec.startsWith('node:') || builtinModules.includes(packageNameOf(spec))
+
+/** A package specifier without Vite's query (`?inline`, `?url`) or a hash. */
+const withoutQuery = (spec) => spec.replace(/[?#].*$/, '')
 
 const isRelative = (spec) => spec === '.' || spec === '..' || spec.startsWith('./') || spec.startsWith('../')
 
@@ -72,23 +94,25 @@ function underBase(base, pattern) {
 const propertyName = (prop) =>
   prop.computed ? undefined : prop.key.type === 'Identifier' ? prop.key.name : staticValue(prop.key)
 
-/** `createRequire(...)` or `<module>.createRequire(...)` */
-const isCreateRequire = (node) =>
-  node?.type === 'CallExpression' &&
-  ((node.callee.type === 'Identifier' && node.callee.name === 'createRequire') ||
-    (node.callee.type === 'MemberExpression' && !node.callee.computed && node.callee.property.name === 'createRequire'))
+/** Static property name of `a.b` or `a['b']`, or undefined when it is computed at runtime. */
+const memberName = (node) => (node.computed ? staticValue(node.property) : node.property.name)
+
+const NODE_MODULE_SOURCES = ['module', 'node:module']
 
 /** Why `spec`, imported from `filename` inside `pluginRoot`, breaks the boundary; null if it is fine. */
 export function violationOf(spec, filename, pluginRoot) {
-  if (spec.startsWith('@alinha/')) return isAllowedPlatformPackage(spec) ? null : 'platformPackage'
   // file: URLs name a path on disk directly, like an absolute path. So does Vite's /@fs/ prefix.
   if (isAbsolute(spec) || /^file:/i.test(spec)) return 'outside'
   if (isRelative(spec)) {
     const target = relative(pluginRoot, resolve(dirname(filename), spec))
     return target === '..' || target.startsWith(`..${sep}`) || isAbsolute(target) ? 'outside' : null
   }
-  if (isNodeBuiltin(spec)) return null
-  return declaredPackagesOf(pluginRoot).has(packageNameOf(spec)) ? null : 'undeclared'
+  const pkg = withoutQuery(spec)
+  // 'react/../../x': a ".." in a package subpath climbs out of the package folder.
+  if (pkg.split('/').includes('..')) return 'outside'
+  if (pkg.startsWith('@alinha/')) return isAllowedPlatformPackage(pkg) ? null : 'platformPackage'
+  if (isNodeBuiltin(pkg)) return null
+  return isDeclared(packageNameOf(pkg), pluginRoot) ? null : 'undeclared'
 }
 
 /** Static string value of an import source node, or undefined if it is computed at runtime. */
@@ -120,10 +144,7 @@ export default {
     if (!pluginRoot) return {}
 
     const reportDynamic = (node) => context.report({ node, messageId: 'dynamic' })
-
-    /** Names bound to a require function in this file: `require`, and variables set from createRequire(...). */
-    const requireNames = new Set(['require'])
-    const isRequire = (node) => (node.type === 'Identifier' && requireNames.has(node.name)) || isCreateRequire(node)
+    const { sourceCode } = context
 
     /** Reports `sourceNode` if it breaks the boundary; true when it is a static value that is fine. */
     const check = (sourceNode, { mustBeStatic = false, glob = false, base } = {}) => {
@@ -158,11 +179,67 @@ export default {
     }
 
     /** import.meta.glob('...') or import.meta.glob(['...', '!...']), with an optional { base } */
-    const checkGlob = ([patterns, options]) => {
+    const checkGlob = (call) => {
+      const [patterns = call, options] = call.arguments
       const opts = { mustBeStatic: true, glob: true, base: globBase(options) }
-      if (patterns?.type === 'ArrayExpression') patterns.elements.forEach((el) => check(el, opts))
+      if (patterns.type === 'ArrayExpression') patterns.elements.forEach((el) => check(el, opts))
       else check(patterns, opts)
     }
+
+    // require and the functions made by createRequire are followed through scope analysis at the end of the file,
+    // so a call before the declaration (hoisting) or after a later assignment is still checked. A require that is
+    // passed around as a value (aliased, destructured) cannot be followed and is reported as dynamic.
+
+    /** require('x'): the first argument must be a static path that stays inside. */
+    const checkRequireCall = (call) => check(call.arguments[0] ?? call, { mustBeStatic: true })
+
+    /** A reference to a require function: called, or require.resolve called. Anything else is reported. */
+    const checkRequireUse = (node) => {
+      const { parent } = node
+      if (parent.type === 'CallExpression' && parent.callee === node) return checkRequireCall(parent)
+      if (parent.type === 'UnaryExpression' && parent.operator === 'typeof') return
+      if (parent.type !== 'MemberExpression' || parent.object !== node) return reportDynamic(node)
+      const name = memberName(parent)
+      if (name === undefined) return reportDynamic(parent)
+      if (name !== 'resolve') return // require.main, require.cache: no path is resolved
+      const call = parent.parent
+      if (call.type === 'CallExpression' && call.callee === parent) checkRequireCall(call)
+      else reportDynamic(parent)
+    }
+
+    const checkedVariables = new Set()
+    /** Every read of `variable` is a use of a require function. */
+    const checkRequireVariable = (variable) => {
+      if (!variable || checkedVariables.has(variable)) return
+      checkedVariables.add(variable)
+      variable.references.filter((ref) => ref.isRead()).forEach((ref) => checkRequireUse(ref.identifier))
+    }
+
+    /** createRequire(base): base must be import.meta.url or stay inside; the result is followed like require. */
+    const checkCreateRequireCall = (call) => {
+      const [base] = call.arguments
+      if (!isImportMetaProperty(base, ['url'])) check(base ?? call, { mustBeStatic: true })
+      const { parent } = call
+      if (parent.type === 'VariableDeclarator' && parent.init === call && parent.id.type === 'Identifier') {
+        sourceCode.getDeclaredVariables(parent).forEach(checkRequireVariable)
+      } else if (parent.type === 'AssignmentExpression' && parent.right === call && parent.left.type === 'Identifier') {
+        const ref = sourceCode.getScope(parent).references.find((r) => r.identifier === parent.left)
+        if (ref?.resolved) checkRequireVariable(ref.resolved)
+        else reportDynamic(call)
+      } else {
+        checkRequireUse(call)
+      }
+    }
+
+    /** A reference to createRequire itself: it must be called. */
+    const checkCreateRequireUse = (node) => {
+      const { parent } = node
+      if (parent.type === 'CallExpression' && parent.callee === node) checkCreateRequireCall(parent)
+      else reportDynamic(node)
+    }
+
+    const createRequireImports = []
+    const createRequireMemberCalls = []
 
     return {
       ImportDeclaration: (node) => check(node.source),
@@ -172,21 +249,28 @@ export default {
       TSImportEqualsDeclaration: (node) =>
         node.moduleReference.type === 'TSExternalModuleReference' && check(node.moduleReference.expression),
       TSImportType: (node) => check(node.source ?? node.argument),
-      // const req = createRequire(import.meta.url): from here on, req(...) is a require.
-      VariableDeclarator: (node) => {
-        if (node.id.type === 'Identifier' && isCreateRequire(node.init)) requireNames.add(node.id.name)
+      // import { createRequire as cr } from 'node:module'
+      ImportSpecifier: (node) => {
+        const imported = node.imported.type === 'Identifier' ? node.imported.name : node.imported.value
+        if (imported === 'createRequire' && NODE_MODULE_SOURCES.includes(node.parent.source.value)) createRequireImports.push(node)
       },
       CallExpression: (node) => {
-        const { callee, arguments: args } = node
-        // require('x'), req('x'), createRequire(...)('x')
-        if (isRequire(callee) && args.length > 0) check(args[0], { mustBeStatic: true })
-        // require.resolve('x'), req.resolve('x')
-        if (callee.type === 'MemberExpression' && !callee.computed && callee.property.name === 'resolve' && isRequire(callee.object)) {
-          check(args[0], { mustBeStatic: true })
-        }
-        // createRequire(base): require calls resolve relative to base, so base must stay inside too.
-        if (isCreateRequire(node) && !isImportMetaProperty(args[0], ['url'])) check(args[0], { mustBeStatic: true })
-        if (isImportMetaProperty(callee, ['glob', 'globEager'])) checkGlob(args)
+        // module.createRequire(...), module['createRequire'](...)
+        if (node.callee.type === 'MemberExpression' && memberName(node.callee) === 'createRequire') createRequireMemberCalls.push(node)
+        if (isImportMetaProperty(node.callee, ['glob', 'globEager'])) checkGlob(node)
+      },
+      'Program:exit': (program) => {
+        const globalScope = sourceCode.getScope(program)
+        const globalRefs = (name) => [
+          ...globalScope.through.filter((ref) => ref.identifier.name === name),
+          ...(globalScope.set.get(name)?.references ?? []), // when `require` is a configured global
+        ]
+        globalRefs('require').forEach((ref) => checkRequireUse(ref.identifier))
+        globalRefs('createRequire').forEach((ref) => checkCreateRequireUse(ref.identifier))
+        createRequireImports.forEach((node) =>
+          sourceCode.getDeclaredVariables(node).forEach((v) => v.references.forEach((ref) => checkCreateRequireUse(ref.identifier))),
+        )
+        createRequireMemberCalls.forEach(checkCreateRequireCall)
       },
       // new URL('./asset.svg', import.meta.url): Vite resolves the first argument like an import.
       NewExpression: (node) => {
