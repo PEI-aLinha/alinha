@@ -10,6 +10,7 @@ import pt.alinha.bff.BffProperties
 import org.springframework.web.server.ServerWebExchange
 import reactor.core.publisher.Mono
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.atomic.AtomicBoolean
 
 /** Fixed-window counter in Redis, shared by every BFF instance. */
 @Component
@@ -19,6 +20,9 @@ class RateLimitGuard(
 ) {
 
     private val log = LoggerFactory.getLogger(javaClass)
+
+    /** Log the outage once when it starts and once when it ends, not on every request. */
+    private val redisDown = AtomicBoolean(false)
 
     /**
      * Seconds the caller must wait after [limit] requests in the window, rounded up: 0 when the request may proceed. Fails open (0) when Redis is
@@ -31,9 +35,14 @@ class RateLimitGuard(
             listOf(props.rateLimit.window.toMillis().toString(), limit.toString()),
         ).next()
             .map { waitMillis -> if (waitMillis <= 0) 0L else (waitMillis + 999) / 1000 }
+            .doOnNext {
+                if (redisDown.compareAndSet(true, false)) log.info("Rate limiter available again")
+            }
             .onErrorResume {
                 // The session is in Redis too: when Redis is down the login is already unavailable. Do not add an outage.
-                log.warn("Rate limiter unavailable, allowing the request: {}", it.message)
+                if (redisDown.compareAndSet(false, true)) {
+                    log.warn("Rate limiter unavailable, allowing requests until Redis is back: {}", it.message)
+                }
                 Mono.just(0L)
             }
 
