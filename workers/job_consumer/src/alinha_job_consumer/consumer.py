@@ -253,8 +253,8 @@ def _attempt(text: str | None) -> int:
 
 
 def _uuid(value: Any) -> bool:
+    """The canonical dashed form only, as the schema's `uuid` format: no braces, `urn:uuid:` or bare hex."""
     try:
-        uuid.UUID(str(value))
+        return isinstance(value, str) and str(uuid.UUID(value)) == value.lower()
     except ValueError:
         return False
-    return True

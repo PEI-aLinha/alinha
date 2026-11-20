@@ -310,3 +310,13 @@ def test_a_malformed_job_type_is_rejected(value):
 def test_a_job_type_without_a_contract_fails_at_startup(redis):
     with pytest.raises(ValueError, match="no contract no-such-type"):
         Consumer(redis, Config(name="test", job_types=(("no-such.type", 1),)))
+
+
+@pytest.mark.parametrize("form", ["{%s}", "urn:uuid:%s", "hex"])
+def test_a_non_canonical_job_id_is_dropped(redis, form):
+    value = uuid.uuid4()
+    add_job(redis, envelope(jobId=value.hex if form == "hex" else form % value))
+    run_once(consumer(redis, lambda _: {"items": []}))
+
+    assert published(redis) == []
+    assert pending(redis) == 0
