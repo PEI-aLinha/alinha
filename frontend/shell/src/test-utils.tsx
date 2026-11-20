@@ -1,9 +1,10 @@
 import { render } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { vi } from 'vitest'
 import type { MeDto, OrganizationRefDto, Role } from '@alinha/api-client'
 import type { FrontendPlugin } from '@alinha/plugin-sdk'
+import { AppProviders } from './AppProviders'
 import { createRoutes } from './routing/routes'
 
 export const ACME: OrganizationRefDto = { id: '00000000-0000-4000-8000-00000000000a', slug: 'acme', name: 'Acme, Lda.' }
@@ -49,9 +50,9 @@ export function renderApp({ url, plugins = [], me = meFor('responsible'), api }:
   const router = createMemoryRouter(createRoutes(plugins), { initialEntries: [url] })
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const view = render(
-    <QueryClientProvider client={queryClient}>
+    <AppProviders queryClient={queryClient}>
       <RouterProvider router={router} />
-    </QueryClientProvider>,
+    </AppProviders>,
   )
   return { ...view, router, calls, fetchMock, queryClient }
 }

@@ -3,7 +3,9 @@
   "displayName": "aLinha",
   "enabled": true,
   "sslRequired": "none",
-  "registrationAllowed": false,
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": true,
+  "verifyEmail": true,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,
@@ -51,8 +53,36 @@
       {
         "name": "analyst",
         "description": "Analista — apoio técnico de uma organização cliente"
+      },
+      {
+        "name": "registrant",
+        "description": "Conta nova que ainda não registou a organização"
+      },
+      {
+        "name": "offline_access",
+        "description": "${role_offline-access}"
+      },
+      {
+        "name": "uma_authorization",
+        "description": "${role_uma_authorization}"
+      },
+      {
+        "name": "default-roles-alinha",
+        "description": "Papéis de uma conta criada no registo",
+        "composite": true,
+        "composites": {
+          "realm": [
+            "offline_access",
+            "uma_authorization",
+            "registrant"
+          ]
+        }
       }
     ]
+  },
+  "defaultRole": {
+    "name": "default-roles-alinha",
+    "composite": true
   },
   "clients": [
     {
@@ -70,6 +100,9 @@
       "fullScopeAllowed": true,
       "rootUrl": "http://localhost:8081",
       "baseUrl": "http://localhost:8081",
+      "attributes": {
+        "post.logout.redirect.uris": "http://localhost:5173/*"
+      },
       "redirectUris": [
         "http://localhost:8081/*"
       ],
@@ -137,6 +170,20 @@
           }
         }
       ]
+    },
+    {
+      "clientId": "alinha-provisioner",
+      "name": "aLinha provisioner",
+      "description": "Service account of the aLinha application: assigns the organization to a new account (ADR 0004)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "dev-provisioner-secret",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "fullScopeAllowed": true
     }
   ],
   "users": [
@@ -244,6 +291,17 @@
           "temporary": false
         }
       ]
+    },
+    {
+      "username": "service-account-alinha-provisioner",
+      "enabled": true,
+      "serviceAccountClientId": "alinha-provisioner",
+      "clientRoles": {
+        "realm-management": [
+          "manage-users",
+          "view-users"
+        ]
+      }
     }
   ],
   "components": {

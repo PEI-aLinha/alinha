@@ -42,6 +42,64 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organization/registration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Register the caller's organization
+         * @description A new account (`registrant` role, no organization yet) registers its organization. This creates the
+         *     organization's tenant, makes the caller its Designated Officer (`responsible`) and publishes
+         *     `OrganizationRegistered` (ADR 0004). The session must be refreshed afterwards to work inside the
+         *     new organization. No `X-Alinha-Tenant`: the organization does not exist yet. Permission
+         *     `organization:register`.
+         */
+        post: operations["registerOrganization"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organization/profile": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The current organization's data
+         * @description Permission `organization:read` (Designated Officer, consultant, analyst).
+         */
+        get: operations["getOrganizationProfile"];
+        /**
+         * Update the current organization's data
+         * @description Replaces the organization's data. `version` must be the one that was read; otherwise the answer is
+         *     `409` (`code` = `VERSION_CONFLICT`) and nothing changes. The NIF identifies the organization and cannot
+         *     change after registration: a different `nif` is a `422`. Permission `organization:edit`
+         *     (Designated Officer, consultant).
+         */
+        put: operations["updateOrganizationProfile"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/{plugin}/ping": {
         parameters: {
             query?: never;
@@ -116,8 +174,12 @@ export interface components {
             /** @description Total number of matching items across all pages. */
             total: number;
         };
-        /** @enum {string} */
-        Role: "consultant" | "responsible" | "analyst";
+        /**
+         * @description `registrant` is an account created through self-registration that has not registered its
+         *     organization yet (ADR 0004). It has no organizations until it does.
+         * @enum {string}
+         */
+        Role: "consultant" | "responsible" | "analyst" | "registrant";
         OrganizationRef: {
             /**
              * Format: uuid
@@ -142,7 +204,7 @@ export interface components {
             permissions: string[];
             /**
              * @description The client user's own organization (exactly one), or the consultant's assigned
-             *     organizations (the `tenants` claim).
+             *     organizations (the `tenants` claim). Empty for a `registrant`.
              */
             organizations: components["schemas"]["OrganizationRef"][];
         };
@@ -158,6 +220,80 @@ export interface components {
             consumes: string[];
             /** @description RBAC resources the plugin declares. */
             permissions: string[];
+        };
+        OrganizationAddress: {
+            street: string;
+            /** @example 3750-750 */
+            postalCode: string;
+            city: string;
+        };
+        OrganizationContacts: {
+            /** @description 9 digits starting with 2 or 9; spaces are ignored on input. */
+            phone: string;
+            /** Format: email */
+            email: string;
+        };
+        /** @description Person the CNCS can reach at any time in case of an incident. */
+        PermanentContact: {
+            name: string;
+            phone: string;
+        };
+        /**
+         * @description Organization data for the NIS2 classification (FR01). Every field listed in `required` is required, and
+         *     `subsector` too when the chosen `sector` has subsectors (a conditional the schema does not express). The
+         *     server validates all of them and answers `422` with one message per missing or invalid field. NIF, CAE and phones may contain spaces, dots or dashes, never letters.
+         */
+        OrganizationProfileInput: {
+            /** @description Official name, as in the permanent certificate. */
+            name: string;
+            /** @description Portuguese tax number, 9 digits with a valid check digit. */
+            nif: string;
+            /** @description Main CAE code, 5 digits. */
+            cae: string;
+            /** @description Sector id from the DL 125/2025 annexes (e.g. `industria`), or `outro`. */
+            sector: string;
+            /** @description Required only when the sector has subsectors (e.g. `automoveis`). */
+            subsector?: string | null;
+            services: string;
+            employees: number;
+            /** @description Annual turnover in whole euros. */
+            turnover: number;
+            address: components["schemas"]["OrganizationAddress"];
+            contacts: components["schemas"]["OrganizationContacts"];
+            permanentContact: components["schemas"]["PermanentContact"];
+        };
+        OrganizationProfileUpdate: components["schemas"]["OrganizationProfileInput"] & {
+            /** @description The `version` that was read. */
+            version: number;
+        };
+        OrganizationProfile: {
+            /** Format: uuid */
+            id: string;
+            /** @description Send it back on update. */
+            version: number;
+            name: string;
+            /** @description 9 digits. */
+            nif: string;
+            /** @description 5 digits. */
+            cae: string;
+            sector: string;
+            subsector: string | null;
+            /**
+             * @description NIS2 annex of the sector; null when the sector is not covered.
+             * @enum {string|null}
+             */
+            sectorAnnex: "I" | "II" | null;
+            services: string;
+            employees: number;
+            /** @description Annual turnover in whole euros. */
+            turnover: number;
+            address: components["schemas"]["OrganizationAddress"];
+            contacts: components["schemas"]["OrganizationContacts"];
+            permanentContact: components["schemas"]["PermanentContact"];
+            /** Format: date-time */
+            registeredAt: string;
+            /** Format: date-time */
+            updatedAt: string;
         };
         Ping: {
             plugin: string;
@@ -234,7 +370,10 @@ export interface components {
         PageSize: number;
     };
     requestBodies: never;
-    headers: never;
+    headers: {
+        /** @description Seconds to wait before trying again. */
+        RetryAfter: number;
+    };
     pathItems: never;
 }
 export type $defs = Record<string, never>;
@@ -279,6 +418,159 @@ export interface operations {
                 };
             };
             401: components["responses"]["Unauthorized"];
+        };
+    };
+    registerOrganization: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrganizationProfileInput"];
+            };
+        };
+        responses: {
+            /** @description Organization registered. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationProfile"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /**
+             * @description `code` tells the cases apart:
+             *     - `ORGANIZATION_ALREADY_EXISTS`: this account already has an organization (refresh the session and go to it);
+             *     - `NIF_ALREADY_REGISTERED`: another organization already uses this NIF.
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Invalid data; `errors` has one Portuguese message per field (`code` = `VALIDATION_FAILED`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /**
+             * @description Too many registration attempts from this client (`code` = `TOO_MANY_REGISTRATIONS`): at most 5 per hour.
+             *     Nothing was created. A second submit while this account's registration is still running is a `503`
+             *     `REGISTRATION_BUSY` instead, and does not count as an attempt.
+             */
+            429: {
+                headers: {
+                    "Retry-After": components["headers"]["RetryAfter"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /**
+             * @description Nothing was created; try again later. `code` tells why:
+             *     - `IDENTITY_UNAVAILABLE`: the identity provider failed;
+             *     - `REGISTRATION_BUSY`: too many registrations at once, or this account's registration is still running.
+             */
+            503: {
+                headers: {
+                    "Retry-After": components["headers"]["RetryAfter"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getOrganizationProfile: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The organization's data. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationProfile"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateOrganizationProfile: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrganizationProfileUpdate"];
+            };
+        };
+        responses: {
+            /** @description The updated data. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationProfile"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description The data changed since it was read (`code` = `VERSION_CONFLICT`): reload and edit again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["UnprocessableEntity"];
         };
     };
     pingPlugin: {

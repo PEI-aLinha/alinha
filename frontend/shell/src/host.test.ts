@@ -19,6 +19,18 @@ describe('createApi', () => {
     expect(headers.get('Accept')).toBe('application/json')
   })
 
+  it('sends the CSRF token from the BFF cookie on writes', async () => {
+    document.cookie = 'XSRF-TOKEN=csrf-123'
+    try {
+      const fetchFn = vi.fn(async () => ok())
+      await api(null, fetchFn)('/x', { method: 'POST' })
+      const [, init] = fetchFn.mock.calls[0] as unknown as [string, RequestInit]
+      expect(new Headers(init.headers).get('X-XSRF-TOKEN')).toBe('csrf-123')
+    } finally {
+      document.cookie = 'XSRF-TOKEN=; Max-Age=0'
+    }
+  })
+
   it('adds the leading slash and keeps the caller options', async () => {
     const fetchFn = vi.fn(async () => ok())
     await api(null, fetchFn)('assets', { method: 'POST', headers: { Accept: 'text/csv' } })

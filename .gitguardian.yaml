@@ -5,6 +5,7 @@ secret:
   ignored_paths:
     # Dev-only credentials for local docker compose. Mirrors the allowlist in .gitleaks.toml.
     # List files, not folders: a real secret added next to them must still be flagged.
+    - deploy/.env.example
     - deploy/docker-compose.dev.yml
     - deploy/openbao/init.sh
     - deploy/postgres/init/01-app-role.sh

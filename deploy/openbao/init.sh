@@ -11,7 +11,8 @@ bao kv put secret/alinha/app \
   db.password="${ALINHA_APP_DB_PASSWORD:-alinha_app}" \
   db.migration-username="${POSTGRES_USER:-alinha}" \
   db.migration-password="${POSTGRES_PASSWORD:-alinha}" \
-  smtp.password=change-me
+  smtp.password=change-me \
+  identity.provisioner-secret="${KEYCLOAK_PROVISIONER_SECRET:-dev-provisioner-secret}"
 
 # Secrets read by the AI Service (see ai-service/README.md).
 bao kv put secret/alinha/ai-service llm.api-key=change-me
