@@ -32,7 +32,7 @@ describe('the 7 plugins in the shell', () => {
 
   it('mounts the consultant menu for a client organization', async () => {
     const { router } = renderApp({ url: '/portfolio/acme', plugins, me: meFor('consultant'), api: async () => json({ status: 'UP' }) })
-    await waitFor(() => expect(router.state.location.pathname).toBe('/portfolio/acme/painel'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/portfolio/acme/dashboard'))
     expect(await navLabels()).toEqual(['Carteira de clientes', 'Painel'])
   })
 })
