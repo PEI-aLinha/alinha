@@ -21,7 +21,7 @@ describe('the 7 plugins in the shell', () => {
 
   it('mounts the client menu and pages, and calls the API with the organization', async () => {
     const { router, calls } = renderApp({ url: '/org/acme', plugins, api: async () => json({ plugin: 'x', status: 'UP' }) })
-    await waitFor(() => expect(router.state.location.pathname).toBe('/org/acme/ativos'))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/org/acme/assets'))
     expect(await navLabels()).toEqual([
       'Ativos e riscos', 'Avaliação', 'Notificações', 'Organização', 'Painel', 'Repositório de código', 'Superfície externa',
     ])
