@@ -86,6 +86,8 @@ fun startCollection(...) {
 
 - Read with a consumer group, and `XACK` only after the result is written.
 - Deduplicate by `(jobId, attempt)`: the same pair can arrive twice.
+- Unacknowledged entries are claimed again after `WORKER_CLAIM_IDLE_MS`, even if a worker is still running them:
+  keep it above the longest collector run (`workers/README.md`).
 - `attempt` is a field of the stream entry, not of the envelope: the envelope schema stays unchanged across retries.
 - Send exactly one result per attempt to `alinha:jobs:results`, field `result`, following
   `contracts/jobs/job-result.v1.schema.json`. Set `retryable: true` only for transient failures.

@@ -24,10 +24,15 @@ the consumer.
 | `WORKER_NAME` | hostname | Consumer name inside the group |
 | `WORKER_BLOCK_MS` | `5000` | `XREADGROUP` block time |
 | `WORKER_BATCH` | `10` | Entries per read and per claim |
-| `WORKER_CLAIM_IDLE_MS` | `60000` | Claim entries a crashed worker left pending |
+| `WORKER_CLAIM_IDLE_MS` | `60000` | Claim entries a crashed worker left pending; must be larger than the longest collector run (below) |
 | `WORKER_DEDUPE_TTL_S` | `86400` | TTL of the `(jobId, attempt)` dedupe key |
 | `WORKER_MAX_DELIVERIES` | `3` | Deliveries of one entry that may fail unexpectedly; the next one publishes a non-retryable `too_many_deliveries` result |
 | `CONTRACTS_DIR` | repo `contracts/jobs`, else `/app/contracts/jobs` | Where the JSON Schemas live |
+
+`XAUTOCLAIM` cannot tell a crashed worker from a slow one: an entry still running after `WORKER_CLAIM_IDLE_MS` is
+taken over and the collector runs a second time. Set it above the longest collector run. If a run does happen
+twice, the core applies only the first result for a `(jobId, attempt)` and ignores the other (docs/jobs.md,
+"Results consumer").
 
 Image: `docker build -f workers/job_consumer/Dockerfile .` from the repo root.
 
