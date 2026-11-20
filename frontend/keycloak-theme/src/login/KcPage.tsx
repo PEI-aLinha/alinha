@@ -7,10 +7,20 @@ import type { KcContext } from './KcContext'
 import Template from './Template'
 
 const UserProfileFormFields = lazy(() => import('keycloakify/login/UserProfileFormFields'))
+const Login = lazy(() => import('./pages/Login'))
+const Register = lazy(() => import('./pages/Register'))
+const LoginConfigTotp = lazy(() => import('./pages/LoginConfigTotp'))
+const LoginOtp = lazy(() => import('./pages/LoginOtp'))
+const LoginResetPassword = lazy(() => import('./pages/LoginResetPassword'))
+const LoginUpdatePassword = lazy(() => import('./pages/LoginUpdatePassword'))
+const LoginVerifyEmail = lazy(() => import('./pages/LoginVerifyEmail'))
+const LoginPageExpired = lazy(() => import('./pages/LoginPageExpired'))
+const Info = lazy(() => import('./pages/Info'))
+const ErrorPage = lazy(() => import('./pages/ErrorPage'))
 
 /**
- * Keycloak's own CSS (PatternFly) is off. Every page is Keycloakify's default markup inside our Template, styled
- * through `classes` with the @alinha/ui control and button styles.
+ * Keycloak's own CSS (PatternFly) is off. The pages below are ours; every other page is Keycloakify's default markup
+ * inside our Template, styled through `classes` with the @alinha/ui control and button styles.
  */
 const classes = {
   kcFormClass: 'flex flex-col gap-5',
@@ -36,7 +46,32 @@ export default function KcPage({ kcContext }: { kcContext: KcContext }) {
 
   return (
     <Suspense>
-      <DefaultPage kcContext={kcContext} {...common} UserProfileFormFields={UserProfileFormFields} doMakeUserConfirmPassword />
+      {(() => {
+        switch (kcContext.pageId) {
+          case 'login.ftl':
+            return <Login kcContext={kcContext} {...common} />
+          case 'register.ftl':
+            return <Register kcContext={kcContext} {...common} />
+          case 'login-config-totp.ftl':
+            return <LoginConfigTotp kcContext={kcContext} {...common} />
+          case 'login-otp.ftl':
+            return <LoginOtp kcContext={kcContext} {...common} />
+          case 'login-reset-password.ftl':
+            return <LoginResetPassword kcContext={kcContext} {...common} />
+          case 'login-update-password.ftl':
+            return <LoginUpdatePassword kcContext={kcContext} {...common} />
+          case 'login-verify-email.ftl':
+            return <LoginVerifyEmail kcContext={kcContext} {...common} />
+          case 'login-page-expired.ftl':
+            return <LoginPageExpired kcContext={kcContext} {...common} />
+          case 'info.ftl':
+            return <Info kcContext={kcContext} {...common} />
+          case 'error.ftl':
+            return <ErrorPage kcContext={kcContext} {...common} />
+          default:
+            return <DefaultPage kcContext={kcContext} {...common} UserProfileFormFields={UserProfileFormFields} doMakeUserConfirmPassword />
+        }
+      })()}
     </Suspense>
   )
 }
