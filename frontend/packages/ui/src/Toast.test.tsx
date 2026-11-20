@@ -1,6 +1,6 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ToastProvider, useToast } from './Toast'
+import { addToast, ToastProvider, useToast } from './Toast'
 
 function Trigger({ message, tone }: { message: string; tone?: 'success' | 'error' }) {
   const toast = useToast()
@@ -27,8 +27,44 @@ describe('Toast', () => {
     renderToast('Não foi possível guardar', 'error')
     expect(screen.getByRole('alert')).toHaveTextContent('Não foi possível guardar')
     act(() => { vi.advanceTimersByTime(60_000) })
-    expect(screen.getByRole('alert')).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('Não foi possível guardar')
     fireEvent.click(screen.getByRole('button', { name: 'Fechar aviso' }))
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByRole('alert')).toBeEmptyDOMElement()
+  })
+
+  it('keeps both live regions mounted and empty before any toast, so the first one is announced', () => {
+    render(<ToastProvider><Trigger message="x" /></ToastProvider>)
+    expect(screen.getByRole('status')).toBeEmptyDOMElement()
+    expect(screen.getByRole('alert')).toBeEmptyDOMElement()
+  })
+
+  it('clears its timers on unmount', () => {
+    const { unmount } = render(<ToastProvider><Trigger message="Ativo guardado" /></ToastProvider>)
+    fireEvent.click(screen.getByText('show'))
+    unmount()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('clears the timer of a toast that is already gone', () => {
+    render(<ToastProvider><Trigger message="Ativo guardado" /></ToastProvider>)
+    fireEvent.click(screen.getByText('show'))
+    act(() => { vi.advanceTimersByTime(5000) })
+    expect(vi.getTimerCount()).toBe(0)
+  })
+})
+
+describe('addToast', () => {
+  const success = (id: number) => ({ id, message: `s${id}`, tone: 'success' as const })
+  const error = (id: number) => ({ id, message: `e${id}`, tone: 'error' as const })
+
+  it('drops the oldest success when there are too many', () => {
+    const items = [success(1), success(2), success(3)]
+    expect(addToast(items, success(4)).map((t) => t.id)).toEqual([2, 3, 4])
+  })
+
+  it('never drops an error to make room', () => {
+    const items = [error(1), success(2), success(3), success(4)]
+    expect(addToast(items, success(5)).map((t) => t.id)).toEqual([1, 3, 4, 5])
+    expect(addToast([error(1), error(2), error(3)], error(4)).map((t) => t.id)).toEqual([1, 2, 3, 4])
   })
 })

@@ -78,7 +78,8 @@ afterEach(() => {
 describe('session bootstrap', () => {
   it('shows a loading message while /api/me answers', () => {
     renderApp({ url: '/', plugins, me: () => new Promise(() => {}) })
-    expect(screen.getByRole('status')).toHaveTextContent('A preparar a sua sessão…')
+    // The toast region is also a (still empty) status region, so find this one by its text.
+    expect(screen.getByText('A preparar a sua sessão…')).toHaveAttribute('role', 'status')
   })
 
   it('sends the browser to the login page when there is no session', async () => {
@@ -366,6 +367,6 @@ describe('toasts', () => {
   it('a plugin page can confirm an action with useToast()', async () => {
     renderApp({ url: '/org/acme/guardar', plugins })
     fireEvent.click(await screen.findByRole('button', { name: 'Guardar' }))
-    expect(screen.getByRole('status')).toHaveTextContent('Ativo guardado')
+    expect(screen.getByText('Ativo guardado').closest('[role="status"]')).not.toBeNull()
   })
 })
