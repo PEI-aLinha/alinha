@@ -18,6 +18,7 @@ import org.springframework.security.oauth2.client.endpoint.WebClientReactiveRefr
 import org.springframework.security.oauth2.client.web.DefaultReactiveOAuth2AuthorizedClientManager
 import org.springframework.security.oauth2.client.web.server.ServerOAuth2AuthorizedClientRepository
 import org.springframework.security.core.Authentication
+import org.springframework.security.oauth2.core.OAuth2AuthorizationException
 import org.springframework.security.oauth2.core.oidc.user.OidcUser
 import org.springframework.security.web.server.WebFilterExchange
 import org.springframework.security.web.server.SecurityWebFilterChain
@@ -93,6 +94,21 @@ class SecurityConfig(private val props: BffProperties) {
     fun csrfCookieWebFilter(): WebFilter = WebFilter { exchange, chain ->
         val token = exchange.getAttribute<Any>(CsrfToken::class.java.name)
         if (token is Mono<*>) token.then(chain.filter(exchange)) else chain.filter(exchange)
+    }
+
+    /**
+     * TokenRelay lets a failed refresh (`invalid_grant` once the Keycloak SSO session idles out) escape as a 500.
+     * Answer 401 instead so the shell sends the user back to the login.
+     */
+    @Bean
+    fun tokenRelayFailureWebFilter(): WebFilter = WebFilter { exchange, chain ->
+        if (!exchange.request.path.value().startsWith("/api/")) {
+            chain.filter(exchange)
+        } else {
+            chain.filter(exchange).onErrorResume(OAuth2AuthorizationException::class.java) {
+                unauthorizedOrLogin(exchange)
+            }
+        }
     }
 
     private fun unauthorizedOrLogin(exchange: ServerWebExchange): Mono<Void> {
