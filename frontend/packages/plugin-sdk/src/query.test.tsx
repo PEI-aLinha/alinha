@@ -9,7 +9,7 @@ afterEach(cleanup)
 
 function setup(api: PluginHost['api']) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  const host: PluginHost = { tenantId: 't1', organization: null, user: null, can: () => true, api, reauthenticate: () => {} }
+  const host: PluginHost = { tenantId: 't1', organization: null, user: null, can: () => true, api, reauthenticate: async () => {} }
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>
       <PluginHostContext.Provider value={host}>{children}</PluginHostContext.Provider>

@@ -116,11 +116,14 @@ export interface PluginHost {
    */
   api: <T>(path: string, init?: RequestInit) => Promise<T>
   /**
-   * Signs in again to get a fresh token, then comes back to `returnTo` (a same-origin path, default the current page).
-   * Use it when the backend changed the account's roles or organization (e.g. right after registering an
-   * organization, ADR 0004): until then `/api/me` still shows the old session. Leaves the page.
+   * Gets the session a fresh token, without leaving the page. Use it when the backend changed the account's roles or
+   * organization (e.g. right after registering an organization, ADR 0004): until then `/api/me` still shows the old
+   * session. Once it resolves the shell has the new session, re-routes where needed (an account that now has an
+   * organization leaves the onboarding) and, when given, goes to `returnTo` (a same-origin path).
+   * Rejects with [ApiError] or [NetworkError] when the refresh fails; show it with `errorMessage`. Only when the
+   * session can no longer be refreshed (expired) does the person sign in again, which leaves the page.
    */
-  reauthenticate: (returnTo?: string) => void
+  reauthenticate: (returnTo?: string) => Promise<void>
 }
 
 export const PluginHostContext = createContext<PluginHost | null>(null)

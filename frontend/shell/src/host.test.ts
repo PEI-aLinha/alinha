@@ -1,7 +1,8 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ApiError, NetworkError } from '@alinha/plugin-sdk'
-import { createApi, reauthenticate, retryUnlessClientError, TENANT_HEADER } from './host'
-import { login } from './session/login'
+import type { MeDto } from '@alinha/api-client'
+import { createApi, createReauthenticate, REFRESH_PATH, retryUnlessClientError, TENANT_HEADER } from './host'
+import { login, reauthentication } from './session/login'
 import { NotJsonError } from './http'
 
 const ok = (body: unknown = {}, init: ResponseInit = {}) => new Response(JSON.stringify(body), { status: 200, ...init })
@@ -154,10 +155,86 @@ describe('createApi', () => {
 })
 
 describe('reauthenticate', () => {
-  it('signs in again and comes back to the given page', () => {
+  const withOrganization: MeDto = {
+    user: { id: 'u1', name: 'Rui' }, roles: ['responsible'], permissions: [],
+    organizations: [{ id: '00000000-0000-4000-8000-00000000000a', slug: 'acme', name: 'Acme' }],
+  }
+  const stillRegistering: MeDto = { ...withOrganization, roles: ['registrant'], organizations: [] }
+
+  const setup = (response: () => Response | Promise<Response>, me: MeDto = withOrganization) => {
+    const fetchFn = vi.fn(async () => response())
+    const reloadSession = vi.fn(async () => me)
+    const navigate = vi.fn()
     const go = vi.spyOn(login, 'go').mockImplementation(() => {})
-    reauthenticate('/org/acme')
+    const reauthenticate = createReauthenticate({ reloadSession, navigate, fetchFn })
+    return { fetchFn, reloadSession, navigate, go, reauthenticate }
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    reauthentication.forget()
+  })
+
+  it('refreshes the token with a POST to the BFF carrying the CSRF token', async () => {
+    document.cookie = 'XSRF-TOKEN=csrf-123'
+    try {
+      const { fetchFn, reauthenticate } = setup(() => new Response(null, { status: 204 }))
+      await reauthenticate('/')
+      const [url, init] = fetchFn.mock.calls[0] as unknown as [string, RequestInit]
+      expect(url).toBe(REFRESH_PATH)
+      expect(init.method).toBe('POST')
+      expect(init.credentials).toBe('include')
+      expect(new Headers(init.headers).get('X-XSRF-TOKEN')).toBe('csrf-123')
+    } finally {
+      document.cookie = 'XSRF-TOKEN=; Max-Age=0'
+    }
+  })
+
+  it('reloads the session and goes to the given page, without signing in again', async () => {
+    const { reloadSession, navigate, go, reauthenticate } = setup(() => new Response(null, { status: 204 }))
+    await reauthenticate('/org/acme')
+    expect(reloadSession).toHaveBeenCalledOnce()
+    expect(navigate).toHaveBeenCalledWith('/org/acme')
+    expect(go).not.toHaveBeenCalled()
+    expect(reauthentication.recent()).toBe(false)
+  })
+
+  it('stays on the page when no return address is given', async () => {
+    const { reloadSession, navigate, reauthenticate } = setup(() => new Response(null, { status: 204 }))
+    await reauthenticate()
+    expect(reloadSession).toHaveBeenCalledOnce()
+    expect(navigate).not.toHaveBeenCalled()
+  })
+
+  it('remembers the refresh when the new session still has no organization', async () => {
+    const { reauthenticate } = setup(() => new Response(null, { status: 204 }), stillRegistering)
+    await reauthenticate('/')
+    expect(reauthentication.recent()).toBe(true)
+  })
+
+  it('signs in again only when the session can no longer be refreshed', async () => {
+    const { reloadSession, go, reauthenticate } = setup(() => new Response(null, { status: 401 }))
+    await reauthenticate('/org/acme')
     expect(go).toHaveBeenCalledWith('/org/acme')
-    go.mockRestore()
+    expect(reloadSession).not.toHaveBeenCalled()
+    expect(reauthentication.recent()).toBe(true)
+  })
+
+  it('signs in again and comes back to the current page when no return address is given', async () => {
+    const { go, reauthenticate } = setup(() => new Response(null, { status: 401 }))
+    await reauthenticate()
+    expect(go).toHaveBeenCalledWith(undefined)
+  })
+
+  it('rejects on any other failure, so the page can show it, and never signs in again', async () => {
+    const { go, reloadSession, reauthenticate } = setup(() => new Response(null, { status: 403 }))
+    await expect(reauthenticate('/')).rejects.toMatchObject({ status: 403, path: REFRESH_PATH })
+    expect(go).not.toHaveBeenCalled()
+    expect(reloadSession).not.toHaveBeenCalled()
+  })
+
+  it('rejects with a NetworkError when the BFF cannot be reached', async () => {
+    const { reauthenticate } = setup(() => { throw new TypeError('Failed to fetch') })
+    await expect(reauthenticate('/')).rejects.toBeInstanceOf(NetworkError)
   })
 })

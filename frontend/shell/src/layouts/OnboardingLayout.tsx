@@ -1,6 +1,7 @@
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useState, useSyncExternalStore } from 'react'
 import { Navigate, Outlet } from 'react-router'
-import { HostProvider, reauthenticate } from '../host'
+import { errorMessage, useHost } from '@alinha/plugin-sdk'
+import { HostProvider } from '../host'
 import { LoadingPage, StatusPage } from '../pages/StatusPages'
 import { reauthentication } from '../session/login'
 import { useSession } from '../session/SessionGate'
@@ -12,16 +13,31 @@ import { needsOnboarding } from '../session/permissions'
  * second registration being refused.
  */
 function SessionNotUpdatedPage() {
+  const { reauthenticate } = useHost()
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const retry = async () => {
+    setPending(true)
+    setError(null)
+    try {
+      await reauthenticate('/')
+    } catch (e) {
+      setError(errorMessage(e))
+    } finally {
+      setPending(false)
+    }
+  }
   return (
     <StatusPage
       title="Quase pronto"
       actions={(
-        <button type="button" className="rounded-md border px-4 py-2 font-medium hover:bg-gray-50" onClick={() => reauthenticate('/')}>
-          Entrar novamente
+        <button type="button" className="rounded-md border px-4 py-2 font-medium hover:bg-gray-50" disabled={pending} onClick={() => void retry()}>
+          {pending ? 'A verificar…' : 'Verificar novamente'}
         </button>
       )}
     >
-      O registo da sua organização foi enviado, mas a sua sessão ainda não o mostra. Aguarde alguns segundos e entre novamente.
+      O registo da sua organização foi enviado, mas a sua sessão ainda não o mostra. Aguarde alguns segundos e verifique novamente.
+      {error && <span role="alert" className="mt-2 block">{error}</span>}
     </StatusPage>
   )
 }
@@ -33,9 +49,10 @@ function SessionNotUpdatedPage() {
 export function OnboardingLayout() {
   const { me } = useSession()
   const onboarding = needsOnboarding(me.roles, me.organizations)
-  // Read once per visit: a later visit (e.g. after a reload) shows the page again.
-  const [notUpdated] = useState(() => onboarding && reauthentication.recent())
-  useEffect(() => reauthentication.forget(), [])
+  const reauthenticated = useSyncExternalStore(reauthentication.subscribe, () => reauthentication.recent())
+  const notUpdated = onboarding && reauthenticated
+  // Kept across reloads until the session has an organization (SessionGate forgets it then) or the window ends:
+  // showing the form again would only lead to a second registration being refused.
   if (!onboarding) return <Navigate to="/" replace />
   return (
     <HostProvider organization={null}>

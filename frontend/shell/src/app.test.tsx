@@ -392,8 +392,29 @@ describe('onboarding (/onboarding)', () => {
     window.sessionStorage.setItem('alinha.reauthenticated-at', String(Date.now()))
     renderApp({ url: '/onboarding/registration', plugins, me: registrant(), api: () => json({ value: 'ok' }) })
     expect(await screen.findByRole('heading', { name: 'Quase pronto' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Entrar novamente' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Verificar novamente' })).toBeInTheDocument()
     expect(screen.queryByText('Dados de : ok')).not.toBeInTheDocument()
+    // Kept until the session has an organization, so a reload does not bring the form back.
+    expect(window.sessionStorage.getItem('alinha.reauthenticated-at')).not.toBeNull()
+    window.sessionStorage.removeItem('alinha.reauthenticated-at')
+  })
+
+  it('refreshes the session from "Quase pronto" and goes home once it has the organization', async () => {
+    window.sessionStorage.setItem('alinha.reauthenticated-at', String(Date.now()))
+    let session = registrant()
+    const { router, calls } = renderApp({
+      url: '/onboarding/registration',
+      plugins,
+      me: async () => json(session),
+      api: (path) => {
+        if (path !== '/auth/refresh') return json({ value: 'ok' })
+        session = meFor('responsible')
+        return new Response(null, { status: 204 })
+      },
+    })
+    fireEvent.click(await screen.findByRole('button', { name: 'Verificar novamente' }))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/org/acme/ativos'))
+    expect(calls.find((c) => c.url === '/auth/refresh')?.init.method).toBe('POST')
     expect(window.sessionStorage.getItem('alinha.reauthenticated-at')).toBeNull()
   })
 
