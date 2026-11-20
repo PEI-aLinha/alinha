@@ -1,6 +1,7 @@
 import { Suspense, useState, useSyncExternalStore } from 'react'
 import { Navigate, Outlet } from 'react-router'
 import { errorMessage, useHost } from '@alinha/plugin-sdk'
+import { buttonClass } from '@alinha/ui'
 import { HostProvider } from '../host'
 import { LoadingPage, StatusPage } from '../pages/StatusPages'
 import { reauthentication } from '../session/login'
@@ -31,7 +32,7 @@ function SessionNotUpdatedPage() {
     <StatusPage
       title="Quase pronto"
       actions={(
-        <button type="button" className="rounded-md border px-4 py-2 font-medium hover:bg-gray-50" disabled={pending} onClick={() => void retry()}>
+        <button type="button" className={buttonClass({ variant: 'secondary' })} disabled={pending} onClick={() => void retry()}>
           {pending ? 'A verificar…' : 'Verificar novamente'}
         </button>
       )}
@@ -57,12 +58,12 @@ export function OnboardingLayout() {
   return (
     <HostProvider organization={null}>
       <div className="flex min-h-screen flex-col">
-        <a href="#conteudo" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:rounded-md focus:bg-white focus:px-4 focus:py-2">
+        <a href="#conteudo" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:rounded-md focus:bg-paper focus:px-4 focus:py-2">
           Saltar para o conteúdo
         </a>
-        <header className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+        <header className="flex items-center justify-between border-b border-line-soft px-6 py-4">
           <span className="text-lg font-semibold">aLinha</span>
-          <span className="text-sm text-gray-600">{me.user.name}</span>
+          <span className="text-sm text-ink-soft">{me.user.name}</span>
         </header>
         <main id="conteudo" className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 sm:px-6">
           {notUpdated ? <SessionNotUpdatedPage /> : <Suspense fallback={<LoadingPage />}><Outlet /></Suspense>}
