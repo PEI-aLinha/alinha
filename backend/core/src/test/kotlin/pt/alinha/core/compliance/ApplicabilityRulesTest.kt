@@ -188,6 +188,21 @@ class ApplicabilityRulesTest {
             }
         }
 
+        /** RJC art. 3.º n.º 5 and art. 6.º n.º 1 e) do not exclude public entities. */
+        @Test
+        fun `a public body or higher-education institution that is a critical entity is essential`() {
+            val critical = Nis2Answers(criticalEntity = true)
+            val results = listOf(
+                assess(publicBody = true, nis2 = critical),
+                assess(nis2 = critical.copy(higherEducation = true)),
+            )
+            for (result in results) {
+                assertEquals(ESSENTIAL, result.nis2Classification)
+                assertEquals(Applies.YES, result.framework(ApplicabilityRules.NIS2).applies)
+                assertTrue("nis2.critical-entity" in result.findingIds(ApplicabilityRules.NIS2))
+            }
+        }
+
         @Test
         fun `every result explains the size and cites the law`() {
             val findings = assess(LARGE_SIZE, Nis2Answers(entityTypes = setOf(HEALTHCARE_PROVIDER)))

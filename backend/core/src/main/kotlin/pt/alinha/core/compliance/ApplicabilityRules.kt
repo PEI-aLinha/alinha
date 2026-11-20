@@ -58,7 +58,9 @@ class ApplicabilityRules {
         val answers = input.nis2
         val findings = mutableListOf(sizeFinding(size))
 
-        if (input.publicBody || answers.higherEducation) {
+        // A critical entity is essential at any size, public ones included (art. 3.º n.º 5, art. 6.º n.º 1 e)),
+        // so it is checked before the public-sector case below.
+        if ((input.publicBody || answers.higherEducation) && !answers.criticalEntity) {
             findings += Finding(
                 "nis2.public-sector", "RJC, art. 3.º, n.os 3 a 6, e art. 7.º",
                 "Entidades públicas e instituições de ensino superior têm regras próprias. " +
