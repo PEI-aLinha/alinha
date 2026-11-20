@@ -8,6 +8,7 @@ import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.dao.DataAccessResourceFailureException
 import org.springframework.data.domain.Range
 import org.springframework.data.redis.connection.stream.Consumer
 import org.springframework.data.redis.connection.stream.ReadOffset
@@ -29,6 +30,7 @@ import pt.alinha.core.jobs.internal.RedisJobStreams.Companion.RESULTS_STREAM
 import pt.alinha.core.tenant.TenantContext
 import pt.alinha.pluginapi.TenantId
 import tools.jackson.databind.json.JsonMapper
+import java.sql.SQLException
 import java.time.Duration
 import java.time.Instant
 import java.util.UUID
@@ -109,16 +111,23 @@ class JobResultRecoveryTest {
     private inner class Outage {
         var up = true
         var failNext = false
+
+        /** Set: while down, `select 1` still works and writes fail with this SQLState (read-only, disk full, …). */
+        var sqlState: String? = null
         private val outbox = object : JobOutboxRepository(jdbcClient) {
-            override fun isReachable() = up
+            override fun isReachable() = up || sqlState != null
         }
         private val flakyHandler = mock(JobResultHandler::class.java).also {
             `when`(it.handle(any())).thenAnswer { call ->
                 if (failNext) up = false
-                if (!up) throw CannotCreateTransactionException("database down")
+                if (!up) throw downError()
                 handler.handle(call.getArgument(0))
             }
         }
+
+        private fun downError(): RuntimeException = sqlState?.let {
+            DataAccessResourceFailureException("write refused", SQLException("write refused", it))
+        } ?: CannotCreateTransactionException("database down")
         val consumer = JobResultConsumer(streams, flakyHandler, outbox, properties)
     }
 
@@ -164,6 +173,19 @@ class JobResultRecoveryTest {
         assertThat(ops.pending(RESULTS_STREAM, RESULTS_GROUP, Range.unbounded<String>(), 10).map { it.id })
             .containsExactly(stale) // the fresh entry was never read
         assertThat(deadLetters()).isEmpty()
+    }
+
+    @Test
+    fun `a write the database refuses stops the round even though select 1 works`() {
+        val stale = sendCompleted(published())
+        readByCrashedInstance()
+        sendCompleted(published())
+        val outage = Outage().apply { up = false; sqlState = "25006" } // read-only transaction
+
+        assertThat(outage.consumer.consumeOnce()).isZero()
+
+        assertThat(ops.pending(RESULTS_STREAM, RESULTS_GROUP, Range.unbounded<String>(), 10).map { it.id })
+            .containsExactly(stale) // the fresh entry was never read
     }
 
     @Test

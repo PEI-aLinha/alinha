@@ -6,6 +6,7 @@ import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import pt.alinha.core.jobs.internal.RedisJobStreams.Companion.RESULT
 import pt.alinha.core.jobs.internal.RedisJobStreams.Companion.isNoGroup
+import java.sql.SQLException
 import java.util.UUID
 
 /**
@@ -92,8 +93,12 @@ class JobResultConsumer(
         } catch (e: RuntimeException) {
             // Leave the entry pending, it is delivered again later. A bug counts towards max-deliveries; the database
             // going down does not: stop the round before reading or claiming anything else.
+            // `select 1` passes on a read-only standby or a full disk, so the error itself is checked first.
+            if (e.isDatabaseUnavailable() || !outbox.isReachable()) {
+                log.warn("Database unavailable while applying job result {}: {}", record.id, e.message)
+                throw DatabaseUnavailable()
+            }
             log.error("Applying job result {} failed, it stays pending", record.id, e)
-            if (!outbox.isReachable()) throw DatabaseUnavailable()
             return false
         }
         when (handling) {
@@ -113,4 +118,17 @@ class JobResultConsumer(
 
     /** Ends the round; the entries already read stay pending and are delivered again. */
     private class DatabaseUnavailable : RuntimeException()
+
+    companion object {
+        /**
+         * SQLStates that say the database cannot take writes right now, not that this result is wrong: read-only
+         * transaction (25006), insufficient resources such as a full disk (class 53), shutdown or recovery (57P0x),
+         * connection failures (class 08).
+         */
+        fun Throwable.isDatabaseUnavailable(): Boolean =
+            generateSequence(this) { it.cause }.filterIsInstance<SQLException>().any { e ->
+                val state = e.sqlState.orEmpty()
+                state == "25006" || state.startsWith("53") || state.startsWith("57P0") || state.startsWith("08")
+            }
+    }
 }
