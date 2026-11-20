@@ -19,6 +19,10 @@ Vite proxies `/api`, `/oauth2` and `/auth` to `:8081`. The Keycloak client is `b
 secret (`dev-bff-secret`) and a non-`Secure` cookie for plain http; without it the BFF needs `BFF_CLIENT_SECRET` and
 sets `Secure` cookies.
 
+**Known exception to NFR09:** the Keycloak client secret comes from the `BFF_CLIENT_SECRET` environment variable, not
+from OpenBao like the app's secrets. Moving it to `secret/alinha/bff` is
+[#119](https://github.com/PEI-aLinha/alinha/issues/119).
+
 ### Behind Nginx
 
 Run with `SPRING_PROFILES_ACTIVE=prod`: only that profile sets `forward-headers-strategy: framework`
