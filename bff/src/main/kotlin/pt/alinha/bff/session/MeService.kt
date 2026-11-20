@@ -81,10 +81,10 @@ class MeService(
                         if (error !is WebClientResponseException ||
                             error.statusCode.value() !in setOf(404, 501)
                         ) {
+                            // No stack trace: this repeats on every /api/me while the failure lasts.
                             log.warn(
                                 "Organization {} profile lookup failed: {}",
                                 tenantId, (error as? WebClientResponseException)?.statusCode ?: error.message,
-                                error,
                             )
                         }
                         Mono.just(MeOrganization(tenantId, tenantId, tenantId))
