@@ -95,3 +95,18 @@ export function useHost(): PluginHost {
   if (!host) throw new Error('useHost() called outside PluginHostContext — the shell did not mount the host.')
   return host
 }
+
+export { useApiQuery, useApiMutation, type ApiMethod, type UseApiMutationOptions } from './query'
+export { errorMessage, fieldErrors, ERROR_MESSAGES } from './errors'
+export {
+  formatDate,
+  formatDateTime,
+  formatRelativeTime,
+  formatNumber,
+  formatPercent,
+  formatCurrency,
+  LOCALE,
+  TIME_ZONE,
+  EMPTY_VALUE,
+  type DateInput,
+} from './format'
