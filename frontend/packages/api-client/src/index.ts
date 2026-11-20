@@ -2,7 +2,7 @@
  * Types generated from `contracts/openapi/alinha.yaml`.
  * Change the contract, then run `pnpm gen:api`; CI fails when this package is out of date.
  */
-import type { components } from './schema.generated'
+import type { components, paths } from './schema.generated'
 
 export type { components, operations, paths } from './schema.generated'
 
@@ -22,3 +22,24 @@ export type MeDto = components['schemas']['Me']
 
 /** GET /api/plugins: a plugin manifest, as registered by the backend. */
 export type PluginManifestDto = components['schemas']['PluginManifest']
+
+/** RFC 9457 Problem Details sent on every error (ADR 0003). `detail` is in Portuguese when it is meant for the user. */
+export type ProblemDto = components['schemas']['Problem']
+
+type HttpMethod = 'get' | 'post' | 'put' | 'patch' | 'delete'
+type JsonContent<R> = R extends { content: { 'application/json': infer T } } ? T : undefined
+
+/**
+ * JSON body of the success response (200, else 201, else none) of an operation in the contract.
+ * `ApiResponse<'/api/me'>` is MeDto; `ApiResponse<'/api/x', 'post'>` for a POST.
+ */
+export type ApiResponse<P extends keyof paths, M extends HttpMethod = 'get'> =
+  paths[P][M] extends { responses: infer R }
+    ? R extends { 200: infer Ok } ? JsonContent<Ok>
+      : R extends { 201: infer Created } ? JsonContent<Created>
+        : undefined
+    : never
+
+/** JSON request body of an operation in the contract, e.g. `ApiRequestBody<'/api/x', 'post'>`. */
+export type ApiRequestBody<P extends keyof paths, M extends HttpMethod = 'post'> =
+  paths[P][M] extends { requestBody?: { content: { 'application/json': infer B } } } ? B : never
