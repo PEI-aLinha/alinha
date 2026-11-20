@@ -51,11 +51,27 @@ class RegistrationRateLimiter internal constructor(
     /**
      * Runs [block] if this client may start a registration now; otherwise throws 429 `TOO_MANY_REGISTRATIONS` with
      * `Retry-After`: the time until its oldest attempt leaves the hour.
+     *
+     * An attempt that ends in a 503 (`REGISTRATION_BUSY`, `IDENTITY_UNAVAILABLE`) is given back: the platform could
+     * not serve it, so a client following `Retry-After` through an outage keeps its allowance.
      */
     fun <T> limit(block: () -> T): T {
         val client = currentClient() ?: return block()
-        record(client)?.let { throw tooMany(it) }
-        return block()
+        val attempt = clock.instant()
+        record(client, attempt)?.let { throw tooMany(it) }
+        try {
+            return block()
+        } catch (e: RegistrationProblem) {
+            if (e.statusCode == HttpStatus.SERVICE_UNAVAILABLE) giveBack(client, attempt)
+            throw e
+        }
+    }
+
+    private fun giveBack(client: String, attempt: Instant) {
+        attempts.computeIfPresent(client) { _, times ->
+            val index = times.indexOf(attempt)
+            if (index < 0) times else (times.take(index) + times.drop(index + 1)).ifEmpty { null }
+        }
     }
 
     private fun tooMany(retryAfter: Duration) = RegistrationProblem(
@@ -63,8 +79,7 @@ class RegistrationRateLimiter internal constructor(
     )
 
     /** Records an attempt and returns null, or, over the limit, how long until the client may try again. */
-    private fun record(client: String): Duration? {
-        val now = clock.instant()
+    private fun record(client: String, now: Instant): Duration? {
         val since = now.minus(WINDOW)
         var wait: Duration? = null
         attempts.compute(client) { _, previous ->

@@ -14,6 +14,7 @@ import org.springframework.context.annotation.Import
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.core.context.SecurityContextHolder
@@ -23,6 +24,8 @@ import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.springframework.transaction.support.TransactionSynchronization
 import org.springframework.transaction.support.TransactionSynchronizationManager
+import org.springframework.transaction.support.TransactionTemplate
+import pt.alinha.core.audit.AuditTrail
 import org.springframework.web.server.ResponseStatusException
 import pt.alinha.core.audit.internal.AuditDatabase
 import pt.alinha.core.audit.internal.AuditTestApplication
@@ -80,6 +83,18 @@ class TenantProvisionerIntegrationTest {
     @Autowired private lateinit var jdbc: JdbcTemplate
     @Autowired private lateinit var meters: SimpleMeterRegistry
     @Autowired private lateinit var provisioner: TenantProvisioner
+    @Autowired private lateinit var tenantContext: JwtTenantContext
+    @Autowired private lateinit var txTemplate: TransactionTemplate
+    @Autowired private lateinit var jdbcClient: JdbcClient
+    @Autowired private lateinit var auditTrail: AuditTrail
+    @Autowired private lateinit var limiter: RegistrationRateLimiter
+
+    /** A second app instance on the same database: its in-memory guards know nothing of this one's requests. */
+    private fun otherInstance() =
+        TenantProvisioner(tenantContext, txTemplate, jdbcClient, auditTrail, directory, meters, limiter)
+
+    private fun advisoryLocks() =
+        jdbc.queryForObject("select count(*) from pg_locks where locktype = 'advisory'", Long::class.java)!!
 
     private fun orphanedCount(outcome: String) = meters.counter(ORPHANED_METRIC, ORPHANED_OUTCOME_TAG, outcome).count()
 
@@ -351,6 +366,54 @@ class TenantProvisionerIntegrationTest {
 
         assertThat((retry as ResponseStatusException).body.properties?.get("code")).isEqualTo(REGISTRATION_BUSY)
         assertThat(directory.assigned).hasSize(1)
+    }
+
+    @Test
+    fun `a registration on another instance while the rollback undo runs is refused, not interleaved`() {
+        val auth = SecurityContextHolder.getContext().authentication
+        directory.failOnAssign = true
+        var retry: Throwable? = null
+        directory.onRevoke = {
+            directory.failOnAssign = false
+            // The rolled-back tenant row no longer blocks the account, so only a lock held until the undo ends
+            // keeps this from assigning a new tenant that the undo would then strip.
+            val other = Executors.newSingleThreadExecutor()
+            try {
+                retry = other.submit<Throwable?> {
+                    SecurityContextHolder.getContext().authentication = auth
+                    try {
+                        runCatching { otherInstance().provisionForCurrentUser { } }.exceptionOrNull()
+                    } finally {
+                        SecurityContextHolder.clearContext()
+                    }
+                }.get(30, TimeUnit.SECONDS)
+            } finally {
+                other.shutdownNow()
+            }
+        }
+
+        assertThrows<ResponseStatusException> { provisioning.provisionForCurrentUser { } }
+
+        assertThat((retry as ResponseStatusException).body.properties?.get("code")).isEqualTo(REGISTRATION_BUSY)
+        assertThat(directory.assigned).hasSize(1)
+        assertThat(jdbc.queryForObject("select count(*) from core.tenant where owner_subject = ?", Long::class.java, subject)).isZero()
+    }
+
+    @Test
+    fun `the account lock is released after a commit and after a rollback`() {
+        val before = advisoryLocks()
+        provisioning.provisionForCurrentUser { }
+        assertThat(advisoryLocks()).isEqualTo(before)
+
+        signIn(UUID.randomUUID().toString(), roles = listOf("registrant"))
+        directory.failOnAssign = true
+        assertThrows<ResponseStatusException> { provisioning.provisionForCurrentUser { } }
+        assertThat(advisoryLocks()).isEqualTo(before)
+
+        // And another instance can register the same account right after the rollback.
+        directory.failOnAssign = false
+        otherInstance().provisionForCurrentUser { }
+        assertThat(advisoryLocks()).isEqualTo(before)
     }
 
     @Test

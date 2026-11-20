@@ -33,12 +33,17 @@ organization through `core.tenant.TenantProvisioning.provisionForCurrentUser { t
 
 - The caller must be a `registrant` with no `tenant_id`/`tenants` claim and not a consultant (otherwise 403/409).
 - `core.tenant` gets one row per account (`owner_subject` unique), so a repeated or concurrent registration is a 409.
+- One registration per account at a time, across instances: a PostgreSQL advisory lock on the account is held until
+  the transaction and any Keycloak undo have finished. A registration that finds it held gets 503 `REGISTRATION_BUSY`.
 - The block runs **as the new tenant**, in one transaction with the `tenant.provisioned` audit entry. This is the
   only tenant switch allowed inside a request, and only for a tenant created in that same call; `runAs` stays
   refused (rule 6 below).
 - Last, the account gets `tenant_id` and `responsible` in Keycloak. A Keycloak failure rolls everything back; a
   commit failure afterwards undoes the Keycloak change.
 - The caller's token is stale until it is refreshed (BFF, #14).
+- Refusals carry a `code` in their Problem Details body and, when waiting helps, `Retry-After`. Nothing global
+  renders them, so the calling plugin returns `e.body` with `e.headers` from its `@ExceptionHandler` (see
+  `TenantProvisioning`).
 
 ## How it is enforced
 

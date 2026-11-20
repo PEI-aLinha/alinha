@@ -196,6 +196,33 @@ class KeycloakIdentityDirectoryTest {
     }
 
     @Test
+    fun `the deadline is checked between reading and writing the account`() {
+        // Each HTTP call is one step, so the worst case stays the budget plus one call (connect + read timeouts).
+        val clock = object : Clock() {
+            var now: Instant = Instant.parse("2026-11-16T10:00:00Z")
+            override fun instant(): Instant = now
+            override fun getZone(): ZoneId = ZoneOffset.UTC
+            override fun withZone(zone: ZoneId?): Clock = this
+        }
+        val slowBuilder = RestClient.builder()
+        val slowServer = MockRestServiceServer.bindTo(slowBuilder).build()
+        slowServer.expect(requestTo("http://kc/realms/alinha/protocol/openid-connect/token"))
+            .andRespond(withSuccess("""{"access_token":"tok","expires_in":300}""", MediaType.APPLICATION_JSON))
+        slowServer.expect(requestTo(users)).andExpect(method(HttpMethod.GET))
+            .andRespond { request ->
+                clock.now = clock.now.plusSeconds(11) // the read used up the 10 s budget
+                withSuccess(user, MediaType.APPLICATION_JSON).createResponse(request)
+            }
+        slowServer.expect(ExpectedCount.never(), requestTo(users)).andExpect(method(HttpMethod.PUT))
+        val slow = KeycloakIdentityDirectory(IdentityProperties(baseUrl = "http://kc", clientSecret = "s3cret"), slowBuilder, clock)
+
+        val error = assertThrows<IllegalStateException> { slow.assignTenant(subject, tenant) }
+
+        assertThat(error.message).contains("exceeded")
+        slowServer.verify()
+    }
+
+    @Test
     fun `an undo that takes too long stops before the next call`() {
         // Each reading of the clock moves it 2 s forward, so the 5 s budget runs out after a couple of calls.
         val slowClock = object : Clock() {
