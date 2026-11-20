@@ -26,8 +26,8 @@ services:
 
   redis:
     image: redis:8
-    # AOF: a job the outbox marked `published` must survive a Redis restart (RNF02, docs/jobs.md).
-    command: ["redis-server", "--appendonly", "yes"]
+    # AOF, fsync on every write: a job the outbox marked `published` must survive a Redis crash (RNF02, docs/jobs.md).
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "always"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 2s

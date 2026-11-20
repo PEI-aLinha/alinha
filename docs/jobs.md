@@ -76,8 +76,9 @@ fun startCollection(...) {
 - A row lock is held only while its own `XADD` runs, so at most one Redis timeout. The results consumer, which waits
   on that lock (see below), never waits for a whole batch.
 - **At-least-once**: a crash after `XADD` but before the row is marked `published` publishes the job again.
-- Once a row is `published`, the job lives only in Redis. Redis must keep its data across restarts (AOF, as in
-  `deploy/docker-compose.dev.yml`). Until the watchdog (#86) exists, a job Redis loses stays `published` forever.
+- Once a row is `published`, the job lives only in Redis. Redis must keep its data across restarts and crashes
+  (AOF with `appendfsync always`, as in `deploy/docker-compose.dev.yml`; the default `everysec` can lose about the
+  last second of published jobs). Until the watchdog (#86) exists, a job Redis loses stays `published` forever.
 - Redis is **not** part of the app's health (`management.health.redis.enabled: false`): while it is down, dispatch
   keeps working and the relay catches up later.
 
