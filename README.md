@@ -77,7 +77,7 @@ pnpm install && pnpm dev                               # frontend on :5173
 | OpenBao | http://localhost:8200 | `BAO_TOKEN=dev-app-token` (root `dev-root-token`) |
 
 The `alinha` realm, test users (Rui, Pedro, Marta, João) and their roles/tenants are in
-[deploy/keycloak/README.md](deploy/keycloak/README.md). The dev password is `alinha`; the first
+[deploy/keycloak/README.md](deploy/keycloak/README.md). The dev password is `alinha-dev-1`; the first
 login sets up TOTP (MFA). Emails land in Mailpit.
 
 Requirements: JDK 21, Node 22, pnpm 10, Docker (Compose v2). The flow above is verified on Linux;

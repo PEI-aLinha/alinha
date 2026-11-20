@@ -13,7 +13,7 @@ docker compose -f deploy/docker-compose.dev.yml up -d --force-recreate keycloak
 
 - Admin console: http://localhost:8180 (admin / admin, or `KEYCLOAK_ADMIN*` from `deploy/.env`)
 - Realm: `alinha`
-- All dev users have the password `alinha` and **must set up TOTP on first login** (MFA).
+- All dev users have the password `alinha-dev-1` and **must set up TOTP on first login** (MFA).
 - Login, TOTP setup and emails default to European Portuguese (`pt`).
 
 ## Realm settings that matter
@@ -22,6 +22,11 @@ docker compose -f deploy/docker-compose.dev.yml up -d --force-recreate keycloak
   one missing from the list does not exist in the realm. `VERIFY_EMAIL` (priority 10) runs before `CONFIGURE_TOTP`
   (20, default action): a self-registered account confirms its email first, then sets up TOTP.
   `TERMS_AND_CONDITIONS` is listed but off until the terms page exists (#128).
+- **Password policy:** at least 12 characters with letters and numbers, at most 128, not the email or username
+  (the prototype's rules). The registration page shows them from the policy. An import fails if a seed password
+  breaks the policy, which is why the dev password is `alinha-dev-1`.
+- **Brute-force detection:** after 10 failures the account waits 1 minute, growing up to 15 minutes; failures are
+  forgotten after 12 hours.
 
 `start-dev` keeps its database in H2 inside the container. Recreating the Keycloak container
 re-imports the realm and wipes every enrolled TOTP, so each user must scan the QR code again.

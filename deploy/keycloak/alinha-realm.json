@@ -10,6 +10,11 @@
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,
   "bruteForceProtected": true,
+  "failureFactor": 10,
+  "waitIncrementSeconds": 60,
+  "maxFailureWaitSeconds": 900,
+  "maxDeltaTimeSeconds": 43200,
+  "passwordPolicy": "length(12) and maxLength(128) and digits(1) and regexPattern(.*\\p{L}.*) and notUsername(undefined) and notEmail(undefined)",
   "internationalizationEnabled": true,
   "supportedLocales": [
     "pt",
@@ -253,7 +258,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "alinha",
+          "value": "alinha-dev-1",
           "temporary": false
         }
       ]
@@ -279,7 +284,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "alinha",
+          "value": "alinha-dev-1",
           "temporary": false
         }
       ]
@@ -306,7 +311,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "alinha",
+          "value": "alinha-dev-1",
           "temporary": false
         }
       ]
@@ -332,7 +337,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "alinha",
+          "value": "alinha-dev-1",
           "temporary": false
         }
       ]
