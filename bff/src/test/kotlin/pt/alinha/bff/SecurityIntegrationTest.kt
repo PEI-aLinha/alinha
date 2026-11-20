@@ -60,4 +60,12 @@ class SecurityIntegrationTest {
         assertThat(route).isNotNull
         assertThat(route!!.uri.toString()).isEqualTo("http://localhost:8080")
     }
+
+    /** The app uses bearer auth: the browser's session cookie must not reach it. */
+    @Test
+    fun `the app route strips the Cookie header`() {
+        val route = routes.routes.filter { it.id == "app" }.blockFirst()!!
+        assertThat(route.filters.map { it.toString() })
+            .anySatisfy { assertThat(it).contains("RemoveRequestHeader").contains("Cookie") }
+    }
 }
