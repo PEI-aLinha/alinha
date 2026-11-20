@@ -38,8 +38,8 @@ class RolePermissionRegistryTest {
     fun `grants core permission to every role`() {
         val registry = registry()
 
-        listOf("consultant", "responsible", "analyst").forEach {
-            assertThat(registry.permissionsFor(setOf(it))).contains("plugins:read")
+        listOf("consultant", "responsible", "analyst", "registrant").forEach {
+            assertThat(registry.permissionsFor(setOf(it))).contains("plugins:read", "session:read")
         }
     }
 

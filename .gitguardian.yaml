@@ -4,6 +4,7 @@
 version: 2
 secret:
   ignored_paths:
+    - deploy/.env.example
     - deploy/docker-compose.dev.yml
     - deploy/openbao/init.sh
     - deploy/postgres/init/01-app-role.sh
