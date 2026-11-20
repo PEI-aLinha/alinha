@@ -156,7 +156,7 @@ class Consumer:
         try:
             contracts.validate_envelope(envelope, type_, version)
         except jsonschema.ValidationError as error:
-            outcome = results.failed(envelope, type_, version, attempt, "invalid_payload", error.message)
+            outcome = results.failed(envelope, type_, version, attempt, "invalid_payload", results.safe_message(error))
         else:
             outcome = self._run_collector(envelope, type_, version, attempt)
 

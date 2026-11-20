@@ -182,6 +182,15 @@ def test_unencodable_collector_output_becomes_a_failure(redis, output):
     assert pending(redis) == 0
 
 
+def test_invalid_payload_message_does_not_leak_the_value(redis):
+    add_job(redis, envelope(scope="ghp_SECRETTOKEN"))
+    run_once(consumer(redis, lambda _: {"items": []}))
+
+    [(_, fields)] = redis.xrange("alinha:jobs:results")
+    assert json.loads(fields["result"])["error"]["code"] == "invalid_payload"
+    assert "ghp_SECRETTOKEN" not in fields["result"]
+
+
 def test_result_stream_down_leaves_the_entry_pending(redis):
     add_job(redis, envelope())
     worker = consumer(redis, lambda _: {"items": []})

@@ -63,10 +63,14 @@ def publish(redis: Any, result: dict[str, Any]) -> None:
         contracts.validate_result(result)
         payload = json.dumps(result, allow_nan=False)
     except jsonschema.ValidationError as error:
-        raise InvalidResult(error.message) from error
+        raise InvalidResult(safe_message(error)) from error
     except (TypeError, ValueError) as error:
         raise InvalidResult("result is not JSON-serialisable") from error
     if len(payload.encode()) > MAX_RESULT_BYTES:
         raise InvalidResult(f"result is larger than {MAX_RESULT_BYTES} bytes")
     redis.xadd(RESULTS_STREAM, {"result": payload})
 
+
+def safe_message(error: jsonschema.ValidationError) -> str:
+    """Location and keyword only: `error.message` embeds the offending value, which may be a credential."""
+    return f"{error.json_path}: failed '{error.validator}'"
