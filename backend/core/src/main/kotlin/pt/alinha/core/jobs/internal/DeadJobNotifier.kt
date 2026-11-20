@@ -8,6 +8,7 @@ import org.springframework.transaction.support.TransactionTemplate
 import pt.alinha.core.audit.AuditTrail
 import pt.alinha.core.jobs.JobError
 import pt.alinha.core.jobs.JobFailed
+import pt.alinha.core.tenant.CorrelationContext
 import pt.alinha.core.tenant.TenantContext
 import pt.alinha.pluginapi.TenantId
 import java.time.Instant
@@ -20,6 +21,7 @@ import java.time.Instant
 class DeadJobNotifier(
     private val outbox: JobOutboxRepository,
     private val tenants: TenantContext,
+    private val correlation: CorrelationContext,
     private val tx: TransactionTemplate,
     private val audit: AuditTrail,
     private val events: ApplicationEventPublisher,
@@ -53,6 +55,7 @@ class DeadJobNotifier(
         events.publishEvent(
             JobFailed(
                 tenantId = TenantId(job.tenantId),
+                correlationId = correlation.current(),
                 occurredAt = Instant.now(),
                 jobId = job.id,
                 type = job.type,

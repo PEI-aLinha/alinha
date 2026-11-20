@@ -17,6 +17,7 @@ import pt.alinha.core.jobs.JobRequest
 import pt.alinha.core.tenant.TenantContext
 import pt.alinha.core.tenant.internal.HibernateTenantResolver
 import pt.alinha.core.tenant.internal.JwtTenantContext
+import pt.alinha.core.tenant.internal.ScopedCorrelationContext
 import pt.alinha.pluginapi.TenantId
 import java.util.UUID
 
@@ -25,6 +26,7 @@ import java.util.UUID
 @EntityScan(basePackageClasses = [AuditEventEntity::class]) // the slice lives in jobs.internal; audit rows are JPA
 @Import(
     JwtTenantContext::class,
+    ScopedCorrelationContext::class,
     HibernateTenantResolver::class,
     AuditActor::class,
     JpaAuditTrail::class,

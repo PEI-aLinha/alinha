@@ -26,6 +26,7 @@ data class JobError(val code: String, val message: String) {
  */
 data class JobCompleted(
     override val tenantId: TenantId,
+    override val correlationId: UUID,
     override val occurredAt: Instant,
     val jobId: UUID,
     val type: String,
@@ -36,6 +37,7 @@ data class JobCompleted(
 /** The job will not run again. Filter by [requestedBy]/[type]; listener recipe in docs/jobs.md. */
 data class JobFailed(
     override val tenantId: TenantId,
+    override val correlationId: UUID,
     override val occurredAt: Instant,
     val jobId: UUID,
     val type: String,

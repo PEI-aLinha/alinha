@@ -18,6 +18,7 @@ import pt.alinha.core.audit.AuditTrail
 import pt.alinha.core.jobs.JobDispatcher
 import pt.alinha.core.jobs.JobError
 import pt.alinha.core.jobs.JobFailed
+import pt.alinha.core.tenant.CorrelationContext
 import pt.alinha.core.tenant.TenantContext
 import pt.alinha.pluginapi.TenantId
 import java.util.UUID
@@ -41,6 +42,7 @@ class DeadJobNotifierTest {
     @Autowired private lateinit var outbox: JobOutboxRepository
     @Autowired private lateinit var properties: JobsProperties
     @Autowired private lateinit var tenants: TenantContext
+    @Autowired private lateinit var correlation: CorrelationContext
     @Autowired private lateinit var tx: TransactionTemplate
     @Autowired private lateinit var jdbc: JdbcTemplate
     @Autowired private lateinit var redis: StringRedisTemplate
@@ -122,7 +124,7 @@ class DeadJobNotifierTest {
                 audit.record(action, entityType, entityId, details, provenance)
             }
         }
-        val notifier = DeadJobNotifier(outbox, tenants, tx, failingAudit, publisher, properties)
+        val notifier = DeadJobNotifier(outbox, tenants, correlation, tx, failingAudit, publisher, properties)
 
         assertThat(notifier.notifyOnce()).isEqualTo(1)
 

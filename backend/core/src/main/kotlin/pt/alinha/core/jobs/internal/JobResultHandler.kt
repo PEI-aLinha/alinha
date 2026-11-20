@@ -7,6 +7,7 @@ import pt.alinha.core.audit.AuditTrail
 import pt.alinha.core.jobs.JobCompleted
 import pt.alinha.core.jobs.JobError
 import pt.alinha.core.jobs.JobFailed
+import pt.alinha.core.tenant.CorrelationContext
 import pt.alinha.core.tenant.TenantContext
 import pt.alinha.pluginapi.TenantId
 import tools.jackson.core.JacksonException
@@ -31,6 +32,7 @@ class JobResultHandler(
     private val outbox: JobOutboxRepository,
     private val validator: JobSchemaValidator,
     private val tenants: TenantContext,
+    private val correlation: CorrelationContext,
     private val tx: TransactionTemplate,
     private val audit: AuditTrail,
     private val events: ApplicationEventPublisher,
@@ -74,7 +76,7 @@ class JobResultHandler(
                         outbox.markFailed(job.id, "null", "${error.code}: $reason".take(MAX_ERROR_LENGTH))
                         record("job.failed", job, "errorCode" to error.code, "retryable" to false)
                         events.publishEvent(
-                            JobFailed(TenantId(job.tenantId), Instant.now(), job.id, job.type, job.requestedBy, job.attempt, error),
+                            JobFailed(TenantId(job.tenantId), correlation.current(), Instant.now(), job.id, job.type, job.requestedBy, job.attempt, error),
                         )
                         true
                     }
@@ -104,7 +106,7 @@ class JobResultHandler(
         outbox.markCompleted(job.id, json.writeValueAsString(result.document))
         record("job.completed", job)
         events.publishEvent(
-            JobCompleted(TenantId(job.tenantId), Instant.now(), job.id, job.type, job.requestedBy, job.attempt),
+            JobCompleted(TenantId(job.tenantId), correlation.current(), Instant.now(), job.id, job.type, job.requestedBy, job.attempt),
         )
     }
 
@@ -118,7 +120,7 @@ class JobResultHandler(
         outbox.markFailed(job.id, json.writeValueAsString(result.document), result.errorText)
         record("job.failed", job, "errorCode" to result.error.code, "retryable" to result.retryable)
         events.publishEvent(
-            JobFailed(TenantId(job.tenantId), Instant.now(), job.id, job.type, job.requestedBy, job.attempt, result.error),
+            JobFailed(TenantId(job.tenantId), correlation.current(), Instant.now(), job.id, job.type, job.requestedBy, job.attempt, result.error),
         )
     }
 
