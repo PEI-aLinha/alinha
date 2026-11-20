@@ -40,6 +40,13 @@ tester.run('plugin-boundaries', rule, {
     { filename: plugin('src/pages/a/Page.tsx'), code: "import x from '../../../src/index.ts'" },
     { filename: plugin('src/routes.ts'), code: "const Page = () => import('./pages/Page.tsx')" },
     { filename: plugin('src/routes.ts'), code: 'const Page = () => import(`./pages/Page.tsx`)' },
+    { filename: plugin('src/index.ts'), code: "const p = require.resolve('./pages/Page.tsx')" },
+    {
+      filename: plugin('src/index.ts'),
+      code: "import { createRequire } from 'node:module'\nconst req = createRequire(import.meta.url)\nconst x = req('./pages/Page.tsx')\nconst p = req.resolve('react')",
+    },
+    // A function that merely has a method called resolve is not require.
+    { filename: plugin('src/index.ts'), code: 'const p = (n: string) => Promise.resolve(n)' },
     // Files outside plugins are not restricted by this rule.
     { filename: resolve(root, 'frontend/shell/src/main.tsx'), code: "import x from '@alinha/shell'" },
     { filename: resolve(root, 'frontend/shell/src/main.tsx'), code: "import x from '../../../plugins/feature/assessment/frontend/src/index.ts'" },
@@ -55,6 +62,35 @@ tester.run('plugin-boundaries', rule, {
     { filename: plugin('src/index.ts'), code: "const m = () => import('@alinha/plugin-risk-assets')", ...err('platformPackage') },
     { filename: plugin('src/index.ts'), code: "const m = require('@alinha/plugin-risk-assets')", ...err('platformPackage') },
     { filename: plugin('src/index.ts'), code: "import x = require('@alinha/plugin-risk-assets')", ...err('platformPackage') },
+    // require.resolve and createRequire resolve paths like require.
+    { filename: plugin('src/index.ts'), code: "const p = require.resolve('../../../risk-assets/frontend/src/index.ts')", ...err('outside') },
+    { filename: plugin('src/index.ts'), code: "const p = require.resolve('@alinha/shell')", ...err('platformPackage') },
+    { filename: plugin('src/index.ts'), code: 'const p = (n: string) => require.resolve(n)', ...err('dynamic') },
+    {
+      filename: plugin('src/index.ts'),
+      code: "import { createRequire } from 'node:module'\nconst req = createRequire(import.meta.url)\nconst x = req('../../../risk-assets/frontend/src/index.ts')",
+      ...err('outside'),
+    },
+    {
+      filename: plugin('src/index.ts'),
+      code: "import { createRequire } from 'node:module'\nconst req = createRequire(import.meta.url)\nconst p = req.resolve('~/x.ts')",
+      ...err('undeclared'),
+    },
+    {
+      filename: plugin('src/index.ts'),
+      code: "import module from 'node:module'\nconst req = module.createRequire('../../../../frontend/shell/src/main.tsx')",
+      ...err('outside'),
+    },
+    {
+      filename: plugin('src/index.ts'),
+      code: "import { createRequire } from 'node:module'\nconst req = (f: string) => createRequire(f)",
+      ...err('dynamic'),
+    },
+    {
+      filename: plugin('src/index.ts'),
+      code: "import { createRequire } from 'node:module'\nconst x = createRequire(import.meta.url)('../../../risk-assets/frontend/src/index.ts')",
+      ...err('outside'),
+    },
     { filename: plugin('src/index.ts'), code: "type T = import('@alinha/plugin-risk-assets').Thing", ...err('platformPackage') },
     { filename: plugin('src/index.ts'), code: "import x from '../../../risk-assets/frontend/src/index.ts'", ...err('outside') },
     { filename: plugin('src/pages/a/b/Page.tsx'), code: "import x from '../../../../../../risk-assets/frontend/src/index.ts'", ...err('outside') },

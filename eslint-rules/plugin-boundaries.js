@@ -1,8 +1,8 @@
 // Architecture rule for plugin frontends (RNF17): a plugin imports only @alinha/plugin-sdk,
 // @alinha/ui and @alinha/api-client from the platform, and never reaches outside its own
 // frontend folder (another plugin, the shell). Relative imports are resolved against the file,
-// so nesting depth does not matter. Covers static, type-only, re-export, dynamic and require imports,
-// and Vite's import.meta.glob and new URL(..., import.meta.url).
+// so nesting depth does not matter. Covers static, type-only, re-export, dynamic and require imports
+// (require.resolve, createRequire), and Vite's import.meta.glob and new URL(..., import.meta.url).
 // Any other bare name must be a package the plugin declares in its package.json, or a Node builtin, so that a path
 // alias (Vite resolve.alias, tsconfig paths: `@/`, `~/`, `#x`) cannot reach into the repo dressed as a package name.
 // Option `root`: the repo root (eslint.config.js passes its own folder). Without it, ESLint's cwd is used,
@@ -72,6 +72,12 @@ function underBase(base, pattern) {
 const propertyName = (prop) =>
   prop.computed ? undefined : prop.key.type === 'Identifier' ? prop.key.name : staticValue(prop.key)
 
+/** `createRequire(...)` or `<module>.createRequire(...)` */
+const isCreateRequire = (node) =>
+  node?.type === 'CallExpression' &&
+  ((node.callee.type === 'Identifier' && node.callee.name === 'createRequire') ||
+    (node.callee.type === 'MemberExpression' && !node.callee.computed && node.callee.property.name === 'createRequire'))
+
 /** Why `spec`, imported from `filename` inside `pluginRoot`, breaks the boundary; null if it is fine. */
 export function violationOf(spec, filename, pluginRoot) {
   if (spec.startsWith('@alinha/')) return isAllowedPlatformPackage(spec) ? null : 'platformPackage'
@@ -114,6 +120,10 @@ export default {
     if (!pluginRoot) return {}
 
     const reportDynamic = (node) => context.report({ node, messageId: 'dynamic' })
+
+    /** Names bound to a require function in this file: `require`, and variables set from createRequire(...). */
+    const requireNames = new Set(['require'])
+    const isRequire = (node) => (node.type === 'Identifier' && requireNames.has(node.name)) || isCreateRequire(node)
 
     /** Reports `sourceNode` if it breaks the boundary; true when it is a static value that is fine. */
     const check = (sourceNode, { mustBeStatic = false, glob = false, base } = {}) => {
@@ -162,11 +172,21 @@ export default {
       TSImportEqualsDeclaration: (node) =>
         node.moduleReference.type === 'TSExternalModuleReference' && check(node.moduleReference.expression),
       TSImportType: (node) => check(node.source ?? node.argument),
+      // const req = createRequire(import.meta.url): from here on, req(...) is a require.
+      VariableDeclarator: (node) => {
+        if (node.id.type === 'Identifier' && isCreateRequire(node.init)) requireNames.add(node.id.name)
+      },
       CallExpression: (node) => {
-        if (node.callee.type === 'Identifier' && node.callee.name === 'require' && node.arguments.length === 1) {
-          check(node.arguments[0], { mustBeStatic: true })
+        const { callee, arguments: args } = node
+        // require('x'), req('x'), createRequire(...)('x')
+        if (isRequire(callee) && args.length > 0) check(args[0], { mustBeStatic: true })
+        // require.resolve('x'), req.resolve('x')
+        if (callee.type === 'MemberExpression' && !callee.computed && callee.property.name === 'resolve' && isRequire(callee.object)) {
+          check(args[0], { mustBeStatic: true })
         }
-        if (isImportMetaProperty(node.callee, ['glob', 'globEager'])) checkGlob(node.arguments)
+        // createRequire(base): require calls resolve relative to base, so base must stay inside too.
+        if (isCreateRequire(node) && !isImportMetaProperty(args[0], ['url'])) check(args[0], { mustBeStatic: true })
+        if (isImportMetaProperty(callee, ['glob', 'globEager'])) checkGlob(args)
       },
       // new URL('./asset.svg', import.meta.url): Vite resolves the first argument like an import.
       NewExpression: (node) => {
