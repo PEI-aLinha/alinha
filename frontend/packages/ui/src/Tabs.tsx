@@ -24,7 +24,7 @@ export function Tabs({ tabs, value, onValueChange, defaultValue }: { tabs: TabDe
         ))}
       </RTabs.List>
       {tabs.map((t) => (
-        <RTabs.Content key={t.value} value={t.value} className="focus-visible:outline-none">
+        <RTabs.Content key={t.value} value={t.value}>
           {t.content}
         </RTabs.Content>
       ))}

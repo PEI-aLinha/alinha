@@ -60,11 +60,14 @@ interface SelectProps {
   size?: 'md' | 'sm'
   disabled?: boolean
   required?: boolean
+  /** Field name, so the value is sent with a native form submission. */
+  name?: string
 }
 
-export function Select({ id, value, onChange, options, placeholder = 'Escolher…', invalid, describedBy, ariaLabel, size = 'md', disabled, required }: SelectProps) {
+/** Pass `value=""` for no choice: the placeholder shows and the select stays controlled. */
+export function Select({ id, value, onChange, options, placeholder = 'Escolher…', invalid, describedBy, ariaLabel, size = 'md', disabled, required, name }: SelectProps) {
   return (
-    <RSelect.Root value={value || undefined} onValueChange={onChange} disabled={disabled}>
+    <RSelect.Root value={value} onValueChange={onChange} disabled={disabled} name={name} required={required}>
       <RSelect.Trigger
         id={id}
         aria-label={ariaLabel}

@@ -43,12 +43,13 @@ export function Modal({ open, onOpenChange, title, description, chip, children, 
         <Dialog.Overlay className="fixed inset-0 z-50 bg-ink/45 animate-fade-in" />
         <Dialog.Content
           onCloseAutoFocus={returnFocus}
+          {...(description ? {} : { 'aria-describedby': undefined })}
           style={{ maxWidth: width }}
           className="fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100dvh-32px)] w-[calc(100vw-32px)] -translate-x-1/2 -translate-y-1/2 flex-col gap-[18px] overflow-y-auto rounded-[20px] bg-paper px-8 py-7 shadow-[0_24px_64px_rgb(var(--shadow-rgb)/0.22)] animate-pop-in max-sm:px-5 max-sm:py-6"
         >
           {chip && <div>{chip}</div>}
           <Dialog.Title className="text-[1.625rem] font-extrabold title-tight">{title}</Dialog.Title>
-          {description ? <Dialog.Description className="-mt-1 text-[0.9375rem] text-ink-soft">{description}</Dialog.Description> : <Dialog.Description className="sr-only">{title}</Dialog.Description>}
+          {description && <Dialog.Description className="-mt-1 text-[0.9375rem] text-ink-soft">{description}</Dialog.Description>}
           {children}
           {footer && <div className="mt-1 flex flex-wrap justify-end gap-3 max-sm:[&>*]:flex-1">{footer}</div>}
           <Dialog.Close className="absolute right-4 top-4 rounded-full p-2 text-muted hover:bg-paper-soft hover:text-ink" aria-label="Fechar">
@@ -69,6 +70,7 @@ export function Drawer({ open, onOpenChange, title, description, chip, children,
         <Dialog.Overlay className="fixed inset-0 z-50 bg-ink/30 animate-fade-in" />
         <Dialog.Content
           onCloseAutoFocus={returnFocus}
+          {...(description ? {} : { 'aria-describedby': undefined })}
           style={{ ['--drawer-w' as string]: `${width}px` }}
           className={cn(
             'fixed z-50 flex flex-col bg-paper shadow-[-16px_0_48px_rgb(var(--shadow-rgb)/0.16)]',
@@ -81,7 +83,7 @@ export function Drawer({ open, onOpenChange, title, description, chip, children,
               {eyebrow && <div className="eyebrow text-[0.6875rem] text-muted">{eyebrow}</div>}
               {chip && <div className="flex flex-wrap gap-2">{chip}</div>}
               <Dialog.Title className="text-[1.375rem] font-extrabold title-tight">{title}</Dialog.Title>
-              {description ? <Dialog.Description className="text-[0.875rem] text-ink-soft">{description}</Dialog.Description> : <Dialog.Description className="sr-only">{title}</Dialog.Description>}
+              {description && <Dialog.Description className="text-[0.875rem] text-ink-soft">{description}</Dialog.Description>}
             </div>
             <Dialog.Close className="-mr-2 rounded-full p-2 text-muted hover:bg-paper-soft hover:text-ink" aria-label="Fechar painel">
               <X className="size-5" aria-hidden />

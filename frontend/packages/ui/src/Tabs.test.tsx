@@ -22,6 +22,13 @@ describe('Tabs', () => {
     await waitFor(() => expect(screen.getByRole('tab', { name: 'Riscos' })).toHaveFocus())
   })
 
+  it('keeps the visible focus ring on the panel, which keyboard users can reach', () => {
+    render(<Tabs tabs={tabs} />)
+    const panel = screen.getByRole('tabpanel')
+    expect(panel).toHaveAttribute('tabindex', '0')
+    expect(panel.className).not.toMatch(/outline-none/)
+  })
+
   it('opens on the default tab', () => {
     render(<Tabs tabs={tabs} defaultValue="risks" />)
     expect(screen.getByRole('tabpanel')).toHaveTextContent('Lista de riscos')

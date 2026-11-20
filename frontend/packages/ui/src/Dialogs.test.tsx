@@ -43,7 +43,9 @@ describe.each(['modal', 'drawer'] as const)('%s', (kind) => {
   })
 })
 
-it('a modal without description still gives screen readers one', () => {
+it('a modal without description has no description, so the title is not read twice', () => {
   render(<Modal open onOpenChange={() => {}} title="Apagar ativo?" />)
-  expect(screen.getByRole('dialog', { name: 'Apagar ativo?' })).toHaveAccessibleDescription('Apagar ativo?')
+  const dialog = screen.getByRole('dialog', { name: 'Apagar ativo?' })
+  expect(dialog).not.toHaveAttribute('aria-describedby')
+  expect(dialog).toHaveAccessibleDescription('')
 })

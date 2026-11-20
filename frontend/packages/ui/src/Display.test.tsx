@@ -24,11 +24,17 @@ describe('badges', () => {
 })
 
 describe('cards', () => {
-  it('a stat card with onClick is a button', () => {
+  it('a stat card with onClick has one button named by its label and value', () => {
     const onClick = vi.fn()
     render(<StatCard label="Ativos" value={12} caption="3 críticos" onClick={onClick}>pré-visualização</StatCard>)
-    fireEvent.click(screen.getByRole('button', { name: /Ativos/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ativos 12' }))
     expect(onClick).toHaveBeenCalledOnce()
+  })
+
+  it('a clickable stat card keeps its heading and puts no block content inside the button', () => {
+    render(<StatCard label="Riscos" value={4} caption="2 altos" labelAs="h3" onClick={() => {}} />)
+    expect(screen.getByRole('heading', { level: 3, name: 'Riscos' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Riscos 4' })).toBeEmptyDOMElement()
   })
 
   it('a stat card without onClick is not interactive', () => {
