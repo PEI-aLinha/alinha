@@ -24,6 +24,8 @@ tags:
     description: Who is signed in (owned by the BFF).
   - name: registry
     description: Plugins present in the running application.
+  - name: organization
+    description: The client organization's registration and data (organization plugin).
   - name: internal
     description: Walking-skeleton endpoints. Temporary; remove when the real endpoint exists.
 
@@ -65,6 +67,139 @@ paths:
                   $ref: '#/components/schemas/PluginManifest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+
+  /api/organization/registration:
+    post:
+      tags: [organization]
+      operationId: registerOrganization
+      summary: Register the caller's organization
+      description: |
+        A new account (`registrant` role, no organization yet) registers its organization. This creates the
+        organization's tenant, makes the caller its Designated Officer (`responsible`) and publishes
+        `OrganizationRegistered` (ADR 0004). The session must be refreshed afterwards to work inside the
+        new organization. No `X-Alinha-Tenant`: the organization does not exist yet. Permission
+        `organization:register`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationProfileInput'
+      responses:
+        '201':
+          description: Organization registered.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationProfile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: |
+            `code` tells the cases apart:
+            - `ORGANIZATION_ALREADY_EXISTS`: this account already has an organization (refresh the session and go to it);
+            - `NIF_ALREADY_REGISTERED`: another organization already uses this NIF.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Invalid data; `errors` has one Portuguese message per field (`code` = `VALIDATION_FAILED`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: |
+            Too many registration attempts from this client (`code` = `TOO_MANY_REGISTRATIONS`): at most 5 per hour.
+            Nothing was created. A second submit while this account's registration is still running is a `503`
+            `REGISTRATION_BUSY` instead, and does not count as an attempt.
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: |
+            Nothing was created; try again later. `code` tells why:
+            - `IDENTITY_UNAVAILABLE`: the identity provider failed;
+            - `REGISTRATION_BUSY`: too many registrations at once, or this account's registration is still running.
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /api/organization/profile:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+    get:
+      tags: [organization]
+      operationId: getOrganizationProfile
+      summary: The current organization's data
+      description: Permission `organization:read` (Designated Officer, consultant, analyst).
+      responses:
+        '200':
+          description: The organization's data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationProfile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [organization]
+      operationId: updateOrganizationProfile
+      summary: Update the current organization's data
+      description: |
+        Replaces the organization's data. `version` must be the one that was read; otherwise the answer is
+        `409` (`code` = `VERSION_CONFLICT`) and nothing changes. The NIF identifies the organization and cannot
+        change after registration: a different `nif` is a `422`. Permission `organization:edit`
+        (Designated Officer, consultant).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationProfileUpdate'
+      responses:
+        '200':
+          description: The updated data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationProfile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: |
+            The data changed since it was read (`code` = `VERSION_CONFLICT`): reload and edit again.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
 
   /api/{plugin}/ping:
     parameters:
@@ -262,7 +397,7 @@ components:
           type: array
           description: |
             The client user's own organization (exactly one), or the consultant's assigned
-            organizations (the `tenants` claim).
+            organizations (the `tenants` claim). Empty for a `registrant`.
           items:
             $ref: '#/components/schemas/OrganizationRef'
 
@@ -295,6 +430,151 @@ components:
           items:
             type: string
 
+    OrganizationAddress:
+      type: object
+      required: [street, postalCode, city]
+      properties:
+        street:
+          type: string
+          maxLength: 300
+        postalCode:
+          type: string
+          pattern: '^\d{4}-\d{3}$'
+          examples: ['3750-750']
+        city:
+          type: string
+          maxLength: 120
+
+    OrganizationContacts:
+      type: object
+      required: [phone, email]
+      properties:
+        phone:
+          type: string
+          maxLength: 20
+          description: 9 digits starting with 2 or 9; spaces are ignored on input.
+        email:
+          type: string
+          format: email
+          maxLength: 254
+
+    PermanentContact:
+      type: object
+      description: Person the CNCS can reach at any time in case of an incident.
+      required: [name, phone]
+      properties:
+        name:
+          type: string
+          maxLength: 120
+        phone:
+          type: string
+          maxLength: 20
+
+    OrganizationProfileInput:
+      type: object
+      description: |
+        Organization data for the NIS2 classification (FR01). Every field listed in `required` is required, and
+        `subsector` too when the chosen `sector` has subsectors (a conditional the schema does not express). The
+        server validates all of them and answers `422` with one message per missing or invalid field. NIF, CAE and phones may contain spaces, dots or dashes, never letters.
+      required: [name, nif, cae, sector, services, employees, turnover, address, contacts, permanentContact]
+      properties:
+        name:
+          type: string
+          maxLength: 200
+          description: Official name, as in the permanent certificate.
+        nif:
+          type: string
+          maxLength: 20
+          description: Portuguese tax number, 9 digits with a valid check digit.
+        cae:
+          type: string
+          maxLength: 20
+          description: Main CAE code, 5 digits.
+        sector:
+          type: string
+          maxLength: 40
+          description: Sector id from the DL 125/2025 annexes (e.g. `industria`), or `outro`.
+        subsector:
+          type: [string, 'null']
+          maxLength: 40
+          description: Required only when the sector has subsectors (e.g. `automoveis`).
+        services:
+          type: string
+          minLength: 10
+          maxLength: 2000
+        employees:
+          type: integer
+          minimum: 1
+          maximum: 10000000
+        turnover:
+          type: integer
+          minimum: 0
+          description: Annual turnover in whole euros.
+        address:
+          $ref: '#/components/schemas/OrganizationAddress'
+        contacts:
+          $ref: '#/components/schemas/OrganizationContacts'
+        permanentContact:
+          $ref: '#/components/schemas/PermanentContact'
+
+    OrganizationProfileUpdate:
+      allOf:
+        - $ref: '#/components/schemas/OrganizationProfileInput'
+        - type: object
+          required: [version]
+          properties:
+            version:
+              type: integer
+              minimum: 0
+              description: The `version` that was read.
+
+    OrganizationProfile:
+      type: object
+      required: [id, version, name, nif, cae, sector, subsector, sectorAnnex, services, employees, turnover,
+        address, contacts, permanentContact, registeredAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        version:
+          type: integer
+          description: Send it back on update.
+        name:
+          type: string
+        nif:
+          type: string
+          description: 9 digits.
+        cae:
+          type: string
+          description: 5 digits.
+        sector:
+          type: string
+        subsector:
+          type: [string, 'null']
+        sectorAnnex:
+          type: [string, 'null']
+          enum: [I, II, null]
+          description: NIS2 annex of the sector; null when the sector is not covered.
+        services:
+          type: string
+        employees:
+          type: integer
+        turnover:
+          type: integer
+          description: Annual turnover in whole euros.
+        address:
+          $ref: '#/components/schemas/OrganizationAddress'
+        contacts:
+          $ref: '#/components/schemas/OrganizationContacts'
+        permanentContact:
+          $ref: '#/components/schemas/PermanentContact'
+        registeredAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
     Ping:
       type: object
       required: [plugin, status]
@@ -304,6 +584,13 @@ components:
         status:
           type: string
           enum: [ok]
+
+  headers:
+    RetryAfter:
+      description: Seconds to wait before trying again.
+      schema:
+        type: integer
+        minimum: 1
 
   responses:
     BadRequest:

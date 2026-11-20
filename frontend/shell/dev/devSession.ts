@@ -1,12 +1,13 @@
 /**
  * DEV ONLY — fake /api/me for `pnpm dev` until the BFF exists (issue #14).
- * Enabled with VITE_DEV_ROLE=consultant|responsible|analyst|anonymous (anonymous answers 401).
+ * Enabled with VITE_DEV_ROLE=consultant|responsible|analyst|registrant|anonymous (anonymous answers 401).
+ * `registrant` is a new account that has not registered its organization yet (ADR 0004): no organizations.
  * The plugin has `apply: 'serve'`, so it never reaches a production build.
  */
 import type { Plugin } from 'vite'
 import type { MeDto, OrganizationRefDto } from '@alinha/api-client'
 
-export const DEV_ROLES = ['consultant', 'responsible', 'analyst', 'anonymous'] as const
+export const DEV_ROLES = ['consultant', 'responsible', 'analyst', 'registrant', 'anonymous'] as const
 export type DevRole = (typeof DEV_ROLES)[number]
 
 /** The BFF has more roles (`registrant`); the dev fake only needs the ones with a full UI. */
@@ -21,6 +22,7 @@ const PEOPLE: Record<DevPersona, MeDto['user']> = {
   consultant: { id: 'dev-consultant', name: 'Marta Ferreira' },
   responsible: { id: 'dev-responsible', name: 'Rui Santos' },
   analyst: { id: 'dev-analyst', name: 'Pedro Almeida' },
+  registrant: { id: 'dev-registrant', name: 'Nova Conta' },
 }
 
 /**
@@ -41,6 +43,7 @@ export const DEV_PERMISSIONS: Record<DevPersona, readonly string[]> = {
     'risk:read', 'risk:create', 'risk:edit', 'risk:link', 'roadmap:read', 'roadmap:validate', 'roadmap:create',
     'history:read', 'portfolio:read',
   ],
+  registrant: ['plugins:read', 'organization:register'],
 }
 
 export function isDevRole(value: string): value is DevRole {
@@ -52,7 +55,7 @@ export function devMe(role: DevPersona): MeDto {
     user: PEOPLE[role],
     roles: [role],
     permissions: [...DEV_PERMISSIONS[role]],
-    organizations: role === 'consultant' ? ORGS : [ORGS[0]],
+    organizations: role === 'consultant' ? ORGS : role === 'registrant' ? [] : [ORGS[0]],
   }
 }
 

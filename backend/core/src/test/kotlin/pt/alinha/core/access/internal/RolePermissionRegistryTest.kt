@@ -53,6 +53,15 @@ class RolePermissionRegistryTest {
     }
 
     @Test
+    fun `registrant gets only what plugins map to it, never audit history`() {
+        val registry = registry(
+            plugin("org", setOf("org:register", "org:read"), mapOf("registrant" to setOf("org:register"))),
+        )
+
+        assertThat(registry.permissionsFor(setOf("registrant"))).containsExactlyInAnyOrder("org:register", "plugins:read", "session:read")
+    }
+
+    @Test
     fun `grants nothing to unknown or missing roles`() {
         assertThat(registry().permissionsFor(setOf("intruder"))).isEmpty()
         assertThat(registry().permissionsFor(emptySet())).isEmpty()

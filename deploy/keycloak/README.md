@@ -41,6 +41,31 @@ Dev tenant UUIDs, reused by the persona seed data (#42):
 Marta can act on both organisations; João only on Metalúrgica de Aveiro, so "organization not
 assigned to this consultant" (403) can be exercised locally.
 
+## Self-registration and the provisioner (ADR 0004)
+
+- The login page has **Registar** (email as username, verified email through Mailpit, TOTP on first login).
+- A new account gets the default role `default-roles-alinha`, which includes `registrant` and no `tenant_id`.
+  The seed users above keep only their explicit role, because an import does not add the default role.
+- **Every** account created later through the admin console or the Admin API also gets the default role, and so
+  `registrant`. When creating a consultant or analyst by hand, remove `default-roles-alinha` from it. Code that creates
+  accounts (`IdentityDirectory`) must do the same.
+- **No account console.** The default role has no `account` client roles (`view-profile`, `manage-account`), and the
+  seed users never had them, so nobody can open the account console. This is deliberate: the platform's own pages
+  hold the user's data, a forgotten password goes through *Esqueceu-se da palavra-passe?* on the login page, and a
+  lost TOTP device is reset by an admin (*Credentials* → delete OTP; the user enrols again on the next login).
+- `alinha-provisioner` is a confidential client with a service account (`realm-management`: `manage-users`,
+  `view-users`). When an organization is registered, the app sets `tenant_id`, maps `responsible`, maps the other
+  roles of `default-roles-alinha` (`offline_access`, `uma_authorization`) directly and then removes the composite, so
+  only `registrant` goes away. It cannot create roles or read clients, but `manage-users`
+  can map **any** realm role (`consultant` included) to any user: treat its secret like an admin credential.
+- `tenant_id` and `tenants` are admin-only in the user profile (view and edit `admin`), and unmanaged attributes are
+  off, so a user cannot set them in the registration form (or an account console, if one is ever enabled). Keep it that way: a user who could
+  write `tenant_id` could enter another organization.
+- Its dev secret (`dev-provisioner-secret`) is also seeded in OpenBao as `identity.provisioner-secret`; the app reads
+  it from there, never from config files. Outside local development use a new secret and never this one.
+- The default role only exists in a realm created from this file. An existing dev realm must be recreated
+  (command above), or self-registered accounts get no `registrant` role and are refused (403).
+
 ## Token contract
 
 The `bff` client adds these to the access token. Backend contract: [`docs/tenancy.md`](../../docs/tenancy.md)
