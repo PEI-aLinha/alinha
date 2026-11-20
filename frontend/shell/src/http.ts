@@ -49,10 +49,12 @@ export async function readProblem(res: Response): Promise<Problem | undefined> {
     return undefined
   }
   if (!isRecord(body)) return undefined
-  const errors = Array.isArray(body.errors)
+  const fieldProblems = Array.isArray(body.errors)
     ? body.errors.filter(isRecord).flatMap((e) =>
         typeof e.field === 'string' && typeof e.message === 'string' ? [{ field: e.field, message: e.message }] : [])
-    : undefined
+    : []
+  // An empty list says nothing: treat it as absent, so `{ "errors": [] }` alone is not a Problem.
+  const errors = fieldProblems.length > 0 ? fieldProblems : undefined
   const problem: Problem = { title: optionalString(body.title), detail: optionalString(body.detail), code: optionalString(body.code), errors }
   const isProblemType = /^application\/problem\+json\b/i.test(type)
   const hasKnownField = Object.values(problem).some((v) => v !== undefined)

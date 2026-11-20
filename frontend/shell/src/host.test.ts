@@ -152,6 +152,17 @@ describe('createApi', () => {
     }))('/x').catch((e: unknown) => e)
     expect((error as ApiError).problem).toEqual({ title: undefined, detail: undefined, code: 'X', errors: [{ field: 'a', message: 'm' }] })
   })
+  it('treats an empty list of field errors as absent', async () => {
+    const plain = await api(null, async () => new Response(JSON.stringify({ errors: [] }), {
+      status: 400, headers: { 'Content-Type': 'application/json' },
+    }))('/x').catch((e: unknown) => e)
+    expect((plain as ApiError).problem).toBeUndefined()
+
+    const malformed = await api(null, async () => new Response(JSON.stringify({ code: 'X', errors: [{ field: 1 }] }), {
+      status: 400, headers: { 'Content-Type': 'application/problem+json' },
+    }))('/x').catch((e: unknown) => e)
+    expect((malformed as ApiError).problem?.errors).toBeUndefined()
+  })
 })
 
 describe('reauthenticate', () => {
