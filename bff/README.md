@@ -21,8 +21,10 @@ sets `Secure` cookies.
 
 ### Behind Nginx
 
-`forward-headers-strategy: framework` trusts `X-Forwarded-*`. Only safe when the BFF is reachable **only** through
-Nginx: Nginx must overwrite `X-Forwarded-For` (`proxy_set_header X-Forwarded-For $remote_addr`;
+Run with `SPRING_PROFILES_ACTIVE=prod`: only that profile sets `forward-headers-strategy: framework`
+(`application-prod.yml`), so the limiter sees the client address instead of Nginx's. Without it the BFF ignores
+`X-Forwarded-*`. Trusting the header is only safe when the BFF is reachable **only** through Nginx: Nginx must
+overwrite `X-Forwarded-For` (`proxy_set_header X-Forwarded-For $remote_addr`;
 `$proxy_add_x_forwarded_for` appends and is not enough) and the BFF port must not be published.
 If `:8081` is reachable directly, anyone can spoof the header and dodge the IP-keyed limiter.
 

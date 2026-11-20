@@ -6,8 +6,10 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.cloud.gateway.route.RouteLocator
+import org.springframework.context.ApplicationContext
 import org.springframework.http.MediaType
 import org.springframework.test.web.reactive.server.WebTestClient
+import org.springframework.web.server.adapter.ForwardedHeaderTransformer
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class SecurityIntegrationTest {
@@ -17,6 +19,9 @@ class SecurityIntegrationTest {
 
     @Autowired
     lateinit var routes: RouteLocator
+
+    @Autowired
+    lateinit var context: ApplicationContext
 
     private val client: WebTestClient
         get() = WebTestClient.bindToServer().baseUrl("http://localhost:$port").build()
@@ -41,6 +46,12 @@ class SecurityIntegrationTest {
     fun `the health check stays public`() {
         client.get().uri("/actuator/health").exchange()
             .expectStatus().isOk
+    }
+
+    /** Outside the prod profile a spoofed X-Forwarded-For must not change the rate-limit key (the remote address). */
+    @Test
+    fun `forwarded headers are not trusted outside prod`() {
+        assertThat(context.getBeanProvider(ForwardedHeaderTransformer::class.java).ifAvailable).isNull()
     }
 
     @Test
