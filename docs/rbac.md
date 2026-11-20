@@ -9,6 +9,7 @@ Every API request needs a valid Keycloak access token and an explicit permission
 | `consultant` | Consultant |
 | `responsible` | Designated Officer |
 | `analyst` | Analyst |
+| `registrant` | Account with no organization yet (self-registration, ADR 0004) |
 
 ## Token contract
 
@@ -32,6 +33,8 @@ The application refuses to start if a controller endpoint has no `@RequiresPermi
 
 An endpoint open to every signed-in role (such as a plugin's `ping`) uses `@RequiresPermission("plugins")`, the core's `plugins:read`.
 
+The core grants every known role `plugins:read` (plugin discovery) and `session:read` (the BFF's `/internal/me`).
+
 ## Tenant scope
 
 Realm roles are realm-wide: a `responsible` or `analyst` token has the same permissions in every organisation. `@RequiresPermission` decides *what* a user may do, not *for which organisation*, so on its own it does not stop cross-tenant access.
@@ -45,7 +48,7 @@ Declare permissions and their roles in the plugin's `PluginManifest` (Kotlin). T
 - a role is unknown;
 - a mapped permission is not in the plugin's own `permissions`;
 - two plugins declare the same permission (each permission has exactly one owner);
-- a plugin declares a core permission (`plugins:read`, `audit:read`: every permission the core grants is reserved).
+- a plugin declares a core permission (`plugins:read`, `session:read`, `audit:read`: every permission the core grants is reserved).
 
 ```kotlin
 PluginManifest(
@@ -68,9 +71,13 @@ Analysts follow least privilege: never grant them global results or roadmap perm
 
 Add a row with each new endpoint.
 
-| Endpoint | Permission | Consultant | Designated Officer | Analyst |
-|---|---|---|---|---|
-| `GET /actuator/health` | public | yes | yes | yes |
-| `GET /api/plugins` | `plugins:read` | yes | yes | yes |
-| `GET /api/<plugin-id>/ping` | `plugins:read` | yes | yes | yes |
-| `GET /api/audit/events` | `audit:read` | yes | yes | no |
+| Endpoint | Permission | Consultant | Designated Officer | Analyst | Registrant |
+|---|---|---|---|---|---|
+| `GET /actuator/health` | public | yes | yes | yes | yes |
+| `GET /api/plugins` | `plugins:read` | yes | yes | yes | yes |
+| `GET /api/<plugin-id>/ping` | `plugins:read` | yes | yes | yes | yes |
+| `GET /api/audit/events` | `audit:read` | yes | yes | no | no |
+| `GET /api/me` | authenticated (BFF) | yes | yes | yes | yes |
+| `GET /internal/me` | `session:read` (BFF only) | yes | yes | yes | yes |
+| `POST /auth/refresh` | authenticated (BFF) | yes | yes | yes | yes |
+| `POST /auth/logout` | authenticated (BFF) | yes | yes | yes | yes |

@@ -68,7 +68,8 @@ Tests: `TenantResolutionTest`, `JwtTenantContextTest`, `TenantFilterBypassTest`,
 3. Endpoints get the tenant automatically through `TenantContext.current()`. Use `@TenantAgnostic` only
    for endpoints that touch no tenant data.
 4. Work without a request (event listeners, jobs, `@Async` code): wrap it in
-   `tenantContext.runAs(event.tenantId) { tx.execute { ... } }`, started **outside** any transaction (a JPA
+   `tenantContext.runAs(event) { tx.execute { ... } }` (it also keeps the event's correlation id, see
+   `docs/events.md`; jobs without an event use `runAs(tenantId)`), started **outside** any transaction (a JPA
    session keeps the tenant it was opened with). `@ApplicationModuleListener` and `@Transactional` listeners
    open the transaction before your code runs, so `runAs` fails there: use a plain
    `@Async @TransactionalEventListener` and open the transaction inside `runAs`. `TenantIsolationIntegrationTest`

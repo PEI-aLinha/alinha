@@ -51,6 +51,11 @@ spring:
         schema-initialization:
           enabled: false          # table created by core migration V20261116090100
 
+logging:
+  pattern:
+    # Correlation id of the request or event (core.tenant.CorrelationContext, docs/events.md).
+    correlation: "[%X{correlationId:-}] "
+
 management:
   endpoints:
     web:

@@ -5,7 +5,9 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.web.context.request.RequestAttributes
 import org.springframework.web.context.request.RequestContextHolder
 import pt.alinha.core.tenant.TenantContext
+import pt.alinha.pluginapi.DomainEvent
 import pt.alinha.pluginapi.TenantId
+import java.util.UUID
 
 @Component
 class JwtTenantContext : TenantContext {
@@ -32,9 +34,13 @@ class JwtTenantContext : TenantContext {
         val previous = scoped.get()
         scoped.set(tenantId)
         try {
-            return block()
+            // A job keeps one correlation id for all its work; runAs(event) replaces it with the event's.
+            return CorrelationScope.runWith(CorrelationScope.currentOrNull() ?: UUID.randomUUID(), block)
         } finally {
             if (previous == null) scoped.remove() else scoped.set(previous)
         }
     }
+
+    override fun <T> runAs(event: DomainEvent, block: () -> T): T =
+        runAs(event.tenantId) { CorrelationScope.runWith(event.correlationId, block) }
 }

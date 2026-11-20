@@ -38,8 +38,8 @@ class RolePermissionRegistryTest {
     fun `grants core permission to every role`() {
         val registry = registry()
 
-        listOf("consultant", "responsible", "analyst").forEach {
-            assertThat(registry.permissionsFor(setOf(it))).contains("plugins:read")
+        listOf("consultant", "responsible", "analyst", "registrant").forEach {
+            assertThat(registry.permissionsFor(setOf(it))).contains("plugins:read", "session:read")
         }
     }
 
@@ -102,6 +102,6 @@ class RolePermissionRegistryTest {
     fun `exposes core and plugin permissions as declared`() {
         val registry = registry(plugin("a", setOf("a:read", "a:edit"), emptyMap()))
 
-        assertThat(registry.declaredPermissions).containsExactlyInAnyOrder("plugins:read", "audit:read", "a:read", "a:edit")
+        assertThat(registry.declaredPermissions).containsExactlyInAnyOrder("plugins:read", "session:read", "audit:read", "a:read", "a:edit")
     }
 }

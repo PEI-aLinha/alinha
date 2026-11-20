@@ -4,17 +4,20 @@
  * The plugin has `apply: 'serve'`, so it never reaches a production build.
  */
 import type { Plugin } from 'vite'
-import type { MeDto, OrganizationRefDto, Role } from '@alinha/api-client'
+import type { MeDto, OrganizationRefDto } from '@alinha/api-client'
 
 export const DEV_ROLES = ['consultant', 'responsible', 'analyst', 'anonymous'] as const
 export type DevRole = (typeof DEV_ROLES)[number]
+
+/** The BFF has more roles (`registrant`); the dev fake only needs the ones with a full UI. */
+type DevPersona = Exclude<DevRole, 'anonymous'>
 
 const ORGS: OrganizationRefDto[] = [
   { id: '0b8f3f6e-6c1a-4c55-9a39-3d1f6f0a0001', slug: 'componentes-agueda', name: 'Componentes Águeda, Lda.' },
   { id: '0b8f3f6e-6c1a-4c55-9a39-3d1f6f0a0002', slug: 'padaria-central', name: 'Padaria Central, Lda.' },
 ]
 
-const PEOPLE: Record<Role, MeDto['user']> = {
+const PEOPLE: Record<DevPersona, MeDto['user']> = {
   consultant: { id: 'dev-consultant', name: 'Marta Ferreira' },
   responsible: { id: 'dev-responsible', name: 'Rui Santos' },
   analyst: { id: 'dev-analyst', name: 'Pedro Almeida' },
@@ -24,7 +27,7 @@ const PEOPLE: Record<Role, MeDto['user']> = {
  * PLACEHOLDER permissions per role, taken from the frontend prototype's RBAC matrix (its `view` is `read` here).
  * No plugin's PluginManifest declares permissions yet; once they do, copy each role's set from the backend RBAC (#9).
  */
-export const DEV_PERMISSIONS: Record<Role, readonly string[]> = {
+export const DEV_PERMISSIONS: Record<DevPersona, readonly string[]> = {
   responsible: [
     'plugins:read', 'scope:read', 'scope:edit', 'framing:read', 'framing:edit',
     'asset:read', 'asset:create', 'asset:edit', 'asset:delete', 'asset:import', 'asset:bulk_edit',
@@ -44,7 +47,7 @@ export function isDevRole(value: string): value is DevRole {
   return (DEV_ROLES as readonly string[]).includes(value)
 }
 
-export function devMe(role: Role): MeDto {
+export function devMe(role: DevPersona): MeDto {
   return {
     user: PEOPLE[role],
     roles: [role],
