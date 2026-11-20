@@ -17,9 +17,13 @@ export const AREA_BASE: Record<Area, string> = {
 
 const isStaticPath = (path: string) => !path.split('/').some((s) => s.startsWith(':') || s.includes('*'))
 
+const joinPath = (prefix: string, path: string) => (prefix ? `${prefix}/${path}` : path)
+
 /**
- * The first route with a static path, looking inside pathless layout routes and joining nested paths. Routes with a
- * dynamic segment (`:step`) or a splat are skipped: there is no value to put in the address.
+ * The first route with a static path that shows a page, looking inside pathless layout routes and joining nested
+ * paths. A route with children only shows a page of its own through an index child; otherwise the address goes to
+ * its first static child. Routes with a dynamic segment (`:step`) or a splat are skipped: there is no value to put
+ * in the address.
  */
 function firstStaticPath(routes: readonly RouteObject[], prefix = ''): string | undefined {
   for (const route of routes) {
@@ -30,7 +34,11 @@ function firstStaticPath(routes: readonly RouteObject[], prefix = ''): string | 
       continue
     }
     if (!isStaticPath(route.path)) continue
-    return prefix ? `${prefix}/${route.path}` : route.path
+    const path = joinPath(prefix, route.path)
+    const children = route.children ?? []
+    if (children.length === 0 || children.some((child) => child.index)) return path
+    const nested = firstStaticPath(children, path)
+    if (nested) return nested
   }
   return undefined
 }

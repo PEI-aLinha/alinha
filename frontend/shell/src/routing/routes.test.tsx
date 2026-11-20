@@ -16,9 +16,27 @@ describe('firstOnboardingPath', () => {
     expect(firstOnboardingPath(withOnboarding(routes))).toBe('organization')
   })
 
-  it('joins nested paths', () => {
+  it('stops at a route whose index child shows a page', () => {
     const routes = [{ path: 'organization', children: [{ index: true, Component: Page }, { path: 'start', Component: Page }] }]
     expect(firstOnboardingPath(withOnboarding(routes))).toBe('organization')
+  })
+
+  it('joins nested paths when the parent has no index page', () => {
+    const routes = [{ path: 'organization', Component: Page, children: [{ path: ':step', Component: Page }, { path: 'start', Component: Page }] }]
+    expect(firstOnboardingPath(withOnboarding(routes))).toBe('organization/start')
+  })
+
+  it('joins nested paths across a pathless layout route', () => {
+    const routes = [{ path: 'organization', children: [{ Component: Page, children: [{ path: 'start', Component: Page }] }] }]
+    expect(firstOnboardingPath(withOnboarding(routes))).toBe('organization/start')
+  })
+
+  it('skips a parent whose children have no static page', () => {
+    const routes = [
+      { path: 'organization', children: [{ path: ':step', Component: Page }] },
+      { path: 'profile', Component: Page },
+    ]
+    expect(firstOnboardingPath(withOnboarding(routes))).toBe('profile')
   })
 
   it('skips dynamic segments and splats, which have no value to put in the address', () => {
