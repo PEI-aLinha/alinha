@@ -36,6 +36,9 @@ class JobDispatcherIntegrationTest {
     @BeforeEach
     fun clean() {
         jdbc.update("delete from core.job_outbox")
+        // Stands in for the plugin's own write in the same transaction.
+        jdbc.execute("create table if not exists core.job_outbox_probe (id int primary key)")
+        jdbc.update("delete from core.job_outbox_probe")
     }
 
     private fun outboxCount(id: UUID) =
@@ -92,6 +95,19 @@ class JobDispatcherIntegrationTest {
             dispatcher.dispatchAs(tenants, tx, tenantA, collectRequest(payload = mapOf("provider" to "code-repository")))
         }
         assertThat(jdbc.queryForObject("select count(*) from core.job_outbox", Int::class.java)).isZero()
+    }
+
+    @Test
+    fun `an invalid payload the caller catches does not roll back the caller's transaction`() {
+        tenants.runAs(tenantA) {
+            tx.executeWithoutResult {
+                jdbc.update("insert into core.job_outbox_probe (id) values (1)")
+                assertThrows<IllegalArgumentException> {
+                    dispatcher.dispatch(collectRequest(payload = mapOf("provider" to "code-repository")))
+                }
+            }
+        }
+        assertThat(jdbc.queryForObject("select count(*) from core.job_outbox_probe", Int::class.java)).isEqualTo(1)
     }
 
     @Test

@@ -21,8 +21,12 @@ class OutboxJobDispatcher(
     private val properties: JobsProperties,
 ) : JobDispatcher {
 
-    /** MANDATORY: the job commits or rolls back with the caller's write (RNF02). */
-    @Transactional(propagation = Propagation.MANDATORY)
+    /**
+     * MANDATORY: the job commits or rolls back with the caller's write (RNF02).
+     * An invalid envelope throws before anything is written, so it must not mark the caller's transaction
+     * rollback-only: a plugin that catches it keeps its own write (noRollbackFor).
+     */
+    @Transactional(propagation = Propagation.MANDATORY, noRollbackFor = [IllegalArgumentException::class])
     override fun dispatch(request: JobRequest): UUID {
         val tenantId = tenants.current().value
         val jobId = UUID.randomUUID()
