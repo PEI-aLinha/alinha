@@ -127,7 +127,7 @@ fun on(event: JobCompleted) {
 - A NUL character (`\u0000`) anywhere in the result, keys included, is replaced with U+FFFD before it is read:
   PostgreSQL `text` and `jsonb` cannot store it, and the job would otherwise never finish.
 - A `result` field over `max-result-bytes` (UTF-8) is dead-lettered **without** that field (`reason` says why),
-  before it is parsed: it would otherwise be stored as is in `core.job_outbox`. The job stays `published` until the
+  before it is parsed, on every path (including the `max-deliveries` and `max-total-deliveries` caps): it would otherwise be stored as is in `core.job_outbox`. The job stays `published` until the
   watchdog (#86) fails it; workers must keep `result` under the limit (1 MiB by default).
 - **Dead letters** go to `alinha:jobs:results:dead`, with the original fields plus `sourceId` and `reason`: an entry
   that is not valid JSON or does not match the contract, names an unknown job, or whose `tenantId`, `type` or

@@ -6,6 +6,8 @@ import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.any
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mockito.mock
+import org.mockito.Mockito.never
+import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -338,5 +340,25 @@ class JobResultRecoveryTest {
             connection.createStatement().use { it.execute("reset default_transaction_read_only") }
             connection.close()
         }
+    }
+
+    @Test
+    fun `an oversized entry that reaches max-total-deliveries is dead-lettered without its payload`() {
+        val id = published()
+        val small = properties.results.copy(maxTotalDeliveries = 3, maxResultBytes = 64)
+        val entry = sendCompleted(id) // over 64 bytes
+        readByCrashedInstance()
+        repeat(2) { ops.claim(RESULTS_STREAM, RESULTS_GROUP, CRASHED, Duration.ZERO, entry) } // 3 deliveries
+        val handlerSpy = mock(JobResultHandler::class.java)
+        val consumer = JobResultConsumer(streams, handlerSpy, JobOutboxRepository(jdbcClient), properties.copy(results = small))
+
+        assertThat(consumer.consumeOnce()).isEqualTo(1)
+
+        val dead = deadLetters().single()
+        assertThat(dead.value).doesNotContainKey(RESULT)
+        assertThat(dead.value[REASON]).isEqualTo("result larger than 64 bytes")
+        verify(handlerSpy, never()).failUnapplied(any(), anyString())
+        verify(handlerSpy, never()).handle(any())
+        assertThat(unacknowledged()).isZero()
     }
 }

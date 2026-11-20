@@ -79,8 +79,12 @@ class JobResultConsumer(
         }
     }
 
-    /** Dead-letters the entry, fails its job when it can (JobFailed, see JobResultHandler.failUnapplied), acks it. */
+    /**
+     * Dead-letters the entry, fails its job when it can (JobFailed, see JobResultHandler.failUnapplied), acks it.
+     * Every dead-letter path goes through [dropOversized] first, so an oversized result is never kept or parsed.
+     */
     private fun giveUp(record: ResultRecord, reason: String): Boolean {
+        if (dropOversized(record)) return true
         log.error("Job result {} {}, dead-lettered", record.id, reason)
         streams.deadLetter(record, reason)
         val failed = try {
@@ -96,13 +100,7 @@ class JobResultConsumer(
 
     /** @return true when the entry was acknowledged. */
     private fun process(record: ResultRecord): Boolean {
-        if (isTooLarge(record)) {
-            val limit = properties.results.maxResultBytes
-            log.warn("Job result {} larger than {} bytes, dead-lettered without it", record.id, limit)
-            streams.deadLetter(record, "result larger than $limit bytes", dropResult = true)
-            streams.ack(record.id)
-            return true
-        }
+        if (dropOversized(record)) return true
         val maxAttempts = properties.results.maxDeliveries
         if (streams.attempts(record.id) >= maxAttempts) return giveUp(record, "not applied after $maxAttempts attempts")
         streams.beginAttempt(record.id)
@@ -129,6 +127,19 @@ class JobResultConsumer(
             is ResultHandling.Ignored -> log.info("Job result {} ignored: {}", record.id, handling.reason)
             ResultHandling.Applied -> Unit
         }
+        streams.ack(record.id)
+        return true
+    }
+
+    /**
+     * A `result` over max-result-bytes is dead-lettered without it, before anything parses it: it would be stored as
+     * is in core.job_outbox. @return true when the entry was dropped (and acknowledged).
+     */
+    private fun dropOversized(record: ResultRecord): Boolean {
+        if (!isTooLarge(record)) return false
+        val limit = properties.results.maxResultBytes
+        log.warn("Job result {} larger than {} bytes, dead-lettered without it", record.id, limit)
+        streams.deadLetter(record, "result larger than $limit bytes", dropResult = true)
         streams.ack(record.id)
         return true
     }
