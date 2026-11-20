@@ -9,7 +9,7 @@ Every API request needs a valid Keycloak access token and an explicit permission
 | `consultant` | Consultant |
 | `responsible` | Designated Officer |
 | `analyst` | Analyst |
-| `registrant` | Account with no organization yet (self-registration, ADR 0004) |
+| `registrant` | New account that has not registered its organization yet (ADR 0004). Gets the core `plugins:read` and `session:read` and only what a plugin maps to it, e.g. `organization:register`. Replaced by `responsible` when the organization is registered |
 
 ## Token contract
 
@@ -81,3 +81,6 @@ Add a row with each new endpoint.
 | `GET /internal/me` | `session:read` (BFF only) | yes | yes | yes | yes |
 | `POST /auth/refresh` | authenticated (BFF) | yes | yes | yes | yes |
 | `POST /auth/logout` | authenticated (BFF) | yes | yes | yes | yes |
+| `POST /api/organization/registration` | `organization:register` | no | no | no | yes |
+| `GET /api/organization/profile` | `organization:read` | yes | yes | yes | no |
+| `PUT /api/organization/profile` | `organization:edit` | yes | yes | no | no |
