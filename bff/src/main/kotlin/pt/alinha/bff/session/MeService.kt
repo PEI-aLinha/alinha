@@ -8,6 +8,7 @@ import org.springframework.security.oauth2.client.ReactiveOAuth2AuthorizedClient
 import org.springframework.security.oauth2.core.OAuth2AuthorizationException
 import org.springframework.security.oauth2.core.oidc.user.OidcUser
 import org.springframework.stereotype.Service
+import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.reactive.function.client.WebClientResponseException
 import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.server.ServerWebExchange
@@ -93,5 +94,5 @@ class MeService(
 }
 
 /** The application was unreachable or answered garbage; the shell shows an error, not a login loop. */
-@org.springframework.web.bind.annotation.ResponseStatus(HttpStatus.BAD_GATEWAY)
+@ResponseStatus(HttpStatus.BAD_GATEWAY)
 class MeFailure(message: String, cause: Throwable) : RuntimeException(message, cause)
