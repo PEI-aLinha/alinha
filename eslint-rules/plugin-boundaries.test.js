@@ -87,6 +87,16 @@ tester.run('plugin-boundaries', rule, {
     { filename: plugin('src/index.ts'), code: "const pages = import.meta.glob(['./pages/*.tsx', '../../../../frontend/shell/src/*.tsx'])", ...err('outside') },
     { filename: plugin('src/index.ts'), code: "const pages = import.meta.glob('/src/**/*.tsx')", ...err('outside') },
     { filename: plugin('src/index.ts'), code: 'const pages = (p: string) => import.meta.glob(p)', ...err('dynamic') },
+    // Vite's /@fs/ prefix serves any file on disk.
+    { filename: plugin('src/index.ts'), code: "import x from '/@fs/repo/frontend/shell/src/host.tsx'", ...err('outside') },
+    // The glob `base` option moves where relative patterns resolve from.
+    { filename: plugin('src/index.ts'), code: "const pages = import.meta.glob('./*.tsx', { base: '../../../risk-assets/frontend/src' })", ...err('outside') },
+    { filename: plugin('src/index.ts'), code: "const pages = import.meta.glob('../../../../*.tsx', { base: './pages' })", ...err('outside') },
+    { filename: plugin('src/index.ts'), code: "const pages = import.meta.glob(['./*.tsx', '!../../../../x.tsx'], { base: './pages' })", ...err('outside') },
+    { filename: plugin('src/index.ts'), code: "const pages = (p: string) => import.meta.glob('./*.tsx', { base: p })", ...err('dynamic') },
+    { filename: plugin('src/index.ts'), code: "const pages = (o: object) => import.meta.glob('./*.tsx', o)", ...err('dynamic') },
+    { filename: plugin('src/index.ts'), code: "const pages = (o: object) => import.meta.glob('./*.tsx', { ...o })", ...err('dynamic') },
+    { filename: plugin('src/index.ts'), code: "const pages = (k: string) => import.meta.glob('./*.tsx', { [k]: '../../..' })", ...err('dynamic') },
     { filename: plugin('src/index.ts'), code: "const url = new URL('../../../risk-assets/frontend/logo.svg', import.meta.url)", ...err('outside') },
     { filename: plugin('src/index.ts'), code: 'const url = (p: string) => new URL(p, import.meta.url)', ...err('dynamic') },
     // The repo root comes from an option (eslint.config.js passes its own folder), not from ESLint's cwd.
@@ -103,6 +113,9 @@ tester.run('plugin-boundaries (Vite paths that stay inside)', rule, {
   valid: [
     { filename: plugin('src/index.ts'), code: "const pages = import.meta.glob('./pages/**/*.tsx')" },
     { filename: plugin('src/index.ts'), code: "const pages = import.meta.glob(['./pages/*.tsx', '!./pages/_*.tsx'])" },
+    { filename: plugin('src/index.ts'), code: "const pages = import.meta.glob('./*.tsx', { base: './pages', eager: true })" },
+    { filename: plugin('src/pages/a/Page.tsx'), code: "const pages = import.meta.glob('../*.tsx', { base: '../b' })" },
+    { filename: plugin('src/index.ts'), code: "const pages = import.meta.glob('./*.tsx', { 'eager': true, import: 'default' })" },
     { filename: plugin('src/index.ts'), code: "const url = new URL('./assets/logo.svg', import.meta.url)" },
     { filename: plugin('src/index.ts'), code: "const url = new URL('https://example.org/x')" },
   ],

@@ -9,7 +9,7 @@
 // and the rule would not recognise plugin files when ESLint runs from inside a plugin.
 import { readFileSync } from 'node:fs'
 import { builtinModules } from 'node:module'
-import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
+import { dirname, isAbsolute, join, posix, relative, resolve, sep } from 'node:path'
 
 const ALLOWED_PLATFORM_PACKAGES = ['@alinha/plugin-sdk', '@alinha/ui', '@alinha/api-client']
 
@@ -62,6 +62,16 @@ const isNodeBuiltin = (spec) => spec.startsWith('node:') || builtinModules.inclu
 
 const isRelative = (spec) => spec === '.' || spec === '..' || spec.startsWith('./') || spec.startsWith('../')
 
+/** A relative glob `pattern` resolved against the glob's relative `base`, still written as a relative path. */
+function underBase(base, pattern) {
+  const joined = posix.join(base, pattern)
+  return isRelative(joined) || isAbsolute(joined) ? joined : `./${joined}`
+}
+
+/** Key name of a non-computed object property (`base`, `'base'`), or undefined. */
+const propertyName = (prop) =>
+  prop.computed ? undefined : prop.key.type === 'Identifier' ? prop.key.name : staticValue(prop.key)
+
 /** Why `spec`, imported from `filename` inside `pluginRoot`, breaks the boundary; null if it is fine. */
 export function violationOf(spec, filename, pluginRoot) {
   if (spec.startsWith('@alinha/')) return isAllowedPlatformPackage(spec) ? null : 'platformPackage'
@@ -103,22 +113,45 @@ export default {
     const pluginRoot = pluginRootOf(filename, context.options[0]?.root ?? context.cwd)
     if (!pluginRoot) return {}
 
-    const check = (sourceNode, { mustBeStatic = false, glob = false } = {}) => {
+    const reportDynamic = (node) => context.report({ node, messageId: 'dynamic' })
+
+    /** Reports `sourceNode` if it breaks the boundary; true when it is a static value that is fine. */
+    const check = (sourceNode, { mustBeStatic = false, glob = false, base } = {}) => {
       const value = staticValue(sourceNode)
       if (value === undefined) {
-        if (mustBeStatic) context.report({ node: sourceNode, messageId: 'dynamic' })
-        return
+        if (mustBeStatic) reportDynamic(sourceNode)
+        return false
       }
       // A glob may exclude files with a leading "!"; the path after it must stay inside too.
-      const spec = glob && value.startsWith('!') ? value.slice(1) : value
+      const pattern = glob && value.startsWith('!') ? value.slice(1) : value
+      const spec = base && isRelative(pattern) ? underBase(base, pattern) : pattern
       const messageId = violationOf(spec, filename, pluginRoot)
       if (messageId) context.report({ node: sourceNode, messageId, data: { spec: value } })
+      return !messageId
     }
 
-    /** import.meta.glob('...') or import.meta.glob(['...', '!...']) */
-    const checkGlob = (arg) => {
-      if (arg?.type === 'ArrayExpression') arg.elements.forEach((el) => check(el, { mustBeStatic: true, glob: true }))
-      else check(arg, { mustBeStatic: true, glob: true })
+    /**
+     * The `base` option of import.meta.glob (relative patterns resolve from it), checked like an import.
+     * Options that cannot be read statically (a variable, a spread, a computed key) could hide a base: reported.
+     */
+    const globBase = (options) => {
+      if (!options) return undefined
+      if (options.type !== 'ObjectExpression') return reportDynamic(options)
+      let base
+      for (const prop of options.properties) {
+        const name = prop.type === 'Property' ? propertyName(prop) : undefined
+        if (name === undefined) reportDynamic(prop)
+        // A base that is already reported is not applied to the patterns, so the same escape is reported once.
+        else if (name === 'base' && check(prop.value, { mustBeStatic: true })) base = staticValue(prop.value)
+      }
+      return base
+    }
+
+    /** import.meta.glob('...') or import.meta.glob(['...', '!...']), with an optional { base } */
+    const checkGlob = ([patterns, options]) => {
+      const opts = { mustBeStatic: true, glob: true, base: globBase(options) }
+      if (patterns?.type === 'ArrayExpression') patterns.elements.forEach((el) => check(el, opts))
+      else check(patterns, opts)
     }
 
     return {
@@ -133,7 +166,7 @@ export default {
         if (node.callee.type === 'Identifier' && node.callee.name === 'require' && node.arguments.length === 1) {
           check(node.arguments[0], { mustBeStatic: true })
         }
-        if (isImportMetaProperty(node.callee, ['glob', 'globEager'])) checkGlob(node.arguments[0])
+        if (isImportMetaProperty(node.callee, ['glob', 'globEager'])) checkGlob(node.arguments)
       },
       // new URL('./asset.svg', import.meta.url): Vite resolves the first argument like an import.
       NewExpression: (node) => {
