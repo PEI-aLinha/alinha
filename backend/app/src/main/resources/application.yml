@@ -87,4 +87,5 @@ alinha:
       batch-size: 50
       claim-min-idle: 1m
       max-deliveries: 5
+      max-total-deliveries: 100
     default-max-attempts: 3

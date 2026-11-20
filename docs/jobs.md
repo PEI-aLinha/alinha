@@ -135,13 +135,18 @@ fun on(event: JobCompleted) {
 - **Attempts**: `max-deliveries` counts the times the core actually tried to apply an entry, kept in the hash
   `alinha:jobs:results:attempts` (field = entry id, removed on `XACK`). It is not the stream's delivery count:
   `XCLAIM`/`XREADGROUP` add a delivery to every entry of a batch, including the ones a round stops before. An
-  attempt is counted before applying, so an instance that dies mid-apply still uses one up. An entry with
-  `max-deliveries` attempts is dead-lettered instead of tried again.
+  attempt is counted before applying, so an instance that dies mid-apply still uses one up.
+- **Giving up**: an entry with `max-deliveries` attempts, or delivered `max-total-deliveries` times whatever happened
+  (attempts given back included), is dead-lettered. If it is a valid result for its job's current attempt, the job
+  is also failed with `JobError.RESULT_NOT_APPLIED` and `JobFailed` is emitted (the entry's content is not stored).
+  `max-total-deliveries` is the outage budget: it only matters when attempts keep being given back.
 - Redis down: the round returns, nothing is lost; unacknowledged entries are delivered again later.
-- Database down: a round starts only after a `select 1` succeeds. Applying an entry that fails because the database
-  cannot take writes (SQLState `25006` read-only, class `53` such as a full disk, `57P0x`, class `08`), or after
-  which `select 1` fails, gives the attempt back and stops the round. However long the outage, it never
-  dead-letters a result. A failure while the database is up (a bug) does count towards `max-deliveries`.
+- Database down: the probe is a write (`update core.job_outbox … where false`), so a read-only standby or
+  `default_transaction_read_only` counts as down too, where `select 1` would pass. A round starts only when the probe
+  succeeds. When applying an entry fails, the probe runs again: if it fails, the attempt is given back and the round
+  stops. The entry's own error is never trusted for this (a poison entry could raise an outage SQLState itself), so
+  a failure while the probe passes counts as an attempt. A full data disk (SQLState 53100) passes the probe and
+  counts as attempts; `max-deliveries` then dead-letters the result and fails the job.
 - Every entry is deleted (`XDEL`) right after its `XACK`: the outcome is in the outbox row, and a result may hold
   collected evidence. The dead-letter stream is not trimmed yet (#87). Each app start uses a new consumer name
   unless `results.consumer-name` is set; old names stay in the group with nothing pending.
@@ -158,7 +163,8 @@ fun on(event: JobCompleted) {
 | `results.enabled` | `true` | `false` in tests that drive `consumeOnce()` by hand |
 | `results.poll-interval-ms` / `results.batch-size` | `1000` / `50` | |
 | `results.claim-min-idle` | `1m` | unacknowledged for this long = claimed again |
-| `results.max-deliveries` | `5` | attempts that reached a working database, then dead-lettered |
+| `results.max-deliveries` | `5` | attempts that reached a database taking writes, then dead-lettered and the job failed |
+| `results.max-total-deliveries` | `100` | deliveries of one entry whatever happened (outage budget), then the same |
 | `results.consumer-name` | random per start | |
 | `results.max-result-bytes` | `1048576` | larger `result` fields are dead-lettered without the payload |
 | `default-max-attempts` | `3` | worker attempts per job |

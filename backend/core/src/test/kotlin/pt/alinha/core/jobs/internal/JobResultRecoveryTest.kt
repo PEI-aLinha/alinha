@@ -4,6 +4,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.any
+import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.`when`
 import org.springframework.beans.factory.annotation.Autowired
@@ -17,11 +18,16 @@ import org.springframework.data.redis.connection.stream.StreamOffset
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.core.simple.JdbcClient
+import org.springframework.jdbc.datasource.SingleConnectionDataSource
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
+import org.springframework.test.context.event.RecordApplicationEvents
+import org.springframework.test.context.event.ApplicationEvents
 import org.springframework.transaction.CannotCreateTransactionException
 import org.springframework.transaction.support.TransactionTemplate
 import pt.alinha.core.jobs.JobDispatcher
+import pt.alinha.core.jobs.JobFailed
+import pt.alinha.core.jobs.JobError
 import pt.alinha.core.jobs.internal.RedisJobStreams.Companion.REASON
 import pt.alinha.core.jobs.internal.RedisJobStreams.Companion.RESULT
 import pt.alinha.core.jobs.internal.RedisJobStreams.Companion.RESULTS_ATTEMPTS
@@ -37,6 +43,7 @@ import java.time.Instant
 import java.util.UUID
 
 /** claim-min-idle 0: every unacknowledged entry is stale at once, so no test waits. */
+@RecordApplicationEvents
 @SpringBootTest(
     classes = [JobsTestApplication::class],
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
@@ -63,6 +70,7 @@ class JobResultRecoveryTest {
     @Autowired private lateinit var handler: JobResultHandler
     @Autowired private lateinit var jdbcClient: JdbcClient
     @Autowired private lateinit var properties: JobsProperties
+    @Autowired private lateinit var events: ApplicationEvents
 
     private val tenant = TenantId(UUID.randomUUID())
     private val ops get() = redis.opsForStream<String, String>()
@@ -106,31 +114,49 @@ class JobResultRecoveryTest {
     private fun deadLetters() = ops.range(RESULTS_DLQ, Range.unbounded()).orEmpty()
 
     /**
-     * A consumer whose database is up while [up] says so. The handler fails while it is down, and when it is called
-     * with [failNext] set it takes the database down first, as an outage in the middle of a round would.
+     * A consumer whose database takes writes while [up] says so. The handler fails while it is down, and when it is
+     * called with [failNext] set it takes the database down first, as an outage in the middle of a round would.
+     * [sqlState] shapes the error the handler throws. With [flapping], the handler fails and the database is down
+     * only for the probe right after that failure, so the next round starts again.
      */
-    private inner class Outage {
+    private inner class Outage(settings: JobsProperties = properties) {
         var up = true
         var failNext = false
-
-        /** Set: while down, `select 1` still works and writes fail with this SQLState (read-only, disk full, …). */
         var sqlState: String? = null
+        var flapping = false
+        private var downForNextProbe = false
         private val outbox = object : JobOutboxRepository(jdbcClient) {
-            override fun isReachable() = up || sqlState != null
+            override fun acceptsWrites(): Boolean {
+                if (downForNextProbe) {
+                    downForNextProbe = false
+                    return false
+                }
+                return up
+            }
         }
         private val flakyHandler = mock(JobResultHandler::class.java).also {
             `when`(it.handle(any())).thenAnswer { call ->
                 if (failNext) up = false
+                if (flapping) {
+                    downForNextProbe = true
+                    throw downError()
+                }
                 if (!up) throw downError()
                 handler.handle(call.getArgument(0))
+            }
+            `when`(it.failUnapplied(any(), anyString())).thenAnswer { call ->
+                handler.failUnapplied(call.getArgument(0), call.getArgument(1))
             }
         }
 
         private fun downError(): RuntimeException = sqlState?.let {
             DataAccessResourceFailureException("write refused", SQLException("write refused", it))
         } ?: CannotCreateTransactionException("database down")
-        val consumer = JobResultConsumer(streams, flakyHandler, outbox, properties)
+
+        val consumer = JobResultConsumer(streams, flakyHandler, outbox, settings)
     }
+
+    private fun failedEvent(id: UUID) = events.stream(JobFailed::class.java).toList().single { it.jobId == id }
 
     @Test
     fun `an entry a crashed instance never acknowledged is claimed and applied`() {
@@ -177,7 +203,7 @@ class JobResultRecoveryTest {
     }
 
     @Test
-    fun `a write the database refuses stops the round even though select 1 works`() {
+    fun `a read-only database stops the round before reading more`() {
         val stale = sendCompleted(published())
         readByCrashedInstance()
         sendCompleted(published())
@@ -210,12 +236,12 @@ class JobResultRecoveryTest {
         sendCompleted(first)
         sendCompleted(second)
         readByCrashedInstance() // both pending; every round claims both but only tries the first
-        val outage = Outage().apply { up = false; sqlState = "08006" }
+        val outage = Outage().apply { flapping = true; sqlState = "08006" }
 
-        repeat(5) { assertThat(outage.consumer.consumeOnce()).isZero() }
+        repeat(5) { assertThat(outage.consumer.consumeOnce()).isZero() } // max-deliveries is 3
 
         assertThat(deadLetters()).isEmpty()
-        outage.up = true
+        outage.flapping = false
         assertThat(outage.consumer.consumeOnce()).isEqualTo(2)
         assertThat(status(first)).isEqualTo("completed")
         assertThat(status(second)).isEqualTo("completed")
@@ -228,6 +254,9 @@ class JobResultRecoveryTest {
         var tries = 0
         val buggy = mock(JobResultHandler::class.java).also {
             `when`(it.handle(any())).thenAnswer { tries++; throw IllegalStateException("bug") }
+            `when`(it.failUnapplied(any(), anyString())).thenAnswer { call ->
+                handler.failUnapplied(call.getArgument(0), call.getArgument(1))
+            }
         }
         val consumer = JobResultConsumer(streams, buggy, JobOutboxRepository(jdbcClient), properties)
 
@@ -235,13 +264,14 @@ class JobResultRecoveryTest {
         assertThat(consumer.consumeOnce()).isEqualTo(1)
 
         assertThat(tries).isEqualTo(3)
-        assertThat(status(id)).isEqualTo("published")
+        assertThat(status(id)).isEqualTo("failed") // the plugin hears about it instead of waiting for #86
         val dead = deadLetters().single()
         assertThat(dead.value[REASON]).isEqualTo("not applied after 3 attempts")
         assertThat(dead.value[RedisJobStreams.SOURCE_ID]).isEqualTo(entry.value)
         assertThat(unacknowledged()).isZero()
         assertThat(ops.size(RESULTS_STREAM)).isZero()
         assertThat(redis.opsForHash<String, String>().hasKey(RESULTS_ATTEMPTS, entry.value)).isFalse()
+        assertThat(failedEvent(id).error.code).isEqualTo(JobError.RESULT_NOT_APPLIED)
     }
 
     @Test
@@ -255,5 +285,58 @@ class JobResultRecoveryTest {
 
         assertThat(status(id)).isEqualTo("completed")
         assertThat(deadLetters()).isEmpty()
+    }
+
+    @Test
+    fun `a poison entry that throws an outage SQLState while the database takes writes is dead-lettered`() {
+        val id = published()
+        sendCompleted(id)
+        // The error looks like an outage, but the write probe says the database is fine: it is this entry.
+        val alwaysOutageError = mock(JobResultHandler::class.java).also {
+            `when`(it.handle(any())).thenThrow(
+                DataAccessResourceFailureException("connection reset", SQLException("connection reset", "08006")),
+            )
+            `when`(it.failUnapplied(any(), anyString())).thenAnswer { call ->
+                handler.failUnapplied(call.getArgument(0), call.getArgument(1))
+            }
+        }
+        val consumer = JobResultConsumer(streams, alwaysOutageError, JobOutboxRepository(jdbcClient), properties)
+
+        repeat(3) { assertThat(consumer.consumeOnce()).isZero() } // max-deliveries is 3
+        assertThat(consumer.consumeOnce()).isEqualTo(1)
+
+        assertThat(deadLetters().single().value[REASON]).isEqualTo("not applied after 3 attempts")
+        assertThat(status(id)).isEqualTo("failed")
+        assertThat(failedEvent(id).error.code).isEqualTo(JobError.RESULT_NOT_APPLIED)
+    }
+
+    @Test
+    fun `an entry that only ever meets a flapping database is dead-lettered at max-total-deliveries`() {
+        val id = published()
+        val entry = sendCompleted(id)
+        val capped = properties.copy(results = properties.results.copy(maxTotalDeliveries = 4))
+        val outage = Outage(capped).apply { flapping = true }
+
+        repeat(4) { assertThat(outage.consumer.consumeOnce()).isZero() } // every attempt given back
+        assertThat(deliveries(entry)).isEqualTo(4)
+        assertThat(outage.consumer.consumeOnce()).isEqualTo(1)
+
+        assertThat(deadLetters().single().value[REASON]).isEqualTo("delivered 4 times without being applied")
+        assertThat(status(id)).isEqualTo("failed")
+        assertThat(failedEvent(id).error.code).isEqualTo(JobError.RESULT_NOT_APPLIED)
+    }
+
+    @Test
+    fun `the write probe fails on a read-only connection`() {
+        val connection = checkNotNull(jdbc.dataSource).connection
+        try {
+            connection.createStatement().use { it.execute("set default_transaction_read_only = on") }
+            val readOnly = JdbcClient.create(SingleConnectionDataSource(connection, true))
+            assertThat(JobOutboxRepository(readOnly).acceptsWrites()).isFalse()
+            assertThat(JobOutboxRepository(jdbcClient).acceptsWrites()).isTrue()
+        } finally {
+            connection.createStatement().use { it.execute("reset default_transaction_read_only") }
+            connection.close()
+        }
     }
 }

@@ -206,9 +206,13 @@ class JobOutboxRepository(private val jdbc: JdbcClient) {
             .update()
     }
 
-    /** One cheap round trip. @return false when the database cannot be reached. */
-    fun isReachable(): Boolean = try {
-        jdbc.sql("select 1").query(Int::class.javaObjectType).single()
+    /**
+     * One cheap round trip that needs write access: an UPDATE matching no row. PostgreSQL refuses it on a read-only
+     * standby or with default_transaction_read_only before looking at any row, where `select 1` would pass.
+     * @return false when the database cannot be reached or cannot take writes.
+     */
+    fun acceptsWrites(): Boolean = try {
+        jdbc.sql("update core.job_outbox set id = id where false").update()
         true
     } catch (e: DataAccessException) {
         false

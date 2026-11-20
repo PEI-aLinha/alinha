@@ -6,13 +6,17 @@ import java.util.UUID
 import java.time.Instant
 
 /**
- * Why a job did not complete. [PUBLISH_FAILED] comes from the core; any other code comes from the worker, and its
- * [message] is untrusted text: show it, never act on it.
+ * Why a job did not complete. [PUBLISH_FAILED] and [RESULT_NOT_APPLIED] come from the core; any other code comes
+ * from the worker, and its [message] is untrusted text: show it, never act on it.
  */
 data class JobError(val code: String, val message: String) {
     companion object {
         const val PUBLISH_FAILED = "publish_failed"
         val PUBLISH_FAILED_ERROR = JobError(PUBLISH_FAILED, "Job could not be queued for the workers")
+
+        /** The worker answered, but the core could not store its result (it was dead-lettered). */
+        const val RESULT_NOT_APPLIED = "result_not_applied"
+        val RESULT_NOT_APPLIED_ERROR = JobError(RESULT_NOT_APPLIED, "The worker's result could not be stored")
     }
 }
 

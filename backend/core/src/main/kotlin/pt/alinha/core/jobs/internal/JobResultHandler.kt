@@ -49,9 +49,43 @@ class JobResultHandler(
         return tenants.runAs(TenantId(result.tenantId)) { checkNotNull(tx.execute { apply(result) }) }
     }
 
+    /**
+     * The entry could not be applied after max-deliveries attempts (or max-total-deliveries deliveries) and is being
+     * dead-lettered. Fail its job with [JobError.RESULT_NOT_APPLIED] so the plugin hears about it, as long as the
+     * entry is a valid result for the job's current attempt. Nothing of the entry is stored: it may be what failed.
+     * @return true when the job was failed.
+     */
+    fun failUnapplied(raw: String?, reason: String): Boolean {
+        val result = parse(raw) ?: return false
+        try {
+            validator.validate(RESULT_SCHEMA, result.document)
+        } catch (e: IllegalArgumentException) {
+            return false
+        }
+        if (result.tenantId == NIL) return false
+        return tenants.runAs(TenantId(result.tenantId)) {
+            checkNotNull(
+                tx.execute {
+                    val job = outbox.lockForResult(result.jobId)
+                    if (job == null || !result.matches(job) || job.status !in OPEN_STATUSES || job.attempt != result.attempt) {
+                        false
+                    } else {
+                        val error = JobError.RESULT_NOT_APPLIED_ERROR
+                        outbox.markFailed(job.id, "null", "${error.code}: $reason".take(MAX_ERROR_LENGTH))
+                        record("job.failed", job, "errorCode" to error.code, "retryable" to false)
+                        events.publishEvent(
+                            JobFailed(TenantId(job.tenantId), Instant.now(), job.id, job.type, job.requestedBy, job.attempt, error),
+                        )
+                        true
+                    }
+                },
+            )
+        }
+    }
+
     private fun apply(result: WorkerResult): ResultHandling {
         val job = outbox.lockForResult(result.jobId) ?: return ResultHandling.Rejected("unknown job")
-        if (job.tenantId != result.tenantId || job.type != result.type || job.version != result.version) {
+        if (!result.matches(job)) {
             return ResultHandling.Rejected("tenantId, type or version do not match the job")
         }
         // `pending` with the same attempt: the relay died after XADD, before marking the row `published`.
@@ -135,6 +169,8 @@ class JobResultHandler(
             }
 
         val errorText: String get() = "${error.code}: ${error.message}".take(MAX_ERROR_LENGTH)
+
+        fun matches(job: OutboxJob) = job.tenantId == tenantId && job.type == type && job.version == version
     }
 
     private companion object {

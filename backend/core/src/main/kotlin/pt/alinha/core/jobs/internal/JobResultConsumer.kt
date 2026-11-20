@@ -6,16 +6,15 @@ import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import pt.alinha.core.jobs.internal.RedisJobStreams.Companion.RESULT
 import pt.alinha.core.jobs.internal.RedisJobStreams.Companion.isNoGroup
-import java.sql.SQLException
 import java.util.UUID
 
 /**
  * Reads worker results from `alinha:jobs:results` with the consumer group `alinha-core`, applies each one in its own
  * transaction and acknowledges it only after that commits. Each round first claims entries left unacknowledged
  * (XPENDING + XCLAIM; Spring Data Redis has no XAUTOCLAIM), then reads new ones. A result applied twice is ignored
- * the second time, so redelivery is safe. Only attempts that reached a working database count towards
+ * the second time, so redelivery is safe. Only attempts that reached a database taking writes count towards
  * max-deliveries (kept in `alinha:jobs:results:attempts`, not the stream's delivery count), so a database outage
- * never uses up a result. See docs/jobs.md.
+ * never uses up a result; max-total-deliveries caps deliveries whatever happened. See docs/jobs.md.
  */
 @Component
 class JobResultConsumer(
@@ -39,7 +38,7 @@ class JobResultConsumer(
     fun consumeOnce(): Int {
         // Every read or claim counts as a delivery. With the database down none could be applied, and enough rounds
         // would dead-letter valid results: wait for it instead, as the relay waits for Redis (RNF02).
-        if (!outbox.isReachable()) {
+        if (!outbox.acceptsWrites()) {
             log.warn("Database unreachable, job results wait in Redis")
             return 0
         }
@@ -68,7 +67,31 @@ class JobResultConsumer(
     private fun recover(): Int {
         val settings = properties.results
         val stale = streams.staleResults(settings.claimMinIdle, settings.batchSize)
-        return streams.claimResults(consumerName, settings.claimMinIdle, stale.map { it.id }).count(::process)
+        // Attempts given back never dead-letter an entry, so the delivery count is the absolute cap: an entry that
+        // only ever meets a failing database still ends up dead-lettered instead of blocking the stream for good.
+        val overdue = stale.filter { it.totalDeliveryCount >= settings.maxTotalDeliveries }.map { it.id }.toSet()
+        return streams.claimResults(consumerName, settings.claimMinIdle, stale.map { it.id }).count { record ->
+            if (record.id in overdue) {
+                giveUp(record, "delivered ${settings.maxTotalDeliveries} times without being applied")
+            } else {
+                process(record)
+            }
+        }
+    }
+
+    /** Dead-letters the entry, fails its job when it can (JobFailed, see JobResultHandler.failUnapplied), acks it. */
+    private fun giveUp(record: ResultRecord, reason: String): Boolean {
+        log.error("Job result {} {}, dead-lettered", record.id, reason)
+        streams.deadLetter(record, reason)
+        val failed = try {
+            handler.failUnapplied(record.value[RESULT], reason)
+        } catch (e: RuntimeException) {
+            log.error("Could not fail the job of result {}, it stays published (#86)", record.id, e)
+            false
+        }
+        if (!failed) log.warn("Job of result {} not failed: no open job matches it", record.id)
+        streams.ack(record.id)
+        return true
     }
 
     /** @return true when the entry was acknowledged. */
@@ -81,21 +104,17 @@ class JobResultConsumer(
             return true
         }
         val maxAttempts = properties.results.maxDeliveries
-        if (streams.attempts(record.id) >= maxAttempts) {
-            log.error("Job result {} not applied after {} attempts, dead-lettered", record.id, maxAttempts)
-            streams.deadLetter(record, "not applied after $maxAttempts attempts")
-            streams.ack(record.id)
-            return true
-        }
+        if (streams.attempts(record.id) >= maxAttempts) return giveUp(record, "not applied after $maxAttempts attempts")
         streams.beginAttempt(record.id)
         val handling = try {
             handler.handle(record.value[RESULT])
         } catch (e: RuntimeException) {
             // Leave the entry pending, it is delivered again later. A bug counts towards max-deliveries; the database
-            // going down does not: give the attempt back and stop the round before reading or claiming anything else.
-            // `select 1` passes on a read-only standby or a full disk, so the error itself is checked first.
-            if (e.isDatabaseUnavailable() || !outbox.isReachable()) {
-                log.warn("Database unavailable while applying job result {}: {}", record.id, e.message)
+            // not taking writes does not: give the attempt back and stop the round before reading or claiming more.
+            // Only an independent probe decides that. The entry's own error never does: a poison entry could raise
+            // an outage SQLState itself and would then never be dead-lettered.
+            if (!outbox.acceptsWrites()) {
+                log.warn("Database not taking writes while applying job result {}: {}", record.id, e.message)
                 streams.giveBackAttempt(record.id)
                 throw DatabaseUnavailable()
             }
@@ -120,16 +139,4 @@ class JobResultConsumer(
     /** Ends the round; the entries already read stay pending and are delivered again. */
     private class DatabaseUnavailable : RuntimeException()
 
-    companion object {
-        /**
-         * SQLStates that say the database cannot take writes right now, not that this result is wrong: read-only
-         * transaction (25006), insufficient resources such as a full disk (class 53), shutdown or recovery (57P0x),
-         * connection failures (class 08).
-         */
-        fun Throwable.isDatabaseUnavailable(): Boolean =
-            generateSequence(this) { it.cause }.filterIsInstance<SQLException>().any { e ->
-                val state = e.sqlState.orEmpty()
-                state == "25006" || state.startsWith("53") || state.startsWith("57P0") || state.startsWith("08")
-            }
-    }
 }

@@ -34,8 +34,9 @@ data class JobsProperties(
      * Consumer of `alinha:jobs:results`. poll-interval-ms is read by @Scheduled directly.
      * [consumerName] blank = a random name per start (several instances never share one).
      * An entry left unacknowledged for [claimMinIdle] (its consumer died, or applying it failed) is claimed again;
-     * after [maxDeliveries] attempts that reached a working database (not stream deliveries) it goes to the
-     * dead-letter stream instead. A `result` field longer than
+     * after [maxDeliveries] attempts that reached a database taking writes (not stream deliveries), or
+     * [maxTotalDeliveries] deliveries whatever happened (attempts given back during outages included), it goes to
+     * the dead-letter stream instead and its job is failed. A `result` field longer than
      * [maxResultBytes] (UTF-8) is dead-lettered without it: it would be stored as is in core.job_outbox.
      */
     data class Results(
@@ -44,6 +45,7 @@ data class JobsProperties(
         val batchSize: Int = 50,
         val claimMinIdle: Duration = Duration.ofMinutes(1),
         val maxDeliveries: Int = 5,
+        val maxTotalDeliveries: Int = 100,
         val consumerName: String = "",
         val maxResultBytes: Int = 1024 * 1024,
     ) {
@@ -52,6 +54,7 @@ data class JobsProperties(
                 "Invalid alinha.jobs.results settings"
             }
             require(!claimMinIdle.isNegative) { "alinha.jobs.results.claim-min-idle must not be negative" }
+            require(maxTotalDeliveries >= maxDeliveries) { "max-total-deliveries must be >= max-deliveries" }
         }
     }
 }
