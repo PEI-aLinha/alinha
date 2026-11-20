@@ -6,6 +6,17 @@ import { ApiError, type Problem } from '@alinha/plugin-sdk'
  */
 export const API_REQUEST: RequestInit = { credentials: 'include', redirect: 'manual' }
 
+/**
+ * Spring's CSRF cookie is double-submit: the BFF sets `XSRF-TOKEN`, the browser must echo it in
+ * `X-XSRF-TOKEN`. The cookie is readable on purpose; the session cookie stays HttpOnly.
+ */
+export function withCsrf(headers: Headers): Headers {
+  if (typeof document === 'undefined') return headers
+  const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]*)/)
+  if (match) headers.set('X-XSRF-TOKEN', decodeURIComponent(match[1]))
+  return headers
+}
+
 /** True when the response says there is no session: a 401, or a redirect (to the login). */
 export const isUnauthenticatedResponse = (res: Response) => res.status === 401 || res.type === 'opaqueredirect'
 

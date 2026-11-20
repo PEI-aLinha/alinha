@@ -3,7 +3,7 @@ package pt.alinha.core.access.internal
 /** Permissions the core itself owns, on top of what the plugin manifests declare. */
 object CorePermissions {
     /** Granted to every known role. */
-    val EVERY_ROLE: Set<String> = setOf("plugins:read")
+    val EVERY_ROLE: Set<String> = setOf("plugins:read", "session:read")
 
     // Analysts excluded: least privilege, same rule as results/roadmap (docs/rbac.md).
     val BY_ROLE: Map<String, Set<String>> = mapOf(

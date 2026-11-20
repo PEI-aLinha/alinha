@@ -9,7 +9,7 @@ Every API request needs a valid Keycloak access token and an explicit permission
 | `consultant` | Consultant |
 | `responsible` | Designated Officer |
 | `analyst` | Analyst |
-| `registrant` | New account that has not registered its organization yet (ADR 0004). Gets `plugins:read` and only what a plugin maps to it, e.g. `organization:register`. Replaced by `responsible` when the organization is registered |
+| `registrant` | New account that has not registered its organization yet (ADR 0004). Gets the core `plugins:read` and `session:read` and only what a plugin maps to it, e.g. `organization:register`. Replaced by `responsible` when the organization is registered |
 
 ## Token contract
 
@@ -30,6 +30,8 @@ fun create(...) = ...
 ```
 
 An endpoint without `@RequiresPermission` always answers 403. Functional routes are denied too, so plugins must use annotated controllers.
+
+The core grants every known role `plugins:read` (plugin discovery) and `session:read` (the BFF's `/internal/me`).
 
 ## Declaring permissions in a plugin
 
@@ -70,11 +72,15 @@ Analysts follow least privilege: never grant them global results or roadmap perm
 
 Add a row with each new endpoint.
 
-| Endpoint | Permission | Consultant | Designated Officer | Analyst |
-|---|---|---|---|---|
-| `GET /actuator/health` | public | yes | yes | yes |
-| `GET /api/plugins` | `plugins:read` | yes | yes | yes |
-| `GET /api/audit/events` | `audit:read` | yes | yes | no |
-| `POST /api/organization/registration` | `organization:register` (only `registrant`) | no | no | no |
-| `GET /api/organization/profile` | `organization:read` | yes | yes | yes |
-| `PUT /api/organization/profile` | `organization:edit` | yes | yes | no |
+| Endpoint | Permission | Consultant | Designated Officer | Analyst | Registrant |
+|---|---|---|---|---|---|
+| `GET /actuator/health` | public | yes | yes | yes | yes |
+| `GET /api/plugins` | `plugins:read` | yes | yes | yes | yes |
+| `GET /api/audit/events` | `audit:read` | yes | yes | no | no |
+| `GET /api/me` | authenticated (BFF) | yes | yes | yes | yes |
+| `GET /internal/me` | `session:read` (BFF only) | yes | yes | yes | yes |
+| `POST /auth/refresh` | authenticated (BFF) | yes | yes | yes | yes |
+| `POST /auth/logout` | authenticated (BFF) | yes | yes | yes | yes |
+| `POST /api/organization/registration` | `organization:register` | no | no | no | yes |
+| `GET /api/organization/profile` | `organization:read` | yes | yes | yes | no |
+| `PUT /api/organization/profile` | `organization:edit` | yes | yes | no | no |

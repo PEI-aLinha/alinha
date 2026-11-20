@@ -31,7 +31,9 @@ export const login = {
   go(returnTo: string = window.location.pathname + window.location.search + window.location.hash): void {
     const s = storage()
     s?.setItem(ATTEMPT_KEY, String(Date.now()))
+    // Home or an unsafe address: drop any address an earlier attempt saved, so it cannot win after this login.
     if (isSafeReturnPath(returnTo) && returnTo !== '/') s?.setItem(RETURN_KEY, returnTo)
+    else s?.removeItem(RETURN_KEY)
     window.location.assign(LOGIN_PATH)
   },
 

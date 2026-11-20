@@ -1,0 +1,5 @@
+# Behind Nginx (SPRING_PROFILES_ACTIVE=prod). The rate limiter needs the real client address, so X-Forwarded-* is
+# trusted here. Safe only when Nginx overwrites X-Forwarded-For and the BFF is not reachable except through it
+# (see bff/README.md, "Behind Nginx").
+server:
+  forward-headers-strategy: framework

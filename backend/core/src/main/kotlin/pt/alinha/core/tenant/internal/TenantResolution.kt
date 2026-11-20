@@ -34,6 +34,19 @@ internal fun resolveTenant(authentication: Authentication?, header: String?): Te
     return if (isConsultant) consultantTenant(auth.token, selected) else clientTenant(auth.token, selected)
 }
 
+/**
+ * The organizations this token may act on, in claim order. Used by `/internal/me` so the BFF never has to parse
+ * tenant claims from a token it cannot validate (the ID token is stale after a refresh).
+ */
+internal fun validatedTenantIds(authentication: Authentication?): List<TenantId> {
+    val auth = authentication as? JwtAuthenticationToken ?: return emptyList()
+    return if (auth.authorities.any { it.authority == CONSULTANT_AUTHORITY }) {
+        assignedTenants(auth.token)
+    } else {
+        listOfNotNull(auth.token.getClaimAsString(TENANT_CLAIM)?.let(::parseTenant))
+    }
+}
+
 private fun consultantTenant(token: Jwt, selected: TenantId?): TenantId {
     val tenant = selected
         ?: throw TenantNotSelectedException("Consultants must choose an organization with $TENANT_HEADER")
