@@ -48,9 +48,9 @@ class IpRateLimitFilterTest {
     }
 
     @Test
-    fun `limits an anonymous API call by address`() {
+    fun `limits an API call by address in its own, higher bucket`() {
         val exchange = exchange("/api/me")
-        Mockito.`when`(guard.retryAfterSeconds("ip:10.0.0.7", 120)).thenReturn(Mono.just(0L))
+        Mockito.`when`(guard.retryAfterSeconds("ip-api:10.0.0.7", 1200)).thenReturn(Mono.just(0L))
         Mockito.`when`(chain.filter(Mockito.any())).thenReturn(Mono.empty())
 
         StepVerifier.create(filter.filter(exchange, chain)).verifyComplete()
@@ -68,12 +68,12 @@ class IpRateLimitFilterTest {
                 .remoteAddress(InetSocketAddress("10.0.0.7", 1234))
                 .build(),
         )
-        Mockito.`when`(guard.retryAfterSeconds("ip:10.0.0.7", 120)).thenReturn(Mono.just(0L))
+        Mockito.`when`(guard.retryAfterSeconds("ip-api:10.0.0.7", 1200)).thenReturn(Mono.just(0L))
         Mockito.`when`(chain.filter(Mockito.any())).thenReturn(Mono.empty())
 
         StepVerifier.create(filter.filter(exchange, chain)).verifyComplete()
 
-        verify(guard).retryAfterSeconds("ip:10.0.0.7", 120)
+        verify(guard).retryAfterSeconds("ip-api:10.0.0.7", 1200)
         verify(chain).filter(exchange)
     }
 }

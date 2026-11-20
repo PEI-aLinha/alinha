@@ -32,7 +32,8 @@ If `:8081` is reachable directly, anyone can spoof the header and dodge the IP-k
 | `BFF_REDIRECT_URI` | `http://localhost:8081/login/oauth2/code/keycloak` | OIDC callback |
 | `BFF_AFTER_LOGIN_URI` / `BFF_POST_LOGOUT_URI` | `http://localhost:5173/` | where the browser returns |
 | `BFF_COOKIE_SECURE` | `false` | must be `true` over HTTPS |
-| `BFF_RATE_LIMIT_ENABLED` / `BFF_RATE_LIMIT_REQUESTS` / `BFF_RATE_LIMIT_WINDOW` | `true` / `120` / `1m` | fixed-window limit per user or IP |
+| `BFF_RATE_LIMIT_ENABLED` / `BFF_RATE_LIMIT_REQUESTS` / `BFF_RATE_LIMIT_WINDOW` | `true` / `120` / `1m` | fixed-window limit per user, and per address on the login |
+| `BFF_RATE_LIMIT_IP_API_REQUESTS` | `1200` | per-address limit on `/api/**` + `/auth/**` (one office NAT shares it) |
 
 ## Sessions and tokens
 
@@ -44,8 +45,11 @@ If `:8081` is reachable directly, anyone can spoof the header and dodge the IP-k
   `X-XSRF-TOKEN` value as a hidden `_csrf` field), not `fetch`: fetch would follow the redirect to Keycloak and fail
   CORS instead of navigating the browser.
 - `POST /auth/refresh` forces a new access token from the stored refresh token (used after registration, #102).
-- Rate limiting applies to `/api/**` and `/auth/**` per user (token `sub`), and to `/oauth2/**` + `/login/**` per
-  address before authentication; it fails open when Redis is unavailable.
+- Rate limiting, all before authentication except the per-user limit; it fails open when Redis is unavailable:
+  - `/oauth2/**` + `/login/**`: per address (`BFF_RATE_LIMIT_REQUESTS`).
+  - `/api/**` + `/auth/**`: per address in a separate, higher bucket (`BFF_RATE_LIMIT_IP_API_REQUESTS`, since a
+    whole office NAT shares it and a forged session cookie must still be counted), and per user (token `sub`,
+    `BFF_RATE_LIMIT_REQUESTS`) once authenticated.
 
 ## What the frontend shell expects (issue #14)
 

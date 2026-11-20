@@ -24,6 +24,8 @@ data class BffProperties(
     data class RateLimit(
         val enabled: Boolean = true,
         val requests: Long = 120,
+        /** Per address on the API and `/auth`, shared by everyone behind one NAT. */
+        val ipApiRequests: Long = 1200,
         val window: Duration = Duration.ofMinutes(1),
     )
 }

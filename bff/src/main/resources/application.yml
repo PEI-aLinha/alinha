@@ -61,6 +61,7 @@ alinha:
     rate-limit:
       enabled: ${BFF_RATE_LIMIT_ENABLED:true}
       requests: ${BFF_RATE_LIMIT_REQUESTS:120}
+      ip-api-requests: ${BFF_RATE_LIMIT_IP_API_REQUESTS:1200}
       window: ${BFF_RATE_LIMIT_WINDOW:1m}
 
 management:
