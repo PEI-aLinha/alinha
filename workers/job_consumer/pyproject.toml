@@ -4,8 +4,8 @@ name = "alinha-job-consumer"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
-    "jsonschema[format]>=4.20",
-    "redis>=5",
+    "jsonschema[format]>=4.20,<5",
+    "redis>=5,<9",
 ]
 
 [project.optional-dependencies]
