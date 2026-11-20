@@ -1,6 +1,5 @@
 package pt.alinha.bff
 
-import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -25,18 +24,19 @@ class CsrfIntegrationTest {
     fun `an authenticated write with the cookie and X-XSRF-TOKEN is not rejected`() {
         val token = csrfToken()
 
-        client.post().uri("/csrf-test")
+        // Past CSRF, the refresh answers 401 because a mock user has no authorized client to refresh.
+        client.post().uri("/auth/refresh")
             .cookie("XSRF-TOKEN", token)
             .header("X-XSRF-TOKEN", token)
             .exchange()
-            .expectStatus().value { assertThat(it).isNotEqualTo(403) }
+            .expectStatus().isUnauthorized
     }
 
     @Test
     fun `an authenticated write without X-XSRF-TOKEN is 403`() {
         val token = csrfToken()
 
-        client.post().uri("/csrf-test")
+        client.post().uri("/auth/refresh")
             .cookie("XSRF-TOKEN", token)
             .exchange()
             .expectStatus().isForbidden
