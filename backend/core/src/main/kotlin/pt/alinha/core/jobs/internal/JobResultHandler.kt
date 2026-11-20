@@ -54,7 +54,8 @@ class JobResultHandler(
     /**
      * The entry could not be applied after max-deliveries attempts (or max-total-deliveries deliveries) and is being
      * dead-lettered. Fail its job with [JobError.RESULT_NOT_APPLIED] so the plugin hears about it, as long as the
-     * entry is a valid result for the job's current attempt. Nothing of the entry is stored: it may be what failed.
+     * entry is a valid result for the job's current attempt. Nothing of the entry is stored: it may be what failed. The
+     * job's document is `{"error": RESULT_NOT_APPLIED_ERROR}`, so [pt.alinha.core.jobs.JobResults.find] returns that error.
      * @return true when the job was failed.
      */
     fun failUnapplied(raw: String?, reason: String): Boolean {
@@ -73,7 +74,9 @@ class JobResultHandler(
                         false
                     } else {
                         val error = JobError.RESULT_NOT_APPLIED_ERROR
-                        outbox.markFailed(job.id, "null", "${error.code}: $reason".take(MAX_ERROR_LENGTH))
+                        // Only the core's own error is stored, in the shape JobResults.find reads.
+                        val document = mapOf("error" to mapOf("code" to error.code, "message" to error.message))
+                        outbox.markFailed(job.id, json.writeValueAsString(document), "${error.code}: $reason".take(MAX_ERROR_LENGTH))
                         record("job.failed", job, "errorCode" to error.code, "retryable" to false)
                         events.publishEvent(
                             JobFailed(TenantId(job.tenantId), correlation.current(), Instant.now(), job.id, job.type, job.requestedBy, job.attempt, error),

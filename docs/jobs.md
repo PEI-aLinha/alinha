@@ -142,7 +142,8 @@ fun on(event: JobCompleted) {
   attempt is counted before applying, so an instance that dies mid-apply still uses one up.
 - **Giving up**: an entry with `max-deliveries` attempts, or delivered `max-total-deliveries` times whatever happened
   (attempts given back included), is dead-lettered. If it is a valid result for its job's current attempt, the job
-  is also failed with `JobError.RESULT_NOT_APPLIED` and `JobFailed` is emitted (the entry's content is not stored).
+  is also failed with `JobError.RESULT_NOT_APPLIED`: `JobFailed` is emitted and `JobResults.find` returns that error
+  (the entry's content is not stored).
   `max-total-deliveries` is the outage budget: it only matters when attempts keep being given back.
 - Redis down: the round returns, nothing is lost; unacknowledged entries are delivered again later.
 - Database down: the probe is a write (`update core.job_outbox … where false`), so a read-only standby or

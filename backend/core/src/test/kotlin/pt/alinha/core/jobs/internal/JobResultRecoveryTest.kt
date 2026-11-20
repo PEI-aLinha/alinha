@@ -30,6 +30,8 @@ import org.springframework.transaction.support.TransactionTemplate
 import pt.alinha.core.jobs.JobDispatcher
 import pt.alinha.core.jobs.JobFailed
 import pt.alinha.core.jobs.JobError
+import pt.alinha.core.jobs.JobResults
+import pt.alinha.core.jobs.JobStatus
 import pt.alinha.core.jobs.internal.RedisJobStreams.Companion.REASON
 import pt.alinha.core.jobs.internal.RedisJobStreams.Companion.RESULT
 import pt.alinha.core.jobs.internal.RedisJobStreams.Companion.RESULTS_ATTEMPTS
@@ -73,6 +75,7 @@ class JobResultRecoveryTest {
     @Autowired private lateinit var jdbcClient: JdbcClient
     @Autowired private lateinit var properties: JobsProperties
     @Autowired private lateinit var events: ApplicationEvents
+    @Autowired private lateinit var results: JobResults
 
     private val tenant = TenantId(UUID.randomUUID())
     private val ops get() = redis.opsForStream<String, String>()
@@ -274,6 +277,26 @@ class JobResultRecoveryTest {
         assertThat(ops.size(RESULTS_STREAM)).isZero()
         assertThat(redis.opsForHash<String, String>().hasKey(RESULTS_ATTEMPTS, entry.value)).isFalse()
         assertThat(failedEvent(id).error.code).isEqualTo(JobError.RESULT_NOT_APPLIED)
+    }
+
+    @Test
+    fun `a job failed by a dead-lettered result reads as failed with result_not_applied`() {
+        val id = published()
+        sendCompleted(id)
+        val buggy = mock(JobResultHandler::class.java).also {
+            `when`(it.handle(any())).thenThrow(IllegalStateException("bug"))
+            `when`(it.failUnapplied(any(), anyString())).thenAnswer { call ->
+                handler.failUnapplied(call.getArgument(0), call.getArgument(1))
+            }
+        }
+        val consumer = JobResultConsumer(streams, buggy, JobOutboxRepository(jdbcClient), properties)
+        repeat(4) { consumer.consumeOnce() } // max-deliveries is 3, the fourth round dead-letters
+
+        val job = checkNotNull(tenants.runAs(tenant) { results.find(id) })
+
+        assertThat(job.status).isEqualTo(JobStatus.FAILED)
+        assertThat(job.error).isEqualTo(JobError.RESULT_NOT_APPLIED_ERROR)
+        assertThat(job.result).isNull()
     }
 
     @Test
