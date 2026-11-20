@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query'
-import { ApiError, PluginHostContext, type HostOrganization, type PluginHost } from '@alinha/plugin-sdk'
+import { ApiError, NetworkError, PluginHostContext, type HostOrganization, type PluginHost } from '@alinha/plugin-sdk'
 import { API_REQUEST, isUnauthenticatedResponse, NotJsonError, readJson } from './http'
 import { ME_QUERY_KEY, useSession } from './session/SessionGate'
 
@@ -28,7 +28,14 @@ export function createApi({ tenantId, onUnauthenticated, fetchFn = fetch }: ApiO
     if (!headers.has('Accept')) headers.set('Accept', 'application/json')
     if (tenantId) headers.set(TENANT_HEADER, tenantId)
     else headers.delete(TENANT_HEADER)
-    const res = await fetchFn(`/api${normalized}`, { ...init, ...API_REQUEST, headers })
+    let res: Response
+    try {
+      res = await fetchFn(`/api${normalized}`, { ...init, ...API_REQUEST, headers })
+    } catch (error) {
+      // A cancelled request (TanStack Query aborts on unmount) is not a network failure: let it through as is.
+      if (init?.signal?.aborted) throw error
+      throw new NetworkError(normalized, { cause: error })
+    }
     if (isUnauthenticatedResponse(res)) onUnauthenticated()
     return readJson<T>(res, normalized)
   }

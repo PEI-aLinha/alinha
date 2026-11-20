@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { ApiError } from '@alinha/plugin-sdk'
+import { ApiError, NetworkError } from '@alinha/plugin-sdk'
 import { createApi, retryUnlessClientError, TENANT_HEADER } from './host'
 import { NotJsonError } from './http'
 
@@ -34,6 +34,22 @@ describe('createApi', () => {
     await api(null, fetchFn)('/x', { headers: { [TENANT_HEADER]: 'other' } })
     const sent = fetchFn.mock.calls.map((c) => new Headers((c as unknown as [string, RequestInit])[1].headers).get(TENANT_HEADER))
     expect(sent).toEqual(['t-1', null])
+  })
+
+  it('throws NetworkError when fetch itself fails', async () => {
+    const cause = new TypeError('Failed to fetch')
+    const error = await api(null, async () => { throw cause })('/x').catch((e: unknown) => e)
+    expect(error).toBeInstanceOf(NetworkError)
+    expect((error as NetworkError).path).toBe('/x')
+    expect((error as NetworkError).cause).toBe(cause)
+  })
+
+  it('lets a cancelled request fail as it is, not as a network error', async () => {
+    const controller = new AbortController()
+    controller.abort()
+    const abort = new DOMException('Aborted', 'AbortError')
+    const error = await api(null, async () => { throw abort })('/x', { signal: controller.signal }).catch((e: unknown) => e)
+    expect(error).toBe(abort)
   })
 
   it('throws ApiError with the status', async () => {
