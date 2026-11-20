@@ -18,8 +18,12 @@ const DURATION_MS = 4200
 /** At most this many success toasts at once. Errors are never dropped to make room. */
 const MAX_SUCCESS = 3
 
-/** Adds a toast. When there are too many success toasts, the oldest success goes; errors always stay. */
+/**
+ * Adds a toast. When there are too many success toasts, the oldest success goes; errors always stay. An error that
+ * is already shown is not added again, so a request failing in a loop does not stack the same message.
+ */
 export function addToast(items: ToastItem[], item: ToastItem): ToastItem[] {
+  if (item.tone === 'error' && items.some((t) => t.tone === 'error' && t.message === item.message)) return items
   const next = [...items, item]
   const successes = next.filter((t) => t.tone === 'success')
   if (successes.length <= MAX_SUCCESS) return next
@@ -46,6 +50,17 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     if (tone === 'success') timers.current.set(id, window.setTimeout(() => dismiss(id), DURATION_MS))
   }, [dismiss])
 
+  // A success toast dropped to make room no longer needs its timer.
+  useEffect(() => {
+    const shown = new Set(items.map((t) => t.id))
+    timers.current.forEach((timer, id) => {
+      if (!shown.has(id)) {
+        window.clearTimeout(timer)
+        timers.current.delete(id)
+      }
+    })
+  }, [items])
+
   // No timer may fire after the provider is gone (e.g. between tests, or when the shell unmounts).
   useEffect(() => {
     const pending = timers.current
@@ -61,14 +76,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      {/* Bottom-right corner, clear of the navigation. Both live regions are always mounted and start empty:
-          screen readers often miss a region that is inserted already filled. Errors are alerts (assertive),
+      {/* Bottom-right corner, clear of the navigation. Both live regions are always mounted, start empty and are
+          never hidden (display:none would take them out of the accessibility tree): screen readers often miss a
+          region that appears already filled. Errors are alerts (assertive),
           successes are status messages (polite) — WCAG 4.1.3. */}
       <div className="pointer-events-none fixed bottom-6 right-6 z-[90] flex flex-col gap-2 max-md:bottom-auto max-md:left-5 max-md:right-5 max-md:top-[72px]">
-        <div role="alert" className="flex flex-col gap-2 empty:hidden">
+        <div role="alert" className="flex flex-col gap-2">
           {errors.map((t) => <Toast key={t.id} item={t} onDismiss={dismiss} />)}
         </div>
-        <div role="status" className="flex flex-col gap-2 empty:hidden">
+        <div role="status" className="flex flex-col gap-2">
           {successes.map((t) => <Toast key={t.id} item={t} onDismiss={dismiss} />)}
         </div>
       </div>

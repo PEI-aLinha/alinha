@@ -38,6 +38,18 @@ describe('Toast', () => {
     expect(screen.getByRole('alert')).toBeEmptyDOMElement()
   })
 
+  it('never hides the live regions, even while empty', () => {
+    render(<ToastProvider><Trigger message="x" /></ToastProvider>)
+    expect(screen.getByRole('status').className).not.toMatch(/hidden/)
+    expect(screen.getByRole('alert').className).not.toMatch(/hidden/)
+  })
+
+  it('clears the timer of a success toast dropped to make room', () => {
+    render(<ToastProvider><Trigger message="Ativo guardado" /></ToastProvider>)
+    for (let i = 0; i < 4; i++) fireEvent.click(screen.getByText('show'))
+    expect(vi.getTimerCount()).toBe(3)
+  })
+
   it('clears its timers on unmount', () => {
     const { unmount } = render(<ToastProvider><Trigger message="Ativo guardado" /></ToastProvider>)
     fireEvent.click(screen.getByText('show'))
@@ -66,5 +78,10 @@ describe('addToast', () => {
     const items = [error(1), success(2), success(3), success(4)]
     expect(addToast(items, success(5)).map((t) => t.id)).toEqual([1, 3, 4, 5])
     expect(addToast([error(1), error(2), error(3)], error(4)).map((t) => t.id)).toEqual([1, 2, 3, 4])
+  })
+
+  it('does not stack the same error twice', () => {
+    const items = [error(1)]
+    expect(addToast(items, { id: 2, message: 'e1', tone: 'error' })).toBe(items)
   })
 })
