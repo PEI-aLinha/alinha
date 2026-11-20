@@ -97,7 +97,7 @@ export function useHost(): PluginHost {
 }
 
 export { useApiQuery, useApiMutation, type ApiMethod, type UseApiMutationOptions } from './query'
-export { errorMessage, fieldErrors, ERROR_MESSAGES } from './errors'
+export { errorMessage, fieldErrors, ERROR_MESSAGES, NetworkError } from './errors'
 export {
   formatDate,
   formatDateTime,

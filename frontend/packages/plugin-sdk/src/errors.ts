@@ -13,7 +13,7 @@ export function errorMessage(error: unknown): string {
   const problem = problemOf(error)
   if (problem?.code && problem.detail?.trim()) return problem.detail
   if (error instanceof ApiError) return messageForStatus(error.status)
-  if (isNetworkError(error)) return ERROR_MESSAGES.network
+  if (error instanceof NetworkError) return ERROR_MESSAGES.network
   return ERROR_MESSAGES.unexpected
 }
 
@@ -22,11 +22,27 @@ export function errorMessage(error: unknown): string {
  * Empty when the error has none. If a field has several messages, the first one wins.
  */
 export function fieldErrors(error: unknown): Record<string, string> {
-  const result: Record<string, string> = {}
+  // A Map, not a plain object: field names come from the server, and `constructor` or `__proto__` must stay data.
+  const byField = new Map<string, string>()
   for (const { field, message } of problemOf(error)?.errors ?? []) {
-    if (!(field in result)) result[field] = message
+    if (!byField.has(field)) byField.set(field, message)
   }
-  return result
+  return Object.fromEntries(byField)
+}
+
+/**
+ * The request never got an answer (no connection, server unreachable, blocked by the browser). The shell throws it
+ * when `fetch` itself fails, so [errorMessage] only blames the connection for real network failures, never for a
+ * bug that happens to be a TypeError.
+ */
+export class NetworkError extends Error {
+  readonly path: string
+
+  constructor(path: string, options?: { cause?: unknown }) {
+    super(`No response from /api${path}`, options)
+    this.name = 'NetworkError'
+    this.path = path
+  }
 }
 
 /** Default messages. Plain language: say what happened and what the person can do, without technical terms. */
@@ -54,9 +70,6 @@ function messageForStatus(status: number): string {
   if (status >= 500) return ERROR_MESSAGES.unavailable
   return ERROR_MESSAGES.unexpected
 }
-
-/** `fetch` rejects with a TypeError when there is no connection (or the request was blocked). */
-const isNetworkError = (error: unknown) => error instanceof TypeError
 
 interface ProblemFields {
   code?: string

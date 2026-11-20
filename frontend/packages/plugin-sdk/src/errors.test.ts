@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ERROR_MESSAGES, errorMessage, fieldErrors } from './errors'
+import { ERROR_MESSAGES, errorMessage, fieldErrors, NetworkError } from './errors'
 import { ApiError } from './index'
 
 /** An ApiError carrying a Problem Details body, as the shell will attach it (#101). */
@@ -44,8 +44,14 @@ describe('errorMessage', () => {
     expect(errorMessage(withProblem(404, 'oops'))).toBe(ERROR_MESSAGES.notFound)
   })
 
-  it('reports a failed fetch as a connection problem', () => {
-    expect(errorMessage(new TypeError('Failed to fetch'))).toBe(ERROR_MESSAGES.network)
+  it('reports a NetworkError as a connection problem', () => {
+    const error = new NetworkError('/x', { cause: new TypeError('Failed to fetch') })
+    expect(errorMessage(error)).toBe(ERROR_MESSAGES.network)
+    expect(error.message).toBe('No response from /api/x')
+  })
+
+  it('does not blame the connection for a TypeError from a bug', () => {
+    expect(errorMessage(new TypeError("Cannot read properties of undefined (reading 'x')"))).toBe(ERROR_MESSAGES.unexpected)
   })
 
   it.each([new Error('boom'), 'boom', null])('falls back to a generic message for %j', (error) => {
@@ -65,6 +71,20 @@ describe('fieldErrors', () => {
       ],
     })
     expect(fieldErrors(error)).toEqual({ nif: 'O NIF tem 9 dígitos.', name: 'Indique o nome.' })
+  })
+
+  it('keeps field names that are also Object properties', () => {
+    const error = withProblem(400, {
+      errors: [
+        { field: 'constructor', message: 'A' },
+        { field: 'toString', message: 'B' },
+        { field: '__proto__', message: 'C' },
+      ],
+    })
+    const result = fieldErrors(error)
+    expect(Object.keys(result)).toEqual(['constructor', 'toString', '__proto__'])
+    expect(result.constructor).toBe('A')
+    expect(Object.getPrototypeOf(result)).toBe(Object.prototype)
   })
 
   it('is empty without validation errors', () => {
