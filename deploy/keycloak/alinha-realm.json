@@ -15,6 +15,7 @@
   "maxFailureWaitSeconds": 900,
   "maxDeltaTimeSeconds": 43200,
   "passwordPolicy": "length(12) and maxLength(128) and digits(1) and regexPattern(.*\\p{L}.*) and notUsername(undefined) and notEmail(undefined)",
+  "loginTheme": "alinha",
   "internationalizationEnabled": true,
   "supportedLocales": [
     "pt",

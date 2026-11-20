@@ -15,6 +15,9 @@ docker compose -f deploy/docker-compose.dev.yml up -d --force-recreate keycloak
 - Realm: `alinha`
 - All dev users have the password `alinha-dev-1` and **must set up TOTP on first login** (MFA).
 - Login, TOTP setup and emails default to European Portuguese (`pt`).
+- The login pages use the aLinha theme (`loginTheme: alinha`) from [`frontend/keycloak-theme`](../../frontend/keycloak-theme).
+  Build it before starting Keycloak (`pnpm --filter @alinha/keycloak-theme build-keycloak-theme`); without the jar,
+  Keycloak shows its own theme.
 
 ## Realm settings that matter
 
