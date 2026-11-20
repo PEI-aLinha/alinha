@@ -3,9 +3,13 @@
 // frontend folder (another plugin, the shell). Relative imports are resolved against the file,
 // so nesting depth does not matter. Covers static, type-only, re-export, dynamic and require imports,
 // and Vite's import.meta.glob and new URL(..., import.meta.url).
+// Any other bare name must be a package the plugin declares in its package.json, or a Node builtin, so that a path
+// alias (Vite resolve.alias, tsconfig paths: `@/`, `~/`, `#x`) cannot reach into the repo dressed as a package name.
 // Option `root`: the repo root (eslint.config.js passes its own folder). Without it, ESLint's cwd is used,
 // and the rule would not recognise plugin files when ESLint runs from inside a plugin.
-import { dirname, isAbsolute, relative, resolve, sep } from 'node:path'
+import { readFileSync } from 'node:fs'
+import { builtinModules } from 'node:module'
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 
 const ALLOWED_PLATFORM_PACKAGES = ['@alinha/plugin-sdk', '@alinha/ui', '@alinha/api-client']
 
@@ -29,19 +33,46 @@ const isImportMeta = (node) => node?.type === 'MetaProperty' && node.meta.name =
 const isImportMetaProperty = (node, names) =>
   node?.type === 'MemberExpression' && isImportMeta(node.object) && node.property.type === 'Identifier' && names.includes(node.property.name)
 
+const DEPENDENCY_FIELDS = ['dependencies', 'peerDependencies', 'devDependencies', 'optionalDependencies']
+const declaredPackagesCache = new Map()
+
+/** Package names in `<pluginRoot>/package.json`. Empty when it is missing or unreadable, so the rule fails closed. */
+export function declaredPackagesOf(pluginRoot) {
+  if (!declaredPackagesCache.has(pluginRoot)) {
+    let names = []
+    try {
+      const manifest = JSON.parse(readFileSync(join(pluginRoot, 'package.json'), 'utf8'))
+      names = DEPENDENCY_FIELDS.flatMap((field) => Object.keys(manifest[field] ?? {}))
+    } catch {
+      // No package.json (or invalid JSON): nothing is declared, every bare name is reported.
+    }
+    declaredPackagesCache.set(pluginRoot, new Set(names))
+  }
+  return declaredPackagesCache.get(pluginRoot)
+}
+
+/** `react` for 'react/jsx-runtime', `@scope/name` for '@scope/name/sub'; null if `spec` is not a valid package name. */
+export function packageNameOf(spec) {
+  const [first, second] = spec.split('/')
+  if (!first.startsWith('@')) return first
+  return first.length > 1 && second ? `${first}/${second}` : null
+}
+
+const isNodeBuiltin = (spec) => spec.startsWith('node:') || builtinModules.includes(packageNameOf(spec))
+
+const isRelative = (spec) => spec === '.' || spec === '..' || spec.startsWith('./') || spec.startsWith('../')
+
 /** Why `spec`, imported from `filename` inside `pluginRoot`, breaks the boundary; null if it is fine. */
 export function violationOf(spec, filename, pluginRoot) {
   if (spec.startsWith('@alinha/')) return isAllowedPlatformPackage(spec) ? null : 'platformPackage'
-  // file: URLs name a path on disk directly, like an absolute path.
+  // file: URLs name a path on disk directly, like an absolute path. So does Vite's /@fs/ prefix.
   if (isAbsolute(spec) || /^file:/i.test(spec)) return 'outside'
-  if (spec === '.' || spec === '..' || spec.startsWith('./') || spec.startsWith('../')) {
+  if (isRelative(spec)) {
     const target = relative(pluginRoot, resolve(dirname(filename), spec))
     return target === '..' || target.startsWith(`..${sep}`) || isAbsolute(target) ? 'outside' : null
   }
-  // Any other bare name is taken to be a third-party package (react, react-router, ...). This relies on there
-  // being no path aliases (Vite resolve.alias, tsconfig paths) that map a bare name into the repo: add one and
-  // it bypasses this rule, so check it here first.
-  return null
+  if (isNodeBuiltin(spec)) return null
+  return declaredPackagesOf(pluginRoot).has(packageNameOf(spec)) ? null : 'undeclared'
 }
 
 /** Static string value of an import source node, or undefined if it is computed at runtime. */
@@ -62,6 +93,8 @@ export default {
       platformPackage:
         "'{{spec}}' is not allowed in a plugin. Use only @alinha/plugin-sdk, @alinha/ui and @alinha/api-client; reach other plugins through the API («api» contracts) or events.",
       outside: "'{{spec}}' points outside this plugin's frontend folder (another plugin or the shell). Use @alinha/plugin-sdk.",
+      undeclared:
+        "'{{spec}}' is not a package declared in this plugin's package.json. Path aliases (@/, ~/, #...) are not allowed in plugins: use a relative import inside the plugin, @alinha/* for the platform, or declare the package.",
       dynamic: 'Dynamic imports in a plugin must use a string literal, so the plugin boundary can be checked.',
     },
   },

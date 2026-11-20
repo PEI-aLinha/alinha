@@ -27,6 +27,13 @@ tester.run('plugin-boundaries', rule, {
     { filename: plugin('src/index.ts'), code: "import { Button } from '@alinha/ui/button'" },
     { filename: plugin('src/index.ts'), code: "import { useState } from 'react'" },
     { filename: plugin('src/index.ts'), code: "import { Link } from 'react-router'" },
+    // Packages declared in the plugin's package.json (dependencies, peer, dev), with or without a subpath.
+    { filename: plugin('src/index.ts'), code: "import { useQuery } from '@tanstack/react-query'" },
+    { filename: plugin('src/index.ts'), code: "import { jsx } from 'react/jsx-runtime'" },
+    { filename: plugin('src/index.ts'), code: "import type { FC } from 'react'" },
+    // Node builtins (config files such as vitest.config.ts).
+    { filename: plugin('vitest.config.ts'), code: "import { resolve } from 'node:path'" },
+    { filename: plugin('vitest.config.ts'), code: "import { resolve } from 'path'" },
     { filename: plugin('src/index.ts'), code: "import { Page } from './pages/Page.tsx'" },
     // Deeply nested files may still import their own plugin's code.
     { filename: plugin('src/pages/a/b/Page.tsx'), code: "import { use } from '../../../hooks/use.ts'" },
@@ -54,6 +61,22 @@ tester.run('plugin-boundaries', rule, {
     { filename: plugin('src/index.ts'), code: "import x from '../../../../provider/code-repository/frontend/src/index.ts'", ...err('outside') },
     { filename: plugin('src/index.ts'), code: "import x from '../../../../../frontend/shell/src/host.tsx'", ...err('outside') },
     { filename: plugin('src/index.ts'), code: "import x from '../../backend/src/main/kotlin/x.ts'", ...err('outside') },
+    // Bare names must be packages the plugin declares: a path alias (Vite resolve.alias, tsconfig paths) looks like a
+    // bare name but resolves into the repo.
+    { filename: plugin('src/index.ts'), code: "import x from '@/pages/Page.tsx'", ...err('undeclared') },
+    { filename: plugin('src/index.ts'), code: "import x from '~/pages/Page.tsx'", ...err('undeclared') },
+    { filename: plugin('src/index.ts'), code: "import x from '#shell/host.tsx'", ...err('undeclared') },
+    { filename: plugin('src/index.ts'), code: "import x from 'shell/src/host.tsx'", ...err('undeclared') },
+    { filename: plugin('src/index.ts'), code: "import x from 'lodash'", ...err('undeclared') },
+    { filename: plugin('src/index.ts'), code: "import x from '@tanstack/react-table'", ...err('undeclared') },
+    { filename: plugin('src/index.ts'), code: "const m = () => import('~/x.ts')", ...err('undeclared') },
+    // Without a readable package.json nothing is declared (fails closed).
+    {
+      filename: '/elsewhere/repo/plugins/feature/x/frontend/src/a.ts',
+      options: [{ root: '/elsewhere/repo' }],
+      code: "import { useState } from 'react'",
+      ...err('undeclared'),
+    },
     { filename: plugin('src/index.ts'), code: "import x from '/etc/passwd'", ...err('outside') },
     { filename: plugin('src/index.ts'), code: "import x from 'file:///repo/plugins/feature/risk-assets/frontend/src/index.ts'", ...err('outside') },
     { filename: plugin('src/index.ts'), code: "const m = () => import('FILE:///repo/frontend/shell/src/host.tsx')", ...err('outside') },
