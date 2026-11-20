@@ -61,12 +61,14 @@ fun startCollection(...) {
   trimming by length also drops entries no worker has read yet, and the row already says `published`, so the job
   would be lost. Streams grow until acknowledged entries are trimmed (#87).
 - If the publish fails, what happens depends on the error:
-  - **Redis** (down, timing out, refusing writes: any `DataAccessException`): the row stays `pending`, retried after
+  - **Redis unavailable** (connection lost, timeout, or an error reply about Redis itself: `OOM`, `LOADING`, `BUSY`,
+    `READONLY`, `MISCONF`, `MASTERDOWN`, `CLUSTERDOWN`, `TRYAGAIN`, `NOAUTH`, `NOREPLICAS`): the row stays `pending`, retried after
     `backoff-base`, and **no failure is counted**. The round stops and the other due jobs wait for the next one. However
     long the outage, no job dies because of it; the relay catches up when Redis is back. The error is kept in
     `last_error`.
-  - **Redis refusing this stream** (`WRONGTYPE`: the key holds another type; `NOPERM`: an ACL forbids it): Redis is
-    up, so this counts as a failure of the job, like the case below. `OOM` stays an outage: it affects every key.
+  - **Redis refusing this job** (any other error reply, e.g. `WRONGTYPE`: the key holds another type; `NOPERM`: an
+    ACL forbids it; `CROSSSLOT`/`MOVED` in a cluster; an envelope over `proto-max-bulk-len`): Redis is up, so this
+    counts as a failure of the job, like the case below.
   - **Anything else** (a bug, an unexpected exception): `publish_failures + 1` and exponential backoff
     (`backoff-base` × 2ⁿ, at most `backoff-max`), and the relay goes on with the other due jobs. A row that
     always fails ends `dead`.

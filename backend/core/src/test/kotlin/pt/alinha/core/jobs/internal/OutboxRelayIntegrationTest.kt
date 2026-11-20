@@ -1,11 +1,16 @@
 package pt.alinha.core.jobs.internal
 
+import io.lettuce.core.RedisCommandExecutionException
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.dao.DataAccessException
 import org.springframework.data.domain.Range
+import org.springframework.data.redis.RedisConnectionFailureException
 import org.springframework.data.redis.RedisSystemException
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.jdbc.core.JdbcTemplate
@@ -169,5 +174,67 @@ class OutboxRelayIntegrationTest {
         assertThat(publishedJobIds()).containsExactlyInAnyOrderElementsOf(ids - refused)
         assertThat(jdbc.queryForObject("select publish_failures from core.job_outbox where id = ?", Int::class.java, refused))
             .isEqualTo(1)
+    }
+
+    private fun relayWith(failing: UUID, error: DataAccessException) = OutboxRelay(
+        outbox,
+        object : RedisJobStreams(redis) {
+            override fun publish(job: OutboxJob) = if (job.id == failing) throw error else super.publish(job)
+        },
+        tx,
+        properties,
+    )
+
+    /**
+     * What Spring Data Redis throws when Redis answers a command with an error reply: LettuceExceptionConverter
+     * (package-private) wraps Lettuce's RedisCommandExecutionException in a RedisSystemException.
+     */
+    private fun errorReply(reply: String) = RedisSystemException("Error in execution", RedisCommandExecutionException(reply))
+
+    private fun publishFailures(id: UUID) =
+        jdbc.queryForObject("select publish_failures from core.job_outbox where id = ?", Int::class.java, id)
+
+    @Test
+    fun `an error reply about this job counts as a job failure`() {
+        val ids = (1..3).map { dispatcher.dispatchAs(tenants, tx, tenant, collectRequest()) }
+        val rejected = ids.first()
+
+        val relay = relayWith(rejected, errorReply("ERR Protocol error: invalid bulk length"))
+
+        assertThat(relay.relayOnce()).isEqualTo(2) // Redis answered, so the others still go
+        assertThat(publishedJobIds()).containsExactlyInAnyOrderElementsOf(ids - rejected)
+        assertThat(publishFailures(rejected)).isEqualTo(1)
+    }
+
+    @Test
+    fun `a cluster error reply about this job counts as a job failure`() {
+        val id = dispatcher.dispatchAs(tenants, tx, tenant, collectRequest())
+
+        relayWith(id, errorReply("CROSSSLOT Keys in request don't hash to the same slot")).relayOnce()
+
+        assertThat(publishFailures(id)).isEqualTo(1)
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["OOM command not allowed", "LOADING Redis is loading", "BUSY Redis is busy",
+        "READONLY You can't write against a read only replica.", "MISCONF Errors writing to the AOF file",
+        "MASTERDOWN Link with MASTER is down", "CLUSTERDOWN The cluster is down", "TRYAGAIN Multiple keys request",
+        "NOAUTH Authentication required."])
+    fun `an error reply about Redis itself is an outage`(reply: String) {
+        val id = dispatcher.dispatchAs(tenants, tx, tenant, collectRequest())
+
+        assertThat(relayWith(id, errorReply(reply)).relayOnce()).isZero()
+
+        assertThat(publishFailures(id)).isZero()
+        assertThat(status(id)).isEqualTo("pending")
+    }
+
+    @Test
+    fun `losing the connection is an outage`() {
+        val id = dispatcher.dispatchAs(tenants, tx, tenant, collectRequest())
+
+        assertThat(relayWith(id, RedisConnectionFailureException("connection refused")).relayOnce()).isZero()
+
+        assertThat(publishFailures(id)).isZero()
     }
 }

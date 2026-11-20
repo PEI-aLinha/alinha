@@ -1,5 +1,6 @@
 package pt.alinha.core.jobs.internal
 
+import io.lettuce.core.RedisCommandExecutionException
 import org.springframework.dao.DataAccessException
 import org.springframework.data.domain.Range
 import org.springframework.data.redis.connection.stream.Consumer
@@ -117,10 +118,24 @@ class RedisJobStreams(private val redis: StringRedisTemplate) {
         fun DataAccessException.isNoGroup() = redisError(NOGROUP)
 
         /**
-         * Redis answered but refuses this job's stream: the key holds another type, or an ACL forbids it. That is a
-         * problem with this job type, not an outage, so it counts towards `dead`. OOM stays an outage (all keys).
+         * Redis answered this job's XADD with an error reply (WRONGTYPE, NOPERM, CROSSSLOT, MOVED, a too-large
+         * envelope, …): a problem with this job, not an outage, so it counts towards `dead`. Replies about Redis
+         * itself ([OUTAGE_REPLIES]: out of memory, loading, read-only replica, …) stay an outage, as does anything
+         * without a reply (connection lost, timeout).
          */
-        fun DataAccessException.isStreamRefused() = redisError(WRONGTYPE) || redisError(NOPERM)
+        fun DataAccessException.isJobRejected(): Boolean {
+            val reply = generateSequence<Throwable>(this) { it.cause }
+                .filterIsInstance<RedisCommandExecutionException>()
+                .firstOrNull()
+                ?: return redisError(WRONGTYPE) || redisError(NOPERM)
+            return reply.message.orEmpty().substringBefore(' ') !in OUTAGE_REPLIES
+        }
+
+        /** Error-reply prefixes that say Redis as a whole cannot take the write right now. */
+        private val OUTAGE_REPLIES = setOf(
+            "OOM", "LOADING", "BUSY", "READONLY", "MISCONF", "MASTERDOWN", "CLUSTERDOWN", "TRYAGAIN", "NOAUTH",
+            "NOREPLICAS",
+        )
 
         private fun DataAccessException.redisError(code: String) =
             generateSequence<Throwable>(this) { it.cause }.any { it.message.orEmpty().contains(code) }

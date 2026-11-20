@@ -5,7 +5,7 @@ import org.springframework.dao.DataAccessException
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import org.springframework.transaction.support.TransactionTemplate
-import pt.alinha.core.jobs.internal.RedisJobStreams.Companion.isStreamRefused
+import pt.alinha.core.jobs.internal.RedisJobStreams.Companion.isJobRejected
 import java.time.Duration
 
 /** Publishes committed outbox rows to Redis Streams. At-least-once: workers dedupe by (jobId, attempt). */
@@ -44,11 +44,11 @@ class OutboxRelay(
         try {
             streams.publish(job)
         } catch (e: DataAccessException) {
-            if (e.isStreamRefused()) {
+            if (e.isJobRejected()) {
                 recordFailure(job, e)
                 return Outcome.FAILED
             }
-            // Spring Data Redis reports every Redis-side problem (down, timeout, refusing writes) this way. That is
+            // No error reply, or one about Redis itself (down, timeout, out of memory, read-only replica). That is
             // the infrastructure, not this job: never count it towards `dead`, or an outage longer than the
             // backoff would kill every pending job (RNF02).
             deferForOutage(job, e)
