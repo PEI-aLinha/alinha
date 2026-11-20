@@ -218,15 +218,13 @@ class Consumer:
             results.publish(self.redis, outcome)
         except results.InvalidResult:
             log.exception("collector output does not match job-result.v1")
-            try:
-                results.publish(
-                    self.redis,
-                    results.failed(
-                        envelope, type_, version, attempt, "invalid_result", "worker produced an invalid result"
-                    ),
-                )
-            except results.InvalidResult:
-                log.exception("no valid result could be produced for %s attempt %s", envelope.get("jobId"), attempt)
+            # An invalid fallback raises: the entry stays pending rather than being ACKed with no result.
+            results.publish(
+                self.redis,
+                results.failed(
+                    envelope, type_, version, attempt, "invalid_result", "worker produced an invalid result"
+                ),
+            )
 
     def _ack(self, stream: str, entry_id: str) -> None:
         self.redis.xack(stream, self.config.group, entry_id)

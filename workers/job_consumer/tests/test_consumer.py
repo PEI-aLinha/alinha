@@ -129,16 +129,18 @@ def test_a_broken_provider_package_does_not_crash_the_worker(redis):
     assert pending(redis) == 0
 
 
-def test_a_second_invalid_result_does_not_escape_handle_entry(redis, monkeypatch):
+def test_an_invalid_fallback_result_leaves_the_entry_pending(redis, monkeypatch):
     def always_invalid(*args, **kwargs):
         raise results.InvalidResult("invalid")
 
     monkeypatch.setattr(results, "publish", always_invalid)
-    add_job(redis, envelope())
-    worker = consumer(redis, lambda _: {"items": []})
-    run_once(worker)
+    job = envelope()
+    add_job(redis, job)
+    run_once(consumer(redis, lambda _: {"items": []}))
 
-    assert pending(redis) == 0
+    assert published(redis) == []
+    assert pending(redis) == 1
+    assert not redis.exists(f"alinha:worker:done:{job['jobId']}:1")
 
 
 def test_invalid_envelope_is_not_retried(redis):
