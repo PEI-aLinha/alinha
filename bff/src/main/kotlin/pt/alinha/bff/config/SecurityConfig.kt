@@ -17,6 +17,7 @@ import org.springframework.security.oauth2.client.endpoint.ReactiveOAuth2AccessT
 import org.springframework.security.oauth2.client.endpoint.WebClientReactiveRefreshTokenTokenResponseClient
 import org.springframework.security.oauth2.client.web.DefaultReactiveOAuth2AuthorizedClientManager
 import org.springframework.security.oauth2.client.web.server.ServerOAuth2AuthorizedClientRepository
+import org.springframework.security.oauth2.client.web.server.WebSessionServerOAuth2AuthorizedClientRepository
 import org.springframework.security.core.Authentication
 import org.springframework.security.oauth2.core.OAuth2AuthorizationException
 import org.springframework.security.oauth2.core.oidc.user.OidcUser
@@ -64,6 +65,11 @@ class SecurityConfig(private val props: BffProperties) {
                 it.logoutSuccessHandler(keycloakLogoutSuccessHandler())
             }
             .build()
+
+    /** The tokens live in the WebSession (Redis), not in this instance's memory: Boot's default keeps them in memory. */
+    @Bean
+    fun authorizedClientRepository(): ServerOAuth2AuthorizedClientRepository =
+        WebSessionServerOAuth2AuthorizedClientRepository()
 
     /** The token relay refreshes an expired access token with the stored refresh token. */
     @Bean
