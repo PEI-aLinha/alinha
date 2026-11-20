@@ -99,9 +99,23 @@ class ApplicabilityRules {
             )
         }
 
+        // Art. 3.º n.º 2 covers only annex types, but an organization claiming significant impact with no type picked
+        // has probably not found its type in the list: a consultant checks instead of answering "not covered".
+        val checkAnnexType = answers.significantImpact && answers.entityTypes.isEmpty() &&
+            outcome.classification == NOT_COVERED
+        if (checkAnnexType) {
+            findings += Finding(
+                "nis2.check-annex-type", "RJC, art. 3.º, n.º 2, e anexos I e II",
+                "Indicou que o serviço que presta é muito importante para outros, mas não escolheu nenhum tipo de " +
+                    "entidade da lista. O regime só abrange os tipos da lista: o consultor confirma se a sua " +
+                    "atividade lá consta.",
+                review = true,
+            )
+        }
+
         val applies = when {
             outcome.classification != NOT_COVERED -> Applies.YES
-            cncsMayQualify -> Applies.REVIEW
+            cncsMayQualify || checkAnnexType -> Applies.REVIEW
             else -> Applies.NO
         }
         return Nis2Outcome(outcome.classification, cncsMayQualify, FrameworkApplicability(NIS2, applies, findings))

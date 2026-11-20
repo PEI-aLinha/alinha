@@ -153,11 +153,23 @@ class ApplicabilityRulesTest {
             assertEquals(Applies.REVIEW, result.framework(ApplicabilityRules.NIS2).applies)
         }
 
+        /** Art. 3.º n.º 2 needs an annex type, so the consultant checks whether the activity is in the annexes. */
         @Test
-        fun `significant impact without an annex type changes nothing`() {
-            val result = assess(SMALL_SIZE, Nis2Answers(significantImpact = true))
+        fun `significant impact without an annex type is sent to the consultant`() {
+            val result = assess(SMALL_SIZE, Nis2Answers(entityTypes = emptySet(), significantImpact = true))
+            val nis2 = result.framework(ApplicabilityRules.NIS2)
+
+            assertEquals(NOT_COVERED, result.nis2Classification)
             assertFalse(result.cncsMayQualify)
+            assertEquals(Applies.REVIEW, nis2.applies)
+            assertTrue(nis2.findings.single { it.id == "nis2.check-annex-type" }.review)
+        }
+
+        @Test
+        fun `without significant impact or an annex type NIS2 does not apply`() {
+            val result = assess(SMALL_SIZE, Nis2Answers())
             assertEquals(Applies.NO, result.framework(ApplicabilityRules.NIS2).applies)
+            assertFalse("nis2.check-annex-type" in result.findingIds(ApplicabilityRules.NIS2))
         }
 
         @Test
@@ -214,6 +226,19 @@ class ApplicabilityRulesTest {
         }
 
         @Test
+        fun `details about personal data without processing personal data are rejected`() {
+            val contradictory = listOf(
+                { GdprAnswers(processesPersonalData = false, regularOrRiskyProcessing = true) },
+                { GdprAnswers(processesPersonalData = false, specialOrCriminalData = true) },
+                { GdprAnswers(processesPersonalData = false, largeScaleMonitoring = true) },
+                { GdprAnswers(processesPersonalData = false, largeScaleSpecialData = true) },
+            )
+            for (answers in contradictory) {
+                assertThrows<IllegalArgumentException> { answers() }
+            }
+        }
+
+        @Test
         fun `a DPO is required for public bodies and large-scale monitoring or special data`() {
             val required = listOf(
                 assess(publicBody = true),
@@ -232,6 +257,12 @@ class ApplicabilityRulesTest {
         @Test
         fun `does not apply without AI`() {
             assertEquals(Applies.NO, assess().framework(ApplicabilityRules.AI_ACT).applies)
+        }
+
+        @Test
+        fun `details about AI without using or providing AI are rejected`() {
+            assertThrows<IllegalArgumentException> { AiActAnswers(highRiskArea = true) }
+            assertThrows<IllegalArgumentException> { AiActAnswers(interactsOrGeneratesContent = true) }
         }
 
         @Test

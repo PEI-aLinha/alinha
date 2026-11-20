@@ -54,7 +54,14 @@ data class GdprAnswers(
     val largeScaleMonitoring: Boolean = false,
     /** Core activities process special or criminal data on a large scale (RGPD art. 37.º n.º 1 c)). */
     val largeScaleSpecialData: Boolean = false,
-)
+) {
+    init {
+        require(
+            processesPersonalData ||
+                !(regularOrRiskyProcessing || specialOrCriminalData || largeScaleMonitoring || largeScaleSpecialData),
+        ) { "Contradictory answers: details about personal data, but processesPersonalData is false" }
+    }
+}
 
 data class AiActAnswers(
     /** Uses AI systems at work under its own authority: deployer (AI Act art. 3.º 4)). */
@@ -65,7 +72,13 @@ data class AiActAnswers(
     val highRiskArea: Boolean = false,
     /** AI talks directly to people (e.g. a chatbot) or generates published images, audio, video or text. */
     val interactsOrGeneratesContent: Boolean = false,
-)
+) {
+    init {
+        require(usesAiSystems || providesAiSystems || !(highRiskArea || interactsOrGeneratesContent)) {
+            "Contradictory answers: details about AI use, but neither usesAiSystems nor providesAiSystems is true"
+        }
+    }
+}
 
 /** Company size category (RJC annex III, art. 2.º, matching Recommendation 2003/361/EC). */
 enum class CompanySize { MICRO, SMALL, MEDIUM, LARGE }

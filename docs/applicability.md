@@ -52,6 +52,15 @@ annex II, 5.b to 5.f, which the annex itself defines by NACE Rev. 2 division (26
   or national/regional importance) with an annex type and not already essential: `cncsMayQualify`, because the
   CNCS may still cover the organization or raise it to essential (art. 3.º n.º 2 b) to e), art. 6.º n.º 1 f) and
   n.º 3). NIS2 then shows as `REVIEW` when the rules alone say "not covered".
+- **Significant impact with no annex type**: art. 3.º n.º 2 covers only annex types ("entidades de um dos tipos que
+  constam nos anexos i ou ii"; "independentemente" refers to nature and size, not sector). The organization has
+  probably not found its type in the list, so NIS2 shows as `REVIEW` and the consultant checks.
+
+## Input validation
+
+Contradictory answers are rejected with `IllegalArgumentException`, never answered silently: GDPR details with
+`processesPersonalData = false`, and AI Act details (high-risk area, chatbot or generated content) with neither
+`usesAiSystems` nor `providesAiSystems`. The screen that collects the answers must not allow these combinations.
 
 ## RGPD
 
