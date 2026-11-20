@@ -1,5 +1,6 @@
 package pt.alinha.core.tenant.internal
 
+import org.hamcrest.Matchers.matchesPattern
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.SpringBootConfiguration
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 import pt.alinha.core.access.internal.SecurityConfig
+import pt.alinha.core.tenant.CorrelationContext
 import pt.alinha.core.tenant.TenantAgnostic
 import pt.alinha.core.tenant.TenantContext
 import java.util.UUID
@@ -80,7 +82,31 @@ class TenantResolutionWebTest {
     fun `tenant agnostic endpoint needs no tenant`() {
         call(CONSULTANT, path = "/fixture/agnostic").andExpect { status { isOk() } }
     }
+
+    @Test
+    fun `the correlation id sent by the caller reaches the controller and comes back`() {
+        val sent = UUID.randomUUID().toString()
+        mockMvc.get("/fixture/correlation") {
+            header("Authorization", "Bearer $CONSULTANT")
+            header(CORRELATION_HEADER, sent)
+        }.andExpect {
+            status { isOk() }
+            content { string(sent) }
+            header { string(CORRELATION_HEADER, sent) }
+        }
+    }
+
+    /** The filter runs before security, so even a refused request can be traced. */
+    @Test
+    fun `a request without a token still gets a correlation id`() {
+        mockMvc.get("/fixture/tenant").andExpect {
+            status { isUnauthorized() }
+            header { string(CORRELATION_HEADER, matchesPattern(UUID_PATTERN)) }
+        }
+    }
 }
+
+private const val UUID_PATTERN = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
 
 @SpringBootConfiguration
 @EnableAutoConfiguration
@@ -89,6 +115,8 @@ class TenantResolutionWebTest {
     TenantWebConfig::class,
     TenantResolutionInterceptor::class,
     JwtTenantContext::class,
+    CorrelationIdFilter::class,
+    ScopedCorrelationContext::class,
     TenantFixtureController::class,
 )
 class TenantWebTestApplication {
@@ -111,11 +139,15 @@ class TenantWebTestApplication {
 
 @RestController
 @RequestMapping("/fixture")
-class TenantFixtureController(private val tenants: TenantContext) {
+class TenantFixtureController(private val tenants: TenantContext, private val correlation: CorrelationContext) {
     @GetMapping("/tenant")
     fun tenant() = tenants.current().value.toString()
 
     @TenantAgnostic
     @GetMapping("/agnostic")
     fun agnostic() = "ok"
+
+    @TenantAgnostic
+    @GetMapping("/correlation")
+    fun correlation() = correlation.current().toString()
 }

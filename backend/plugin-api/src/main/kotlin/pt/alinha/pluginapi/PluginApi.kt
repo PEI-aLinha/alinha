@@ -37,8 +37,16 @@ value class TenantId(val value: UUID)
  * Domain event. Published with Spring's ApplicationEventPublisher and
  * persisted by Spring Modulith (event publication registry).
  * Plugins talk to each other only through events and «api» contracts.
+ * The list of events, with who publishes and consumes each one, is in docs/events.md.
  */
 interface DomainEvent {
     val tenantId: TenantId
+
+    /**
+     * Shared by the request that started the work and every event that follows from it, so the whole chain can
+     * be traced in the logs. Take it from the core's `CorrelationContext.current()`. For tracing only: never use
+     * it for access decisions.
+     */
+    val correlationId: UUID
     val occurredAt: Instant
 }
