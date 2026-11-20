@@ -16,6 +16,13 @@ docker compose -f deploy/docker-compose.dev.yml up -d --force-recreate keycloak
 - All dev users have the password `alinha` and **must set up TOTP on first login** (MFA).
 - Login, TOTP setup and emails default to European Portuguese (`pt`).
 
+## Realm settings that matter
+
+- **Required actions are listed in full.** An import registers only the required actions in `requiredActions`, so
+  one missing from the list does not exist in the realm. `VERIFY_EMAIL` (priority 10) runs before `CONFIGURE_TOTP`
+  (20, default action): a self-registered account confirms its email first, then sets up TOTP.
+  `TERMS_AND_CONDITIONS` is listed but off until the terms page exists (#128).
+
 `start-dev` keeps its database in H2 inside the container. Recreating the Keycloak container
 re-imports the realm and wipes every enrolled TOTP, so each user must scan the QR code again.
 
