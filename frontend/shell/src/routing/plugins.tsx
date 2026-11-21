@@ -32,10 +32,25 @@ export function pluginRoutes(plugins: readonly FrontendPlugin[], area: Area): Ro
   return plugins.flatMap((p) => p.routes[area] ?? []).map(guard)
 }
 
-/** Menu entries for one area that the user may see, by `order` then label. */
-export function pluginNav(plugins: readonly FrontendPlugin[], area: NavArea, can: Can): NavItem[] {
+/** Menu entries of evidence providers live under this path; the shell groups them on its "Integrações" page. */
+export const INTEGRATIONS_PATH = 'integrations'
+
+const isIntegration = (n: NavItem) => n.path === INTEGRATIONS_PATH || n.path.startsWith(`${INTEGRATIONS_PATH}/`)
+
+/** Every entry for one area that the user may see, by `order` then label. */
+function visibleNav(plugins: readonly FrontendPlugin[], area: NavArea, can: Can): NavItem[] {
   return plugins
     .flatMap((p) => p.nav ?? [])
     .filter((n) => n.area === area && (!n.resource || can(n.resource, n.action)))
     .sort((a, b) => (a.order ?? 100) - (b.order ?? 100) || a.label.localeCompare(b.label, 'pt'))
+}
+
+/** Side menu entries for one area. Integrations are left out: they are reached through the "Integrações" page. */
+export function pluginNav(plugins: readonly FrontendPlugin[], area: NavArea, can: Can): NavItem[] {
+  return visibleNav(plugins, area, can).filter((n) => !isIntegration(n))
+}
+
+/** Entries under `integrations/` (evidence providers) that the user may see, for the "Integrações" page. */
+export function integrationNav(plugins: readonly FrontendPlugin[], area: NavArea, can: Can): NavItem[] {
+  return visibleNav(plugins, area, can).filter(isIntegration)
 }

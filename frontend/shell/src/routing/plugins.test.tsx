@@ -3,7 +3,7 @@ import { isValidElement } from 'react'
 import type { RouteObject } from 'react-router'
 import { definePlugin, type FrontendPlugin } from '@alinha/plugin-sdk'
 import { makeCan } from '../session/permissions'
-import { pluginNav, pluginRoutes, RequirePermission } from './plugins'
+import { integrationNav, pluginNav, pluginRoutes, RequirePermission } from './plugins'
 
 const Page = () => null
 
@@ -71,5 +71,28 @@ describe('pluginNav', () => {
   it('uses the same action as the route when the entry names one', () => {
     expect(pluginNav([a], 'client', makeCan(['risk:read'])).map((n) => n.label)).not.toContain('Editar riscos')
     expect(pluginNav([a], 'client', makeCan(['risk:read', 'risk:edit'])).map((n) => n.label)).toContain('Editar riscos')
+  })
+})
+
+describe('integrationNav', () => {
+  const providers = definePlugin({
+    id: 'p',
+    name: 'P',
+    routes: {},
+    nav: [
+      { label: 'Superfície externa', path: 'integrations/external-surface', area: 'client', order: 71 },
+      { label: 'Repositório de código', path: 'integrations/code-repository', area: 'client', order: 70 },
+      { label: 'Segredo', path: 'integrations/secret', area: 'client', resource: 'integration' },
+      { label: 'Integrações antigas', path: 'integrationsold', area: 'client' },
+    ],
+  })
+
+  it('takes the entries under integrations/ out of the side menu', () => {
+    expect(pluginNav([providers], 'client', makeCan([])).map((n) => n.label)).toEqual(['Integrações antigas'])
+  })
+
+  it('lists them for the Integrações page, by order and permission', () => {
+    expect(integrationNav([providers], 'client', makeCan([])).map((n) => n.label)).toEqual(['Repositório de código', 'Superfície externa'])
+    expect(integrationNav([providers], 'client', makeCan(['integration:read'])).map((n) => n.label)).toContain('Segredo')
   })
 })

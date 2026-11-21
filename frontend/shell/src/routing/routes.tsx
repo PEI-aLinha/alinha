@@ -1,19 +1,16 @@
 import { Navigate, useParams, type RouteObject } from 'react-router'
-import type { Area, FrontendPlugin, NavArea } from '@alinha/plugin-sdk'
+import type { FrontendPlugin, NavArea } from '@alinha/plugin-sdk'
 import { ClientLayout } from '../layouts/ClientLayout'
 import { ConsultantLayout, PortfolioPage } from '../layouts/ConsultantLayout'
 import { OnboardingLayout } from '../layouts/OnboardingLayout'
+import { IntegrationsPage } from '../pages/IntegrationsPage'
 import { ForbiddenPage, NotFoundPage, RouteErrorPage, StatusPage } from '../pages/StatusPages'
 import { SessionGate, useSession } from '../session/SessionGate'
 import { isClientUser, needsOnboarding } from '../session/permissions'
-import { pluginNav, pluginRoutes } from './plugins'
+import { AREA_BASE } from './areaBase'
+import { INTEGRATIONS_PATH, pluginNav, pluginRoutes } from './plugins'
 
-/** Where each area is mounted. A `Record`, so TypeScript flags every place a new area is missed. */
-export const AREA_BASE: Record<Area, string> = {
-  client: '/org',
-  consultant: '/portfolio',
-  onboarding: '/onboarding',
-}
+export { AREA_BASE }
 
 const isStaticPath = (path: string) => !path.split('/').some((s) => s.startsWith(':') || s.includes('*'))
 
@@ -77,6 +74,7 @@ function AreaHome({ plugins, area }: { plugins: readonly FrontendPlugin[]; area:
 
 const areaChildren = (plugins: readonly FrontendPlugin[], area: NavArea): RouteObject[] => [
   { index: true, element: <AreaHome plugins={plugins} area={area} /> },
+  { path: INTEGRATIONS_PATH, element: <IntegrationsPage plugins={plugins} area={area} /> },
   ...pluginRoutes(plugins, area),
   { path: '*', element: <NotFoundPage /> },
 ]
