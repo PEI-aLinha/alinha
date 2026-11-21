@@ -50,6 +50,9 @@ const testPlugin = definePlugin({
       { path: 'save', Component: SaveButton },
       { path: 'lazy', handle: { resource: 'risk' }, lazy: async () => ({ Component: () => <h1>Página carregada à parte</h1> }) },
     ],
+    onboarding: [
+      { path: 'registration', Component: TenantProbe },
+    ],
     consultant: [
       { path: 'dashboard', Component: () => <h1>Painel do cliente</h1> },
       { path: 'probe', Component: TenantProbe },
@@ -360,6 +363,64 @@ describe('error pages', () => {
   it('shows the no-access page when a plugin page gets a 403', async () => {
     renderApp({ url: '/org/acme/denied', plugins })
     expect(await screen.findByRole('heading', { name: 'Não tem acesso a esta página' })).toBeInTheDocument()
+  })
+})
+
+describe('onboarding (/onboarding)', () => {
+  const registrant = () => meFor('registrant', { organizations: [], permissions: ['organization:register'] })
+
+  it('sends a new account without an organization to the first onboarding page, with no tenant', async () => {
+    const { router, calls } = renderApp({ url: '/', plugins, me: registrant(), api: () => json({ value: 'ok' }) })
+    expect(await screen.findByText('Dados de : ok')).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/onboarding/registration')
+    expect(screen.queryByRole('navigation', { name: 'Navegação principal' })).not.toBeInTheDocument()
+    const probe = calls.find((c) => c.url === '/api/probe')
+    expect(new Headers(probe?.init.headers).has('X-Alinha-Tenant')).toBe(false)
+  })
+
+  it('keeps the "not ready" page when no plugin has an onboarding page', async () => {
+    renderApp({ url: '/', plugins: [], me: registrant() })
+    expect(await screen.findByRole('heading', { name: 'A sua conta ainda não está pronta' })).toBeInTheDocument()
+  })
+
+  it('sends anyone who already has an organization back home', async () => {
+    const { router } = renderApp({ url: '/onboarding/registration', plugins })
+    await waitFor(() => expect(router.state.location.pathname).toBe('/org/acme/assets'))
+  })
+
+  it('does not show the form again when the account signed in again but has no organization yet', async () => {
+    window.sessionStorage.setItem('alinha.reauthenticated-at', String(Date.now()))
+    renderApp({ url: '/onboarding/registration', plugins, me: registrant(), api: () => json({ value: 'ok' }) })
+    expect(await screen.findByRole('heading', { name: 'Quase pronto' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Verificar novamente' })).toBeInTheDocument()
+    expect(screen.queryByText('Dados de : ok')).not.toBeInTheDocument()
+    // Kept until the session has an organization, so a reload does not bring the form back.
+    expect(window.sessionStorage.getItem('alinha.reauthenticated-at')).not.toBeNull()
+    window.sessionStorage.removeItem('alinha.reauthenticated-at')
+  })
+
+  it('refreshes the session from "Quase pronto" and goes home once it has the organization', async () => {
+    window.sessionStorage.setItem('alinha.reauthenticated-at', String(Date.now()))
+    let session = registrant()
+    const { router, calls } = renderApp({
+      url: '/onboarding/registration',
+      plugins,
+      me: async () => json(session),
+      api: (path) => {
+        if (path !== '/auth/refresh') return json({ value: 'ok' })
+        session = meFor('responsible')
+        return new Response(null, { status: 204 })
+      },
+    })
+    fireEvent.click(await screen.findByRole('button', { name: 'Verificar novamente' }))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/org/acme/assets'))
+    expect(calls.find((c) => c.url === '/auth/refresh')?.init.method).toBe('POST')
+    expect(window.sessionStorage.getItem('alinha.reauthenticated-at')).toBeNull()
+  })
+
+  it('sends the onboarding root home, and from there to the first page', async () => {
+    const { router } = renderApp({ url: '/onboarding', plugins, me: registrant(), api: () => json({ value: 'ok' }) })
+    await waitFor(() => expect(router.state.location.pathname).toBe('/onboarding/registration'))
   })
 })
 

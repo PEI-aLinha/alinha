@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { ERROR_MESSAGES, errorMessage, fieldErrors, NetworkError } from './errors'
-import { ApiError } from './index'
+import { ApiError, type Problem } from './index'
 
-/** An ApiError carrying a Problem Details body, as the shell will attach it (#101). */
-function withProblem(status: number, problem: unknown): ApiError {
-  return Object.assign(new ApiError(status, '/x'), { problem })
-}
+/** An ApiError carrying a Problem Details body, already checked by the shell (`readProblem`). */
+const withProblem = (status: number, problem: Problem): ApiError => new ApiError(status, '/x', undefined, problem)
 
 describe('errorMessage', () => {
   it.each([
@@ -40,10 +38,6 @@ describe('errorMessage', () => {
     expect(errorMessage(withProblem(403, { code: 'X', detail: '  ' }))).toBe(ERROR_MESSAGES.forbidden)
   })
 
-  it('ignores a problem that is not an object', () => {
-    expect(errorMessage(withProblem(404, 'oops'))).toBe(ERROR_MESSAGES.notFound)
-  })
-
   it('reports a NetworkError as a connection problem', () => {
     const error = new NetworkError('/x', { cause: new TypeError('Failed to fetch') })
     expect(errorMessage(error)).toBe(ERROR_MESSAGES.network)
@@ -60,14 +54,12 @@ describe('errorMessage', () => {
 })
 
 describe('fieldErrors', () => {
-  it('returns the first message for each field and skips malformed entries', () => {
+  it('returns the first message for each field', () => {
     const error = withProblem(400, {
       errors: [
         { field: 'nif', message: 'O NIF tem 9 dígitos.' },
         { field: 'nif', message: 'Segunda mensagem.' },
         { field: 'name', message: 'Indique o nome.' },
-        { field: 'broken' },
-        null,
       ],
     })
     expect(fieldErrors(error)).toEqual({ nif: 'O NIF tem 9 dígitos.', name: 'Indique o nome.' })

@@ -60,7 +60,9 @@ paths:
       summary: List the plugins present in the build
       responses:
         '200':
-          description: Every plugin manifest, sorted by id.
+          description: >
+            Every plugin manifest, sorted by id. `nav` holds only the menu entries
+            the caller's roles may see.
           content:
             application/json:
               schema:
@@ -467,7 +469,7 @@ components:
 
     PluginManifest:
       type: object
-      required: [id, name, kind, version, publishes, consumes, permissions]
+      required: [id, name, kind, version, publishes, consumes, permissions, nav]
       properties:
         id:
           type: string
@@ -490,9 +492,42 @@ components:
             type: string
         permissions:
           type: array
-          description: RBAC resources the plugin declares.
+          description: Permissions the plugin declares, as `resource:action`.
           items:
             type: string
+        nav:
+          type: array
+          description: >
+            Menu entries the caller may see: only areas the caller's roles open, and only entries
+            whose permission the caller holds. Sorted within this plugin by area (client, consultant),
+            then `order`, then label (Portuguese collation); a menu built from several plugins has to sort
+            the merged list again. Never in the onboarding area, which has no menu.
+          items:
+            $ref: '#/components/schemas/NavEntry'
+
+    NavEntry:
+      type: object
+      description: Same fields as `NavItem` in `@alinha/plugin-sdk`, minus the icon.
+      required: [label, path, area, action, order]
+      properties:
+        label:
+          type: string
+          description: Text shown in the menu (European Portuguese).
+        path:
+          type: string
+          description: Path relative to the area root, kebab-case segments, e.g. `organization`.
+        area:
+          type: string
+          enum: [client, consultant, onboarding]
+        resource:
+          type: string
+          description: RBAC resource needed to see the entry, checked as `resource:action`; absent when anyone in the area may.
+        action:
+          type: string
+          description: Action checked with `resource`. Defaults to `read`.
+        order:
+          type: integer
+          description: Lower comes first. Defaults to 100.
 
     OrganizationAddress:
       type: object

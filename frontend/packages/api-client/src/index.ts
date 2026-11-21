@@ -23,6 +23,9 @@ export type MeDto = components['schemas']['Me']
 /** GET /api/plugins: a plugin manifest, as registered by the backend. */
 export type PluginManifestDto = components['schemas']['PluginManifest']
 
+/** One menu entry of a plugin; `/api/plugins` returns only those the caller may see. */
+export type NavEntryDto = components['schemas']['NavEntry']
+
 /** GET /api/audit/events: one entry of the organization's change history (`actor` is a `sub` or `system`). */
 export type AuditEventDto = components['schemas']['AuditEvent']
 
