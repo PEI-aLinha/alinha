@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlin.spring) apply false
     alias(libs.plugins.kotlin.jpa) apply false
     alias(libs.plugins.spring.boot) apply false
+    alias(libs.plugins.kover)
 }
 
 subprojects {
@@ -27,3 +28,15 @@ subprojects {
 
     tasks.withType<Test>().configureEach { useJUnitPlatform() }
 }
+
+// Coverage (RNF19) for the modules that live in this repo. `./gradlew koverXmlReport` writes
+// build/reports/kover/report.xml, which the CI uploads to SonarCloud. Plugins measure their own coverage.
+repositories { mavenCentral() } // the root resolves the Kover reporter
+val coreModules = listOf(":plugin-api", ":core", ":app", ":bff")
+coreModules.forEach { path ->
+    project(path).pluginManager.withPlugin("org.jetbrains.kotlin.jvm") {
+        project(path).pluginManager.apply("org.jetbrains.kotlinx.kover")
+    }
+}
+dependencies { coreModules.forEach { kover(project(it)) } }
+kover { reports { verify { rule { minBound(70) } } } } // RNF19, same bar as Vitest and pytest
