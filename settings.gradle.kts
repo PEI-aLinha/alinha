@@ -8,10 +8,11 @@ pluginManagement {
 rootProject.name = "alinha"
 
 // ---- Core (lives in this repo) ----------------------------------------------
-include(":plugin-api", ":core", ":app")
+include(":plugin-api", ":core", ":app", ":bff")
 project(":plugin-api").projectDir = file("backend/plugin-api")
 project(":core").projectDir = file("backend/core")
 project(":app").projectDir = file("backend/app")
+project(":bff").projectDir = file("bff")
 
 // ---- Plugins (submodules under plugins/<kind>/<id>) -------------------------
 // Every submodule with backend/build.gradle.kts joins the build automatically

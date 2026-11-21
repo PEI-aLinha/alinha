@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://alinha.pt/contracts/jobs/job-result.v1.schema.json",
+  "title": "job result v1",
+  "description": "Result a worker (Python) sends back to the core (Kotlin) on the Redis stream alinha:jobs:results, one entry per attempt, in the field `result`. The core trusts the outbox row, not this message: tenantId must match the job's tenant. Incompatible changes = new v2 file.",
+  "type": "object",
+  "required": ["jobId", "type", "version", "tenantId", "attempt", "status", "finishedAt"],
+  "additionalProperties": false,
+  "properties": {
+    "jobId": { "type": "string", "format": "uuid" },
+    "type": { "type": "string", "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$" },
+    "version": { "type": "integer", "minimum": 1 },
+    "tenantId": { "type": "string", "format": "uuid" },
+    "attempt": { "type": "integer", "minimum": 1, "description": "the `attempt` field of the stream entry that carried the job" },
+    "status": { "enum": ["completed", "failed"] },
+    "retryable": { "type": "boolean", "default": false, "description": "failed only: the core may dispatch the job again" },
+    "error": {
+      "type": "object",
+      "required": ["code", "message"],
+      "additionalProperties": false,
+      "properties": {
+        "code": { "type": "string", "maxLength": 100 },
+        "message": { "type": "string", "maxLength": 2000, "description": "plain text; never credentials or collected content" }
+      }
+    },
+    "result": { "type": "object", "description": "completed only: type-specific output" },
+    "finishedAt": { "type": "string", "format": "date-time" }
+  },
+  "allOf": [
+    { "if": { "properties": { "status": { "const": "failed" } } }, "then": { "required": ["error"] } },
+    { "if": { "properties": { "status": { "const": "completed" } } }, "then": { "not": { "required": ["error"] } } }
+  ]
+}

@@ -61,8 +61,11 @@ git config --global push.recurseSubmodules on-demand   # pushing the main repo p
 git clone --recurse-submodules git@github.com:PEI-aLinha/alinha.git
 cd alinha
 cp deploy/.env.example deploy/.env                     # optional: dev defaults work without it
+pnpm install && pnpm --filter @alinha/keycloak-theme build-keycloak-theme  # aLinha login pages (needs Maven)
 docker compose -f deploy/docker-compose.dev.yml up -d  # Postgres, Redis, Keycloak, Mailpit, OpenBao
+# Existing volume from before #10? See docs/audit.md (DB role alinha_app needs LOGIN)
 BAO_TOKEN=dev-app-token ./gradlew :app:bootRun         # backend on :8080
+SPRING_PROFILES_ACTIVE=dev ./gradlew :bff:bootRun       # BFF on :8081 (OIDC login, session)
 pnpm install && pnpm dev                               # frontend on :5173
 ```
 
@@ -75,16 +78,21 @@ pnpm install && pnpm dev                               # frontend on :5173
 | OpenBao | http://localhost:8200 | `BAO_TOKEN=dev-app-token` (root `dev-root-token`) |
 
 The `alinha` realm, test users (Rui, Pedro, Marta, João) and their roles/tenants are in
-[deploy/keycloak/README.md](deploy/keycloak/README.md). The dev password is `alinha`; the first
+[deploy/keycloak/README.md](deploy/keycloak/README.md). The dev password is `alinha-dev-1`; the first
 login sets up TOTP (MFA). Emails land in Mailpit.
 
-Requirements: JDK 21, Node 22, pnpm 10, Docker (Compose v2). The flow above is verified on Linux;
+SMTP for the notifications plugin defaults to Mailpit. For a real relay set `SMTP_HOST`, `SMTP_PORT` (587 with STARTTLS),
+`SMTP_USERNAME`, `SMTP_AUTH=true` and `SMTP_STARTTLS=true` (the last also makes STARTTLS mandatory). The password is not
+an env var: it is `smtp.password` in OpenBao (`secret/alinha/app`), seeded with a placeholder in `deploy/openbao/init.sh`.
+
+Requirements: JDK 21, Node 22, pnpm 10, Docker (Compose v2), Maven (only to build the Keycloak theme). The flow above is verified on Linux;
 on macOS use Docker Desktop and the same commands.
 
 `pnpm test` needs the plugin submodules (it checks that every plugin frontend is registered). If you cloned without
 `--recurse-submodules`, run `git submodule update --init --recursive` first.
 
-Until the BFF exists (#14), the shell has no real login. To open it locally with a fake session, choose a role
+The shell logs in through the BFF (`/oauth2/authorization/keycloak`); in dev, Vite proxies `/api`, `/oauth2` and
+`/auth` to `localhost:8081`. Without the BFF you can open it with a fake session: choose a role
 (`consultant`, `responsible`, `analyst`, or `anonymous` to see the login redirect). This only affects `pnpm dev`, never a build:
 
 ```bash
@@ -105,6 +113,10 @@ alinha down            # stop the containers
 ```
 
 The supported CLI versions are pinned in `.alinha-cli-version`.
+
+> **`FRAMEWORKS_DIR`** — the backend resolves framework catalogues from this path.
+> The default (`../../frameworks`) works when running from `backend/app/` (i.e. via `./gradlew :app:bootRun`).
+> In a container, set `FRAMEWORKS_DIR` to the absolute path of the mounted `frameworks/` folder.
 
 ## Working on a plugin
 
@@ -142,9 +154,9 @@ Agree on this in the weekly sync; never do it right before a deadline.
 ## Architecture rules (checked in CI)
 
 - **Backend:** a plugin only uses other modules' public types — `pt.alinha.<plugin>` (base), `.api`, `.events` and the core's named interfaces (`core.tenant`, `core.access`, `core.audit`, `core.jobs`, `core.compliance`, `core.aigateway`). Never `internal`. Checked by `ModularityTest`.
-- **Frontend:** a plugin only imports `@alinha/plugin-sdk`, `@alinha/ui` and `@alinha/api-client`, and never reaches outside its own `frontend/` folder. Checked by the ESLint rule `alinha/plugin-boundaries` (`eslint-rules/`).
+- **Frontend:** a plugin only imports `@alinha/plugin-sdk`, `@alinha/ui` and `@alinha/api-client`, and never reaches outside its own `frontend/` folder. Checked by the ESLint rule `alinha/plugin-boundaries` (`eslint-rules/`). Data fetching, error messages, pt-PT formatting and UI wording: `docs/ui-text.md`.
 - **Data:** each plugin has its own PostgreSQL schema; migrations in `db/migration/<plugin>/V<yyyyMMddHHmmss>__<plugin>_<description>.sql`.
-- **Requests:** tenant comes from the token (`TenantContext`); endpoints have `@RequiresPermission`; writes go to the Audit Trail in the same transaction.
+- **Requests:** tenant comes from the token (`TenantContext`, rules in `docs/tenancy.md`); endpoints have `@RequiresPermission`; writes go to the Audit Trail in the same transaction.
 
 ## Non-functional requirements → where they are met
 
@@ -152,16 +164,17 @@ Numbering from the technical report (section 3.2).
 
 | NFR | How | Status |
 |---|---|---|
-| RNF03 tenant isolation | `core.tenant.TenantContext` (tenant from the token); filtered queries | contract defined, implement in sprint 0 |
-| RNF04 audit trail | `core.audit.AuditTrail`, same transaction; `audit.audit_event` table INSERT-only | same |
-| RNF07/RNF08 OIDC + roles per endpoint | Keycloak + `@RequiresPermission` | same |
+| RNF02 no job lost on failure | `core.jobs.JobDispatcher` writes to `core.job_outbox` in the caller's transaction; `OutboxRelay` publishes to Redis Streams (`SKIP LOCKED`, backoff, at-least-once); `JobResultConsumer` applies worker results (`JobCompleted`/`JobFailed`, retries, dead letters); see `docs/jobs.md` | **done** (watchdog #86, retention and alerts #87) |
+| RNF03 tenant isolation | `core.tenant.TenantContext` (tenant from the token, consultant picks with `X-Alinha-Tenant`); entities extend `TenantOwnedEntity` (Hibernate `@TenantId`); see `docs/tenancy.md` | **done** in the backend (Keycloak claims pending #5); the BFF relays the header |
+| RNF04 audit trail | `core.audit.AuditTrail` in the caller's transaction; app role `alinha_app` INSERT/SELECT only + trigger blocking UPDATE/DELETE/TRUNCATE; history `GET /api/audit/events` (see `docs/audit.md`) | **done** |
+| RNF07/RNF08 OIDC + roles per endpoint | Keycloak JWTs + `@RequiresPermission`, deny by default; the BFF owns the login and relays tokens; see `docs/rbac.md` | **done** in the backend (not yet tested against a real Keycloak realm, see #5) |
 | RNF09 no secrets in code/config | OpenBao (`secret/alinha/app` via Spring Cloud Vault); AI Service reads `secret/alinha/ai-service` (policy `alinha-ai-service`) via `hvac`; per-tenant provider credentials via `pluginapi.TenantSecretStore`; gitleaks job in CI | **done** |
 | RNF11 AI Service cannot write platform data | AI Service has no database access and only returns drafts; `/v1` requires a service token shared with the AI Gateway (`contracts/ai/ai-service.v1.yaml`) | AI Service side **done**; AI Gateway client to do |
-| RNF12/RNF14 AI approval and provenance | `core.aigateway.AiDraft` and `contracts/ai` (model, prompt version, sources, date); AI Service fills model, prompt version and date, `sources` empty until RAG | partial |
+| RNF12/RNF14 AI approval and provenance | `core.aigateway.AiDraft` and `contracts/ai` (model, prompt version, sources, date); `AiDraft.provenance()` stored in the audit trail; AI Service fills model, prompt version and date, `sources` empty until RAG | provenance recorded; approval to do |
 | RNF13 context redacted before leaving the core | redaction in `core.aigateway` before calling the AI Service; the AI Service treats context as untrusted data | **to do** (core) |
 | LLM processes data in the EU | `EU_LLM_HOSTS` allowlist in `ai-service/src/ai_service/config.py`, checked at startup | **done** |
-| RNF17 new plugin without touching the core | `settings.gradle.kts` and `gen-frontend-plugins.mjs` discover the submodules; `ModularityTest` | **done** |
-| RNF18 catalogues as data | `frameworks/` read at runtime by the Compliance Engine | see `frameworks/README.md` |
+| RNF17 new plugin without touching the core | `settings.gradle.kts` and `gen-frontend-plugins.mjs` discover the submodules; `ModularityTest`; `PluginRegistry` validates the manifests at startup and serves `GET /api/plugins`; `PluginYamlConsistencyTest` | **done** |
+| RNF18 catalogues as data | `frameworks/` read from disk at start-up by `core.compliance.CatalogueRegistry` (`CatalogueLoader`); schema in `contracts/frameworks/`; released versions frozen by `scripts/check-immutable-frameworks.sh` | **done** for loading and versioning; see `frameworks/README.md` |
 | RNF19 coverage ≥ 70% and CI blocks merge | missing: Kover (Kotlin) + Vitest coverage in CI; branch protection/rulesets are available because all nine repos are public, and are applied in #4 | **to do** |
 | RNF21 whole system starts with one command | missing: full `deploy/docker-compose.yml` (Nginx, BFF, app, AI Service, workers, OpenBao) | **to do** |
 
@@ -180,7 +193,7 @@ Gradle and the frontend shell pick it up automatically.
 | Sprint | Dates | Goal |
 |---|---|---|
 | 0 | 4–10 Nov | Walking skeleton: green CI, compose, tenant + RBAC + audit, one plugin from UI → BFF → app → DB, `plugin-api` frozen |
-| 1 | 11–24 Nov | Organization, Risk & Assets, catalogues, `ComplianceEngine.applicability()` |
+| 1 | 11–24 Nov | Organization, Risk & Assets, catalogues, applicability rules (`ApplicabilityRules`, `docs/applicability.md`) |
 | 2 | 25 Nov–8 Dec | Assessment (evaluate, roadmap, `RoadmapValidated`), AI Service, workers + 2 providers, Notifications |
 | 3 | 9–15 Dec | Dashboard & Reports, integration, demo |
 | — | 16–22 Dec | Stabilisation |

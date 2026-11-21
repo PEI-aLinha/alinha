@@ -4,9 +4,9 @@ import { useQuery } from '@tanstack/react-query'
 import type { MeDto } from '@alinha/api-client'
 import { ApiError } from '@alinha/plugin-sdk'
 import { ErrorPage, LoadingPage, LoginFailedPage } from '../pages/StatusPages'
-import { login } from './login'
+import { login, reauthentication } from './login'
 import { fetchMe } from './me'
-import { isConsultant, makeCan, type Can } from './permissions'
+import { isConsultant, makeCan, needsOnboarding, type Can } from './permissions'
 
 export interface Session {
   me: MeDto
@@ -45,6 +45,10 @@ function SessionReady({ me, children }: { me: MeDto; children: ReactNode }) {
     login.succeeded()
     if (returnTo) navigate(returnTo, { replace: true })
   }, [navigate])
+  // A re-authentication is only "pending" while the account still has no organization (see OnboardingLayout).
+  useEffect(() => {
+    if (!needsOnboarding(me.roles, me.organizations)) reauthentication.forget()
+  }, [me])
   const session = useMemo<Session>(() => ({ me, can: makeCan(me.permissions), isConsultant: isConsultant(me.roles) }), [me])
   return <SessionContext.Provider value={session}>{children}</SessionContext.Provider>
 }

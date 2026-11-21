@@ -1,0 +1,15 @@
+# GitGuardian (GitHub app and ggshield).
+# gitleaks (.gitleaks.toml, CI job "secrets") still scans everything ignored here.
+version: 2
+secret:
+  ignored_paths:
+    # Dev-only credentials for local docker compose. Mirrors the allowlist in .gitleaks.toml.
+    # List files, not folders: a real secret added next to them must still be flagged.
+    - deploy/.env.example
+    - deploy/docker-compose.dev.yml
+    - deploy/openbao/init.sh
+    - deploy/postgres/init/01-app-role.sh
+  ignored_matches:
+    # Old alinha_app test password, still in the history of commit d6ebad3 (PR #88). Stored as its SHA-256.
+    - name: alinha_app test login (Testcontainers)
+      match: b58b0cb4ecdea3c65311b4ca8833fe47b6ae0a7500f87a8eb31e8379d3fe48f1

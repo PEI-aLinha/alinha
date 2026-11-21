@@ -17,6 +17,17 @@ spring:
         default-context: alinha/app
         # Required: without it Spring Cloud Vault also reads secret/data/<spring.application.name> (alinha) and gets 403.
         application-name: alinha/app
+  web:
+    resources:
+      # The app serves no static files (the frontend is Nginx's). Without the mappings nothing bypasses
+      # @RequiresPermission; any such request would be denied by RequiresPermissionInterceptor anyway.
+      add-mappings: false
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/alinha}
+          audiences: alinha-api
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/alinha}
     username: ${db.username}
@@ -26,18 +37,99 @@ spring:
     hibernate:
       ddl-auto: validate          # the schema is ALWAYS created by Flyway migrations
   flyway:
+    # Migrations run as the schema owner; the app runs as alinha_app, which cannot change
+    # audit.audit_event (RNF04) or create tables. Both credentials come from OpenBao.
+    user: ${db.migration-username}
+    password: ${db.migration-password}
     # Each plugin puts its migrations in db/migration/<plugin>/ — Flyway
     # scans recursively. Timestamp versions so they never collide:
     #   V202611071530__assessment_init.sql
     locations: classpath:db/migration
+  # SMTP for the notifications plugin. Dev: Mailpit from docker-compose.dev.yml (UI http://localhost:8025).
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:1025}
+    username: ${SMTP_USERNAME:}
+    password: ${smtp.password:}   # OpenBao secret/alinha/app (never an env var); only sent when SMTP_AUTH=true
+    properties:
+      # JavaMail defaults to no timeouts: a hung SMTP server would block the @Async sender thread forever
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 5000
+      mail.smtp.writetimeout: 5000
+      # Off for Mailpit. A real relay on 587 needs both true (STARTTLS is required, never silently downgraded)
+      mail.smtp.auth: ${SMTP_AUTH:false}
+      mail.smtp.starttls.enable: ${SMTP_STARTTLS:false}
+      mail.smtp.starttls.required: ${SMTP_STARTTLS:false}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      # Short: the outbox relay holds row locks while it publishes (RNF02, docs/jobs.md).
+      timeout: 2s
+      connect-timeout: 2s         # Lettuce defaults to 10s when Redis is unreachable
+  task:
+    scheduling:
+      pool:
+        size: 4                   # outbox relay, dead job notifier and results consumer never queue behind each other
   modulith:
     events:
       jdbc:
         schema-initialization:
-          enabled: true           # Modulith event publication table
+          enabled: false          # table created by core migration V20261116090100
+
+logging:
+  pattern:
+    # Correlation id of the request or event (core.tenant.CorrelationContext, docs/events.md).
+    correlation: "[%X{correlationId:-}] "
 
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,modulith
+        include: health   # everything else is denied by SecurityConfig
+  health:
+    mail:
+      # SMTP down must not mark the app down: emails stay in the outbox and are retried (RNF02)
+      enabled: false
+    redis:
+      # Redis down must not mark the app down: dispatch keeps writing to the outbox and the relay catches up
+      # (RNF02). Alerting on the age of the oldest pending job is #87.
+      enabled: false
+
+alinha:
+  frameworks:
+    # Folder with the framework catalogues (RNF18). Mounted into the container in production.
+    dir: ${FRAMEWORKS_DIR:../../frameworks}
+  # Job dispatcher (RNF02): outbox in PostgreSQL -> Redis Streams. See docs/jobs.md.
+  jobs:
+    relay:
+      enabled: true
+      poll-interval-ms: 1000
+      batch-size: 50
+      max-publish-failures: 10
+      backoff-base: 2s
+      backoff-max: 5m
+    results:
+      enabled: true
+      poll-interval-ms: 1000
+      batch-size: 50
+      claim-min-idle: 1m
+      max-deliveries: 5
+      max-total-deliveries: 100
+    default-max-attempts: 3
+  identity:
+    # Admin access to Keycloak for tenant provisioning (ADR 0004). The secret comes from OpenBao.
+    base-url: ${KEYCLOAK_URL:http://localhost:8180}
+    realm: alinha
+    client-id: alinha-provisioner
+    client-secret: ${identity.provisioner-secret:}
+
+server:
+  # Behind the BFF: take the client IP from X-Forwarded-For only when the request comes from a trusted proxy, so a
+  # client cannot choose its own (registration rate limit, ADR 0004). Tomcat's default trusts every private range,
+  # so anything on the container network could; name the proxies instead. Dev: the BFF runs on this machine.
+  # Production: ALINHA_TRUSTED_PROXIES = a regex matching only the BFF's address(es).
+  forward-headers-strategy: native
+  tomcat:
+    remoteip:
+      internal-proxies: '${ALINHA_TRUSTED_PROXIES:127\.0\.0\.1|0:0:0:0:0:0:0:1|::1}'

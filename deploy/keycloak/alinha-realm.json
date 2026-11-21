@@ -3,11 +3,19 @@
   "displayName": "aLinha",
   "enabled": true,
   "sslRequired": "none",
-  "registrationAllowed": false,
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": true,
+  "verifyEmail": true,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,
   "bruteForceProtected": true,
+  "failureFactor": 10,
+  "waitIncrementSeconds": 60,
+  "maxFailureWaitSeconds": 900,
+  "maxDeltaTimeSeconds": 43200,
+  "passwordPolicy": "length(12) and maxLength(128) and digits(1) and regexPattern(.*\\p{L}.*) and notUsername(undefined) and notEmail(undefined)",
+  "loginTheme": "alinha",
   "internationalizationEnabled": true,
   "supportedLocales": [
     "pt",
@@ -29,12 +37,57 @@
   },
   "requiredActions": [
     {
+      "alias": "VERIFY_EMAIL",
+      "name": "Verify Email",
+      "providerId": "VERIFY_EMAIL",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 10,
+      "config": {}
+    },
+    {
       "alias": "CONFIGURE_TOTP",
       "name": "Configure OTP",
       "providerId": "CONFIGURE_TOTP",
       "enabled": true,
       "defaultAction": true,
-      "priority": 10,
+      "priority": 20,
+      "config": {}
+    },
+    {
+      "alias": "UPDATE_PASSWORD",
+      "name": "Update Password",
+      "providerId": "UPDATE_PASSWORD",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 30,
+      "config": {}
+    },
+    {
+      "alias": "UPDATE_PROFILE",
+      "name": "Update Profile",
+      "providerId": "UPDATE_PROFILE",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 40,
+      "config": {}
+    },
+    {
+      "alias": "TERMS_AND_CONDITIONS",
+      "name": "Terms and Conditions",
+      "providerId": "TERMS_AND_CONDITIONS",
+      "enabled": false,
+      "defaultAction": false,
+      "priority": 50,
+      "config": {}
+    },
+    {
+      "alias": "delete_account",
+      "name": "Delete Account",
+      "providerId": "delete_account",
+      "enabled": false,
+      "defaultAction": false,
+      "priority": 60,
       "config": {}
     }
   ],
@@ -51,8 +104,36 @@
       {
         "name": "analyst",
         "description": "Analista — apoio técnico de uma organização cliente"
+      },
+      {
+        "name": "registrant",
+        "description": "Conta nova que ainda não registou a organização"
+      },
+      {
+        "name": "offline_access",
+        "description": "${role_offline-access}"
+      },
+      {
+        "name": "uma_authorization",
+        "description": "${role_uma_authorization}"
+      },
+      {
+        "name": "default-roles-alinha",
+        "description": "Papéis de uma conta criada no registo",
+        "composite": true,
+        "composites": {
+          "realm": [
+            "offline_access",
+            "uma_authorization",
+            "registrant"
+          ]
+        }
       }
     ]
+  },
+  "defaultRole": {
+    "name": "default-roles-alinha",
+    "composite": true
   },
   "clients": [
     {
@@ -70,6 +151,9 @@
       "fullScopeAllowed": true,
       "rootUrl": "http://localhost:8081",
       "baseUrl": "http://localhost:8081",
+      "attributes": {
+        "post.logout.redirect.uris": "http://localhost:5173/*"
+      },
       "redirectUris": [
         "http://localhost:8081/*"
       ],
@@ -137,6 +221,20 @@
           }
         }
       ]
+    },
+    {
+      "clientId": "alinha-provisioner",
+      "name": "aLinha provisioner",
+      "description": "Service account of the aLinha application: assigns the organization to a new account (ADR 0004)",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "dev-provisioner-secret",
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "fullScopeAllowed": true
     }
   ],
   "users": [
@@ -161,7 +259,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "alinha",
+          "value": "alinha-dev-1",
           "temporary": false
         }
       ]
@@ -187,7 +285,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "alinha",
+          "value": "alinha-dev-1",
           "temporary": false
         }
       ]
@@ -214,7 +312,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "alinha",
+          "value": "alinha-dev-1",
           "temporary": false
         }
       ]
@@ -240,10 +338,21 @@
       "credentials": [
         {
           "type": "password",
-          "value": "alinha",
+          "value": "alinha-dev-1",
           "temporary": false
         }
       ]
+    },
+    {
+      "username": "service-account-alinha-provisioner",
+      "enabled": true,
+      "serviceAccountClientId": "alinha-provisioner",
+      "clientRoles": {
+        "realm-management": [
+          "manage-users",
+          "view-users"
+        ]
+      }
     }
   ],
   "components": {

@@ -6,7 +6,8 @@ A PR that changes a contract changes **both sides together** (see the main READM
 | Folder | Between | Format |
 |---|---|---|
 | `jobs/` | Job Dispatcher (Kotlin) ↔ workers (Python) via Redis Streams | JSON Schema, one file per type and version (`<type>.v<n>.schema.json`) |
-| `openapi/` | BFF/frontend ↔ aLinha Application | OpenAPI 3 (`alinha.yaml`), generates `@alinha/api-client` |
+| `openapi/` | BFF/frontend ↔ aLinha Application | OpenAPI 3.1 (`alinha.yaml`), generates `@alinha/api-client` ([guide](openapi/README.md)) |
 | `ai/` | AI Gateway (Kotlin) ↔ AI Service (Python) | OpenAPI 3 |
+| `frameworks/` | Compliance Engine (Kotlin) — catalogue validation in CI | JSON Schema, one file per type and version (`<type>.v<n>.schema.json`) |
 
 Rule: never change a published schema in an incompatible way — create `v2` and keep `v1` until every consumer has migrated.

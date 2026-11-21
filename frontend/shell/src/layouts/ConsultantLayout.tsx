@@ -20,7 +20,7 @@ export function OrgSwitcher({ organizations, current }: { organizations: readonl
       <label htmlFor={id} className="font-semibold">Cliente</label>
       <select
         id={id}
-        className="rounded-md border px-2 py-1.5"
+        className="rounded-md border border-line bg-paper px-2 py-1.5"
         value={current ?? ''}
         onChange={(e) => e.target.value && navigate(`/portfolio/${encodeURIComponent(e.target.value)}`)}
       >
@@ -31,14 +31,18 @@ export function OrgSwitcher({ organizations, current }: { organizations: readonl
   )
 }
 
-/** /portfolio and /portfolio/:org — the consultant: portfolio, organization switcher and the client's pages. */
+/**
+ * /portfolio, /portfolio/<path> and /portfolio/:org — the consultant: the client list and the plugins' pages across
+ * all clients (no organization), or one client's pages with the organization switcher.
+ */
 export function ConsultantLayout({ plugins }: { plugins: readonly FrontendPlugin[] }) {
   const { org } = useParams()
   const { me, can, isConsultant } = useSession()
   if (!isConsultant) return <Navigate to="/" replace />
 
   const organization = org ? me.organizations.find((o) => o.slug === org) : undefined
-  const sections: FrameSection[] = [{ links: [PORTFOLIO] }]
+  const portfolioLinks = pluginNav(plugins, 'portfolio', can).map((n) => ({ to: `/portfolio/${n.path}`, label: n.label }))
+  const sections: FrameSection[] = [{ links: [PORTFOLIO, ...portfolioLinks] }]
   if (organization) {
     const base = `/portfolio/${organization.slug}`
     const links = pluginNav(plugins, 'consultant', can).map((n) => ({ to: `${base}/${n.path}`, label: n.label }))
@@ -71,7 +75,7 @@ export function PortfolioPage() {
       <ul className="flex flex-col gap-2">
         {me.organizations.map((o) => (
           <li key={o.id}>
-            <Link to={`/portfolio/${encodeURIComponent(o.slug)}`} className="block rounded-md border px-4 py-3 hover:bg-gray-50">{o.name}</Link>
+            <Link to={`/portfolio/${encodeURIComponent(o.slug)}`} className="block rounded-md border border-line-soft px-4 py-3 hover:bg-paper-soft">{o.name}</Link>
           </li>
         ))}
       </ul>
