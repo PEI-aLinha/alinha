@@ -47,7 +47,7 @@ const testPlugin = definePlugin({
       { path: 'denied', Component: Denied },
       { path: 'probe', Component: TenantProbe },
       { path: 'two-calls', Component: TwoCalls },
-      { path: 'guardar', Component: SaveButton },
+      { path: 'save', Component: SaveButton },
       { path: 'lazy', handle: { resource: 'risk' }, lazy: async () => ({ Component: () => <h1>Página carregada à parte</h1> }) },
     ],
     consultant: [
@@ -365,7 +365,7 @@ describe('error pages', () => {
 
 describe('toasts', () => {
   it('a plugin page can confirm an action with useToast()', async () => {
-    renderApp({ url: '/org/acme/guardar', plugins })
+    renderApp({ url: '/org/acme/save', plugins })
     fireEvent.click(await screen.findByRole('button', { name: 'Guardar' }))
     expect(screen.getByText('Ativo guardado').closest('[role="status"]')).not.toBeNull()
   })
