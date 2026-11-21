@@ -44,7 +44,7 @@ class CsrfIntegrationTest {
 
     /** A GET materialises the double-submit cookie, exactly as the shell's first `/api/me` call does. */
     private fun csrfToken(): String =
-        client.get().uri("/actuator/health").exchange()
+        client.get().uri("/actuator/health/liveness").exchange()
             .expectStatus().isOk
             .expectCookie().exists("XSRF-TOKEN")
             .returnResult(String::class.java)
