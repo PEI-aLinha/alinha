@@ -18,12 +18,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 EU_LLM_HOSTS: frozenset[str] = frozenset({
     "api.mistral.ai",    # Mistral AI (FR), La Plateforme
     "api.scaleway.ai",   # Scaleway (FR), Generative APIs
-    "localhost",         # self-hosted model on the same machine (e.g. vLLM, Ollama)
-    "127.0.0.1",         
-    #all models will be changed to approve the host in the future, but for now we allow it for local testing
 })
 
-# Hosts where plain http and any port are allowed: the traffic never leaves the machine.
+# Loopback, for a model on the developer's machine (vLLM, Ollama). Never part of the
+# production allowlist: accepted only with ALLOW_LOCAL_LLM=true, which the Dockerfile sets
+# to false. Plain http and any port are allowed here, since the traffic stays on the machine.
 LOCAL_LLM_HOSTS: frozenset[str] = frozenset({"localhost", "127.0.0.1"})
 
 
@@ -37,6 +36,8 @@ class Settings(BaseSettings):
     llm_base_url: str | None = None  # host must be in EU_LLM_HOSTS
     llm_model: str | None = None
     llm_timeout_seconds: float = Field(default=30.0, gt=0)
+    # Dev only: lets LLM_BASE_URL point at a model on this machine (see LOCAL_LLM_HOSTS).
+    allow_local_llm: bool = False
 
     # Safety net against huge bodies sent to a paid LLM (413). Generous on purpose: the full
     # assessment of every framework is estimated at ~150 KB. The real per-model budget belongs
@@ -69,15 +70,20 @@ class Settings(BaseSettings):
         if missing:
             raise ValueError(f"LLM_PROVIDER={self.llm_provider} requires: {', '.join(missing)}")
         assert self.llm_base_url  # checked above; narrows the type
-        _check_llm_url(self.llm_base_url)
+        _check_llm_url(self.llm_base_url, allow_local=self.allow_local_llm)
         return self
 
 
-def _check_llm_url(url: str) -> None:
+def _check_llm_url(url: str, *, allow_local: bool) -> None:
     """The API key and client context go to this URL, so it must be an approved EU host over TLS."""
     parts = urlsplit(url)
     host = (parts.hostname or "").lower()
-    if host not in EU_LLM_HOSTS:
+    local = host in LOCAL_LLM_HOSTS
+    if local and not allow_local:
+        raise ValueError(
+            f"LLM_BASE_URL host '{host}' is local; set ALLOW_LOCAL_LLM=true (dev only) to use it"
+        )
+    if not local and host not in EU_LLM_HOSTS:
         raise ValueError(
             f"LLM_BASE_URL host '{host}' is not in EU_LLM_HOSTS (config.py): "
             "the LLM must process data in the EU"
@@ -85,7 +91,6 @@ def _check_llm_url(url: str) -> None:
     if parts.username is not None or parts.password is not None:
         raise ValueError("LLM_BASE_URL must not contain credentials; the API key comes from OpenBao")
 
-    local = host in LOCAL_LLM_HOSTS
     if local:
         # Plain HTTP only where the traffic never leaves the machine.
         if parts.scheme not in ("http", "https"):

@@ -11,16 +11,19 @@ The provider is abstracted (`providers/`): `fake` for dev and tests, `openai_com
 with an OpenAI-compatible Chat Completions API. The LLM must process data in the EU, so the host of
 `LLM_BASE_URL` must be in `EU_LLM_HOSTS` (`src/ai_service/config.py`); otherwise the service does not
 start. The list lives in code so approving a provider needs a reviewed PR. The URL must also use
-`https` on the default port and carry no credentials; only `localhost`/`127.0.0.1` may use `http`
-and any port.
+`https` on the default port and carry no credentials.
 
 | Host | Provider | Notes |
 |---|---|---|
 | `api.mistral.ai` | Mistral AI (FR) | La Plateforme |
 | `api.scaleway.ai` | Scaleway (FR) | Generative APIs |
-| `localhost`, `127.0.0.1` | self-hosted (vLLM, Ollama) | data does not leave the machine |
 
 Before adding a host, check where the provider processes and stores data and add a row here.
+
+For a model on your own machine (vLLM, Ollama), set `ALLOW_LOCAL_LLM=true`: `localhost` and
+`127.0.0.1` are then accepted over `http` on any port. This is **dev only**; the Dockerfile sets
+`ALLOW_LOCAL_LLM=false`, since in a container loopback could only reach a sidecar, never a vetted
+EU provider.
 
 ## Configuration (env)
 
@@ -29,6 +32,7 @@ Before adding a host, check where the provider processes and stores data and add
 | `LLM_PROVIDER` | always (`fake` or `openai_compat`) | none: a missing value stops startup |
 | `LLM_BASE_URL`, `LLM_MODEL` | with `openai_compat` | — |
 | `LLM_TIMEOUT_SECONDS` | no | `30` |
+| `ALLOW_LOCAL_LLM` | no, dev only | `false` |
 | `MAX_REQUEST_BYTES` | no | `262144` (256 KiB); larger bodies get 413. `context` is also capped at 20 levels of nesting (422) |
 | `BAO_ADDR` | no | `http://localhost:8200` |
 | `BAO_TOKEN` | always (dev: `dev-ai-token`) | — |

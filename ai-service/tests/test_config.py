@@ -37,7 +37,6 @@ def test_bao_token_is_required_for_every_provider(monkeypatch, provider):
 @pytest.mark.parametrize("url", [
     "https://api.mistral.ai/v1",
     "https://API.Scaleway.ai/v1",          # host match is case-insensitive
-    "http://localhost:11434/v1",
 ])
 def test_accepts_eu_hosts(url):
     assert real(llm_base_url=url).llm_base_url == url
@@ -54,13 +53,48 @@ def test_rejects_hosts_outside_the_eu_allowlist(url):
         real(llm_base_url=url)
 
 
+def test_accepts_default_https_port_explicitly():
+    url = "https://api.mistral.ai:443/v1"
+    assert real(llm_base_url=url).llm_base_url == url
+
+
+def test_local_llm_is_off_by_default():
+    assert Settings().allow_local_llm is False
+
+
 @pytest.mark.parametrize("url", [
-    "https://api.mistral.ai:443/v1",
-    "http://127.0.0.1:8001/v1",          # local: http and any port allowed
+    "http://localhost:11434/v1",
+    "http://127.0.0.1:8001/v1",
     "https://localhost:8443/v1",
 ])
-def test_accepts_tls_or_local_urls(url):
-    assert real(llm_base_url=url).llm_base_url == url
+def test_local_hosts_are_rejected_without_the_dev_flag(url):
+    # Loopback is not in the production allowlist: in a container it could only reach
+    # a sidecar or a metadata proxy, never a vetted EU provider.
+    with pytest.raises(ValidationError, match="ALLOW_LOCAL_LLM"):
+        real(llm_base_url=url)
+
+
+@pytest.mark.parametrize("url", [
+    "http://localhost:11434/v1",           # local: http and any port allowed
+    "http://127.0.0.1:8001/v1",
+    "https://localhost:8443/v1",
+])
+def test_local_hosts_are_accepted_with_the_dev_flag(url):
+    assert real(llm_base_url=url, allow_local_llm=True).llm_base_url == url
+
+
+def test_dev_flag_comes_from_env(monkeypatch):
+    monkeypatch.setenv("ALLOW_LOCAL_LLM", "true")
+    monkeypatch.setenv("LLM_PROVIDER", "openai_compat")
+    monkeypatch.setenv("LLM_BASE_URL", "http://localhost:11434/v1")
+    monkeypatch.setenv("LLM_MODEL", "m")
+
+    assert Settings().allow_local_llm is True
+
+
+def test_dev_flag_does_not_widen_the_eu_allowlist():
+    with pytest.raises(ValidationError, match="not in EU_LLM_HOSTS"):
+        real(llm_base_url="https://api.openai.com/v1", allow_local_llm=True)
 
 
 @pytest.mark.parametrize("url,message", [
@@ -74,7 +108,7 @@ def test_accepts_tls_or_local_urls(url):
 ])
 def test_rejects_unsafe_urls(url, message):
     with pytest.raises(ValidationError, match=message):
-        real(llm_base_url=url)
+        real(llm_base_url=url, allow_local_llm=True)  # flag on, so ftp://localhost hits the scheme check
 
 
 def test_url_errors_do_not_echo_credentials():

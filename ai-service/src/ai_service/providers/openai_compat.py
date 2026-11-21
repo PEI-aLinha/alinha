@@ -60,7 +60,12 @@ class OpenAiCompatProvider:
         if not isinstance(text, str) or not text.strip():
             raise ProviderError("empty completion")
 
-        return LlmResult(text=text, model=body.get("model") or self._model)
+        # Provenance (RNF14): use the provider's model name only if it is a real string;
+        # anything else would break AiDraft validation and surface as a 500.
+        model = body.get("model")
+        if not isinstance(model, str) or not model.strip():
+            model = self._model
+        return LlmResult(text=text, model=model)
 
     async def aclose(self) -> None:
         await self._client.aclose()

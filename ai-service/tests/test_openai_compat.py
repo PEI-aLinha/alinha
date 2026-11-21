@@ -71,6 +71,15 @@ async def test_falls_back_to_configured_model(provider, mock):
     assert (await provider.complete(system="s", user="u")).model == "eu-model"
 
 
+@pytest.mark.parametrize("bad_model", [123, {"name": "x"}, ["m"], "", "   ", None, True])
+async def test_non_string_model_falls_back_to_configured_model(provider, mock, bad_model):
+    mock.post(ENDPOINT).respond(200, json=completion(model=bad_model))
+
+    result = await provider.complete(system="s", user="u")
+
+    assert result.model == "eu-model"
+
+
 @pytest.mark.parametrize("status", [400, 401, 429, 500, 503])
 async def test_non_200_is_provider_error_without_body(provider, mock, status):
     mock.post(ENDPOINT).respond(status, json={"error": "context: MFA em falta"})
