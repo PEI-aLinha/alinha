@@ -1,6 +1,8 @@
 package pt.alinha
 
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ValueSource
 import org.junit.jupiter.api.Test
 import org.springframework.boot.test.context.runner.ApplicationContextRunner
 
@@ -10,21 +12,23 @@ class DemoProfileGuardTest {
         .withUserConfiguration(DemoProfileGuard::class.java)
 
     @Test
-    fun `starts with demo alone`() {
+    fun `starts with demo alone (local development)`() {
         runner("demo").run { assertThat(it).hasNotFailed().hasSingleBean(DemoProfileGuard::class.java) }
     }
 
-    @Test
-    fun `refuses demo together with prod`() {
-        runner("prod", "demo").run { context ->
+    @ParameterizedTest
+    @ValueSource(strings = ["prod", "staging", "production", "anything"])
+    fun `refuses demo together with any other profile`(other: String) {
+        runner(other, "demo").run { context ->
             assertThat(context).hasFailed()
-            assertThat(context.startupFailure).rootCause().hasMessageContaining(DemoProfileGuard.ALLOW_IN_PROD)
+            assertThat(context.startupFailure).rootCause()
+                .hasMessageContaining(DemoProfileGuard.ALLOW).hasMessageContaining("'$other'")
         }
     }
 
     @Test
-    fun `starts with demo and prod on the demo server`() {
-        runner("prod", "demo").withPropertyValues("${DemoProfileGuard.ALLOW_IN_PROD}=true")
+    fun `starts with demo in a deployment that says it is the demo server`() {
+        runner("prod", "demo").withPropertyValues("${DemoProfileGuard.ALLOW}=true")
             .run { assertThat(it).hasNotFailed() }
     }
 
