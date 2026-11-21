@@ -6,7 +6,7 @@ describe('login', () => {
 
   beforeEach(() => {
     sessionStorage.clear()
-    vi.stubGlobal('location', { ...window.location, assign, pathname: '/org/acme/ativos', search: '?f=1', hash: '#topo' })
+    vi.stubGlobal('location', { ...window.location, assign, pathname: '/org/acme/assets', search: '?f=1', hash: '#top' })
   })
   afterEach(() => {
     vi.unstubAllGlobals()
@@ -16,7 +16,7 @@ describe('login', () => {
   it('goes to the BFF login and remembers the current page', () => {
     login.go()
     expect(assign).toHaveBeenCalledWith(LOGIN_PATH)
-    expect(login.returnPath()).toBe('/org/acme/ativos?f=1#topo')
+    expect(login.returnPath()).toBe('/org/acme/assets?f=1#top')
     expect(login.recentlyAttempted()).toBe(true)
   })
 
@@ -50,7 +50,7 @@ describe('login', () => {
     login.go()
     login.reset()
     expect(login.recentlyAttempted()).toBe(false)
-    expect(login.returnPath()).toBe('/org/acme/ativos?f=1#topo')
+    expect(login.returnPath()).toBe('/org/acme/assets?f=1#top')
   })
 
   it('works without sessionStorage (e.g. blocked by the browser)', () => {

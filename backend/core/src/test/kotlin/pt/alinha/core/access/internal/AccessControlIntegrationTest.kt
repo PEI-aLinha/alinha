@@ -38,6 +38,7 @@ private const val INVALID_TOKEN = "invalid"
         "spring.security.oauth2.resourceserver.jwt.issuer-uri=https://keycloak.test/realms/alinha",
         "spring.security.oauth2.resourceserver.jwt.audiences=alinha-api",
         "management.endpoints.web.exposure.include=health,info",
+        "management.health.redis.enabled=false", // no Redis in this slice; the jobs tests cover it
         "spring.autoconfigure.exclude=" +
             "org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration," +
             "org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration",

@@ -26,6 +26,8 @@ tags:
     description: Plugins present in the running application.
   - name: organization
     description: The client organization's registration and data (organization plugin).
+  - name: audit
+    description: Who did what and when in the current organization (core audit trail).
   - name: internal
     description: Walking-skeleton endpoints. Temporary; remove when the real endpoint exists.
 
@@ -202,6 +204,68 @@ paths:
                 $ref: '#/components/schemas/Problem'
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/audit/events:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+    get:
+      tags: [audit]
+      operationId: listAuditEvents
+      summary: History of changes in the current organization
+      description: |
+        Every recorded write of the current organization, newest first (US09, NFR04). Read-only: the audit
+        trail is append-only. Permission `audit:read` (consultant, Designated Officer).
+
+        `actor` is the Keycloak `sub` of the user, or `system` for jobs and event listeners. Names are not
+        stored in the audit trail (#75).
+      parameters:
+        - name: entityType
+          in: query
+          required: false
+          description: Only entries about this kind of entity, e.g. `organization`.
+          schema:
+            type: string
+        - name: entityId
+          in: query
+          required: false
+          description: Only entries about this entity (requires knowing its id).
+          schema:
+            type: string
+        - name: actor
+          in: query
+          required: false
+          description: Only entries by this actor (`sub` or `system`).
+          schema:
+            type: string
+        - name: from
+          in: query
+          required: false
+          description: Inclusive lower bound on `occurredAt`.
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: false
+          description: Exclusive upper bound on `occurredAt`. `from` after `to` is a `400`.
+          schema:
+            type: string
+            format: date-time
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: One page of history.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditEventPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   /api/{plugin}/ping:
     parameters:
@@ -609,6 +673,66 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    AuditEvent:
+      type: object
+      required: [id, actor, action, entityType, entityId, details, provenance, occurredAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        actor:
+          type: string
+          description: Keycloak `sub` of the user who made the change, or `system`.
+        action:
+          type: string
+          description: '`<entity>.<verb>`, e.g. `organization.updated`.'
+        entityType:
+          type: string
+        entityId:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+          description: |
+            Ids and names of changed fields, as recorded by the writer. Never secrets or personal data
+            beyond ids (docs/audit.md). Visible to the client.
+        provenance:
+          oneOf:
+            - $ref: '#/components/schemas/AiProvenance'
+            - type: 'null'
+          description: Set when the change stored AI-generated content (NFR14).
+        occurredAt:
+          type: string
+          format: date-time
+
+    AiProvenance:
+      type: object
+      description: Where AI-generated content came from (NFR14).
+      required: [model, promptVersion, sources, generatedAt]
+      properties:
+        model:
+          type: string
+        promptVersion:
+          type: string
+        sources:
+          type: array
+          items:
+            type: string
+        generatedAt:
+          type: string
+          format: date-time
+
+    AuditEventPage:
+      allOf:
+        - $ref: '#/components/schemas/PageMeta'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/AuditEvent'
 
     Ping:
       type: object

@@ -1,0 +1,18 @@
+@import "tailwindcss";
+/* aLinha design tokens, fonts and base styles: the same file the shell imports. */
+@import "@alinha/ui/theme.css";
+@source "../../packages/ui/src";
+
+/* The brand panel keeps the light palette in dark mode too: white text on the deep teal gradient. */
+@layer components {
+  .brand-panel {
+    --color-white: #ffffff;
+    --color-brand: #0b4f4a;
+    --color-brand-deep: #063632;
+    --color-signal: #12786e;
+  }
+  /* The logo is dark teal: on dark surfaces it turns white, as on the brand panel. */
+  :root[data-theme='dark'] .logo-adaptive {
+    filter: brightness(0) invert(1);
+  }
+}

@@ -64,6 +64,7 @@ Fields are proposed: the publishing plugin's issue settles them. Every domain ev
 | `AssessmentEvaluated` | assessment | dashboard-reports | `assessmentId`, `framework`, `catalogueVersion` | assessment #5, dashboard-reports #2 |
 | `RoadmapValidated` | assessment | dashboard-reports, notifications (warns the Designated Officer) | `assessmentId`, `roadmapId`, `validatedBy` | assessment #8, notifications #4 |
 | `EvidenceCollected` | code-repository, external-surface | assessment (verifies or pre-fills answers), dashboard-reports | `provider`, `evidenceId`, `controlIds` | code-repository #1, external-surface #1, assessment #10 |
+| `JobCompleted` / `JobFailed` | core (`core.jobs`) | the plugin that dispatched the job (filter by `requestedBy`) | `jobId`, `type`, `requestedBy`, `attempt` (+ `error` on `JobFailed`) | alinha #13 |
 | `CatalogueVersionPublished` | core (`core.compliance`) | none yet | `framework`, `version`, `title` | alinha #21 |
 
 `RoadmapValidated` is also the consultant's approval of the AI-drafted roadmap: nothing AI-generated reaches the

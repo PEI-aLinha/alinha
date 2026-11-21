@@ -30,6 +30,9 @@ class ApplicationContextTest {
             // Flyway has its own owner credentials (db.migration-*); one container user is enough here.
             registry.add("spring.flyway.user", postgres::getUsername)
             registry.add("spring.flyway.password", postgres::getPassword)
+            // The relay and results beans are still created; polling would only hit the stopped container at shutdown.
+            registry.add("alinha.jobs.relay.enabled") { "false" }
+            registry.add("alinha.jobs.results.enabled") { "false" }
         }
     }
 

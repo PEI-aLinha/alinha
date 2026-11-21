@@ -19,6 +19,8 @@ dependencies {
     implementation(libs.jackson.module.kotlin)
     implementation(libs.jackson.dataformat.yaml)
     implementation(libs.spring.vault.core) // TenantSecretStore on OpenBao (KV v2)
+    implementation(libs.spring.boot.starter.data.redis) // job outbox relay -> Redis Streams (RNF02)
+    implementation(libs.json.schema.validator) // job envelopes checked against contracts/jobs
     implementation(libs.micrometer.core) // alerts on provisioning failures
 
     implementation(libs.spring.boot.starter.security.oauth2.resource.server) // Keycloak JWTs + RBAC
@@ -35,6 +37,14 @@ dependencies {
     testRuntimeOnly(libs.flyway.postgresql)
     testRuntimeOnly(libs.postgresql)
 
+}
+
+// contracts/jobs is the single source of the job formats (Kotlin and Python): ship it in the jar.
+tasks.processResources {
+    from(rootProject.file("contracts/jobs")) {
+        include("*.schema.json")
+        into("contracts/jobs")
+    }
 }
 
 // OpenBaoTenantSecretStoreTest runs with the real app policy from deploy/openbao.
