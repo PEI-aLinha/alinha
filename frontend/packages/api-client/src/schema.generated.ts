@@ -100,6 +100,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/dashboard-reports/portfolio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Compliance summary of every client in the consultant's portfolio
+         * @description One entry per client organization in the token's `tenants` claim that has data, for the consultant's portfolio
+         *     dashboard (dashboard-reports#3, FR26, US08). Read from the plugin's read models (dashboard-reports#2), built from
+         *     domain events. Not paginated: a consultant has tens of clients, not thousands.
+         *
+         *     **No `X-Alinha-Tenant`:** this works across the consultant's assigned tenants, never on one chosen by the
+         *     caller (ADR 0002, ADR 0006). A client without an entry has no assessment yet; the page still lists it from
+         *     the session's organizations.
+         *
+         *     The numbers are counts and the coverage the Compliance Engine computed (NFR05). This endpoint does not label a
+         *     client as compliant or not. Permission `portfolio:read` (consultant).
+         */
+        get: operations["getPortfolioSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/audit/events": {
         parameters: {
             query?: never;
@@ -342,6 +371,32 @@ export interface components {
             registeredAt: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        PortfolioSummary: {
+            items: components["schemas"]["PortfolioClientSummary"][];
+        };
+        PortfolioClientSummary: {
+            /**
+             * Format: uuid
+             * @description The client organization (tenant). Match it with `OrganizationRef.id` for the name and slug.
+             */
+            tenantId: string;
+            /**
+             * @description Share of applicable controls the latest evaluated assessment found in place (0–1), as computed by the
+             *     Compliance Engine. Null when no assessment has been evaluated yet.
+             */
+            coverage: number | null;
+            /** @description Controls with a gap in the latest evaluated assessment. */
+            openGaps: number;
+            /** @description Roadmaps the AI drafted that are waiting for the consultant's validation. */
+            pendingValidations: number;
+            /** @description Roadmap actions past their due date and not done. */
+            overdueActions: number;
+            /**
+             * Format: date-time
+             * @description When the latest assessment was evaluated; null if none.
+             */
+            lastAssessedAt: string | null;
         };
         AuditEvent: {
             /** Format: uuid */
@@ -651,6 +706,28 @@ export interface operations {
                 };
             };
             422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    getPortfolioSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The summary, one entry per client that has data. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PortfolioSummary"];
+                };
+            };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
         };
     };
     listAuditEvents: {

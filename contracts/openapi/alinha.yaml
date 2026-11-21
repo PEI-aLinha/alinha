@@ -26,6 +26,8 @@ tags:
     description: Plugins present in the running application.
   - name: organization
     description: The client organization's registration and data (organization plugin).
+  - name: dashboard-reports
+    description: Dashboards and reports (dashboard-reports plugin).
   - name: audit
     description: Who did what and when in the current organization (core audit trail).
   - name: internal
@@ -204,6 +206,34 @@ paths:
                 $ref: '#/components/schemas/Problem'
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/dashboard-reports/portfolio:
+    get:
+      tags: [dashboard-reports]
+      operationId: getPortfolioSummary
+      summary: Compliance summary of every client in the consultant's portfolio
+      description: |
+        One entry per client organization in the token's `tenants` claim that has data, for the consultant's portfolio
+        dashboard (dashboard-reports#3, FR26, US08). Read from the plugin's read models (dashboard-reports#2), built from
+        domain events. Not paginated: a consultant has tens of clients, not thousands.
+
+        **No `X-Alinha-Tenant`:** this works across the consultant's assigned tenants, never on one chosen by the
+        caller (ADR 0002, ADR 0006). A client without an entry has no assessment yet; the page still lists it from
+        the session's organizations.
+
+        The numbers are counts and the coverage the Compliance Engine computed (NFR05). This endpoint does not label a
+        client as compliant or not. Permission `portfolio:read` (consultant).
+      responses:
+        '200':
+          description: The summary, one entry per client that has data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortfolioSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   /api/audit/events:
     parameters:
@@ -673,6 +703,47 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    PortfolioSummary:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PortfolioClientSummary'
+
+    PortfolioClientSummary:
+      type: object
+      required: [tenantId, coverage, openGaps, pendingValidations, overdueActions, lastAssessedAt]
+      properties:
+        tenantId:
+          type: string
+          format: uuid
+          description: The client organization (tenant). Match it with `OrganizationRef.id` for the name and slug.
+        coverage:
+          type: [number, 'null']
+          minimum: 0
+          maximum: 1
+          description: |
+            Share of applicable controls the latest evaluated assessment found in place (0–1), as computed by the
+            Compliance Engine. Null when no assessment has been evaluated yet.
+        openGaps:
+          type: integer
+          minimum: 0
+          description: Controls with a gap in the latest evaluated assessment.
+        pendingValidations:
+          type: integer
+          minimum: 0
+          description: Roadmaps the AI drafted that are waiting for the consultant's validation.
+        overdueActions:
+          type: integer
+          minimum: 0
+          description: Roadmap actions past their due date and not done.
+        lastAssessedAt:
+          type: [string, 'null']
+          format: date-time
+          description: When the latest assessment was evaluated; null if none.
 
     AuditEvent:
       type: object

@@ -32,6 +32,12 @@ export type AuditEventDto = components['schemas']['AuditEvent']
 /** GET /api/audit/events: one page of history, newest first. */
 export type AuditEventPageDto = components['schemas']['AuditEventPage']
 
+/** GET /api/dashboard-reports/portfolio: one client's numbers in the consultant's portfolio dashboard. */
+export type PortfolioClientSummaryDto = components['schemas']['PortfolioClientSummary']
+
+/** GET /api/dashboard-reports/portfolio: every client of the portfolio that has data. */
+export type PortfolioSummaryDto = components['schemas']['PortfolioSummary']
+
 /** RFC 9457 Problem Details sent on every error (ADR 0003). `detail` is in Portuguese when it is meant for the user. */
 export type ProblemDto = components['schemas']['Problem']
 
