@@ -40,6 +40,12 @@ spring:
     # scans recursively. Timestamp versions so they never collide:
     #   V202611071530__assessment_init.sql
     locations: classpath:db/migration
+  # SMTP for the notifications plugin. Dev: Mailpit from docker-compose.dev.yml (UI http://localhost:8025).
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:1025}
+    username: ${SMTP_USERNAME:}
+    password: ${smtp.password:}   # OpenBao secret/alinha/app; empty when Vault is off (tests, Mailpit needs none)
   modulith:
     events:
       jdbc:
