@@ -6,9 +6,9 @@ FROM node:22-slim AS build
 RUN npm install -g pnpm@10.34.9
 WORKDIR /src
 COPY . .
-# Not frozen: a plugin pointer update can change a plugin's dependencies before the root lockfile catches up.
+# Frozen, like CI: a plugin pointer update that changes dependencies must update pnpm-lock.yaml too.
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
-    pnpm install --no-frozen-lockfile \
+    pnpm install --frozen-lockfile \
  && pnpm build
 
 FROM nginx:1.27-alpine

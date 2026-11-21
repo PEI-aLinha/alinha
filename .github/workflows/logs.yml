@@ -18,6 +18,9 @@ jobs:
   logs:
     name: Print Container Logs
     runs-on: [self-hosted, prod]
+    # The repository is public, and so are job logs: same approval and branch rule as deploying.
+    environment: production
+    if: github.ref == 'refs/heads/main'
     env:
       TAIL: ${{ inputs.tail }}
     steps:
