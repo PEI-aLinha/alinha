@@ -145,6 +145,11 @@ Avoid this unless the task needs it. Before starting, say so explicitly and list
   - **consultant** area (`/portfolio` for the client list, `/portfolio/:org/...` for one client): the service
     provider managing several client organisations
 
+  Before either, a new account with the `registrant` role and no organization only sees the **onboarding** area
+  (`/onboarding/...`, plugin route area `onboarding`: full page, no tenant). After registering, the plugin calls
+  `useHost().reauthenticate()`: the BFF refreshes the token (`POST /auth/refresh`) and the shell reloads the session
+  with the new organization, without leaving the page.
+
 ## Conventions
 
 - **English** for code, comments, docs, commit messages, branch names and **URL paths** (`/org/:org/assets`,

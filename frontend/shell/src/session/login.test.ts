@@ -27,6 +27,12 @@ describe('login', () => {
     expect(login.returnPath()).toBeNull()
   })
 
+  it('forgets an older return address when the new login goes home', () => {
+    login.go('/onboarding/organization')
+    login.go('/')
+    expect(login.returnPath()).toBeNull()
+  })
+
   it('forgets an attempt after one minute', () => {
     login.go()
     expect(login.recentlyAttempted(Date.now() + 59_000)).toBe(true)

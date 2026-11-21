@@ -218,8 +218,25 @@ export interface components {
             publishes: string[];
             /** @description Events the plugin consumes. */
             consumes: string[];
-            /** @description RBAC resources the plugin declares. */
+            /** @description Permissions the plugin declares, as `resource:action`. */
             permissions: string[];
+            /** @description Menu entries the caller may see: only areas the caller's roles open, and only entries whose permission the caller holds. Sorted within this plugin by area (client, consultant), then `order`, then label (Portuguese collation); a menu built from several plugins has to sort the merged list again. Never in the onboarding area, which has no menu. */
+            nav: components["schemas"]["NavEntry"][];
+        };
+        /** @description Same fields as `NavItem` in `@alinha/plugin-sdk`, minus the icon. */
+        NavEntry: {
+            /** @description Text shown in the menu (European Portuguese). */
+            label: string;
+            /** @description Path relative to the area root, kebab-case segments, e.g. `organization`. */
+            path: string;
+            /** @enum {string} */
+            area: "client" | "consultant" | "onboarding";
+            /** @description RBAC resource needed to see the entry, checked as `resource:action`; absent when anyone in the area may. */
+            resource?: string;
+            /** @description Action checked with `resource`. Defaults to `read`. */
+            action: string;
+            /** @description Lower comes first. Defaults to 100. */
+            order: number;
         };
         OrganizationAddress: {
             street: string;
@@ -408,7 +425,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Every plugin manifest, sorted by id. */
+            /** @description Every plugin manifest, sorted by id. `nav` holds only the menu entries the caller's roles may see. */
             200: {
                 headers: {
                     [name: string]: unknown;
