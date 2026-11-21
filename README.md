@@ -186,7 +186,7 @@ Gradle and the frontend shell pick it up automatically.
 | Sprint | Dates | Goal |
 |---|---|---|
 | 0 | 4–10 Nov | Walking skeleton: green CI, compose, tenant + RBAC + audit, one plugin from UI → BFF → app → DB, `plugin-api` frozen |
-| 1 | 11–24 Nov | Organization, Risk & Assets, catalogues, `ComplianceEngine.applicability()` |
+| 1 | 11–24 Nov | Organization, Risk & Assets, catalogues, applicability rules (`ApplicabilityRules`, `docs/applicability.md`) |
 | 2 | 25 Nov–8 Dec | Assessment (evaluate, roadmap, `RoadmapValidated`), AI Service, workers + 2 providers, Notifications |
 | 3 | 9–15 Dec | Dashboard & Reports, integration, demo |
 | — | 16–22 Dec | Stabilisation |
