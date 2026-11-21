@@ -12,6 +12,9 @@
   },
   "dependencies": {
     "@alinha/ui": "workspace:*",
+    "@tsparticles/engine": "4.4.0",
+    "@tsparticles/react": "4.4.0",
+    "@tsparticles/slim": "4.4.0",
     "keycloakify": "^11.16.4",
     "lucide-react": "^1.61.0",
     "react": "^19.2.8",

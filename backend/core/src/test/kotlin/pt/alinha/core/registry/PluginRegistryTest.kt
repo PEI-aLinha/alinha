@@ -165,4 +165,28 @@ class PluginRegistryTest {
             .isInstanceOf(IllegalArgumentException::class.java)
             .hasMessageContaining("no resource")
     }
+
+    @Test
+    fun `fails when two plugins declare the same permission`() {
+        assertThatThrownBy { registry(plugin("a", setOf("a:read")), plugin("b", setOf("a:read"))) }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("more than one plugin")
+            .hasMessageContaining("a:read")
+    }
+
+    @Test
+    fun `fails when a plugin declares a core permission`() {
+        assertThatThrownBy { registry(plugin("a", setOf("plugins:read"))) }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("core permissions")
+            .hasMessageContaining("plugins:read")
+    }
+
+    @Test
+    fun `fails when a plugin declares a core role permission`() {
+        assertThatThrownBy { registry(plugin("a", setOf("audit:read"))) }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("core permissions")
+            .hasMessageContaining("audit:read")
+    }
 }

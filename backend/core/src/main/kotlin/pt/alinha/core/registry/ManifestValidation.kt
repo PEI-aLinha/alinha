@@ -1,5 +1,6 @@
 package pt.alinha.core.registry
 
+import pt.alinha.core.access.internal.CorePermissions
 import pt.alinha.core.access.internal.Roles
 import pt.alinha.core.access.internal.knownPermissions
 import pt.alinha.core.access.internal.permissionsByRole
@@ -21,6 +22,7 @@ internal fun validateManifests(manifests: List<PluginManifest>) {
     require(duplicated.isEmpty()) { "Duplicate plugin ids: $duplicated" }
 
     manifests.forEach(::validateOwnFields)
+    requireUniqueOwners(manifests)
 
     val known = knownPermissions(manifests)
     manifests.forEach { manifest ->
@@ -37,6 +39,18 @@ internal fun validateManifests(manifests: List<PluginManifest>) {
         "Menu entries share an area and path: " +
             clashes.entries.joinToString { (key, ids) -> "${key.first.name.lowercase()}/${key.second} in $ids" }
     }
+}
+
+/**
+ * A permission belongs to exactly one plugin. Since a plugin may only map permissions it declares,
+ * this also stops a plugin from granting another plugin's permissions.
+ */
+private fun requireUniqueOwners(manifests: List<PluginManifest>) {
+    val shared = manifests
+        .flatMap { manifest -> manifest.permissions.map { it to manifest.id } }
+        .groupBy({ it.first }, { it.second })
+        .filterValues { it.size > 1 }
+    require(shared.isEmpty()) { "Permissions declared by more than one plugin: $shared" }
 }
 
 /**
@@ -66,6 +80,8 @@ private fun validateOwnFields(manifest: PluginManifest) {
     require(PLUGIN_ID.matches(manifest.id)) { "Plugin id '${manifest.id}' must be kebab-case" }
     val malformed = manifest.permissions.filterNot(PERMISSION::matches)
     require(malformed.isEmpty()) { "Plugin ${manifest.id} declares permissions not in resource:action form: $malformed" }
+    val reserved = manifest.permissions intersect CorePermissions.ALL
+    require(reserved.isEmpty()) { "Plugin ${manifest.id} declares core permissions: $reserved" }
     val unknownRoles = manifest.rolePermissions.keys - Roles.KNOWN
     require(unknownRoles.isEmpty()) { "Plugin ${manifest.id} maps unknown roles: $unknownRoles" }
     val undeclared = manifest.rolePermissions.values.flatten().toSet() - manifest.permissions

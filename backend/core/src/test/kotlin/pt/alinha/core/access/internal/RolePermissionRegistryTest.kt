@@ -80,4 +80,5 @@ class RolePermissionRegistryTest {
             .isInstanceOf(IllegalArgumentException::class.java)
             .hasMessageContaining("a:edit")
     }
+
 }

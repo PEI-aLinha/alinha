@@ -1,6 +1,6 @@
 # Access control (NFR07, NFR08)
 
-Every API request needs a valid Keycloak access token and an explicit permission. Only `/actuator/health` is public. Other actuator endpoints are denied.
+Every API request needs a valid Keycloak access token and an explicit permission. Only `/actuator/health` is public. Other actuator endpoints are denied. Spring's internal error dispatches (rendering an error response) also skip the token; a direct request to `/error` still needs one.
 
 ## Roles
 
@@ -29,9 +29,17 @@ Annotate the controller method, or the class for a default. A method annotation 
 fun create(...) = ...
 ```
 
-An endpoint without `@RequiresPermission` always answers 403. Functional routes are denied too, so plugins must use annotated controllers.
+The application refuses to start if a controller endpoint has no `@RequiresPermission`, or if an annotation names a permission no role is granted (no plugin declares it, or it is declared but missing from every `rolePermissions`), so a forgotten annotation, a typo such as `"assesment"` or a forgotten role mapping fails at startup instead of answering 403 to everyone. Spring's own `BasicErrorController` is the only exemption, and the interceptor lets only Spring's internal error dispatches through: a direct request to `/error` is checked like any endpoint and denied. At request time the interceptor still denies any endpoint without a permission, as a backstop. The startup check only sees annotated controllers (`@RequestMapping` and friends); functional routes are not checked at startup and are always denied at request time, so plugins must use annotated controllers.
+
+An endpoint open to every signed-in role (such as a plugin's `ping`) uses `@RequiresPermission("plugins")`, the core's `plugins:read`.
 
 The core grants every known role `plugins:read` (plugin discovery) and `session:read` (the BFF's `/internal/me`).
+
+## Tenant scope
+
+Realm roles are realm-wide: a `responsible` or `analyst` token has the same permissions in every organisation. `@RequiresPermission` decides *what* a user may do, not *for which organisation*, so on its own it does not stop cross-tenant access.
+
+Tenant isolation comes from `TenantContext` (ADR 0002, #8), which must check the token's `tenants` claim, and from filtering every query by the current tenant. This RBAC layer does not provide either.
 
 ## Declaring permissions in a plugin
 
@@ -40,13 +48,15 @@ Declare permissions, their roles and the plugin's menu entries in its `PluginMan
 - two plugins have the same id, or an id is not kebab-case;
 - a permission is not in `resource:action` form;
 - a role is unknown, or a mapped permission is not in `permissions`;
+- two plugins declare the same permission (each permission has exactly one owner, so a plugin cannot grant another plugin's permission);
+- a plugin declares a core permission (`plugins:read`, `session:read`, `audit:read`: every permission the core grants is reserved);
 - a declared permission is granted to no role (add it to `rolePermissions`): its endpoints would answer 403 to everyone;
 - a menu path is not relative kebab-case (`risks/assets`, never `/assets` or `..`);
 - a menu entry (`nav`) needs a permission no plugin declares and the core does not own. An entry may use another plugin's permission (e.g. a dashboard entry behind `assessment:read`), but prefer the plugin's own;
 - a menu entry's permission is held by no role that opens its area (e.g. a consultant entry behind a permission only responsibles have), so nobody would see it;
 - a menu entry is in the onboarding area, which has no menu, or has an `action` without a `resource`;
 - two menu entries share the same area and path;
-- an endpoint's `@RequiresPermission` names a permission no role is granted (undeclared, or declared but missing from `rolePermissions`).
+- a controller endpoint has no `@RequiresPermission`, or names a permission no role is granted (undeclared, or declared but missing from `rolePermissions`).
 
 ```kotlin
 PluginManifest(
@@ -76,6 +86,7 @@ Add a row with each new endpoint.
 |---|---|---|---|---|---|
 | `GET /actuator/health` | public | yes | yes | yes | yes |
 | `GET /api/plugins` | `plugins:read` | yes | yes | yes | yes |
+| `GET /api/<plugin-id>/ping` | `plugins:read` | yes | yes | yes | yes |
 | `GET /api/audit/events` | `audit:read` | yes | yes | no | no |
 | `GET /api/me` | authenticated (BFF) | yes | yes | yes | yes |
 | `GET /internal/me` | `session:read` (BFF only) | yes | yes | yes | yes |

@@ -17,6 +17,11 @@ spring:
         default-context: alinha/app
         # Required: without it Spring Cloud Vault also reads secret/data/<spring.application.name> (alinha) and gets 403.
         application-name: alinha/app
+  web:
+    resources:
+      # The app serves no static files (the frontend is Nginx's). Without the mappings nothing bypasses
+      # @RequiresPermission; any such request would be denied by RequiresPermissionInterceptor anyway.
+      add-mappings: false
   security:
     oauth2:
       resourceserver:
@@ -40,6 +45,21 @@ spring:
     # scans recursively. Timestamp versions so they never collide:
     #   V202611071530__assessment_init.sql
     locations: classpath:db/migration
+  # SMTP for the notifications plugin. Dev: Mailpit from docker-compose.dev.yml (UI http://localhost:8025).
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:1025}
+    username: ${SMTP_USERNAME:}
+    password: ${smtp.password:}   # OpenBao secret/alinha/app (never an env var); only sent when SMTP_AUTH=true
+    properties:
+      # JavaMail defaults to no timeouts: a hung SMTP server would block the @Async sender thread forever
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 5000
+      mail.smtp.writetimeout: 5000
+      # Off for Mailpit. A real relay on 587 needs both true (STARTTLS is required, never silently downgraded)
+      mail.smtp.auth: ${SMTP_AUTH:false}
+      mail.smtp.starttls.enable: ${SMTP_STARTTLS:false}
+      mail.smtp.starttls.required: ${SMTP_STARTTLS:false}
   data:
     redis:
       host: ${REDIS_HOST:localhost}
@@ -66,8 +86,11 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,modulith
+        include: health   # everything else is denied by SecurityConfig
   health:
+    mail:
+      # SMTP down must not mark the app down: emails stay in the outbox and are retried (RNF02)
+      enabled: false
     redis:
       # Redis down must not mark the app down: dispatch keeps writing to the outbox and the relay catches up
       # (RNF02). Alerting on the age of the oldest pending job is #87.
