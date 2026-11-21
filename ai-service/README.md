@@ -10,7 +10,9 @@ data, never as instructions.
 The provider is abstracted (`providers/`): `fake` for dev and tests, `openai_compat` for any provider
 with an OpenAI-compatible Chat Completions API. The LLM must process data in the EU, so the host of
 `LLM_BASE_URL` must be in `EU_LLM_HOSTS` (`src/ai_service/config.py`); otherwise the service does not
-start. The list lives in code so approving a provider needs a reviewed PR.
+start. The list lives in code so approving a provider needs a reviewed PR. The URL must also use
+`https` on the default port and carry no credentials; only `localhost`/`127.0.0.1` may use `http`
+and any port.
 
 | Host | Provider | Notes |
 |---|---|---|
@@ -27,6 +29,7 @@ Before adding a host, check where the provider processes and stores data and add
 | `LLM_PROVIDER` | always (`fake` or `openai_compat`) | none: a missing value stops startup |
 | `LLM_BASE_URL`, `LLM_MODEL` | with `openai_compat` | — |
 | `LLM_TIMEOUT_SECONDS` | no | `30` |
+| `MAX_REQUEST_BYTES` | no | `262144` (256 KiB); larger bodies get 413. `context` is also capped at 20 levels of nesting (422) |
 | `BAO_ADDR` | no | `http://localhost:8200` |
 | `BAO_TOKEN` | always (dev: `dev-ai-token`) | — |
 

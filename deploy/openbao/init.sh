@@ -12,7 +12,8 @@ bao kv put secret/alinha/app \
   db.migration-username="${POSTGRES_USER:-alinha}" \
   db.migration-password="${POSTGRES_PASSWORD:-alinha}" \
   smtp.password=change-me \
-  identity.provisioner-secret="${KEYCLOAK_PROVISIONER_SECRET:-dev-provisioner-secret}"
+  identity.provisioner-secret="${KEYCLOAK_PROVISIONER_SECRET:-dev-provisioner-secret}" \
+  ai-service.token=dev-ai-service-token
 
 # Secrets read by the AI Service (see ai-service/README.md). service.token must equal
 # ai-service.token above: the AI Gateway sends it and the AI Service checks it. Kept in both

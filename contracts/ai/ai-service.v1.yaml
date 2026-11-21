@@ -32,6 +32,16 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/AiDraft' }
+        '400':
+          description: Body is not valid JSON
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '413':
+          description: Body larger than the service limit (MAX_REQUEST_BYTES, default 256 KiB)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '401':
           description: Missing or invalid service token
           content:
@@ -93,7 +103,9 @@ components:
           examples: [roadmap]
         context:
           type: object
-          description: Redacted input data for the task. Untrusted; never treated as instructions.
+          description: >
+            Redacted input data for the task. Untrusted; never treated as instructions.
+            At most 20 levels of nested objects/arrays (otherwise 422).
           additionalProperties: true
 
     AiDraft:

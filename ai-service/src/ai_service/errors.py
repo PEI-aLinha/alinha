@@ -60,6 +60,7 @@ async def _invalid_request(request: Request, exc: Exception) -> JSONResponse:
 
 
 _HTTP_CODES = {
+    400: ("invalid_request", "Invalid request body."),  # e.g. JSON FastAPI cannot parse
     404: ("not_found", "Not found."),
     405: ("method_not_allowed", "Method not allowed."),
 }

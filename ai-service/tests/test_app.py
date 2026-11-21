@@ -78,7 +78,7 @@ def test_startup_fails_without_openbao_token(monkeypatch):
     from ai_service.config import get_settings
     get_settings.cache_clear()
     try:
-        with pytest.raises(Exception, match="BAO_TOKEN is not set"):
+        with pytest.raises(Exception, match="BAO_TOKEN is required"):
             with TestClient(create_app(provider=FakeProvider())):
                 pass
     finally:
@@ -105,6 +105,22 @@ def test_startup_fails_on_bad_config(monkeypatch):
                 pass
     finally:
         get_settings.cache_clear()
+
+
+def test_bad_config_passes_import_and_fails_at_startup(monkeypatch):
+    # `app = create_app()` runs at import; Settings is read only in the lifespan.
+    import importlib
+
+    import ai_service.main as m
+    monkeypatch.setenv("LLM_PROVIDER", "openai_compat")  # no LLM_BASE_URL / LLM_MODEL
+    m = importlib.reload(m)  # must not raise
+    try:
+        with pytest.raises(Exception, match="LLM_BASE_URL"):
+            with TestClient(m.app):
+                pass
+    finally:
+        monkeypatch.setenv("LLM_PROVIDER", "fake")
+        importlib.reload(m)
 
 
 def test_module_import_does_not_build_provider(monkeypatch):

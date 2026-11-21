@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 from pydantic.alias_generators import to_camel
 
 from ai_service.auth import require_service_token
@@ -20,6 +20,25 @@ from ai_service.providers.base import LlmProvider
 
 router = APIRouter(prefix="/v1", dependencies=[Depends(require_service_token)])
 
+# Real contexts are a few levels deep (organization -> controls -> answers). Deeper nesting is
+# a bug or abuse, and very deep values are costly to serialise for the LLM.
+MAX_CONTEXT_DEPTH = 20
+
+
+def _depth(value: Any) -> int:
+    """Nesting depth of dicts/lists, computed iteratively (no recursion on hostile input)."""
+    deepest = 0
+    stack: list[tuple[Any, int]] = [(value, 1)]
+    while stack:
+        current, level = stack.pop()
+        if isinstance(current, dict):
+            deepest = max(deepest, level)
+            stack.extend((v, level + 1) for v in current.values())
+        elif isinstance(current, list):
+            deepest = max(deepest, level)
+            stack.extend((v, level + 1) for v in current)
+    return deepest
+
 
 class DraftRequest(BaseModel):
     # Unknown fields are ignored, not rejected: a newer core may add optional fields
@@ -28,6 +47,13 @@ class DraftRequest(BaseModel):
 
     task: str
     context: dict[str, Any]
+
+    @field_validator("context")
+    @classmethod
+    def _not_too_deep(cls, value: dict[str, Any]) -> dict[str, Any]:
+        if _depth(value) > MAX_CONTEXT_DEPTH:
+            raise ValueError(f"context is nested more than {MAX_CONTEXT_DEPTH} levels")
+        return value
 
 
 class AiDraft(BaseModel):

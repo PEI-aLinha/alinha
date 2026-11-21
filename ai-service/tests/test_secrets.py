@@ -76,7 +76,9 @@ def test_uses_configured_path_and_field(client_cls):
 
 def test_missing_token_fails_without_contacting_openbao(client_cls):
     with pytest.raises(SecretsError, match="BAO_TOKEN is not set"):
-        read_llm_api_key(settings(bao_token=None))
+        s = settings()
+        s.bao_token = None  # Settings refuses it; read_llm_api_key still guards against it
+        read_llm_api_key(s)
 
     client_cls.assert_not_called()
 

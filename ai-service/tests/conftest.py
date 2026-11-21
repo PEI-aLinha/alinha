@@ -10,6 +10,8 @@ TEST_HOSTS = {"llm.example.eu", "llm.example"}
 def _test_config(monkeypatch):
     # LLM_PROVIDER has no default (a forgotten value must stop production), so tests set it.
     monkeypatch.setenv("LLM_PROVIDER", "fake")
+    # Required for every provider; tests that inject service_token never contact OpenBao.
+    monkeypatch.setenv("BAO_TOKEN", "test-bao-token")
     monkeypatch.setattr(config, "EU_LLM_HOSTS", config.EU_LLM_HOSTS | TEST_HOSTS)
     config.get_settings.cache_clear()
     yield
