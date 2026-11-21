@@ -97,10 +97,6 @@ management:
       enabled: false
 
 alinha:
-  security:
-    # Empty: keys found through the issuer's discovery document (dev). Production sets the internal Keycloak URL,
-    # because the public issuer is not reachable from inside the container network.
-    jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:}
   frameworks:
     # Folder with the framework catalogues (RNF18). Mounted into the container in production.
     dir: ${FRAMEWORKS_DIR:../../frameworks}
