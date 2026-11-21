@@ -160,6 +160,23 @@ class ApplicabilityRulesTest {
             )
         }
 
+        /** A type that is not covered says nothing about a result another type decides: no contradictory messages. */
+        @Test
+        fun `a covered type hides the not-covered findings of the other types`() {
+            val result = assess(SMALL_SIZE, Nis2Answers(entityTypes = linkedSetOf(DRINKING_WATER, DNS_SERVICE_PROVIDER)))
+            val ids = result.findingIds(ApplicabilityRules.NIS2)
+            assertEquals(ESSENTIAL, result.nis2Classification)
+            assertTrue(ids.any { it.startsWith("nis2.essential.") }, "$ids")
+            assertTrue(ids.none { it.startsWith("nis2.not_covered.") }, "$ids")
+        }
+
+        @Test
+        fun `when no type is covered, every type keeps its not-covered finding`() {
+            val ids = assess(SMALL_SIZE, Nis2Answers(entityTypes = linkedSetOf(DRINKING_WATER, CHEMICALS)))
+                .findingIds(ApplicabilityRules.NIS2)
+            assertEquals(2, ids.count { it.startsWith("nis2.not_covered.") }, "$ids")
+        }
+
         @Test
         fun `a critical entity is essential at any size, even without an annex type`() {
             val result = assess(MICRO_SIZE, Nis2Answers(criticalEntity = true))

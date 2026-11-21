@@ -47,8 +47,9 @@ annex II, 5.b to 5.f, which the annex itself defines by NACE Rev. 2 division (26
 | Annex I medium, or annex II medium or large | important | art. 3.º n.º 1, art. 6.º n.º 2 |
 | Annex type, micro or small | not covered | art. 3.º n.º 1 a) |
 
-- With several types, the most demanding classification wins (art. 9.º). Every type keeps its finding, most
-  demanding first and then in annex order, so the result never depends on the order the types arrived in (RNF05).
+- With several types, the most demanding classification wins (art. 9.º). Every covered type keeps its finding,
+  most demanding first and then in annex order, so the result never depends on the order the types arrived in
+  (RNF05). "Not covered" findings are shown only when no type is covered, so they never contradict the result.
 - **Significant impact** (sole provider of an essential service, serious effect on public safety or health, systemic
   or national/regional importance) with an annex type and not already essential: `cncsMayQualify`, because the
   CNCS may still cover the organization or raise it to essential (art. 3.º n.º 2 b) to e), art. 6.º n.º 1 f) and

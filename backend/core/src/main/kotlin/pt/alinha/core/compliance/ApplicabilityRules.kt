@@ -94,9 +94,10 @@ class ApplicabilityRules {
             else -> answers.entityTypes.sortedBy { it.ordinal }.map { classify(it, size) }
                 .sortedByDescending { rank(it.classification) }
         }
-        // The most demanding classification wins (art. 9.º).
+        // The most demanding classification wins (art. 9.º). Once a type is covered, the "not covered" findings of the
+        // other types would contradict the result, so only the covered types explain it.
         val classification = outcomes.first().classification
-        findings += outcomes.map { it.finding }
+        findings += outcomes.filter { classification == NOT_COVERED || it.classification != NOT_COVERED }.map { it.finding }
 
         // The CNCS may still cover a small entity, or raise an important one to essential (art. 3.º n.º 2 b-e).
         val cncsMayQualify = answers.significantImpact && answers.entityTypes.isNotEmpty() &&
