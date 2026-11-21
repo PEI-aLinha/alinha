@@ -26,12 +26,16 @@ services:
 
   redis:
     image: redis:8
+    # AOF, fsync on every write: a job the outbox marked `published` must survive a Redis crash (RNF02, docs/jobs.md).
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "always"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 2s
       timeout: 3s
       retries: 30
     ports: ["127.0.0.1:6379:6379"]
+    volumes:
+      - redisdata:/data
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.4
@@ -85,3 +89,4 @@ services:
 
 volumes:
   pgdata:
+  redisdata:

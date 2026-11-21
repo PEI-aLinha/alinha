@@ -18,7 +18,8 @@ import java.util.UUID
 @SpringBootTest(classes = [AuditTestApplication::class])
 class AuditAppendOnlyTest {
     companion object {
-        private const val APP_PASSWORD = "test-app"
+        /** Throwaway login for the test container, new on every run. */
+        private val APP_PASSWORD = UUID.randomUUID().toString()
         private val CHANGES = listOf(
             "update audit.audit_event set action = 'tampered'",
             "delete from audit.audit_event",
