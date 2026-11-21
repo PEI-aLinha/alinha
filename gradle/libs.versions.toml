@@ -7,6 +7,7 @@ spring-boot = "4.0.9"
 spring-modulith = "2.0.0"
 spring-cloud = "2025.1.0"
 archunit = "1.4.1"
+json-schema-validator = "3.0.8"
 
 [libraries]
 spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
@@ -26,6 +27,7 @@ spring-cloud-starter-gateway-server-webflux = { module = "org.springframework.cl
 spring-boot-starter-data-jpa = { module = "org.springframework.boot:spring-boot-starter-data-jpa" }
 spring-boot-starter-flyway = { module = "org.springframework.boot:spring-boot-starter-flyway" }
 spring-boot-starter-actuator = { module = "org.springframework.boot:spring-boot-starter-actuator" }
+spring-boot-starter-data-redis = { module = "org.springframework.boot:spring-boot-starter-data-redis" }
 micrometer-core = { module = "io.micrometer:micrometer-core" }
 spring-boot-starter-security-oauth2-resource-server = { module = "org.springframework.boot:spring-boot-starter-security-oauth2-resource-server" }
 spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
@@ -45,6 +47,8 @@ spring-cloud-starter-vault-config = { module = "org.springframework.cloud:spring
 spring-vault-core = { module = "org.springframework.vault:spring-vault-core" }
 testcontainers-vault = { module = "org.testcontainers:testcontainers-vault" }
 testcontainers-junit-jupiter = { module = "org.testcontainers:testcontainers-junit-jupiter" }
+# JSON Schema 2020-12 on Jackson 3 (job contracts in contracts/jobs)
+json-schema-validator = { module = "com.networknt:json-schema-validator", version.ref = "json-schema-validator" }
 archunit-junit5 = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
 testcontainers-postgresql = { module = "org.testcontainers:testcontainers-postgresql" }
 reactor-test = { module = "io.projectreactor:reactor-test" }

@@ -45,6 +45,17 @@ spring:
     # scans recursively. Timestamp versions so they never collide:
     #   V202611071530__assessment_init.sql
     locations: classpath:db/migration
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      # Short: the outbox relay holds row locks while it publishes (RNF02, docs/jobs.md).
+      timeout: 2s
+      connect-timeout: 2s         # Lettuce defaults to 10s when Redis is unreachable
+  task:
+    scheduling:
+      pool:
+        size: 4                   # outbox relay, dead job notifier and results consumer never queue behind each other
   modulith:
     events:
       jdbc:
@@ -61,11 +72,33 @@ management:
     web:
       exposure:
         include: health   # everything else is denied by SecurityConfig
+  health:
+    redis:
+      # Redis down must not mark the app down: dispatch keeps writing to the outbox and the relay catches up
+      # (RNF02). Alerting on the age of the oldest pending job is #87.
+      enabled: false
 
 alinha:
   frameworks:
     # Folder with the framework catalogues (RNF18). Mounted into the container in production.
     dir: ${FRAMEWORKS_DIR:../../frameworks}
+  # Job dispatcher (RNF02): outbox in PostgreSQL -> Redis Streams. See docs/jobs.md.
+  jobs:
+    relay:
+      enabled: true
+      poll-interval-ms: 1000
+      batch-size: 50
+      max-publish-failures: 10
+      backoff-base: 2s
+      backoff-max: 5m
+    results:
+      enabled: true
+      poll-interval-ms: 1000
+      batch-size: 50
+      claim-min-idle: 1m
+      max-deliveries: 5
+      max-total-deliveries: 100
+    default-max-attempts: 3
   identity:
     # Admin access to Keycloak for tenant provisioning (ADR 0004). The secret comes from OpenBao.
     base-url: ${KEYCLOAK_URL:http://localhost:8180}

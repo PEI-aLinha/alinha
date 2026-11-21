@@ -1,5 +1,7 @@
 packages:
   - frontend/shell
   - frontend/packages/*
+  # Keycloak login theme (Keycloakify), built into a jar for the dev stack
+  - frontend/keycloak-theme
   # each plugin's frontend (submodules)
   - plugins/*/*/frontend

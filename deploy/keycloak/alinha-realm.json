@@ -10,6 +10,12 @@
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,
   "bruteForceProtected": true,
+  "failureFactor": 10,
+  "waitIncrementSeconds": 60,
+  "maxFailureWaitSeconds": 900,
+  "maxDeltaTimeSeconds": 43200,
+  "passwordPolicy": "length(12) and maxLength(128) and digits(1) and regexPattern(.*\\p{L}.*) and notUsername(undefined) and notEmail(undefined)",
+  "loginTheme": "alinha",
   "internationalizationEnabled": true,
   "supportedLocales": [
     "pt",
@@ -31,12 +37,57 @@
   },
   "requiredActions": [
     {
+      "alias": "VERIFY_EMAIL",
+      "name": "Verify Email",
+      "providerId": "VERIFY_EMAIL",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 10,
+      "config": {}
+    },
+    {
       "alias": "CONFIGURE_TOTP",
       "name": "Configure OTP",
       "providerId": "CONFIGURE_TOTP",
       "enabled": true,
       "defaultAction": true,
-      "priority": 10,
+      "priority": 20,
+      "config": {}
+    },
+    {
+      "alias": "UPDATE_PASSWORD",
+      "name": "Update Password",
+      "providerId": "UPDATE_PASSWORD",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 30,
+      "config": {}
+    },
+    {
+      "alias": "UPDATE_PROFILE",
+      "name": "Update Profile",
+      "providerId": "UPDATE_PROFILE",
+      "enabled": true,
+      "defaultAction": false,
+      "priority": 40,
+      "config": {}
+    },
+    {
+      "alias": "TERMS_AND_CONDITIONS",
+      "name": "Terms and Conditions",
+      "providerId": "TERMS_AND_CONDITIONS",
+      "enabled": false,
+      "defaultAction": false,
+      "priority": 50,
+      "config": {}
+    },
+    {
+      "alias": "delete_account",
+      "name": "Delete Account",
+      "providerId": "delete_account",
+      "enabled": false,
+      "defaultAction": false,
+      "priority": 60,
       "config": {}
     }
   ],
@@ -208,7 +259,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "alinha",
+          "value": "alinha-dev-1",
           "temporary": false
         }
       ]
@@ -234,7 +285,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "alinha",
+          "value": "alinha-dev-1",
           "temporary": false
         }
       ]
@@ -261,7 +312,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "alinha",
+          "value": "alinha-dev-1",
           "temporary": false
         }
       ]
@@ -287,7 +338,7 @@
       "credentials": [
         {
           "type": "password",
-          "value": "alinha",
+          "value": "alinha-dev-1",
           "temporary": false
         }
       ]

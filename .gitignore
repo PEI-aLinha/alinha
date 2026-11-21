@@ -9,6 +9,9 @@ bin/
 # Node
 node_modules/
 dist/
+dist_keycloak/
+# Keycloak scripts Keycloakify copies for `vite dev`
+frontend/keycloak-theme/public/keycloakify-dev-resources/
 *.tsbuildinfo
 frontend/shell/src/plugins.generated.ts
 

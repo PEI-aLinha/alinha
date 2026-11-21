@@ -74,7 +74,12 @@ class TenantProvisionerIntegrationTest {
     companion object {
         @DynamicPropertySource
         @JvmStatic
-        fun datasource(registry: DynamicPropertyRegistry) = AuditDatabase.register(registry)
+        fun datasource(registry: DynamicPropertyRegistry) {
+            AuditDatabase.register(registry)
+            // The concurrency test holds MAX_CONCURRENT_PROVISIONING transactions open and still needs connections
+            // for the refused request and its own checks, so this class needs more than the shared test cap.
+            registry.add("spring.datasource.hikari.maximum-pool-size") { MAX_CONCURRENT_PROVISIONING + 2 }
+        }
     }
 
     @Autowired private lateinit var provisioning: TenantProvisioning

@@ -38,6 +38,7 @@ private const val INVALID_TOKEN = "invalid"
         "management.endpoints.web.exposure.include=health,info",
         // Same as application.yml: the app serves no static files.
         "spring.web.resources.add-mappings=false",
+        "management.health.redis.enabled=false", // no Redis in this slice; the jobs tests cover it
         "spring.autoconfigure.exclude=" +
             "org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration," +
             "org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration",
