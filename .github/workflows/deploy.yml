@@ -1,0 +1,119 @@
+name: Deploy into NEI VM
+
+# Runs on the self-hosted runner on the VM (labels self-hosted, prod). Secrets come from the GitHub environment
+# "production" (required reviewers, main only). See deploy/DEPLOYMENT.md.
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to deploy (e.g. 1.2.3). Empty deploys the latest release."
+        required: false
+        default: ""
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+  PROD_COMPOSE: docker compose --project-name alinha-prod -f deploy/docker-compose.prod.yml
+
+jobs:
+  resolve:
+    name: Resolve Image Tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      image_tag: ${{ steps.tag.outputs.image_tag }}
+    steps:
+      - id: tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED: ${{ inputs.image_tag }}
+        run: |
+          tag="$REQUESTED"
+          if [ -z "$tag" ]; then
+            tag=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)
+          fi
+          # Release tags are vX.Y.Z; publish.yml pushes images as X.Y.Z.
+          tag="${tag#v}"
+          # A moving tag would make the deploy unrepeatable.
+          case "$tag" in
+            [0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "::error::Resolved image tag '$tag' is not a pinned release (X.Y.Z)"; exit 1 ;;
+          esac
+          echo "Deploying image tag $tag"
+          echo "image_tag=$tag" >> "$GITHUB_OUTPUT"
+
+  pull:
+    name: Pull Images
+    runs-on: [self-hosted, prod]
+    environment: production
+    if: github.ref == 'refs/heads/main'
+    needs: resolve
+    permissions:
+      packages: read
+      contents: read
+    env:
+      IMAGE_TAG: ${{ needs.resolve.outputs.image_tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Our images by name: `compose config --images` would need every secret just to interpolate the file.
+      # The third-party images (postgres, redis, ...) are pulled by `up` in the deploy job.
+      - name: Pull all images
+        run: |
+          for image in app bff web keycloak job-consumer; do
+            docker pull "$REGISTRY/pei-alinha/alinha/$image:$IMAGE_TAG"
+          done
+
+  deploy:
+    name: Deploy Stack
+    runs-on: [self-hosted, prod]
+    environment: production
+    if: github.ref == 'refs/heads/main'
+    needs: [resolve, pull]
+    permissions:
+      packages: read
+      contents: read
+    env:
+      IMAGE_TAG: ${{ needs.resolve.outputs.image_tag }}
+      ALINHA_PUBLIC_URL: ${{ vars.ALINHA_PUBLIC_URL }}
+      # Postgres
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      ALINHA_APP_DB_PASSWORD: ${{ secrets.ALINHA_APP_DB_PASSWORD }}
+      KEYCLOAK_DB_PASSWORD: ${{ secrets.KEYCLOAK_DB_PASSWORD }}
+      # Keycloak
+      KEYCLOAK_ADMIN: ${{ secrets.KEYCLOAK_ADMIN }}
+      KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}
+      BFF_CLIENT_SECRET: ${{ secrets.BFF_CLIENT_SECRET }}
+      KEYCLOAK_PROVISIONER_SECRET: ${{ secrets.KEYCLOAK_PROVISIONER_SECRET }}
+      ALINHA_TEST_USER_PASSWORD: ${{ secrets.ALINHA_TEST_USER_PASSWORD }}
+      # OpenBao
+      BAO_ROOT_TOKEN: ${{ secrets.BAO_ROOT_TOKEN }}
+      BAO_APP_TOKEN: ${{ secrets.BAO_APP_TOKEN }}
+      # Optional: empty keeps the compose defaults (the NEI top proxy's network).
+      PROXY_NETWORK: ${{ vars.PROXY_NETWORK }}
+      TRUSTED_PROXY_CIDR: ${{ vars.TRUSTED_PROXY_CIDR }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy
+        run: ${{ env.PROD_COMPOSE }} up -d --remove-orphans --wait --wait-timeout 600
+
+      - name: Clean old images
+        run: |
+          echo "Pruning this repository's unused images"
+          docker image prune -af \
+            --filter "label=org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}"
+
+      - name: Show logs on failure
+        if: failure()
+        run: ${{ env.PROD_COMPOSE }} logs --tail=100

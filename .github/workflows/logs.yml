@@ -1,0 +1,37 @@
+name: Get Production Logs
+
+# Read-only: prints what the running containers logged. Found by the compose project label, so it needs no
+# secrets and no compose interpolation.
+on:
+  workflow_dispatch:
+    inputs:
+      tail:
+        description: "Lines per container"
+        required: false
+        default: "500"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  logs:
+    name: Print Container Logs
+    runs-on: [self-hosted, prod]
+    env:
+      TAIL: ${{ inputs.tail }}
+    steps:
+      - name: Print logs
+        run: |
+          case "$TAIL" in ''|*[!0-9]*) echo "::error::tail must be a number"; exit 1 ;; esac
+          if [ "$TAIL" -gt 2000 ]; then TAIL=2000; fi
+          containers=$(docker ps -a --filter label=com.docker.compose.project=alinha-prod --format '{{.Names}}' | sort)
+          if [ -z "$containers" ]; then
+            echo "::warning::No alinha-prod containers found."
+            exit 0
+          fi
+          for name in $containers; do
+            echo "::group::$name ($(docker inspect -f '{{.State.Status}}' "$name"))"
+            docker logs --tail "$TAIL" --timestamps "$name" 2>&1
+            echo "::endgroup::"
+          done
