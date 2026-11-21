@@ -81,6 +81,10 @@ The `alinha` realm, test users (Rui, Pedro, Marta, João) and their roles/tenant
 [deploy/keycloak/README.md](deploy/keycloak/README.md). The dev password is `alinha-dev-1`; the first
 login sets up TOTP (MFA). Emails land in Mailpit.
 
+SMTP for the notifications plugin defaults to Mailpit. For a real relay set `SMTP_HOST`, `SMTP_PORT` (587 with STARTTLS),
+`SMTP_USERNAME`, `SMTP_AUTH=true` and `SMTP_STARTTLS=true` (the last also makes STARTTLS mandatory). The password is not
+an env var: it is `smtp.password` in OpenBao (`secret/alinha/app`), seeded with a placeholder in `deploy/openbao/init.sh`.
+
 Requirements: JDK 21, Node 22, pnpm 10, Docker (Compose v2), Maven (only to build the Keycloak theme). The flow above is verified on Linux;
 on macOS use Docker Desktop and the same commands.
 

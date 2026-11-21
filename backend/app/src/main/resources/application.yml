@@ -45,12 +45,16 @@ spring:
     host: ${SMTP_HOST:localhost}
     port: ${SMTP_PORT:1025}
     username: ${SMTP_USERNAME:}
-    password: ${smtp.password:}   # OpenBao secret/alinha/app; Mailpit ignores it because the username is empty, so no auth is attempted
+    password: ${smtp.password:}   # OpenBao secret/alinha/app (never an env var); only sent when SMTP_AUTH=true
     properties:
       # JavaMail defaults to no timeouts: a hung SMTP server would block the @Async sender thread forever
       mail.smtp.connectiontimeout: 5000
       mail.smtp.timeout: 5000
       mail.smtp.writetimeout: 5000
+      # Off for Mailpit. A real relay on 587 needs both true (STARTTLS is required, never silently downgraded)
+      mail.smtp.auth: ${SMTP_AUTH:false}
+      mail.smtp.starttls.enable: ${SMTP_STARTTLS:false}
+      mail.smtp.starttls.required: ${SMTP_STARTTLS:false}
   data:
     redis:
       host: ${REDIS_HOST:localhost}
