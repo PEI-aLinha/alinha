@@ -107,6 +107,12 @@ export interface PluginHost {
   /** Tenant UUID of the current organization; null outside an organization (e.g. the portfolio). */
   tenantId: string | null
   organization: HostOrganization | null
+  /**
+   * Every organization the user may work on: a consultant's whole portfolio, or a client user's own one. A page
+   * across the portfolio uses it for each client's name and link (`/portfolio/<slug>`). The shell always sets it;
+   * it is optional only so host mocks written before it keep compiling.
+   */
+  organizations?: readonly HostOrganization[]
   user: { id: string; name: string; roles: string[] } | null
   /** Whether the user has `<resource>:<action>` (action defaults to 'read'). */
   can: (resource: string, action?: string) => boolean

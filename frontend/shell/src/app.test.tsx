@@ -13,6 +13,12 @@ function TenantProbe() {
   return <p>Dados de {host.organization?.name}: {probe.data?.value ?? 'a carregar'}</p>
 }
 
+/** Lists the organizations the host offers, like a page across the portfolio. */
+function OrganizationsProbe() {
+  const host = useHost()
+  return <ul aria-label="Organizações do host">{host.organizations?.map((o) => <li key={o.id}>{o.name} ({o.slug})</li>)}</ul>
+}
+
 /** Two calls at once, like a page with several queries. */
 function TwoCalls() {
   const host = useHost()
@@ -49,6 +55,7 @@ const testPlugin = definePlugin({
       { path: 'two-calls', Component: TwoCalls },
       { path: 'save', Component: SaveButton },
       { path: 'lazy', handle: { resource: 'risk' }, lazy: async () => ({ Component: () => <h1>Página carregada à parte</h1> }) },
+      { path: 'organizations', Component: OrganizationsProbe },
     ],
     onboarding: [
       { path: 'registration', Component: TenantProbe },
@@ -61,6 +68,7 @@ const testPlugin = definePlugin({
       { path: 'dashboard', Component: () => <h1>Painel do cliente</h1> },
       { path: 'probe', Component: TenantProbe },
       { path: 'draft', Component: Draft },
+      { path: 'organizations', Component: OrganizationsProbe },
     ],
   },
   nav: [
@@ -281,6 +289,18 @@ describe('consultant area (/portfolio)', () => {
     renderApp({ url: '/portfolio', plugins, me: meFor('consultant') })
     await screen.findByRole('heading', { name: 'Carteira de clientes' })
     expect(screen.getByRole('combobox', { name: 'Cliente' })).toHaveValue('')
+  })
+
+  it('gives plugins every organization of the portfolio, for names and links', async () => {
+    renderApp({ url: '/portfolio/acme/organizations', plugins, me: meFor('consultant') })
+    const list = await screen.findByRole('list', { name: 'Organizações do host' })
+    expect(within(list).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Acme, Lda. (acme)', 'Beta, S.A. (beta)'])
+  })
+
+  it('gives a client user only their own organization, never other clients', async () => {
+    renderApp({ url: '/org/acme/organizations', plugins, me: meFor('responsible') })
+    const list = await screen.findByRole('list', { name: 'Organizações do host' })
+    expect(within(list).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Acme, Lda. (acme)'])
   })
 
   it('opens a plugin page across the portfolio, with no organization and no tenant header', async () => {
