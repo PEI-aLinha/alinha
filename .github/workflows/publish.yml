@@ -17,7 +17,8 @@ env:
 jobs:
   build:
     name: Build & Push ${{ matrix.image }}
-    runs-on: ubuntu-latest
+    # The production VM is aarch64: build natively on GitHub's ARM runners (no QEMU).
+    runs-on: ubuntu-24.04-arm
     strategy:
       fail-fast: false
       matrix:
@@ -58,6 +59,7 @@ jobs:
         with:
           context: .
           file: ${{ matrix.file }}
+          platforms: linux/arm64
           build-args: ${{ matrix.build-args }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}

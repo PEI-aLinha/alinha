@@ -1,7 +1,7 @@
 # Deployment
 
 The production stack runs on a VM behind a reverse proxy that terminates TLS, and answers at
-https://pei-alinha.duckdns.org.
+https://pei-alinha.duckdns.org. The VM is **aarch64**, so `publish.yml` builds `linux/arm64` images on GitHub's ARM runners.
 
 ```text
 gh release create vX.Y.Z  ──►  publish.yml (GitHub runners)  ──►  ghcr.io/pei-alinha/alinha/<image>:X.Y.Z
