@@ -214,6 +214,18 @@ describe('client area (/org/:org)', () => {
     renderApp({ url: '/org/acme', plugins: [] })
     expect(await screen.findByRole('heading', { name: 'Ainda não há páginas disponíveis' })).toBeInTheDocument()
   })
+
+  it('opens the Integrações page when the user only sees evidence providers', async () => {
+    const provider = definePlugin({
+      id: 'provider',
+      name: 'Provider',
+      routes: { client: [{ path: 'integrations/code-repository', Component: () => <h1>Repositório</h1> }] },
+      nav: [{ label: 'Repositório de código', path: 'integrations/code-repository', area: 'client' }],
+    })
+    const { router } = renderApp({ url: '/org/acme', plugins: [provider] })
+    await waitFor(() => expect(router.state.location.pathname).toBe('/org/acme/integrations'))
+    expect(await screen.findByRole('link', { name: 'Repositório de código' })).toBeInTheDocument()
+  })
 })
 
 describe('consultant area (/portfolio)', () => {

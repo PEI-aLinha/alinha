@@ -17,7 +17,11 @@ export type NavArea = Exclude<Area, 'onboarding'>
 export interface NavItem {
   /** Visible text — in Portuguese (UI requirement). */
   label: string
-  /** Path relative to the area in English (e.g. 'assets' → /org/:org/assets). */
+  /**
+   * Path relative to the area in English (e.g. 'assets' → /org/:org/assets). `integrations` itself is reserved for
+   * the shell's «Integrações» page (the app refuses to start otherwise): an evidence provider uses
+   * `integrations/<id>`, which the shell lists on that page instead of the side menu.
+   */
   path: string
   area: NavArea
   icon?: ComponentType<{ className?: string }>

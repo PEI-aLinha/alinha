@@ -8,7 +8,7 @@ import { ForbiddenPage, NotFoundPage, RouteErrorPage, StatusPage } from '../page
 import { SessionGate, useSession } from '../session/SessionGate'
 import { isClientUser, needsOnboarding } from '../session/permissions'
 import { AREA_BASE } from './areaBase'
-import { INTEGRATIONS_PATH, pluginNav, pluginRoutes } from './plugins'
+import { INTEGRATIONS_PATH, checkReservedPaths, integrationNav, pluginNav, pluginRoutes } from './plugins'
 
 export { AREA_BASE }
 
@@ -63,12 +63,17 @@ export function HomeRedirect({ plugins }: { plugins: readonly FrontendPlugin[] }
   )
 }
 
-/** Landing page of an organization: the first menu entry, or a short note when there is none. */
+/**
+ * Landing page of an organization: the first menu entry, else the Integrações page when the user only sees evidence
+ * providers (they are not in pluginNav), else a short note.
+ */
 function AreaHome({ plugins, area }: { plugins: readonly FrontendPlugin[]; area: NavArea }) {
   const { can } = useSession()
   const { org = '' } = useParams()
+  const base = `${AREA_BASE[area]}/${encodeURIComponent(org)}`
   const [first] = pluginNav(plugins, area, can)
-  if (first) return <Navigate to={`${AREA_BASE[area]}/${encodeURIComponent(org)}/${first.path}`} replace />
+  if (first) return <Navigate to={`${base}/${first.path}`} replace />
+  if (integrationNav(plugins, area, can).length > 0) return <Navigate to={`${base}/${INTEGRATIONS_PATH}`} replace />
   return <StatusPage title="Ainda não há páginas disponíveis">Quando houver páginas para o seu perfil, aparecem no menu.</StatusPage>
 }
 
@@ -87,6 +92,7 @@ const areaChildren = (plugins: readonly FrontendPlugin[], area: NavArea): RouteO
  *   /onboarding/<path>      new account registering its organization (plugins' `onboarding` routes)
  */
 export function createRoutes(plugins: readonly FrontendPlugin[]): RouteObject[] {
+  checkReservedPaths(plugins)
   return [
     {
       path: '/',

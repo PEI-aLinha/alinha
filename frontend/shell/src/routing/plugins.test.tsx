@@ -3,7 +3,7 @@ import { isValidElement } from 'react'
 import type { RouteObject } from 'react-router'
 import { definePlugin, type FrontendPlugin } from '@alinha/plugin-sdk'
 import { makeCan } from '../session/permissions'
-import { integrationNav, pluginNav, pluginRoutes, RequirePermission } from './plugins'
+import { checkReservedPaths, integrationNav, pluginNav, pluginRoutes, RequirePermission } from './plugins'
 
 const Page = () => null
 
@@ -96,3 +96,25 @@ describe('integrationNav', () => {
     expect(integrationNav([providers], 'client', makeCan(['integration:read'])).map((n) => n.label)).toContain('Segredo')
   })
 })
+
+describe('checkReservedPaths', () => {
+  it('accepts provider pages and menu entries under integrations/', () => {
+    const provider = definePlugin({
+      id: 'p',
+      name: 'P',
+      routes: { client: [{ path: 'integrations/code-repository', Component: Page }] },
+      nav: [{ label: 'Repositório de código', path: 'integrations/code-repository', area: 'client' }],
+    })
+    expect(() => checkReservedPaths([provider, a])).not.toThrow()
+  })
+
+  it.each([
+    ['a client route', { routes: { client: [{ path: 'integrations', Component: Page }] } }],
+    ['a consultant route with slashes', { routes: { consultant: [{ path: '/integrations/', Component: Page }] } }],
+    ['a menu entry', { routes: {}, nav: [{ label: 'Integrações', path: 'integrations', area: 'client' as const }] }],
+  ])('refuses %s at exactly integrations, naming the plugin', (_what, parts) => {
+    const plugin = definePlugin({ id: 'clash', name: 'Clash', ...parts })
+    expect(() => checkReservedPaths([plugin])).toThrow(/Plugin "clash".*'integrations\/<id>'/)
+  })
+})
+

@@ -37,6 +37,29 @@ export const INTEGRATIONS_PATH = 'integrations'
 
 const isIntegration = (n: NavItem) => n.path === INTEGRATIONS_PATH || n.path.startsWith(`${INTEGRATIONS_PATH}/`)
 
+const trimSlashes = (path: string) => path.replace(/^\/+|\/+$/g, '')
+
+/**
+ * `integrations` itself is the shell's "Integrações" page, registered before the plugins' routes: a plugin route or
+ * menu entry at exactly that path would be silently replaced by it. Providers use `integrations/<id>` instead.
+ * A plugin bug, so it stops the app at start-up, naming the plugin.
+ */
+export function checkReservedPaths(plugins: readonly FrontendPlugin[]): void {
+  const areas: NavArea[] = ['client', 'consultant']
+  for (const plugin of plugins) {
+    const routes = areas.flatMap((area) => plugin.routes[area] ?? [])
+    const clash =
+      routes.some((r) => r.path !== undefined && trimSlashes(r.path) === INTEGRATIONS_PATH) ||
+      (plugin.nav ?? []).some((n) => trimSlashes(n.path) === INTEGRATIONS_PATH)
+    if (clash) {
+      throw new Error(
+        `Plugin "${plugin.id}": '${INTEGRATIONS_PATH}' is the shell's Integrações page. ` +
+          `Use '${INTEGRATIONS_PATH}/<id>' for an evidence provider's page and menu entry.`,
+      )
+    }
+  }
+}
+
 /** Every entry for one area that the user may see, by `order` then label. */
 function visibleNav(plugins: readonly FrontendPlugin[], area: NavArea, can: Can): NavItem[] {
   return plugins
