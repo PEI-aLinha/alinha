@@ -25,7 +25,8 @@ export default tseslint.config(
     // Architecture rule on the frontend: a plugin may only import the SDK,
     // the design system and the API client — never another plugin or the shell.
     // See eslint-rules/plugin-boundaries.js (tests: eslint-rules/plugin-boundaries.test.js).
-    files: ['plugins/**/frontend/**/*.{js,mjs,ts,tsx}'],
+    // Every extension Vite, TypeScript or Node will load, so no file type escapes the rule.
+    files: ['plugins/**/frontend/**/*.{js,jsx,mjs,cjs,ts,tsx,mts,cts}'],
     plugins: { alinha: { rules: { 'plugin-boundaries': pluginBoundaries } } },
     // root: this folder, so the rule works wherever ESLint runs from (e.g. an IDE with one plugin open).
     rules: { 'alinha/plugin-boundaries': ['error', { root: import.meta.dirname }] },
