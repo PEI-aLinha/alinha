@@ -7,7 +7,6 @@ from fastapi import FastAPI
 from pydantic import SecretStr
 
 from ai_service.config import get_settings
-from ai_service.deps import get_provider  # noqa: F401  (re-exported for routes and tests)
 from ai_service.drafts import router as drafts_router
 from ai_service.errors import register_error_handlers
 from ai_service.limits import BodySizeLimit

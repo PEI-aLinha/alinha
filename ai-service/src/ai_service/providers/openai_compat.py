@@ -24,6 +24,8 @@ class OpenAiCompatProvider:
     ) -> None:
         self._model = model
         self._timeout_seconds = timeout_seconds
+        # Do not set follow_redirects=True: httpx does not follow redirects by default, so a
+        # redirect can never take the API key and client context to a host outside EU_LLM_HOSTS.
         self._client = client or httpx.AsyncClient(
             base_url=base_url.rstrip("/"),
             headers={"Authorization": f"Bearer {api_key.get_secret_value()}"},

@@ -67,6 +67,11 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+        default:
+          description: Any other error (e.g. 404, 405); always the Error body
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
 
   /health:
     get:

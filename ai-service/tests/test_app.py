@@ -3,7 +3,8 @@ from fastapi import Depends
 from fastapi.testclient import TestClient
 from pydantic import BaseModel, SecretStr
 
-from ai_service.main import create_app, get_provider
+from ai_service.deps import get_provider
+from ai_service.main import create_app
 from ai_service.providers.base import ProviderError, ProviderTimeout
 from ai_service.providers.fake import FakeProvider
 

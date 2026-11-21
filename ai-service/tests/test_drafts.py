@@ -1,7 +1,7 @@
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 
-import json
 import pytest
 import yaml
 from fastapi.testclient import TestClient

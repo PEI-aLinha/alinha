@@ -37,7 +37,7 @@ class LlmProvider(Protocol):
         Raises ProviderTimeout or ProviderError, never a library-specific error.
         """
         ...
-        
+
     async def aclose(self) -> None:
         """Close any resources (e.g. HTTP session) held by the provider."""
         ...
