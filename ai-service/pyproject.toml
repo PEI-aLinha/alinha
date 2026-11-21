@@ -10,6 +10,7 @@ dependencies = [
     "pydantic-settings>=2.6",
     "httpx>=0.28",
     "hvac>=2.3",
+    "requests>=2.32",  # imported directly by secrets.py (also pulled in by hvac)
 ]
 
 [project.optional-dependencies]
@@ -29,3 +30,4 @@ packages = ["src/ai_service"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
