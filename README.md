@@ -173,9 +173,8 @@ Numbering from the technical report (section 3.2).
 
 ## Deploy
 
-Releases go to https://pei-alinha.duckdns.org (NEI VM) the way the NEI gamification system does it: a `vX.Y.Z`
-release publishes the images to GHCR (`publish.yml`) and **Deploy into NEI VM** (`deploy.yml`) runs them on the VM's
-self-hosted runner. Details, secrets and the one-time VM setup: [`deploy/DEPLOYMENT.md`](deploy/DEPLOYMENT.md).
+Releases go to https://pei-alinha.duckdns.org: a `vX.Y.Z` release publishes the images to GHCR (`publish.yml`) and
+**Deploy to Production VM** (`deploy.yml`) runs them on the VM's self-hosted runner. Details, secrets and the one-time VM setup: [`deploy/DEPLOYMENT.md`](deploy/DEPLOYMENT.md).
 
 | Command | Description |
 |---|---|

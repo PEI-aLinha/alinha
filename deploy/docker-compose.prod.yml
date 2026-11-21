@@ -1,7 +1,7 @@
-# Production stack (pei-alinha.duckdns.org on the NEI VM). Deployed by .github/workflows/deploy.yml:
+# Production stack (pei-alinha.duckdns.org). Deployed by .github/workflows/deploy.yml:
 #   docker compose --project-name alinha-prod -f deploy/docker-compose.prod.yml up -d
 # Every value comes from the environment (GitHub environment "production"); a missing secret stops compose
-# before anything starts. Nothing publishes a port: the VM's top proxy reaches "web" over PROXY_NETWORK.
+# before anything starts. Nothing publishes a port: the VM's reverse proxy reaches "web" over PROXY_NETWORK.
 # See deploy/DEPLOYMENT.md.
 
 # The JRE images' /bin/sh is dash, which has no /dev/tcp: their health checks run bash.
@@ -16,7 +16,7 @@ services:
     mem_limit: 64m
     environment:
       # The top proxy's network: only it may set X-Forwarded-For.
-      TRUSTED_PROXY_CIDR: ${TRUSTED_PROXY_CIDR:-172.25.0.0/16}
+      TRUSTED_PROXY_CIDR: ${TRUSTED_PROXY_CIDR:?}
     networks:
       alinha: {}
       proxy:
@@ -215,5 +215,5 @@ networks:
       config:
         - subnet: ${ALINHA_SUBNET:-172.31.0.0/24}
   proxy:
-    name: ${PROXY_NETWORK:-nei-rally-dev_rally}
+    name: ${PROXY_NETWORK:?}
     external: true

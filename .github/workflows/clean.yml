@@ -1,4 +1,4 @@
-name: Clean from NEI VM
+name: Clean from Production VM
 
 on:
   workflow_dispatch:

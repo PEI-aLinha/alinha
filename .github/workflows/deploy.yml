@@ -1,4 +1,4 @@
-name: Deploy into NEI VM
+name: Deploy to Production VM
 
 # Runs on the self-hosted runner on the VM (labels self-hosted, prod). Secrets come from the GitHub environment
 # "production" (required reviewers, main only). See deploy/DEPLOYMENT.md.
@@ -98,7 +98,7 @@ jobs:
       # OpenBao
       BAO_ROOT_TOKEN: ${{ secrets.BAO_ROOT_TOKEN }}
       BAO_APP_TOKEN: ${{ secrets.BAO_APP_TOKEN }}
-      # Optional: empty keeps the compose defaults (the NEI top proxy's network).
+      # The VM's reverse proxy: its Docker network and the address range web trusts X-Forwarded-For from.
       PROXY_NETWORK: ${{ vars.PROXY_NETWORK }}
       TRUSTED_PROXY_CIDR: ${{ vars.TRUSTED_PROXY_CIDR }}
     steps:
