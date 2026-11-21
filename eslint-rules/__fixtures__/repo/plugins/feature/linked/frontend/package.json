@@ -1,0 +1,16 @@
+{
+  "name": "@alinha/plugin-linked",
+  "private": true,
+  "dependencies": {
+    "shell": "link:../../../../frontend/shell",
+    "local": "file:../../risk-assets/frontend",
+    "relative": "../../../../frontend/shell"
+  },
+  "peerDependencies": {
+    "react": "^19.2.8"
+  },
+  "devDependencies": {
+    "@types/estree": "^1.0.8",
+    "@types/babel__core": "^7.20.5"
+  }
+}
