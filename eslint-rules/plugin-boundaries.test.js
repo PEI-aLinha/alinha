@@ -48,6 +48,7 @@ tester.run('plugin-boundaries', rule, {
       filename: plugin('src/index.ts'),
       code: "import { createRequire } from 'node:module'\nconst req = createRequire(import.meta.url)\nconst x = req('./pages/Page.tsx')\nconst p = req.resolve('react')",
     },
+    { filename: plugin('src/index.ts'), code: "import mod from 'node:module'\nconst req = mod.createRequire(import.meta.url)\nconst x = req('./pages/Page.tsx')" },
     // A function that merely has a method called resolve is not require.
     { filename: plugin('src/index.ts'), code: 'const p = (n: string) => Promise.resolve(n)' },
     // Other properties of require do not resolve paths.
@@ -141,6 +142,15 @@ tester.run('plugin-boundaries', rule, {
       code: "import { createRequire } from 'node:module'\nconst make = createRequire",
       ...err('dynamic'),
     },
+    // createRequire taken from a default or namespace import (or require) without being called directly.
+    ...[
+      "import mod from 'node:module'\nconst { createRequire } = mod\ncreateRequire(import.meta.url)('../../../../frontend/shell/src/main.tsx')",
+      "import * as mod from 'node:module'\nconst { createRequire: cr } = mod\ncr(import.meta.url)('@/x')",
+      "import mod from 'node:module'\nconst { ['createRequire']: cr } = mod\ncr(import.meta.url)('@/x')",
+      "const { createRequire } = require('node:module')\ncreateRequire(import.meta.url)('@/x')",
+      "import mod from 'node:module'\nconst cr = mod.createRequire\ncr(import.meta.url)('@/x')",
+      "import mod from 'node:module'\nconst cr = mod['createRequire']\ncr(import.meta.url)('@/x')",
+    ].map((code) => ({ filename: plugin('src/index.ts'), code, ...err('dynamic') })),
     // A package subpath with ".." climbs out of the package folder.
     { filename: plugin('src/index.ts'), code: "import x from '@alinha/ui/../../../../frontend/shell/src/host.tsx'", ...err('outside') },
     { filename: plugin('src/index.ts'), code: "import x from 'react/../../../frontend/shell/src/main.tsx'", ...err('outside') },

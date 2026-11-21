@@ -237,8 +237,9 @@ export default {
     }
 
     // require and the functions made by createRequire are followed through scope analysis at the end of the file,
-    // so a call before the declaration (hoisting) or after a later assignment is still checked. A require that is
-    // passed around as a value (aliased, destructured) cannot be followed and is reported as dynamic.
+    // so a call before the declaration (hoisting) or after a later assignment is still checked. A require, or
+    // createRequire, that is passed around as a value (aliased, destructured, read as a member) cannot be followed
+    // and is reported as dynamic.
 
     /** require('x'): the first argument must be a static path that stays inside. */
     const checkRequireCall = (call) => check(call.arguments[0] ?? call, { mustBeStatic: true })
@@ -308,6 +309,16 @@ export default {
         // module.createRequire(...), module['createRequire'](...)
         if (node.callee.type === 'MemberExpression' && memberName(node.callee) === 'createRequire') createRequireMemberCalls.push(node)
         if (isImportMetaProperty(node.callee, ['glob', 'globEager'])) checkGlob(node)
+      },
+      // const cr = mod.createRequire: createRequire read as a value cannot be followed.
+      MemberExpression: (node) => {
+        const isCallee = node.parent.type === 'CallExpression' && node.parent.callee === node
+        if (!isCallee && memberName(node) === 'createRequire') reportDynamic(node)
+      },
+      // const { createRequire } = mod (or = require('node:module')): destructured, it cannot be followed either.
+      'ObjectPattern > Property': (node) => {
+        const name = node.computed ? staticValue(node.key) : propertyName(node)
+        if (name === 'createRequire') reportDynamic(node)
       },
       'Program:exit': (program) => {
         const globalScope = sourceCode.getScope(program)
