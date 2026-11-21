@@ -4,7 +4,16 @@
   "dependencies": {
     "shell": "link:../../../../frontend/shell",
     "local": "file:../../risk-assets/frontend",
-    "relative": "../../../../frontend/shell"
+    "relative": "../../../../frontend/shell",
+    "@alinha/plugin-sdk": "workspace:*",
+    "@alinha/ui": "workspace:@alinha/shell@*",
+    "@alinha/api-client": "link:../../../../frontend/shell",
+    "shellx": "workspace:@alinha/shell@*",
+    "orgx": "workspace:@alinha/plugin-organization@*",
+    "wspath": "workspace:../../../../frontend/shell",
+    "npmshell": "npm:@alinha/shell@*",
+    "sdk": "workspace:@alinha/plugin-sdk@^0.1.0",
+    "lodash": "npm:lodash-es@^4.17.21"
   },
   "peerDependencies": {
     "react": "^19.2.8"

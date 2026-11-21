@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import { resolve } from 'node:path'
 import { ESLint, RuleTester } from 'eslint'
 import tseslint from 'typescript-eslint'
-import rule from './plugin-boundaries.js'
+import rule, { installedPackageOf } from './plugin-boundaries.js'
 
 const root = resolve(import.meta.dirname, '..')
 const plugin = (file) => resolve(root, 'plugins/feature/assessment/frontend', file)
@@ -62,6 +62,10 @@ tester.run('plugin-boundaries', rule, {
       options: [{ root: fixtures }],
       code,
     })),
+    // workspace:* on a platform package, a workspace alias of a platform package, and an npm: alias of a registry package.
+    ...["import { definePlugin } from '@alinha/plugin-sdk'", "import { definePlugin } from 'sdk'", "import debounce from 'lodash/debounce'"].map(
+      (code) => ({ filename: fixture('src/a.ts'), options: [{ root: fixtures }], code }),
+    ),
     // Files outside plugins are not restricted by this rule.
     { filename: resolve(root, 'frontend/shell/src/main.tsx'), code: "import x from '@alinha/shell'" },
     { filename: resolve(root, 'frontend/shell/src/main.tsx'), code: "import x from '../../../plugins/feature/assessment/frontend/src/index.ts'" },
@@ -141,12 +145,20 @@ tester.run('plugin-boundaries', rule, {
     { filename: plugin('src/index.ts'), code: "import x from '@alinha/ui/../../../../frontend/shell/src/host.tsx'", ...err('outside') },
     { filename: plugin('src/index.ts'), code: "import x from 'react/../../../frontend/shell/src/main.tsx'", ...err('outside') },
     { filename: plugin('vitest.config.ts'), code: "import x from 'path/../../x'", ...err('outside') },
-    // A dependency installed from a path (link:, file:, ../) is repo code, not a package.
-    ...['shell/src/host.tsx', 'local', 'relative/src/main.tsx'].map((spec) => ({
+    // A dependency installed from a path (link:, file:, ../, workspace:../) is repo code, not a package. So is an alias
+    // (workspace:<name>@, npm:<name>@) of a workspace package other than the three platform packages.
+    ...['shell/src/host.tsx', 'local', 'relative/src/main.tsx', 'shellx/src/router', 'orgx', 'wspath/src/main.tsx', 'npmshell'].map((spec) => ({
       filename: fixture('src/a.ts'),
       options: [{ root: fixtures }],
       code: `import x from '${spec}'`,
       ...err('undeclared'),
+    })),
+    // A platform package name that package.json points somewhere else (an alias or a path) is not the platform package.
+    ...['@alinha/ui', '@alinha/api-client/src/x'].map((spec) => ({
+      filename: fixture('src/a.ts'),
+      options: [{ root: fixtures }],
+      code: `import x from '${spec}'`,
+      ...err('platformPackage'),
     })),
     { filename: plugin('src/index.ts'), code: "type T = import('@alinha/plugin-risk-assets').Thing", ...err('platformPackage') },
     { filename: plugin('src/index.ts'), code: "import x from '../../../risk-assets/frontend/src/index.ts'", ...err('outside') },
@@ -213,6 +225,26 @@ tester.run('plugin-boundaries (Vite paths that stay inside)', rule, {
     { filename: plugin('src/index.ts'), code: "const url = new URL('https://example.org/x')" },
   ],
   invalid: [],
+})
+
+describe('installedPackageOf', () => {
+  const cases = [
+    ['react', '^19.2.8', 'react'],
+    ['@alinha/ui', 'workspace:*', '@alinha/ui'],
+    ['@alinha/ui', 'workspace:^', '@alinha/ui'],
+    ['@alinha/ui', 'workspace:^0.1.0', '@alinha/ui'],
+    ['shellx', 'workspace:@alinha/shell@*', '@alinha/shell'],
+    ['sdk', 'workspace:@alinha/plugin-sdk@^0.1.0', '@alinha/plugin-sdk'],
+    ['lodash', 'npm:lodash-es@^4.17.21', 'lodash-es'],
+    ['x', 'npm:@scope/pkg', '@scope/pkg'],
+    ['wspath', 'workspace:../../frontend/shell', null],
+    ['shell', 'link:../../frontend/shell', null],
+    ['local', 'file:../x', null],
+    ['odd', 'workspace:@alinha/shell@../x', null],
+  ]
+  for (const [name, version, expected] of cases) {
+    it(`${name}: ${version} -> ${expected}`, () => assert.equal(installedPackageOf(name, version), expected))
+  }
 })
 
 describe('eslint.config.js wiring', () => {

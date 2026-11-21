@@ -5,6 +5,9 @@
 // (require.resolve, createRequire), and Vite's import.meta.glob and new URL(..., import.meta.url).
 // Any other bare name must be a package the plugin declares in its package.json, or a Node builtin, so that a path
 // alias (Vite resolve.alias, tsconfig paths: `@/`, `~/`, `#x`) cannot reach into the repo dressed as a package name.
+// A dependency installed from a path (link:, file:, workspace:../) or aliased to a workspace package other than the
+// three platform packages (`x: workspace:@alinha/shell@*`) does not count as declared, and a platform package name that
+// package.json points elsewhere is not the platform package.
 // Option `root`: the repo root (eslint.config.js passes its own folder). Without it, ESLint's cwd is used,
 // and the rule would not recognise plugin files when ESLint runs from inside a plugin.
 import { readFileSync, statSync } from 'node:fs'
@@ -36,31 +39,74 @@ const isImportMetaProperty = (node, names) =>
 const DEPENDENCY_FIELDS = ['dependencies', 'peerDependencies', 'devDependencies', 'optionalDependencies']
 // A dependency installed from a path is code from the repo, not a package: `link:../x`, `file:../x`, `../x`, `/x`.
 const PATH_VERSION = /^(link:|file:|portal:|\.|\/|~)/
-// package.json contents per plugin, keyed by its mtime so an IDE's long-running ESLint sees edits.
-const declaredPackagesCache = new Map()
+// A version range with no package name in it: `*`, `^`, `~`, `^1.2.0`, `>=1 <2`.
+const PLAIN_RANGE = /^[\d\s*^~<>=.|xX-]*$/
+// `<name>@<range>` after an alias protocol, e.g. `@alinha/shell@*` in `workspace:@alinha/shell@*`.
+const ALIASED_NAME = /^((?:@[^/@\s]+\/)?[^/@\s]+)(?:@(.*))?$/
 
-/** Package names in `<pluginRoot>/package.json`. Empty when it is missing or unreadable, so the rule fails closed. */
-export function declaredPackagesOf(pluginRoot) {
+/**
+ * The package a dependency entry installs under `name`: `name` itself, the target of a pnpm alias
+ * (`workspace:<target>@<range>`, `npm:<target>@<range>`), or null when it is a path or a version that cannot be read.
+ */
+export function installedPackageOf(name, version) {
+  const v = String(version)
+  if (PATH_VERSION.test(v)) return null
+  const [, protocol, rest] = v.match(/^(workspace|npm):(.*)$/) ?? []
+  if (!protocol) return name
+  if (protocol === 'workspace' && PLAIN_RANGE.test(rest)) return name
+  const [, target, range = ''] = rest.match(ALIASED_NAME) ?? []
+  if (!target) return null // workspace:../x and the like: a path
+  return protocol === 'npm' || PLAIN_RANGE.test(range) ? target : null
+}
+
+/**
+ * Whether a dependency entry may be imported by its name. A path is repo code, not a package. From the workspace
+ * (`workspace:`) a plugin may install only the platform packages, and no entry may install another @alinha package
+ * (e.g. the shell or a plugin through an `npm:` alias) or give a platform package's name to something else.
+ */
+function isAcceptedDependency(name, version) {
+  const target = installedPackageOf(name, version)
+  if (target === null) return false
+  if (String(version).startsWith('workspace:') && !ALLOWED_PLATFORM_PACKAGES.includes(target)) return false
+  if (target.startsWith('@alinha/') && !ALLOWED_PLATFORM_PACKAGES.includes(target)) return false
+  return !name.startsWith('@alinha/') || target === name
+}
+
+const EMPTY_MANIFEST = { declared: new Set(), rejected: new Set() }
+// package.json contents per plugin, keyed by its mtime so an IDE's long-running ESLint sees edits.
+const manifestCache = new Map()
+
+/**
+ * Dependency names in `<pluginRoot>/package.json`: `declared` may be imported, `rejected` are paths or aliases that
+ * reach into the repo. Both empty when the file is missing or unreadable, so the rule fails closed.
+ */
+function manifestOf(pluginRoot) {
   const file = join(pluginRoot, 'package.json')
   let mtime
   try {
     mtime = statSync(file).mtimeMs
   } catch {
-    return new Set() // No package.json: nothing is declared, every bare name is reported. Not cached.
+    return EMPTY_MANIFEST // No package.json: nothing is declared, every bare name is reported. Not cached.
   }
-  const cached = declaredPackagesCache.get(pluginRoot)
-  if (cached?.mtime === mtime) return cached.names
-  let names = new Set()
+  const cached = manifestCache.get(pluginRoot)
+  if (cached?.mtime === mtime) return cached.manifest
+  let manifest = EMPTY_MANIFEST
   try {
-    const manifest = JSON.parse(readFileSync(file, 'utf8'))
-    const entries = DEPENDENCY_FIELDS.flatMap((field) => Object.entries(manifest[field] ?? {}))
-    names = new Set(entries.filter(([, version]) => !PATH_VERSION.test(String(version))).map(([name]) => name))
+    const json = JSON.parse(readFileSync(file, 'utf8'))
+    const entries = DEPENDENCY_FIELDS.flatMap((field) => Object.entries(json[field] ?? {}))
+    const rejected = new Set(entries.filter(([name, version]) => !isAcceptedDependency(name, version)).map(([name]) => name))
+    // The same name in two fields with different versions: rejected wins.
+    const declared = new Set(entries.map(([name]) => name).filter((name) => !rejected.has(name)))
+    manifest = { declared, rejected }
   } catch {
     // Invalid JSON: nothing is declared until it is fixed.
   }
-  declaredPackagesCache.set(pluginRoot, { mtime, names })
-  return names
+  manifestCache.set(pluginRoot, { mtime, manifest })
+  return manifest
 }
+
+/** Package names in `<pluginRoot>/package.json` that may be imported. */
+export const declaredPackagesOf = (pluginRoot) => manifestOf(pluginRoot).declared
 
 /** `react` for 'react/jsx-runtime', `@scope/name` for '@scope/name/sub'; null if `spec` is not a valid package name. */
 export function packageNameOf(spec) {
@@ -110,7 +156,11 @@ export function violationOf(spec, filename, pluginRoot) {
   const pkg = withoutQuery(spec)
   // 'react/../../x': a ".." in a package subpath climbs out of the package folder.
   if (pkg.split('/').includes('..')) return 'outside'
-  if (pkg.startsWith('@alinha/')) return isAllowedPlatformPackage(pkg) ? null : 'platformPackage'
+  if (pkg.startsWith('@alinha/')) {
+    // A platform package name that package.json points elsewhere (an alias, a path) is not the platform package.
+    const isGenuine = !manifestOf(pluginRoot).rejected.has(packageNameOf(pkg))
+    return isAllowedPlatformPackage(pkg) && isGenuine ? null : 'platformPackage'
+  }
   if (isNodeBuiltin(pkg)) return null
   return isDeclared(packageNameOf(pkg), pluginRoot) ? null : 'undeclared'
 }
@@ -134,7 +184,7 @@ export default {
         "'{{spec}}' is not allowed in a plugin. Use only @alinha/plugin-sdk, @alinha/ui and @alinha/api-client; reach other plugins through the API («api» contracts) or events.",
       outside: "'{{spec}}' points outside this plugin's frontend folder (another plugin or the shell). Use @alinha/plugin-sdk.",
       undeclared:
-        "'{{spec}}' is not a package declared in this plugin's package.json. Path aliases (@/, ~/, #...) are not allowed in plugins: use a relative import inside the plugin, @alinha/* for the platform, or declare the package.",
+        "'{{spec}}' is not a package declared in this plugin's package.json. Path aliases (@/, ~/, #...) are not allowed in plugins: use a relative import inside the plugin, @alinha/* for the platform, or declare the package (not as a path or an alias of a workspace package).",
       dynamic: 'Dynamic imports in a plugin must use a string literal, so the plugin boundary can be checked.',
     },
   },
