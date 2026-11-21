@@ -20,6 +20,15 @@ services:
       dockerfile: deploy/Dockerfile.backend
       args: { MODULE: app }
 
+  # Staging keeps OpenBao in dev mode (in memory, unsealed, root token from deploy/.env.staging): no init or unseal
+  # to do, and the seed job fills it on every start like in production.
+  openbao:
+    # Straight to bao: the image's entrypoint would add the production -config, whose listener clashes with -dev's.
+    entrypoint: ["bao", "server", "-dev", "-dev-listen-address=0.0.0.0:8200"]
+    command: []
+    environment:
+      BAO_DEV_ROOT_TOKEN_ID: ${BAO_ROOT_TOKEN:?}
+
   keycloak:
     build:
       context: ..

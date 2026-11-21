@@ -84,8 +84,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      openbao:
-        condition: service_healthy
+      openbao-seed:
+        condition: service_completed_successfully
       keycloak:
         condition: service_healthy
 
@@ -169,20 +169,41 @@ services:
 
   # Dev-mode OpenBao (in memory) until it gets persistent storage. The seed runs inside the same container, so
   # every restart of OpenBao (a VM reboot included) seeds it again; it is healthy only once the app's secrets exist.
+  # A real server with persistent storage (deploy/openbao/server.hcl). It starts sealed after every restart and is
+  # healthy only once unsealed: see "OpenBao" in deploy/DEPLOYMENT.md.
   openbao:
     image: openbao/openbao:2.4.1
     restart: always
     mem_limit: 128m
     networks: [alinha]
     cap_add: [IPC_LOCK]
-    entrypoint:
-      - /bin/sh
-      - -c
-      - >-
-        bao server -dev -dev-listen-address=0.0.0.0:8200 &
-        BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN="$$BAO_DEV_ROOT_TOKEN_ID" /bin/sh /init/init.sh && wait
+    command: ["server"] # the image's entrypoint adds -config=/openbao/config and drops root
     environment:
-      BAO_DEV_ROOT_TOKEN_ID: ${BAO_ROOT_TOKEN:?}
+      BAO_ADDR: http://127.0.0.1:8200 # for `docker exec ... bao operator unseal`
+      ALINHA_BAO_APP_TOKEN: ${BAO_APP_TOKEN:?}
+    volumes:
+      - ./openbao/server.hcl:/openbao/config/server.hcl:ro
+      - openbao-data:/openbao/file
+    healthcheck:
+      # Healthy = initialized and unsealed. Also renews the app's periodic token (renew-self), so it never expires
+      # while the stack runs; before the first seed the token does not exist yet, which is fine.
+      test: ["CMD-SHELL", "bao status >/dev/null && { BAO_TOKEN=\"$$ALINHA_BAO_APP_TOKEN\" bao token renew >/dev/null 2>&1 || true; }"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # Writes the platform secrets, policies and the app token into OpenBao on every deploy (deploy/openbao/init.sh),
+  # so a changed GitHub secret reaches the app. Runs once and exits; the app waits for it.
+  openbao-seed:
+    image: openbao/openbao:2.4.1
+    restart: "no"
+    mem_limit: 64m
+    networks: [alinha]
+    entrypoint: ["/bin/sh", "/init/init.sh"]
+    environment:
+      BAO_ADDR: http://openbao:8200
+      BAO_TOKEN: ${BAO_ROOT_TOKEN:?} # the root token printed by `bao operator init`
       POSTGRES_USER: alinha
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
       ALINHA_APP_DB_PASSWORD: ${ALINHA_APP_DB_PASSWORD:?}
@@ -191,11 +212,9 @@ services:
       ALINHA_BAO_AI_TOKEN: "" # no AI Service in production yet
     volumes:
       - ./openbao:/init:ro
-    healthcheck:
-      test: ["CMD-SHELL", "BAO_ADDR=http://127.0.0.1:8200 BAO_TOKEN=\"$$ALINHA_BAO_APP_TOKEN\" bao kv get secret/alinha/app >/dev/null"]
-      interval: 5s
-      timeout: 3s
-      retries: 30
+    depends_on:
+      openbao:
+        condition: service_healthy
 
   # Catches the emails Keycloak sends (the realm's SMTP server). UI only on the VM: ssh -L 8026:127.0.0.1:8026
   mailpit:
@@ -208,6 +227,7 @@ services:
 volumes:
   pgdata:
   redis:
+  openbao-data:
 
 networks:
   alinha:

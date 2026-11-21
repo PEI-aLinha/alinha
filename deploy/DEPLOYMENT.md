@@ -57,7 +57,8 @@ Generate each secret with `openssl rand -hex 24` and set it with `gh secret set 
 | `KEYCLOAK_ADMIN`, `KEYCLOAK_ADMIN_PASSWORD` | Keycloak bootstrap admin (console not public: `ssh -L 8180:...`, see below) |
 | `BFF_CLIENT_SECRET` | client `bff` in the realm and the BFF |
 | `KEYCLOAK_PROVISIONER_SECRET` | client `alinha-provisioner` in the realm and the app (through OpenBao) |
-| `BAO_ROOT_TOKEN`, `BAO_APP_TOKEN` | OpenBao root token and the app's token |
+| `BAO_ROOT_TOKEN` | OpenBao root token **printed by `bao operator init`** (see OpenBao below), used only by the seed job |
+| `BAO_APP_TOKEN` | the app's OpenBao token (generated like the others) |
 
 Variables: `ALINHA_PUBLIC_URL=https://pei-alinha.duckdns.org`, `PROXY_NETWORK` (the reverse proxy's Docker network)
 and `TRUSTED_PROXY_CIDR` (that network's subnet, or the proxy's own `/32`).
@@ -70,8 +71,9 @@ placeholder in the imported realm.
 - **Realm:** `deploy/Dockerfile.keycloak` builds the production realm from `deploy/keycloak/alinha-realm.json` with
   `scripts/gen-prod-realm.mjs`. `--import-realm` only imports a realm that does not exist yet: after the first
   deploy, realm changes must be made in the admin console (or the `keycloak` database reset).
-- **OpenBao** runs in dev mode (in memory). Its container seeds the secrets every time it starts and is healthy only
-  after that; the app waits for it. Persistent storage is a follow-up.
+- **OpenBao** is a real server with its data on the `openbao-data` volume (`deploy/openbao/server.hcl`). It is
+  healthy only when unsealed. On every deploy the `openbao-seed` job writes the secrets, policies and app token
+  (`deploy/openbao/init.sh`) and the app waits for it. Staging keeps dev mode. See **OpenBao** below.
 - **Emails** (verification, password reset) go to Mailpit: `ssh -L 8026:127.0.0.1:8026 <vm>`, then
   http://localhost:8026.
 - **Keycloak admin console:** not routed by `web`. Use
@@ -107,3 +109,31 @@ make staging-clean   # stop and delete the volumes
 
 Staging has the four test personas of `deploy/keycloak/README.md`, with the password `ALINHA_TEST_USER_PASSWORD`
 from `deploy/.env.staging`. Production has no test users: its realm only keeps the provisioner's service account.
+
+## OpenBao
+
+Production OpenBao starts **sealed** after every container restart or VM reboot, and stays unhealthy until it is
+unsealed. The app waits for it. Run every command below on the VM.
+
+**Once, before the first deploy that uses it** (the deploy fails waiting for `openbao`, which is expected):
+
+```sh
+docker exec alinha-prod-openbao-1 bao operator init -key-shares=3 -key-threshold=2
+```
+
+It prints 3 unseal keys and the root token, once. Give one unseal key to each of three team members and keep them
+out of the VM and out of the repo. Then:
+
+```sh
+docker exec alinha-prod-openbao-1 bao operator unseal   # asks for a key; repeat with a second key
+gh secret set BAO_ROOT_TOKEN --env production           # paste the root token from init
+```
+
+Run **Deploy to Production VM** again. `openbao-seed` enables `secret/` and writes everything.
+
+**After a VM reboot or an OpenBao restart:** run `bao operator unseal` twice (two key holders), then re-run the deploy,
+or wait for the app's `restart: always` to pick it up.
+
+**Losing the volume or the unseal keys loses every secret**, including the per-tenant provider credentials
+(`TenantSecretStore`): back up the `alinha-prod_openbao-data` volume with the database.
+

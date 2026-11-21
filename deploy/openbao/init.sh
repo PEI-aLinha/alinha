@@ -5,6 +5,11 @@ set -eu
 
 until bao status >/dev/null 2>&1; do sleep 1; done
 
+# Dev mode mounts kv-v2 at secret/ by itself; a production server starts with no secrets engine.
+if ! bao secrets list -format=json | grep -q '"secret/"'; then
+  bao secrets enable -path=secret kv-v2
+fi
+
 # Platform secrets read by the app at startup (spring.cloud.vault, context alinha/app).
 bao kv put secret/alinha/app \
   db.username=alinha_app \
@@ -22,10 +27,11 @@ bao policy write alinha-app /init/alinha-app.hcl
 bao policy write alinha-ai-service /init/alinha-ai-service.hcl
 
 # Fixed dev token with the app policy, so the app never runs with the root token.
-# Only an existing token (re-run) is skipped; any other failure stops the script.
+# An existing token (re-run, or every production deploy) is renewed instead; any other failure stops the script.
 create_token() {
   if bao token lookup "$1" >/dev/null 2>&1; then
-    echo "token for $2 already exists"  # never print the token itself
+    bao token renew "$1" >/dev/null
+    echo "token for $2 already exists, renewed"  # never print the token itself
   else
     bao token create -id="$1" -policy="$2" -orphan -period=768h >/dev/null
   fi
