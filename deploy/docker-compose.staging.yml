@@ -1,0 +1,31 @@
+# Staging: the production stack built from this checkout, on http://localhost:8088. Used to try a release
+# before tagging it (make staging). Layered on top of docker-compose.prod.yml; values in deploy/.env.staging,
+# created by `make staging-env`.
+services:
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.web
+    ports: ["127.0.0.1:8088:80"]
+
+  bff:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.backend
+      args: { MODULE: bff }
+
+  app:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.backend
+      args: { MODULE: app }
+
+  keycloak:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.keycloak
+
+  job-consumer:
+    build:
+      context: ..
+      dockerfile: workers/job_consumer/Dockerfile

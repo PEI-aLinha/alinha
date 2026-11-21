@@ -50,6 +50,17 @@ describe('toProdRealm', () => {
     assert.equal(devRealm.clients.find((c) => c.clientId === 'bff').secret, 'dev-bff-secret')
   })
 
+  it('only uses placeholders that the production compose requires for Keycloak', () => {
+    // An unset placeholder is imported as the literal text "${...}", so each one must fail compose when missing.
+    const compose = readFileSync(resolve(root, 'deploy/docker-compose.prod.yml'), 'utf8')
+    const keycloak = compose.slice(compose.indexOf('\n  keycloak:'), compose.indexOf('\n  postgres:'))
+    const placeholders = new Set([...JSON.stringify(prod).matchAll(/\$\{([A-Z_]+)\}/g)].map((m) => m[1]))
+    assert.ok(placeholders.size > 0)
+    for (const name of placeholders) {
+      assert.match(keycloak, new RegExp(`\\b${name}: \\$\\{${name}:\\?\\}`), `${name} is not required for Keycloak`)
+    }
+  })
+
   it('refuses a client with a secret it does not know', () => {
     const realm = { ...devRealm, clients: [...devRealm.clients, { clientId: 'new', secret: 'x' }] }
     assert.throws(() => toProdRealm(realm), /client new has a secret/)
