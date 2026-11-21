@@ -3,9 +3,11 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 
 from ai_service.config import get_settings
+from ai_service.deps import get_provider  # noqa: F401  (re-exported for routes and tests)
+from ai_service.drafts import router as drafts_router
 from ai_service.errors import register_error_handlers
 from ai_service.providers import build_provider
 from ai_service.providers.base import LlmProvider
@@ -28,6 +30,7 @@ def create_app(provider: LlmProvider | None = None) -> FastAPI:
 
     app = FastAPI(title="aLinha AI Service", version="1.0.0", lifespan=lifespan)
     register_error_handlers(app)
+    app.include_router(drafts_router)
 
     @app.get("/health")
     async def health() -> dict[str, str]:
@@ -35,11 +38,6 @@ def create_app(provider: LlmProvider | None = None) -> FastAPI:
         return {"status": "ok"}
 
     return app
-
-
-def get_provider(request: Request) -> LlmProvider:
-    """Dependency for routes that need the LLM (e.g. /v1/drafts)."""
-    return request.app.state.provider
 
 
 app = create_app()

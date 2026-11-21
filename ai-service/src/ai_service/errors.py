@@ -15,6 +15,10 @@ from ai_service.providers.base import ProviderError, ProviderTimeout
 log = logging.getLogger(__name__)
 
 
+class UnknownTask(Exception):
+    """The request names a task with no prompt template (maps to HTTP 422)."""
+
+
 def error_response(status: int, code: str, message: str) -> JSONResponse:
     return JSONResponse(status_code=status, content={"code": code, "message": message})
 
@@ -27,6 +31,13 @@ async def _provider_timeout(request: Request, exc: Exception) -> JSONResponse:
 async def _provider_error(request: Request, exc: Exception) -> JSONResponse:
     log.warning("LLM provider failed on %s: %s", request.url.path, type(exc).__name__)
     return error_response(502, "provider_error", "The LLM provider failed.")
+
+
+async def _unknown_task(request: Request, exc: Exception) -> JSONResponse:
+    from ai_service.prompts import TEMPLATES
+
+    known = ", ".join(sorted(TEMPLATES))
+    return error_response(422, "unknown_task", f"Unknown task. Known tasks: {known}.")
 
 
 async def _invalid_request(request: Request, exc: Exception) -> JSONResponse:
@@ -43,4 +54,5 @@ def register_error_handlers(app: FastAPI) -> None:
     # so ProviderTimeout (a ProviderError subclass) gets 504, not 502.
     app.add_exception_handler(ProviderTimeout, _provider_timeout)
     app.add_exception_handler(ProviderError, _provider_error)
+    app.add_exception_handler(UnknownTask, _unknown_task)
     app.add_exception_handler(RequestValidationError, _invalid_request)
