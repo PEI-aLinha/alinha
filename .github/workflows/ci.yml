@@ -51,7 +51,12 @@ jobs:
           distribution: temurin
           java-version: 21
       - uses: gradle/actions/setup-gradle@v4
-      - run: ./gradlew build
+      - run: ./gradlew build koverXmlReport koverVerify
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-backend
+          path: build/reports/kover/report.xml
+          retention-days: 1
 
   frontend:
     name: Frontend (shell + plugins)
@@ -72,6 +77,14 @@ jobs:
         run: pnpm check:api
       - run: pnpm lint
       - run: pnpm test
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-frontend
+          path: |
+            frontend/shell/coverage/lcov.info
+            frontend/packages/*/coverage/lcov.info
+            frontend/keycloak-theme/coverage/lcov.info
+          retention-days: 1
       - run: pnpm typecheck
       - run: pnpm build
 
@@ -84,8 +97,39 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -e "workers/job_consumer[test]"
-      - run: pytest --cov=alinha_job_consumer --cov-fail-under=70
+      - run: pytest --cov=alinha_job_consumer --cov-fail-under=70 --cov-report=term --cov-report=xml
         working-directory: workers/job_consumer
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-workers
+          path: workers/job_consumer/coverage.xml
+          retention-days: 1
+
+  sonar:
+    name: SonarCloud (analysis + coverage)
+    needs: [backend, frontend, workers]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # blame data for new-code detection
+      # Reports keep the paths the test jobs wrote them to (see sonar-project.properties).
+      - uses: actions/download-artifact@v4
+        with:
+          name: coverage-backend
+          path: build/reports/kover
+      - uses: actions/download-artifact@v4
+        with:
+          name: coverage-frontend
+          path: frontend
+      - uses: actions/download-artifact@v4
+        with:
+          name: coverage-workers
+          path: workers/job_consumer
+      # v8.4.1, pinned by commit.
+      - uses: SonarSource/sonarqube-scan-action@e805d875275f728fac1885b413934be6d7c63f65
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   frameworks:
     name: Framework catalogues
