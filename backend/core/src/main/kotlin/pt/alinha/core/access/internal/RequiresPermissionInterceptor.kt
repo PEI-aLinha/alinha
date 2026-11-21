@@ -6,7 +6,6 @@ import jakarta.servlet.http.HttpServletResponse
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.annotation.AnnotatedElementUtils
 import org.springframework.security.access.AccessDeniedException
-import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Component
 import org.springframework.web.method.HandlerMethod
 import org.springframework.web.servlet.HandlerInterceptor
@@ -30,13 +29,11 @@ class RequiresPermissionInterceptor(private val registry: RolePermissionRegistry
         if (request.dispatcherType == DispatcherType.ERROR) return true
         val required = (handler as? HandlerMethod)?.let(::requiredPermission)
             ?: throw AccessDeniedException("Endpoint does not declare a permission")
-        if (required !in registry.permissionsFor(currentRoles())) {
+        if (required !in registry.permissionsOfCurrentUser()) {
             throw AccessDeniedException("Missing permission $required")
         }
         return true
     }
-
-    private fun currentRoles(): Set<String> = rolesOf(SecurityContextHolder.getContext().authentication)
 }
 
 @Configuration

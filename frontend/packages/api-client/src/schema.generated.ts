@@ -100,6 +100,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/audit/events": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * History of changes in the current organization
+         * @description Every recorded write of the current organization, newest first (US09, NFR04). Read-only: the audit
+         *     trail is append-only. Permission `audit:read` (consultant, Designated Officer).
+         *
+         *     `actor` is the Keycloak `sub` of the user, or `system` for jobs and event listeners. Names are not
+         *     stored in the audit trail (#75).
+         */
+        get: operations["listAuditEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/{plugin}/ping": {
         parameters: {
             query?: never;
@@ -218,8 +249,25 @@ export interface components {
             publishes: string[];
             /** @description Events the plugin consumes. */
             consumes: string[];
-            /** @description RBAC resources the plugin declares. */
+            /** @description Permissions the plugin declares, as `resource:action`. */
             permissions: string[];
+            /** @description Menu entries the caller may see: only areas the caller's roles open, and only entries whose permission the caller holds. Sorted within this plugin by area (client, consultant), then `order`, then label (Portuguese collation); a menu built from several plugins has to sort the merged list again. Never in the onboarding area, which has no menu. */
+            nav: components["schemas"]["NavEntry"][];
+        };
+        /** @description Same fields as `NavItem` in `@alinha/plugin-sdk`, minus the icon. */
+        NavEntry: {
+            /** @description Text shown in the menu (European Portuguese). */
+            label: string;
+            /** @description Path relative to the area root, kebab-case segments, e.g. `organization`. */
+            path: string;
+            /** @enum {string} */
+            area: "client" | "consultant" | "onboarding";
+            /** @description RBAC resource needed to see the entry, checked as `resource:action`; absent when anyone in the area may. */
+            resource?: string;
+            /** @description Action checked with `resource`. Defaults to `read`. */
+            action: string;
+            /** @description Lower comes first. Defaults to 100. */
+            order: number;
         };
         OrganizationAddress: {
             street: string;
@@ -294,6 +342,38 @@ export interface components {
             registeredAt: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        AuditEvent: {
+            /** Format: uuid */
+            id: string;
+            /** @description Keycloak `sub` of the user who made the change, or `system`. */
+            actor: string;
+            /** @description `<entity>.<verb>`, e.g. `organization.updated`. */
+            action: string;
+            entityType: string;
+            entityId: string;
+            /**
+             * @description Ids and names of changed fields, as recorded by the writer. Never secrets or personal data
+             *     beyond ids (docs/audit.md). Visible to the client.
+             */
+            details: {
+                [key: string]: unknown;
+            };
+            /** @description Set when the change stored AI-generated content (NFR14). */
+            provenance: components["schemas"]["AiProvenance"] | null;
+            /** Format: date-time */
+            occurredAt: string;
+        };
+        /** @description Where AI-generated content came from (NFR14). */
+        AiProvenance: {
+            model: string;
+            promptVersion: string;
+            sources: string[];
+            /** Format: date-time */
+            generatedAt: string;
+        };
+        AuditEventPage: components["schemas"]["PageMeta"] & {
+            items: components["schemas"]["AuditEvent"][];
         };
         Ping: {
             plugin: string;
@@ -408,7 +488,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Every plugin manifest, sorted by id. */
+            /** @description Every plugin manifest, sorted by id. `nav` holds only the menu entries the caller's roles may see. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -571,6 +651,51 @@ export interface operations {
                 };
             };
             422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    listAuditEvents: {
+        parameters: {
+            query?: {
+                /** @description Only entries about this kind of entity, e.g. `organization`. */
+                entityType?: string;
+                /** @description Only entries about this entity (requires knowing its id). */
+                entityId?: string;
+                /** @description Only entries by this actor (`sub` or `system`). */
+                actor?: string;
+                /** @description Inclusive lower bound on `occurredAt`. */
+                from?: string;
+                /** @description Exclusive upper bound on `occurredAt`. `from` after `to` is a `400`. */
+                to?: string;
+                /** @description Zero-based page number. */
+                page?: components["parameters"]["Page"];
+                /** @description Items per page. */
+                pageSize?: components["parameters"]["PageSize"];
+            };
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of history. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditEventPage"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
         };
     };
     pingPlugin: {

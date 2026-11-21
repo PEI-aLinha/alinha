@@ -14,7 +14,8 @@ import pt.alinha.core.audit.AuditFilter
 import pt.alinha.core.audit.AuditHistory
 import java.time.Instant
 
-data class AuditPage(val items: List<AuditEntry>, val page: Int, val size: Int, val total: Long)
+/** Same shape as every paginated response in the contract (`PageMeta` + `items`). */
+data class AuditPage(val items: List<AuditEntry>, val page: Int, val pageSize: Int, val total: Long)
 
 @RestController
 class AuditHistoryController(private val history: AuditHistory) {
@@ -28,14 +29,14 @@ class AuditHistoryController(private val history: AuditHistory) {
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) from: Instant?,
         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) to: Instant?,
         @RequestParam(defaultValue = "0") page: Int,
-        @RequestParam(defaultValue = "50") size: Int,
+        @RequestParam(defaultValue = "20") pageSize: Int,
     ): AuditPage {
         if (from != null && to != null && from.isAfter(to)) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "from must not be after to")
         }
         val pageable = PageRequest.of(
             page.coerceAtLeast(0),
-            size.coerceIn(1, MAX_PAGE_SIZE),
+            pageSize.coerceIn(1, MAX_PAGE_SIZE),
             // id breaks ties (same transaction or millisecond) so offset pages never skip or repeat rows.
             Sort.by(Sort.Direction.DESC, "occurredAt").and(Sort.by(Sort.Direction.DESC, "id")),
         )
@@ -44,6 +45,6 @@ class AuditHistoryController(private val history: AuditHistory) {
     }
 
     private companion object {
-        const val MAX_PAGE_SIZE = 200
+        const val MAX_PAGE_SIZE = 100
     }
 }

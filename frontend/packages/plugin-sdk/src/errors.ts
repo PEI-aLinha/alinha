@@ -1,6 +1,6 @@
 // ApiError stays in index.ts (the contract with the shell); it is only used when a function runs, so the
 // circular import is safe.
-import { ApiError } from './index'
+import { ApiError, type Problem } from './index'
 
 /**
  * Turns any error from `host.api` (or a query or mutation) into a short message in plain European Portuguese,
@@ -71,27 +71,7 @@ function messageForStatus(status: number): string {
   return ERROR_MESSAGES.unexpected
 }
 
-interface ProblemFields {
-  code?: string
-  detail?: string
-  errors?: { field: string; message: string }[]
-}
-
-/**
- * The Problem Details body attached to an ApiError, if any. Read defensively: the body comes from the network,
- * and `ApiError.problem` is still being added (#101), so nothing here assumes its shape.
- */
-function problemOf(error: unknown): ProblemFields | undefined {
-  if (!(error instanceof ApiError)) return undefined
-  const problem: unknown = (error as { problem?: unknown }).problem
-  if (typeof problem !== 'object' || problem === null) return undefined
-  const { code, detail, errors } = problem as Record<string, unknown>
-  return {
-    code: typeof code === 'string' ? code : undefined,
-    detail: typeof detail === 'string' ? detail : undefined,
-    errors: Array.isArray(errors)
-      ? errors.filter((e): e is { field: string; message: string } =>
-          typeof e === 'object' && e !== null && typeof e.field === 'string' && typeof e.message === 'string')
-      : undefined,
-  }
+/** The Problem Details body attached to an ApiError, if any. The shell has already checked its fields' types. */
+function problemOf(error: unknown): Problem | undefined {
+  return error instanceof ApiError ? error.problem : undefined
 }

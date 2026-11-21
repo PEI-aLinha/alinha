@@ -27,7 +27,7 @@ const PEOPLE: Record<DevPersona, MeDto['user']> = {
 
 /**
  * PLACEHOLDER permissions per role, taken from the frontend prototype's RBAC matrix (its `view` is `read` here).
- * No plugin's PluginManifest declares permissions yet; once they do, copy each role's set from the backend RBAC (#9).
+ * No plugin.yaml declares permissions yet; once they do, copy each role's set from the backend RBAC (#9).
  */
 export const DEV_PERMISSIONS: Record<DevPersona, readonly string[]> = {
   responsible: [
@@ -35,13 +35,14 @@ export const DEV_PERMISSIONS: Record<DevPersona, readonly string[]> = {
     'asset:read', 'asset:create', 'asset:edit', 'asset:delete', 'asset:import', 'asset:bulk_edit',
     'critical_service:read', 'critical_service:create', 'critical_service:edit', 'critical_service:delete',
     'asset_task:read', 'asset_task:assign', 'asset_comment:read', 'asset_export:read', 'roadmap:read', 'history:read',
+    'audit:read',
   ],
   analyst: ['plugins:read', 'asset:read', 'asset:create', 'asset:edit', 'critical_service:read', 'asset_task:read'],
   consultant: [
     'plugins:read', 'scope:read', 'framing:read', 'asset:read', 'critical_service:read',
     'asset_comment:read', 'asset_comment:comment', 'asset_export:read',
     'risk:read', 'risk:create', 'risk:edit', 'risk:link', 'roadmap:read', 'roadmap:validate', 'roadmap:create',
-    'history:read', 'portfolio:read',
+    'history:read', 'portfolio:read', 'audit:read',
   ],
   registrant: ['plugins:read', 'organization:register'],
 }

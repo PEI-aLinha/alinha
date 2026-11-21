@@ -43,12 +43,20 @@ Tenant isolation comes from `TenantContext` (ADR 0002, #8), which must check the
 
 ## Declaring permissions in a plugin
 
-Declare permissions and their roles in the plugin's `PluginManifest` (Kotlin). That is the only place they are read: `plugin.yaml` is descriptive and is not checked, so do not list permissions there. The application refuses to start if:
+Declare permissions, their roles and the plugin's menu entries in its `PluginManifest`, and keep `plugin.yaml` in sync (`PluginYamlConsistencyTest` fails the build otherwise). The application refuses to start when:
 
-- a role is unknown;
-- a mapped permission is not in the plugin's own `permissions`;
-- two plugins declare the same permission (each permission has exactly one owner);
-- a plugin declares a core permission (`plugins:read`, `session:read`, `audit:read`: every permission the core grants is reserved).
+- two plugins have the same id, or an id is not kebab-case;
+- a permission is not in `resource:action` form;
+- a role is unknown, or a mapped permission is not in `permissions`;
+- two plugins declare the same permission (each permission has exactly one owner, so a plugin cannot grant another plugin's permission);
+- a plugin declares a core permission (`plugins:read`, `session:read`, `audit:read`: every permission the core grants is reserved);
+- a declared permission is granted to no role (add it to `rolePermissions`): its endpoints would answer 403 to everyone;
+- a menu path is not relative kebab-case (`risks/assets`, never `/assets` or `..`);
+- a menu entry (`nav`) needs a permission no plugin declares and the core does not own. An entry may use another plugin's permission (e.g. a dashboard entry behind `assessment:read`), but prefer the plugin's own;
+- a menu entry's permission is held by no role that opens its area (e.g. a consultant entry behind a permission only responsibles have), so nobody would see it;
+- a menu entry is in the onboarding area, which has no menu, or has an `action` without a `resource`;
+- two menu entries share the same area and path;
+- a controller endpoint has no `@RequiresPermission`, or names a permission no role is granted (undeclared, or declared but missing from `rolePermissions`).
 
 ```kotlin
 PluginManifest(
@@ -62,8 +70,11 @@ PluginManifest(
         "responsible" to setOf("assessment:read", "assessment:edit"),
         "analyst" to setOf("assessment:read", "assessment:edit"),
     ),
+    nav = listOf(NavEntry("Avaliação", "assessment", NavArea.CLIENT, resource = "assessment")),
 )
 ```
+
+`GET /api/plugins` returns every manifest with `nav` limited to the entries the caller may see: in an area its roles open (`consultant` → consultant, `responsible`/`analyst` → client, `registrant` → onboarding, as the shell routes them; the onboarding has no menu) and behind a permission it holds. Role mappings stay on the server.
 
 Analysts follow least privilege: never grant them global results or roadmap permissions.
 

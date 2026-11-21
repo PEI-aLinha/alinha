@@ -20,7 +20,7 @@ class UnannotatedEndpointStartupTest {
             )
 
         assertThatThrownBy { app.run().close() }
-            .isInstanceOf(IllegalArgumentException::class.java)
+            .isInstanceOf(IllegalStateException::class.java)
             .hasMessageContaining("Endpoints without @RequiresPermission")
             .hasMessageContaining("UnannotatedController")
     }
