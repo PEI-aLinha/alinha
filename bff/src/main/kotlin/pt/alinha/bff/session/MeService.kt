@@ -70,6 +70,11 @@ class MeService(
                 }
             }
 
+    /**
+     * The slug is the tenant UUID, on purpose. ADR 0006 relies on it: plugin pages at `/portfolio/<path>` share
+     * their first segment with clients at `/portfolio/<slug>`, and a UUID can never equal a plugin path. If slugs
+     * become readable names, reserve the plugins' portfolio paths first (`MeServiceTest` fails until then).
+     */
     private fun organizations(token: String, tenantIds: List<String>): Mono<List<MeOrganization>> =
         Flux.fromIterable(tenantIds)
             // Parallel but bounded, and flatMapSequential keeps the app's tenant order in the answer.

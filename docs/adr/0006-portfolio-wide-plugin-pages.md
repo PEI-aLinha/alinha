@@ -2,7 +2,7 @@
 
 - **Status:** accepted
 - **Date:** 2026-11-21
-- **Issues:** #66 (this decision), alinha-plugin-dashboard-reports#3 (first user)
+- **Issues:** #66 (this decision), alinha-plugin-dashboard-reports#3 (first user), #143 (backend `NavArea`)
 - **Refs:** ADR 0002 (tenant header), ADR 0005 (English paths), `frontend/shell/src/routing/routes.tsx`
 
 ## Context
@@ -22,9 +22,26 @@ clients. They had no place. The obvious address, `/portfolio/<path>`, shares its
   dynamic one (`:org`), so `/portfolio/overview` is the plugin page and `/portfolio/<any other slug>` is a client.
   The shell refuses, at start-up, a portfolio route that is an index route or starts with a dynamic segment or a
   splat, since it would replace the client list or catch every client.
-- Today a slug is the tenant UUID (BFF `MeService`), so it can never equal a plugin path. **If slugs ever become
+- Today a slug is the tenant UUID (BFF `MeService`, pinned by `MeServiceTest`), so it can never equal a plugin path. **If slugs ever become
   readable names, the first segments of the plugins' portfolio routes must be reserved** and never given to an
   organization.
+
+### Reading across tenants
+A portfolio endpoint has no `X-Alinha-Tenant`, so `TenantContext.current()` does not apply. It reads instead:
+
+- **`TenantContext.assignedTenants(): Set<TenantId>`**, a new core method that returns the token's `tenants` claim.
+  It always comes from the token and never from the request (no header, body or query), the same rule as RNF03.
+  The first portfolio endpoint (dashboard-reports#2) adds it to the core.
+- Every query is filtered by that set: `WHERE tenant_id = ANY(:assigned)` (or `IN (...)`), never by a list the
+  page sends. An empty set returns an empty answer without querying. A page that wants one client calls that
+  client's endpoint with its `X-Alinha-Tenant` instead.
+- Only roles that open the consultant area may call these endpoints. Their permission (e.g. `portfolio:read`,
+  declared by dashboard-reports) is granted to `consultant` only, so a client user never reads across tenants.
+- The answer holds one entry per assigned tenant at most. Tenants outside the token's set are dropped by the query,
+  not by the page.
+
+The backend does not yet know the `portfolio` area for menu entries (`NavArea` in `plugin-api`, the contract, and
+`Roles`). Until #143 adds it, portfolio menu entries come from the plugin's frontend `definePlugin({ nav })`.
 
 ## Consequences
 - (+) Short, readable addresses (`/portfolio/overview`), consistent with the rest of the consultant area.

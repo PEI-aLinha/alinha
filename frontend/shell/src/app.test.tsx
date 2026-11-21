@@ -297,6 +297,23 @@ describe('consultant area (/portfolio)', () => {
     expect(new Headers(probe?.init.headers).has('X-Alinha-Tenant')).toBe(false)
   })
 
+  // ADR 0006: with portfolio pages registered (`overview`, `reports`), a client slug still opens that client and the
+  // bare /portfolio still lists the clients. React Router must rank the fixed segment above `:org`, never instead of it.
+  it('still opens any client at /portfolio/<slug> next to the portfolio pages', async () => {
+    const { router } = renderApp({ url: '/portfolio/beta', plugins, me: meFor('consultant') })
+    expect(await screen.findByRole('heading', { name: 'Painel do cliente' })).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/portfolio/beta/dashboard')
+    expect(screen.getByRole('combobox', { name: 'Cliente' })).toHaveValue('beta')
+  })
+
+  it('still lists the clients at /portfolio next to the portfolio pages', async () => {
+    renderApp({ url: '/portfolio', plugins, me: meFor('consultant') })
+    expect(await screen.findByRole('heading', { name: 'Carteira de clientes' })).toBeInTheDocument()
+    const main = within(screen.getByRole('main'))
+    expect(main.getByRole('link', { name: 'Beta, S.A.' })).toHaveAttribute('href', '/portfolio/beta')
+    expect(screen.queryByText(/Dados de/)).not.toBeInTheDocument() // not the overview page
+  })
+
   it('keeps the portfolio menu inside a client, next to that client\'s pages', async () => {
     renderApp({ url: '/portfolio/acme/dashboard', plugins, me: meFor('consultant') })
     await screen.findByRole('heading', { name: 'Painel do cliente' })
