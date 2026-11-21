@@ -151,7 +151,8 @@ Avoid this unless the task needs it. Before starting, say so explicitly and list
   `/portfolio`). **European Portuguese**, plain and non-technical, for everything else the user sees in the UI
   (labels, titles, messages).
 - Kotlin package `pt.alinha.<pkg>`, where `<pkg>` is the plugin id without hyphens (`risk-assets` → `riskassets`).
-  Each plugin has exactly one `AlinhaPlugin` bean, and its `PluginManifest` must match `plugin.yaml`.
+  Each plugin has exactly one `AlinhaPlugin` bean, and its `PluginManifest` must match the id, name and kind in
+  `plugin.yaml`. Permissions and role mappings live only in the `PluginManifest` (`docs/rbac.md`).
 - Branches `feat/<topic>`, `fix/<topic>`. Keep PRs small and follow `.github/pull_request_template.md`.
 - RNFxx numbers refer to section 3.2 of the technical report. The table in `README.md` maps them to code. Update
   it when you implement one.

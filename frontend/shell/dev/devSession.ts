@@ -27,7 +27,7 @@ const PEOPLE: Record<DevPersona, MeDto['user']> = {
 
 /**
  * PLACEHOLDER permissions per role, taken from the frontend prototype's RBAC matrix (its `view` is `read` here).
- * No plugin.yaml declares permissions yet; once they do, copy each role's set from the backend RBAC (#9).
+ * No plugin's PluginManifest declares permissions yet; once they do, copy each role's set from the backend RBAC (#9).
  */
 export const DEV_PERMISSIONS: Record<DevPersona, readonly string[]> = {
   responsible: [

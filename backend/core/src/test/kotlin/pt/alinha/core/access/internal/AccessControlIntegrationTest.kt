@@ -36,6 +36,8 @@ private const val INVALID_TOKEN = "invalid"
         "spring.security.oauth2.resourceserver.jwt.issuer-uri=https://keycloak.test/realms/alinha",
         "spring.security.oauth2.resourceserver.jwt.audiences=alinha-api",
         "management.endpoints.web.exposure.include=health,info",
+        // Same as application.yml: the app serves no static files.
+        "spring.web.resources.add-mappings=false",
         "management.health.redis.enabled=false", // no Redis in this slice; the jobs tests cover it
         "spring.autoconfigure.exclude=" +
             "org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration," +
@@ -72,11 +74,6 @@ class AccessControlIntegrationTest {
     }
 
     @Test
-    fun `denies authenticated user on endpoint without annotation`() {
-        getAs("consultant", "/fixture/unannotated").andExpect { status { isForbidden() } }
-    }
-
-    @Test
     fun `denies token without known roles`() {
         getAs("intruder", "/fixture/assessment").andExpect { status { isForbidden() } }
     }
@@ -85,6 +82,12 @@ class AccessControlIntegrationTest {
     fun `accepts bearer POST without CSRF token`() {
         mockMvc.post("/fixture/assessment") { header("Authorization", "Bearer responsible") }
             .andExpect { status { isOk() } }
+    }
+
+    @Test
+    fun `a static resource path is not served`() {
+        // With the resource mappings off, as in application.yml, no handler matches and nothing is served.
+        getAs("analyst", "/favicon.ico").andExpect { status { isNotFound() } }
     }
 
     @Test
@@ -127,6 +130,7 @@ class AccessControlIntegrationTest {
     AccessWebConfig::class,
     RequiresPermissionInterceptor::class,
     RolePermissionRegistry::class,
+    RequiredPermissionsVerifier::class,
     PluginRegistry::class,
     PluginRegistryController::class,
     FixtureController::class,
@@ -181,9 +185,6 @@ class FixtureController {
     @RequiresPermission("roadmap")
     @GetMapping("/roadmap")
     fun roadmap() = "ok"
-
-    @GetMapping("/unannotated")
-    fun unannotated() = "ok"
 }
 
 @RestController

@@ -6,7 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.core.env.Environment
-import pt.alinha.fixture.remoteip.RemoteAddrFixtureApplication
+import fixture.remoteip.RemoteAddrFixtureApplication
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest

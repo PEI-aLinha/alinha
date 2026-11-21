@@ -53,6 +53,13 @@ class RolePermissionRegistryTest {
     }
 
     @Test
+    fun `fails when a plugin declares a core role permission`() {
+        assertThatThrownBy { registry(plugin("a", setOf("audit:read"), emptyMap())) }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("core permissions")
+    }
+
+    @Test
     fun `registrant gets only what plugins map to it, never audit history`() {
         val registry = registry(
             plugin("org", setOf("org:register", "org:read"), mapOf("registrant" to setOf("org:register"))),
@@ -79,5 +86,31 @@ class RolePermissionRegistryTest {
         assertThatThrownBy { registry(plugin("a", setOf("a:read"), mapOf("analyst" to setOf("a:edit")))) }
             .isInstanceOf(IllegalArgumentException::class.java)
             .hasMessageContaining("a:edit")
+    }
+
+    @Test
+    fun `fails when two plugins declare the same permission`() {
+        assertThatThrownBy {
+            registry(
+                plugin("a", setOf("a:read"), mapOf("analyst" to setOf("a:read"))),
+                plugin("b", setOf("a:read"), mapOf("consultant" to setOf("a:read"))),
+            )
+        }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("a:read")
+    }
+
+    @Test
+    fun `fails when a plugin declares a core permission`() {
+        assertThatThrownBy { registry(plugin("a", setOf("plugins:read"), emptyMap())) }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("plugins:read")
+    }
+
+    @Test
+    fun `exposes core and plugin permissions as declared`() {
+        val registry = registry(plugin("a", setOf("a:read", "a:edit"), emptyMap()))
+
+        assertThat(registry.declaredPermissions).containsExactlyInAnyOrder("plugins:read", "session:read", "audit:read", "a:read", "a:edit")
     }
 }
