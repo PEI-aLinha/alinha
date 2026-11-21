@@ -111,6 +111,7 @@ describe('checkReservedPaths', () => {
   it.each([
     ['a client route', { routes: { client: [{ path: 'integrations', Component: Page }] } }],
     ['a consultant route with slashes', { routes: { consultant: [{ path: '/integrations/', Component: Page }] } }],
+    ['a portfolio route', { routes: { portfolio: [{ path: 'integrations', Component: Page }] } }],
     ['a menu entry', { routes: {}, nav: [{ label: 'Integrações', path: 'integrations', area: 'client' as const }] }],
   ])('refuses %s at exactly integrations, naming the plugin', (_what, parts) => {
     const plugin = definePlugin({ id: 'clash', name: 'Clash', ...parts })

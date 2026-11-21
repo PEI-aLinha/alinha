@@ -45,7 +45,7 @@ const trimSlashes = (path: string) => path.replace(/^\/+|\/+$/g, '')
  * A plugin bug, so it stops the app at start-up, naming the plugin.
  */
 export function checkReservedPaths(plugins: readonly FrontendPlugin[]): void {
-  const areas: NavArea[] = ['client', 'consultant']
+  const areas: NavArea[] = ['client', 'consultant', 'portfolio']
   for (const plugin of plugins) {
     const routes = areas.flatMap((area) => plugin.routes[area] ?? [])
     const clash =
