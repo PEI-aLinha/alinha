@@ -1,7 +1,8 @@
 import { act, cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import source from '../../public/appearance-boot.js?raw'
 import { AppearanceProvider, useAppearance } from './AppearanceProvider'
-import { CVD_KEY, THEME_KEY, resolveTheme } from './appearanceModel'
+import { CVD_KEY, DARK_QUERY, THEME_KEY, THEMES, VISIONS, resolveTheme } from './appearanceModel'
 
 function mockMatchMedia(dark: boolean) {
   const listeners = new Set<(e: MediaQueryListEvent) => void>()
@@ -62,5 +63,33 @@ describe('appearance', () => {
     localStorage.setItem(CVD_KEY, 'bogus')
     render(<AppearanceProvider><Probe /></AppearanceProvider>)
     expect(screen.getByText('dark|dark|none')).toBeTruthy()
+  })
+
+  describe('boot script (applied before React mounts)', () => {
+    const runBoot = () => new Function(source)()
+
+    it('uses the same keys, values and media query as the model', () => {
+      for (const token of [THEME_KEY, CVD_KEY, DARK_QUERY, ...THEMES, ...VISIONS.filter((v) => v !== 'none')]) {
+        expect(source).toContain(`'${token}'`)
+      }
+    })
+
+    it('applies the stored theme and colour-vision mode', () => {
+      mockMatchMedia(false)
+      localStorage.setItem(THEME_KEY, 'dark')
+      localStorage.setItem(CVD_KEY, 'deuteranopia')
+      runBoot()
+      expect(html.dataset.theme).toBe('dark')
+      expect(html.dataset.cvd).toBe('deuteranopia')
+    })
+
+    it('falls back to the system preference and ignores invalid values', () => {
+      mockMatchMedia(true)
+      localStorage.setItem(THEME_KEY, 'bogus')
+      localStorage.setItem(CVD_KEY, 'none')
+      runBoot()
+      expect(html.dataset.theme).toBe('dark')
+      expect(html.dataset.cvd).toBeUndefined()
+    })
   })
 })
