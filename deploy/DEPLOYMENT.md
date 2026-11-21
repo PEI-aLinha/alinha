@@ -23,7 +23,7 @@ Actions → "Deploy to Production VM" → Run  ──►  deploy.yml (self-hoste
 browser ─► reverse proxy (TLS, PROXY_NETWORK) ─► web (alias alinha-web)
                                                     ├─ /                       shell (static)
                                                     ├─ /api/ /oauth2/ /login/oauth2/ /auth/ ─► bff ─► app
-                                                    └─ /kc/  ─► keycloak   (/kc/admin is 404)
+                                                    └─ /kc/  ─► keycloak   (/kc/admin and /kc/realms/master are 404)
 ```
 
 - The reverse proxy only knows the alias `alinha-web` on the network `PROXY_NETWORK`; the `web` service joins that

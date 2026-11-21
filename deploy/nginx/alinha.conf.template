@@ -62,7 +62,13 @@ server {
         include /etc/nginx/snippets/proxy-headers.conf;
     }
 
+    # The admin console and the master realm (its login and token endpoints for the bootstrap admin) are only
+    # reachable through an SSH tunnel to Keycloak (deploy/DEPLOYMENT.md), never from the internet.
     location ^~ /kc/admin {
+        return 404;
+    }
+
+    location ^~ /kc/realms/master {
         return 404;
     }
 
