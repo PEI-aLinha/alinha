@@ -52,6 +52,11 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+        '500':
+          description: Unexpected error in the AI Service
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
 
   /health:
     get:

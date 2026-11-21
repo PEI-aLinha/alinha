@@ -144,3 +144,53 @@ def test_every_template_is_versioned_by_task():
     for task, template in TEMPLATES.items():
         assert template.task == task
         assert template.version.startswith(f"{task}.v")
+
+
+def client():
+    return TestClient(
+        create_app(provider=FakeProvider(), service_token=SecretStr(TOKEN)),
+        raise_server_exceptions=False,
+    )
+
+
+def test_unknown_path_is_404_in_contract_format():
+    with client() as c:
+        r = c.get("/v1/nope", headers={"Authorization": f"Bearer {TOKEN}"})
+
+    assert r.status_code == 404
+    assert r.json() == {"code": "not_found", "message": "Not found."}
+
+
+def test_wrong_method_is_405_with_allow_header():
+    with client() as c:
+        r = c.get("/v1/drafts", headers={"Authorization": f"Bearer {TOKEN}"})
+
+    assert r.status_code == 405
+    assert r.json()["code"] == "method_not_allowed"
+    assert "POST" in r.headers["Allow"]
+    Draft202012Validator(SCHEMAS["Error"]).validate(r.json())
+
+
+def test_unexpected_error_is_500_and_leaks_nothing(caplog):
+    provider = FakeProvider(error=RuntimeError("gaps: SENSITIVE"))
+    app = create_app(provider=provider, service_token=SecretStr(TOKEN))
+
+    # Default TestClient: it raises if the exception escapes the app, which is what
+    # would make uvicorn log the full traceback (with the message) in production.
+    with TestClient(app) as c:
+        r = c.post(
+            "/v1/drafts",
+            json={"task": "roadmap", "context": CONTEXT},
+            headers={"Authorization": f"Bearer {TOKEN}"},
+        )
+
+    assert r.status_code == 500
+    assert r.json() == {"code": "internal_error", "message": "Unexpected error."}
+    assert "SENSITIVE" not in r.text
+    assert "RuntimeError" in caplog.text
+    assert "SENSITIVE" not in caplog.text
+
+
+def test_contract_documents_500_on_drafts():
+    contract = yaml.safe_load(CONTRACT.read_text())
+    assert "500" in contract["paths"]["/v1/drafts"]["post"]["responses"]

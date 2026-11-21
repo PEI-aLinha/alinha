@@ -19,7 +19,7 @@ EU_LLM_HOSTS: frozenset[str] = frozenset({
     "api.mistral.ai",    # Mistral AI (FR), La Plateforme
     "api.scaleway.ai",   # Scaleway (FR), Generative APIs
     "localhost",         # self-hosted model on the same machine (e.g. vLLM, Ollama)
-    "127.0.0.1",
+    "127.0.0.1",         # will be changed to approve the host in the future, but for now we allow it for local testing
 })
 
 

@@ -5,10 +5,12 @@ which may contain (redacted but still sensitive) client context.
 """
 
 import logging
+from collections.abc import Awaitable, Callable
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from ai_service.auth import Unauthorized
 from ai_service.providers.base import ProviderError, ProviderTimeout
@@ -57,9 +59,42 @@ async def _invalid_request(request: Request, exc: Exception) -> JSONResponse:
     return error_response(422, "invalid_request", message)
 
 
+_HTTP_CODES = {
+    404: ("not_found", "Not found."),
+    405: ("method_not_allowed", "Method not allowed."),
+}
+
+
+async def _http_error(request: Request, exc: Exception) -> JSONResponse:
+    # Routing errors (404, 405, ...) raised by Starlette; the default body is {"detail": ...}.
+    status = exc.status_code if isinstance(exc, StarletteHTTPException) else 500
+    code, message = _HTTP_CODES.get(status, ("http_error", "Request failed."))
+    response = error_response(status, code, message)
+    headers = getattr(exc, "headers", None) or {}
+    response.headers.update(headers)  # e.g. Allow on 405
+    return response
+
+
+async def _catch_unexpected(
+    request: Request, call_next: Callable[[Request], Awaitable[Response]]
+) -> Response:
+    # A middleware, not an Exception handler: Starlette re-raises after running an
+    # Exception handler so the server can log it, and uvicorn would then log the full
+    # traceback, whose message may carry client context. Here the error stops.
+    try:
+        return await call_next(request)
+    except Exception as exc:
+        # Only the type and path, never the message or traceback.
+        log.error("Unexpected %s on %s", type(exc).__name__, request.url.path)
+        return error_response(500, "internal_error", "Unexpected error.")
+
+
 def register_error_handlers(app: FastAPI) -> None:
     # Starlette picks the handler for the most specific class in the MRO,
     # so ProviderTimeout (a ProviderError subclass) gets 504, not 502.
+    # Anything not listed here becomes a 500 in _catch_unexpected.
+    app.add_exception_handler(StarletteHTTPException, _http_error)
+    app.middleware("http")(_catch_unexpected)
     app.add_exception_handler(ProviderTimeout, _provider_timeout)
     app.add_exception_handler(ProviderError, _provider_error)
     app.add_exception_handler(Unauthorized, _unauthorized)
