@@ -1,6 +1,6 @@
 #!/bin/sh
-# Seeds the dev OpenBao (docker-compose.dev.yml) with the secrets the app expects.
-# Dev-only values: same rule as the other credentials in docker-compose.dev.yml.
+# Seeds OpenBao with the secrets the app expects. Dev (docker-compose.dev.yml) uses the defaults below;
+# production (docker-compose.prod.yml) passes every value in the environment.
 set -eu
 
 until bao status >/dev/null 2>&1; do sleep 1; done
@@ -30,7 +30,10 @@ create_token() {
     bao token create -id="$1" -policy="$2" -orphan -period=768h >/dev/null
   fi
 }
-create_token dev-app-token alinha-app
-create_token dev-ai-token alinha-ai-service
+# Production (deploy/docker-compose.prod.yml) passes its own app token and no AI Service token yet.
+APP_TOKEN="${ALINHA_BAO_APP_TOKEN:-dev-app-token}"
+AI_TOKEN="${ALINHA_BAO_AI_TOKEN-dev-ai-token}"
+create_token "$APP_TOKEN" alinha-app
+if [ -n "$AI_TOKEN" ]; then create_token "$AI_TOKEN" alinha-ai-service; fi
 
-echo "OpenBao seeded: secret/alinha/app, secret/alinha/ai-service; tokens dev-app-token, dev-ai-token"
+echo "OpenBao seeded: secret/alinha/app, secret/alinha/ai-service; app and AI Service tokens created"
