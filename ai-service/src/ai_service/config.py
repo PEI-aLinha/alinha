@@ -38,6 +38,12 @@ class Settings(BaseSettings):
     llm_timeout_seconds: float = Field(default=30.0, gt=0)
     # Dev only: lets LLM_BASE_URL point at a model on this machine (see LOCAL_LLM_HOSTS).
     allow_local_llm: bool = False
+    # Dev/tests only: "fake" serves placeholder drafts that look real (aiGenerated, provenance),
+    # so it needs this explicit opt-in. The Dockerfile sets it to false.
+    allow_fake_llm: bool = False
+    # Caps the paid output of each completion. ~4096 tokens is about 3000 words of Portuguese,
+    # enough for a roadmap; raise it once the roadmap prompts (#34) show the real length.
+    llm_max_output_tokens: int = Field(default=4096, gt=0, le=32768)
 
     # Safety net against huge bodies sent to a paid LLM (413). Generous on purpose: the full
     # assessment of every framework is estimated at ~150 KB. The real per-model budget belongs
@@ -60,6 +66,10 @@ class Settings(BaseSettings):
                 "BAO_TOKEN is required for every LLM_PROVIDER: the service token is read from OpenBao"
             )
         if self.llm_provider == "fake":
+            if not self.allow_fake_llm:
+                raise ValueError(
+                    "LLM_PROVIDER=fake is for dev and tests; set ALLOW_FAKE_LLM=true to use it"
+                )
             return self
 
         missing = [

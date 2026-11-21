@@ -53,7 +53,9 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
         '502':
-          description: LLM provider failed
+          description: >
+            LLM provider failed (code provider_error), or the draft hit the output limit
+            LLM_MAX_OUTPUT_TOKENS and was cut off (code draft_truncated)
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -137,7 +139,7 @@ components:
       type: object
       required: [code, message]
       properties:
-        code: { type: string, examples: [provider_timeout] }
+        code: { type: string, examples: [provider_timeout, draft_truncated] }
         message: { type: string }
 # A correlation id (to link requests to the Audit Trail) is left out on purpose.
 # It can be added later as an optional request field without breaking v1.

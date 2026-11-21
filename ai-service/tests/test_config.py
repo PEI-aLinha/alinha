@@ -25,6 +25,35 @@ def test_fake_provider_needs_no_llm_config():
     assert Settings().llm_provider == "fake"
 
 
+def test_fake_provider_needs_the_explicit_opt_in(monkeypatch):
+    # The production image sets ALLOW_FAKE_LLM=false: a stray LLM_PROVIDER=fake must not
+    # serve placeholder drafts that look real.
+    monkeypatch.setenv("ALLOW_FAKE_LLM", "false")
+
+    with pytest.raises(ValidationError, match="ALLOW_FAKE_LLM=true"):
+        Settings()
+
+
+def test_fake_opt_in_is_off_by_default(monkeypatch):
+    monkeypatch.delenv("ALLOW_FAKE_LLM")
+
+    with pytest.raises(ValidationError, match="ALLOW_FAKE_LLM=true"):
+        Settings()
+
+
+def test_fake_opt_in_does_not_affect_real_providers(monkeypatch):
+    monkeypatch.setenv("ALLOW_FAKE_LLM", "false")
+
+    assert real().llm_provider == "openai_compat"
+
+
+def test_max_output_tokens_default_and_bounds():
+    assert Settings().llm_max_output_tokens == 4096
+    for bad in (0, -1, 32769):
+        with pytest.raises(ValidationError):
+            Settings(llm_max_output_tokens=bad)
+
+
 @pytest.mark.parametrize("provider", ["fake", "openai_compat"])
 def test_bao_token_is_required_for_every_provider(monkeypatch, provider):
     monkeypatch.delenv("BAO_TOKEN")

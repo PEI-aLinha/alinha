@@ -17,4 +17,5 @@ def build_provider(settings: Settings) -> LlmProvider:
         model=settings.llm_model,
         api_key=read_llm_api_key(settings),
         timeout_seconds=settings.llm_timeout_seconds,
+        max_output_tokens=settings.llm_max_output_tokens,
     )

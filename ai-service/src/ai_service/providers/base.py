@@ -24,6 +24,14 @@ class ProviderTimeout(ProviderError):
     """The provider did not answer in time (maps to HTTP 504)."""
 
 
+class ProviderTruncated(ProviderError):
+    """The completion hit the output limit, so the draft is cut off (HTTP 502, draft_truncated).
+
+    A separate code lets the AI Gateway shrink the context or raise LLM_MAX_OUTPUT_TOKENS
+    instead of retrying the same request.
+    """
+
+
 class LlmProvider(Protocol):
     """Anything that can turn a system prompt plus user content into text."""
 

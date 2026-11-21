@@ -8,15 +8,20 @@ from pydantic import SecretStr
 
 from ai_service.config import Settings
 from ai_service.providers import build_provider
-from ai_service.providers.base import ProviderError, ProviderTimeout
+from ai_service.providers.base import ProviderError, ProviderTimeout, ProviderTruncated
 from ai_service.providers.openai_compat import OpenAiCompatProvider
 
 BASE_URL = "https://llm.example.eu/v1"
 ENDPOINT = f"{BASE_URL}/chat/completions"
 
 
-def completion(text="Rascunho.", model="eu-model-2025"):
-    return {"model": model, "choices": [{"message": {"role": "assistant", "content": text}}]}
+def completion(text="Rascunho.", model="eu-model-2025", finish_reason="stop"):
+    return {
+        "model": model,
+        "choices": [
+            {"message": {"role": "assistant", "content": text}, "finish_reason": finish_reason}
+        ],
+    }
 
 
 @pytest.fixture
@@ -169,3 +174,76 @@ async def test_build_provider_reads_key_from_openbao(monkeypatch, mock):
 
     assert isinstance(p, OpenAiCompatProvider)
     assert route.calls.last.request.headers["Authorization"] == "Bearer from-bao"
+
+
+async def test_sends_max_tokens(provider, mock):
+    route = mock.post(ENDPOINT).respond(200, json=completion())
+
+    await provider.complete(system="s", user="u")
+
+    assert json.loads(route.calls.last.request.content)["max_tokens"] == 4096
+
+
+async def test_max_tokens_is_configurable(mock):
+    route = mock.post(ENDPOINT).respond(200, json=completion())
+    p = OpenAiCompatProvider(
+        base_url=BASE_URL, model="m", api_key=SecretStr("k"), timeout_seconds=1.0,
+        max_output_tokens=500,
+    )
+    try:
+        await p.complete(system="s", user="u")
+    finally:
+        await p.aclose()
+
+    assert json.loads(route.calls.last.request.content)["max_tokens"] == 500
+
+
+async def test_truncated_completion_is_provider_truncated(provider, mock):
+    mock.post(ENDPOINT).respond(200, json=completion(text="Roteiro cortad", finish_reason="length"))
+
+    with pytest.raises(ProviderTruncated) as exc:
+        await provider.complete(system="s", user="u")
+
+    assert "cortad" not in str(exc.value)
+
+
+@pytest.mark.parametrize("finish_reason", ["stop", None])
+async def test_normal_finish_reasons_pass(provider, mock, finish_reason):
+    mock.post(ENDPOINT).respond(200, json=completion(finish_reason=finish_reason))
+
+    assert (await provider.complete(system="s", user="u")).text == "Rascunho."
+
+
+async def test_text_beyond_the_output_cap_is_provider_error(mock):
+    # A provider that ignores max_tokens: 10 tokens allow at most 80 characters.
+    mock.post(ENDPOINT).respond(200, json=completion(text="x" * 81))
+    p = OpenAiCompatProvider(
+        base_url=BASE_URL, model="m", api_key=SecretStr("k"), timeout_seconds=1.0,
+        max_output_tokens=10,
+    )
+    try:
+        with pytest.raises(ProviderError, match="output limit") as exc:
+            await p.complete(system="s", user="u")
+    finally:
+        await p.aclose()
+
+    assert not isinstance(exc.value, ProviderTruncated)
+
+
+async def test_build_provider_passes_the_output_limit(monkeypatch, mock):
+    monkeypatch.setattr(
+        "ai_service.secrets.read_llm_api_key", lambda settings: SecretStr("k")
+    )
+    route = mock.post(ENDPOINT).respond(200, json=completion())
+    settings = Settings(
+        llm_provider="openai_compat", llm_base_url=BASE_URL, llm_model="m",
+        bao_token=SecretStr("t"), llm_max_output_tokens=1234,
+    )
+
+    p = build_provider(settings)
+    try:
+        await p.complete(system="s", user="u")
+    finally:
+        await p.aclose()
+
+    assert json.loads(route.calls.last.request.content)["max_tokens"] == 1234

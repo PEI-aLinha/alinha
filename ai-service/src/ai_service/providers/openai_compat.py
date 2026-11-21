@@ -9,7 +9,16 @@ import asyncio
 import httpx
 from pydantic import SecretStr
 
-from ai_service.providers.base import LlmResult, ProviderError, ProviderTimeout
+from ai_service.providers.base import (
+    LlmResult,
+    ProviderError,
+    ProviderTimeout,
+    ProviderTruncated,
+)
+
+# Safety net for providers that ignore max_tokens: a token is 3-4 characters, so this
+# leaves a wide margin before treating the text as runaway output.
+MAX_CHARS_PER_TOKEN = 8
 
 
 class OpenAiCompatProvider:
@@ -20,10 +29,12 @@ class OpenAiCompatProvider:
         model: str,
         api_key: SecretStr,
         timeout_seconds: float,
+        max_output_tokens: int = 4096,
         client: httpx.AsyncClient | None = None,
     ) -> None:
         self._model = model
         self._timeout_seconds = timeout_seconds
+        self._max_output_tokens = max_output_tokens
         # Do not set follow_redirects=True: httpx does not follow redirects by default, so a
         # redirect can never take the API key and client context to a host outside EU_LLM_HOSTS.
         self._client = client or httpx.AsyncClient(
@@ -40,6 +51,7 @@ class OpenAiCompatProvider:
                 {"role": "user", "content": user},
             ],
             "temperature": 0.2,
+            "max_tokens": self._max_output_tokens,  # output goes to a paid LLM: always bounded
         }
 
         try:
@@ -55,12 +67,19 @@ class OpenAiCompatProvider:
 
         try:
             body = response.json()
-            text = body["choices"][0]["message"]["content"]
-        except (ValueError, KeyError, IndexError, TypeError) as e:
+            choice = body["choices"][0]
+            text = choice["message"]["content"]
+            finish_reason = choice.get("finish_reason")
+        except (ValueError, KeyError, IndexError, TypeError, AttributeError) as e:
             raise ProviderError("unexpected response shape") from e
 
+        # A cut-off roadmap must not come back as a normal draft.
+        if finish_reason == "length":
+            raise ProviderTruncated(f"completion hit max_tokens={self._max_output_tokens}")
         if not isinstance(text, str) or not text.strip():
             raise ProviderError("empty completion")
+        if len(text) > self._max_output_tokens * MAX_CHARS_PER_TOKEN:
+            raise ProviderError("completion longer than the output limit allows")
 
         # Provenance (RNF14): use the provider's model name only if it is a real string;
         # anything else would break AiDraft validation and surface as a 500.

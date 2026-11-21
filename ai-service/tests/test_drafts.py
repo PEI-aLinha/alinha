@@ -10,7 +10,7 @@ from pydantic import SecretStr
 
 from ai_service.main import create_app
 from ai_service.prompts import ROADMAP_V1, TEMPLATES
-from ai_service.providers.base import ProviderError, ProviderTimeout
+from ai_service.providers.base import ProviderError, ProviderTimeout, ProviderTruncated
 from ai_service.providers.fake import FakeProvider
 
 CONTRACT = Path(__file__).resolve().parents[2] / "contracts" / "ai" / "ai-service.v1.yaml"
@@ -130,6 +130,7 @@ def test_request_examples_match_contract():
 @pytest.mark.parametrize("err,status,code", [
     (ProviderTimeout("t"), 504, "provider_timeout"),
     (ProviderError("gaps: MFA em falta"), 502, "provider_error"),
+    (ProviderTruncated("gaps: MFA em falta"), 502, "draft_truncated"),
 ])
 def test_provider_failures(err, status, code):
     r = post(FakeProvider(error=err), {"task": "roadmap", "context": CONTEXT})

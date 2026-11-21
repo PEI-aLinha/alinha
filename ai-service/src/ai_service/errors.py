@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse, Response
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from ai_service.auth import Unauthorized
-from ai_service.providers.base import ProviderError, ProviderTimeout
+from ai_service.providers.base import ProviderError, ProviderTimeout, ProviderTruncated
 
 log = logging.getLogger(__name__)
 
@@ -29,6 +29,13 @@ def error_response(status: int, code: str, message: str) -> JSONResponse:
 async def _provider_timeout(request: Request, exc: Exception) -> JSONResponse:
     log.warning("LLM provider timed out on %s", request.url.path)
     return error_response(504, "provider_timeout", "The LLM provider did not answer in time.")
+
+
+async def _provider_truncated(request: Request, exc: Exception) -> JSONResponse:
+    log.warning("LLM completion truncated on %s", request.url.path)
+    return error_response(
+        502, "draft_truncated", "The draft hit the output limit and was cut off."
+    )
 
 
 async def _provider_error(request: Request, exc: Exception) -> JSONResponse:
@@ -97,6 +104,7 @@ def register_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(StarletteHTTPException, _http_error)
     app.middleware("http")(_catch_unexpected)
     app.add_exception_handler(ProviderTimeout, _provider_timeout)
+    app.add_exception_handler(ProviderTruncated, _provider_truncated)
     app.add_exception_handler(ProviderError, _provider_error)
     app.add_exception_handler(Unauthorized, _unauthorized)
     app.add_exception_handler(UnknownTask, _unknown_task)

@@ -29,7 +29,8 @@ COPY --from=build /app/.venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    ALLOW_LOCAL_LLM=false
+    ALLOW_LOCAL_LLM=false \
+    ALLOW_FAKE_LLM=false
 
 USER 10001
 EXPOSE 8000

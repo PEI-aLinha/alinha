@@ -33,6 +33,8 @@ EU provider.
 | `LLM_BASE_URL`, `LLM_MODEL` | with `openai_compat` | — |
 | `LLM_TIMEOUT_SECONDS` | no | `30` |
 | `ALLOW_LOCAL_LLM` | no, dev only | `false` |
+| `ALLOW_FAKE_LLM` | with `fake` (dev and tests only) | `false`; without it `LLM_PROVIDER=fake` stops startup |
+| `LLM_MAX_OUTPUT_TOKENS` | no | `4096` (max `32768`); a completion cut at this limit returns 502 `draft_truncated` |
 | `MAX_REQUEST_BYTES` | no | `262144` (256 KiB); larger bodies get 413. `context` is also capped at 20 levels of nesting (422) |
 | `BAO_ADDR` | no | `http://localhost:8200` |
 | `BAO_TOKEN` | always (dev: `dev-ai-token`) | — |
@@ -54,6 +56,6 @@ Seeded in dev by `deploy/openbao/init.sh`.
 docker compose -f deploy/docker-compose.dev.yml up -d   # from the repo root (OpenBao)
 cd ai-service
 uv sync --extra dev
-LLM_PROVIDER=fake BAO_TOKEN=dev-ai-token uv run uvicorn ai_service.main:app --port 8000
+LLM_PROVIDER=fake ALLOW_FAKE_LLM=true BAO_TOKEN=dev-ai-token uv run uvicorn ai_service.main:app --port 8000
 uv run pytest --cov
 ```
