@@ -13,6 +13,12 @@ function TenantProbe() {
   return <p>Dados de {host.organization?.name}: {probe.data?.value ?? 'a carregar'}</p>
 }
 
+/** Lists the organizations the host offers, like a page across the portfolio. */
+function OrganizationsProbe() {
+  const host = useHost()
+  return <ul aria-label="Organizações do host">{host.organizations?.map((o) => <li key={o.id}>{o.name} ({o.slug})</li>)}</ul>
+}
+
 /** Two calls at once, like a page with several queries. */
 function TwoCalls() {
   const host = useHost()
@@ -49,20 +55,28 @@ const testPlugin = definePlugin({
       { path: 'two-calls', Component: TwoCalls },
       { path: 'save', Component: SaveButton },
       { path: 'lazy', handle: { resource: 'risk' }, lazy: async () => ({ Component: () => <h1>Página carregada à parte</h1> }) },
+      { path: 'organizations', Component: OrganizationsProbe },
     ],
     onboarding: [
       { path: 'registration', Component: TenantProbe },
+    ],
+    portfolio: [
+      { path: 'overview', handle: { title: 'Visão geral' }, Component: TenantProbe },
+      { path: 'reports', handle: { resource: 'portfolio_report' }, Component: () => <h1>Relatórios da carteira</h1> },
     ],
     consultant: [
       { path: 'dashboard', Component: () => <h1>Painel do cliente</h1> },
       { path: 'probe', Component: TenantProbe },
       { path: 'draft', Component: Draft },
+      { path: 'organizations', Component: OrganizationsProbe },
     ],
   },
   nav: [
     { label: 'Riscos', path: 'risks', area: 'client', resource: 'risk', order: 2 },
     { label: 'Ativos', path: 'assets', area: 'client', order: 1 },
     { label: 'Painel', path: 'dashboard', area: 'consultant' },
+    { label: 'Visão geral', path: 'overview', area: 'portfolio' },
+    { label: 'Relatórios', path: 'reports', area: 'portfolio', resource: 'portfolio_report' },
   ],
 })
 const plugins = [testPlugin]
@@ -287,6 +301,66 @@ describe('consultant area (/portfolio)', () => {
     renderApp({ url: '/portfolio', plugins, me: meFor('consultant') })
     await screen.findByRole('heading', { name: 'Carteira de clientes' })
     expect(screen.getByRole('combobox', { name: 'Cliente' })).toHaveValue('')
+  })
+
+  it('gives plugins every organization of the portfolio, for names and links', async () => {
+    renderApp({ url: '/portfolio/acme/organizations', plugins, me: meFor('consultant') })
+    const list = await screen.findByRole('list', { name: 'Organizações do host' })
+    expect(within(list).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Acme, Lda. (acme)', 'Beta, S.A. (beta)'])
+  })
+
+  it('gives a client user only their own organization, never other clients', async () => {
+    renderApp({ url: '/org/acme/organizations', plugins, me: meFor('responsible') })
+    const list = await screen.findByRole('list', { name: 'Organizações do host' })
+    expect(within(list).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Acme, Lda. (acme)'])
+  })
+
+  it('opens a plugin page across the portfolio, with no organization and no tenant header', async () => {
+    const { calls } = renderApp({ url: '/portfolio', plugins, me: meFor('consultant'), api: () => json({ value: 'todos' }) })
+    await screen.findByRole('heading', { name: 'Carteira de clientes' })
+    expect(nav().getByRole('link', { name: 'Visão geral' })).toHaveAttribute('href', '/portfolio/overview')
+    expect(nav().queryByRole('link', { name: 'Relatórios' })).not.toBeInTheDocument() // no portfolio_report:read
+
+    fireEvent.click(nav().getByRole('link', { name: 'Visão geral' }))
+
+    expect(await screen.findByText('Dados de : todos')).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Cliente' })).toHaveValue('')
+    const probe = calls.find((c) => c.url === '/api/probe')
+    expect(new Headers(probe?.init.headers).has('X-Alinha-Tenant')).toBe(false)
+  })
+
+  // ADR 0006: with portfolio pages registered (`overview`, `reports`), a client slug still opens that client and the
+  // bare /portfolio still lists the clients. React Router must rank the fixed segment above `:org`, never instead of it.
+  it('still opens any client at /portfolio/<slug> next to the portfolio pages', async () => {
+    const { router } = renderApp({ url: '/portfolio/beta', plugins, me: meFor('consultant') })
+    expect(await screen.findByRole('heading', { name: 'Painel do cliente' })).toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/portfolio/beta/dashboard')
+    expect(screen.getByRole('combobox', { name: 'Cliente' })).toHaveValue('beta')
+  })
+
+  it('still lists the clients at /portfolio next to the portfolio pages', async () => {
+    renderApp({ url: '/portfolio', plugins, me: meFor('consultant') })
+    expect(await screen.findByRole('heading', { name: 'Carteira de clientes' })).toBeInTheDocument()
+    const main = within(screen.getByRole('main'))
+    expect(main.getByRole('link', { name: 'Beta, S.A.' })).toHaveAttribute('href', '/portfolio/beta')
+    expect(screen.queryByText(/Dados de/)).not.toBeInTheDocument() // not the overview page
+  })
+
+  it('keeps the portfolio menu inside a client, next to that client\'s pages', async () => {
+    renderApp({ url: '/portfolio/acme/dashboard', plugins, me: meFor('consultant') })
+    await screen.findByRole('heading', { name: 'Painel do cliente' })
+    expect(nav().getByRole('link', { name: 'Visão geral' })).toHaveAttribute('href', '/portfolio/overview')
+    expect(nav().getByRole('link', { name: 'Painel' })).toHaveAttribute('href', '/portfolio/acme/dashboard')
+  })
+
+  it('guards a portfolio page with its permission', async () => {
+    renderApp({ url: '/portfolio/reports', plugins, me: meFor('consultant') })
+    expect(await screen.findByRole('heading', { name: 'Não tem acesso a esta página' })).toBeInTheDocument()
+  })
+
+  it('opens a guarded portfolio page with the permission', async () => {
+    renderApp({ url: '/portfolio/reports', plugins, me: meFor('consultant', { permissions: ['portfolio_report:read'] }) })
+    expect(await screen.findByRole('heading', { name: 'Relatórios da carteira' })).toBeInTheDocument()
   })
 
   it('refuses an organization outside the portfolio', async () => {

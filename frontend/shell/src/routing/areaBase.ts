@@ -4,5 +4,6 @@ import type { Area } from '@alinha/plugin-sdk'
 export const AREA_BASE: Record<Area, string> = {
   client: '/org',
   consultant: '/portfolio',
+  portfolio: '/portfolio',
   onboarding: '/onboarding',
 }

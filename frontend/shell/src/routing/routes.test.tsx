@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { definePlugin, type FrontendPlugin } from '@alinha/plugin-sdk'
-import { firstOnboardingPath } from './routes'
+import { checkPortfolioRoutes, firstOnboardingPath } from './routes'
 
 const Page = () => null
 const withOnboarding = (onboarding: FrontendPlugin['routes']['onboarding']) =>
@@ -51,5 +51,28 @@ describe('firstOnboardingPath', () => {
   it('is undefined when there is no static page', () => {
     expect(firstOnboardingPath(withOnboarding([{ path: ':id', Component: Page }]))).toBeUndefined()
     expect(firstOnboardingPath([])).toBeUndefined()
+  })
+})
+
+describe('checkPortfolioRoutes', () => {
+  const withPortfolio = (portfolio: FrontendPlugin['routes']['portfolio']) =>
+    [definePlugin({ id: 'p', name: 'P', routes: { portfolio } })]
+
+  it('accepts a fixed first segment, with anything after it', () => {
+    expect(() => checkPortfolioRoutes(withPortfolio([
+      { path: 'overview', Component: Page },
+      { path: 'reports/:id', Component: Page },
+      { path: '/alerts', Component: Page },
+    ]))).not.toThrow()
+    expect(() => checkPortfolioRoutes([definePlugin({ id: 'q', name: 'Q', routes: {} })])).not.toThrow()
+  })
+
+  it.each([
+    ['an index route, which would replace the client list', { index: true, Component: Page }],
+    ['a dynamic first segment, which would swallow every client', { path: ':id', Component: Page }],
+    ['a splat, which would swallow every client', { path: '*', Component: Page }],
+    ['a route with no path', { Component: Page, children: [{ path: 'x', Component: Page }] }],
+  ])('refuses %s, naming the plugin', (_why, route) => {
+    expect(() => checkPortfolioRoutes(withPortfolio([route]))).toThrow(/Plugin "p".*ADR 0006/)
   })
 })

@@ -9,6 +9,7 @@ import type { RouteObject } from 'react-router'
 export type Area =
   | 'client'      // /org/:org/<path>        — designated responsible person and analysts
   | 'consultant'  // /portfolio/:org/<path>  — consultant (service provider), for one client organization
+  | 'portfolio'   // /portfolio/<path>       — consultant, across all their clients (no organization; ADR 0006)
   | 'onboarding'  // /onboarding/<path>      — full page, no organization yet (a `registrant` setting one up)
 
 /** Areas with a menu. The onboarding is a full page with no menu, so it takes no menu entries. */
@@ -110,6 +111,12 @@ export interface PluginHost {
   /** Tenant UUID of the current organization; null outside an organization (e.g. the portfolio). */
   tenantId: string | null
   organization: HostOrganization | null
+  /**
+   * Every organization the user may work on: a consultant's whole portfolio, or a client user's own one. A page
+   * across the portfolio uses it for each client's name and link (`/portfolio/<slug>`). The shell always sets it;
+   * it is optional only so host mocks written before it keep compiling.
+   */
+  organizations?: readonly HostOrganization[]
   user: { id: string; name: string; roles: string[] } | null
   /** Whether the user has `<resource>:<action>` (action defaults to 'read'). */
   can: (resource: string, action?: string) => boolean

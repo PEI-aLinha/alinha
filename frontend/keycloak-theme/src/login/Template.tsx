@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useSyncExternalStore, type ReactNode } from 'react'
 import { Check, RotateCcw } from 'lucide-react'
 import { cn, Stepper } from '@alinha/ui'
 import type { TemplateProps } from 'keycloakify/login/TemplateProps'
@@ -17,7 +17,18 @@ import type { KcContext } from './KcContext'
 const FLOW_STEP: Partial<Record<KcContext['pageId'], number>> = { 'register.ftl': 0, 'login-verify-email.ftl': 1 }
 const FLOW_KEYS = ['alinhaStepAccount', 'alinhaStepEmail', 'alinhaStepSecurity', 'alinhaStepOrganization'] as const
 
-// Static network of points and lines on the brand panel (prototype OnboardingLayout, viewBox 500×900).
+const BrandParticles = lazy(() => import('./BrandParticles'))
+
+const REDUCED_MOTION = '(prefers-reduced-motion: reduce)'
+const subscribeMotion = (onChange: () => void) => {
+  const mq = window.matchMedia(REDUCED_MOTION)
+  mq.addEventListener('change', onChange)
+  return () => mq.removeEventListener('change', onChange)
+}
+const useReducedMotion = () => useSyncExternalStore(subscribeMotion, () => window.matchMedia(REDUCED_MOTION).matches)
+
+// Static network of points and lines on the brand panel: shown while the animation loads and when motion is reduced
+// (prototype OnboardingLayout, fixed coordinates, viewBox 500×900).
 const NODES: Array<[number, number]> = [
   [195, 32], [322, 48], [80, 112], [150, 138], [292, 120], [368, 88], [420, 132], [342, 150],
   [92, 248], [64, 330], [200, 335], [234, 316], [372, 310], [492, 380], [305, 402], [150, 488],
@@ -119,6 +130,7 @@ export default function Template(props: TemplateProps<KcContext, I18n>) {
   const { realm, auth, url, message, isAppInitiatedAction } = kcContext
 
   useSystemTheme()
+  const reducedMotion = useReducedMotion()
   useEffect(() => {
     document.title = documentTitle ?? msgStr('loginTitle', realm.displayName || realm.name)
     document.documentElement.lang = i18n.currentLanguage.languageTag
@@ -153,7 +165,13 @@ export default function Template(props: TemplateProps<KcContext, I18n>) {
   return (
     <div className="flex min-h-dvh bg-paper text-ink">
       <aside className="brand-panel sticky top-0 flex h-dvh w-[500px] shrink-0 flex-col justify-between overflow-hidden bg-brand-deep bg-gradient-to-br from-brand-deep via-brand/90 to-signal/75 px-14 pb-28 pt-14 max-xl:w-[420px] max-xl:px-11 max-lg:hidden">
-        <Network />
+        {reducedMotion ? (
+          <Network />
+        ) : (
+          <Suspense fallback={<Network />}>
+            <BrandParticles />
+          </Suspense>
+        )}
         <img src={logoUrl} alt="aLinha" width={985} height={404} className="relative h-10 w-fit brightness-0 invert" />
         <p aria-hidden className="relative text-[4rem] font-extrabold leading-[0.98] tracking-[-0.03em] text-white">
           {tagline[0]}

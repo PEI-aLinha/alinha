@@ -34,14 +34,18 @@ export function OrgSwitcher({ organizations, current }: { organizations: readonl
   )
 }
 
-/** /portfolio and /portfolio/:org — the consultant: portfolio, organization switcher and the client's pages. */
+/**
+ * /portfolio, /portfolio/<path> and /portfolio/:org — the consultant: the client list and the plugins' pages across
+ * all clients (no organization), or one client's pages with the organization switcher.
+ */
 export function ConsultantLayout({ plugins }: { plugins: readonly FrontendPlugin[] }) {
   const { org } = useParams()
   const { me, can, isConsultant } = useSession()
   if (!isConsultant) return <Navigate to="/" replace />
 
   const organization = org ? me.organizations.find((o) => o.slug === org) : undefined
-  const sections: FrameSection[] = [{ links: [PORTFOLIO] }]
+  const portfolioLinks = areaLinks(plugins, 'portfolio', can, '/portfolio')
+  const sections: FrameSection[] = [{ links: [PORTFOLIO, ...portfolioLinks] }]
   if (organization) {
     const links = areaLinks(plugins, 'consultant', can, `/portfolio/${organization.slug}`)
     sections.push({ heading: organization.name, links })

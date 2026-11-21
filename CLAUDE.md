@@ -143,7 +143,8 @@ Avoid this unless the task needs it. Before starting, say so explicitly and list
 - The platform has two sides:
   - **client** area (`/org/:org/...`): the SME's designated responsible person
   - **consultant** area (`/portfolio` for the client list, `/portfolio/:org/...` for one client): the service
-    provider managing several client organisations
+    provider managing several client organisations. Plugin pages across all clients go at `/portfolio/<path>`
+    (area `portfolio`, no organization; ADR 0006)
 
   Before either, a new account with the `registrant` role and no organization only sees the **onboarding** area
   (`/onboarding/...`, plugin route area `onboarding`: full page, no tenant). After registering, the plugin calls

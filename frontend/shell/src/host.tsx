@@ -105,6 +105,7 @@ export function HostProvider({ organization, children }: { organization: HostOrg
   const host = useMemo<PluginHost>(() => ({
     tenantId,
     organization,
+    organizations: me.organizations,
     user: { id: me.user.id, name: me.user.name, roles: me.roles },
     can,
     // A 401 from a plugin call: ask /api/me again. If the session expired, SessionGate sends the person to
