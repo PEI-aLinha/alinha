@@ -1,14 +1,15 @@
 name: Get Production Logs
 
-# Read-only: prints what the running containers logged. Found by the compose project label, so it needs no
-# secrets and no compose interpolation.
+# Read-only. Saves every alinha-prod container's logs on the VM (~/alinha-logs/<run id>/, read them over SSH) and
+# prints only each container's state, health and restarts: the repository and its job logs are public, and container
+# logs can hold personal data. Found by the compose project label, so it needs no secrets.
 on:
   workflow_dispatch:
     inputs:
       tail:
-        description: "Lines per container"
+        description: "Lines per container saved on the VM"
         required: false
-        default: "500"
+        default: "2000"
         type: string
 
 permissions:
@@ -16,36 +17,15 @@ permissions:
 
 jobs:
   logs:
-    name: Print Container Logs
+    name: Save Container Logs
     runs-on: [self-hosted, prod]
-    # The repository is public, and so are job logs: same approval and branch rule as deploying.
+    # Same approval and branch rule as deploying.
     environment: production
     if: github.ref == 'refs/heads/main'
-    env:
-      TAIL: ${{ inputs.tail }}
-      # Never used here: referencing the secrets makes GitHub mask their values if a container ever logs one.
-      MASK_POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-      MASK_ALINHA_APP_DB_PASSWORD: ${{ secrets.ALINHA_APP_DB_PASSWORD }}
-      MASK_KEYCLOAK_DB_PASSWORD: ${{ secrets.KEYCLOAK_DB_PASSWORD }}
-      MASK_KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}
-      MASK_BFF_CLIENT_SECRET: ${{ secrets.BFF_CLIENT_SECRET }}
-      MASK_KEYCLOAK_PROVISIONER_SECRET: ${{ secrets.KEYCLOAK_PROVISIONER_SECRET }}
-      MASK_BAO_ROOT_TOKEN: ${{ secrets.BAO_ROOT_TOKEN }}
-      MASK_BAO_APP_TOKEN: ${{ secrets.BAO_APP_TOKEN }}
     steps:
-      - name: Print logs
-        run: |
-          case "$TAIL" in ''|*[!0-9]*) echo "::error::tail must be a number"; exit 1 ;; esac
-          if [ "$TAIL" -gt 2000 ]; then TAIL=2000; fi
-          # Public repository, public job logs. OpenBao's dev server prints its root token at startup: never dump it.
-          containers=$(docker ps -a --filter label=com.docker.compose.project=alinha-prod --format '{{.Names}}' \
-            | grep -v -- '-openbao-' | sort)
-          if [ -z "$containers" ]; then
-            echo "::warning::No alinha-prod containers found."
-            exit 0
-          fi
-          for name in $containers; do
-            echo "::group::$name ($(docker inspect -f '{{.State.Status}}' "$name"))"
-            docker logs --tail "$TAIL" --timestamps "$name" 2>&1
-            echo "::endgroup::"
-          done
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Save logs on the VM
+        env:
+          TAIL: ${{ inputs.tail }}
+        run: sh deploy/save-logs.sh "$TAIL" "logs-${{ github.run_id }}"
