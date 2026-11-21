@@ -23,6 +23,12 @@ export type MeDto = components['schemas']['Me']
 /** GET /api/plugins: a plugin manifest, as registered by the backend. */
 export type PluginManifestDto = components['schemas']['PluginManifest']
 
+/** GET /api/audit/events: one entry of the organization's change history (`actor` is a `sub` or `system`). */
+export type AuditEventDto = components['schemas']['AuditEvent']
+
+/** GET /api/audit/events: one page of history, newest first. */
+export type AuditEventPageDto = components['schemas']['AuditEventPage']
+
 /** RFC 9457 Problem Details sent on every error (ADR 0003). `detail` is in Portuguese when it is meant for the user. */
 export type ProblemDto = components['schemas']['Problem']
 
