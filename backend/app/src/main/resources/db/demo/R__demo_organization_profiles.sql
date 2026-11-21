@@ -1,6 +1,12 @@
 -- Demo organization profiles for the tenants in deploy/keycloak/alinha-realm.json (see deploy/keycloak/README.md).
 -- Without them /api/me falls back to the tenant id as the organization name. Loaded only with the `demo` profile.
 -- ON CONFLICT: a profile registered through the wizard (same tenant or NIF) is never overwritten.
+--
+-- Exception to RNF04 (every write recorded in the Audit Trail): this is fixture data written by Flyway, not a
+-- business write by a user, so it has no actor to record and no audit.audit_event row. Only db/demo may do this,
+-- and only under the `demo` profile (DemoProfileGuard keeps it off real deployments).
+-- The names, contacts and NIFs are made up for the demo; any match with a real company is accidental. The NIFs pass
+-- the check-digit test only because the platform validates it.
 insert into organization.organization_profile (
     id, tenant_id, version, name, nif, cae, sector, subsector, services, employees, turnover,
     street, postal_code, city, phone, email, permanent_contact_name, permanent_contact_phone, registered_at, updated_at
