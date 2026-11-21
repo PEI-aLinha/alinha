@@ -24,7 +24,7 @@ alinha/
 ├── frameworks/           versioned YAML catalogues (NIS2/QNRCS, SOC-CMM, GDPR, AI Act)
 ├── contracts/            JSON Schema / OpenAPI shared between Kotlin, Python and TS
 ├── bff/  ai-service/  workers/
-├── deploy/               development docker-compose, Keycloak
+├── deploy/               docker-compose (dev and production), Dockerfiles, Keycloak, OpenBao
 └── docs/adr/
 ```
 
@@ -169,7 +169,21 @@ Numbering from the technical report (section 3.2).
 | RNF17 new plugin without touching the core | `settings.gradle.kts` and `gen-frontend-plugins.mjs` discover the submodules; `ModularityTest`; `PluginRegistry` validates the manifests at startup and serves `GET /api/plugins`; `PluginYamlConsistencyTest` | **done** |
 | RNF18 catalogues as data | `frameworks/` read from disk at start-up by `core.compliance.CatalogueRegistry` (`CatalogueLoader`); schema in `contracts/frameworks/`; released versions frozen by `scripts/check-immutable-frameworks.sh` | **done** for loading and versioning; see `frameworks/README.md` |
 | RNF19 coverage ≥ 70% and CI blocks merge | missing: Kover (Kotlin) + Vitest coverage in CI; branch protection/rulesets are available because all nine repos are public, and are applied in #4 | **to do** |
-| RNF21 whole system starts with one command | missing: full `deploy/docker-compose.yml` (Nginx, BFF, app, AI Service, workers, OpenBao) | **to do** |
+| RNF21 whole system starts with one command | `deploy/docker-compose.prod.yml` (Nginx, BFF, app, Keycloak, OpenBao, Postgres, Redis, job consumer): `make staging` locally, `deploy.yml` on the VM; see `deploy/DEPLOYMENT.md` | **done** except the AI Service (not implemented yet) |
+
+## Deploy
+
+Releases go to https://pei-alinha.duckdns.org (NEI VM) the way the NEI gamification system does it: a `vX.Y.Z`
+release publishes the images to GHCR (`publish.yml`) and **Deploy into NEI VM** (`deploy.yml`) runs them on the VM's
+self-hosted runner. Details, secrets and the one-time VM setup: [`deploy/DEPLOYMENT.md`](deploy/DEPLOYMENT.md).
+
+| Command | Description |
+|---|---|
+| `make staging-env` | Create `deploy/.env.staging` with random secrets |
+| `make staging-build` | Build the production images from this checkout |
+| `make staging` | Start the production stack locally on http://localhost:8088 |
+| `make staging-down` / `make staging-clean` | Stop it (`-clean` also deletes the volumes) |
+| `make prod-logs` / `make prod-ps` | On the VM: follow the logs / list the containers |
 
 ## New plugin
 

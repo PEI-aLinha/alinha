@@ -2,8 +2,7 @@
 # The app runs outside Docker (./gradlew :app:bootRun) and the frontend with pnpm dev.
 # Dev-only credentials below are the defaults; override them in deploy/.env
 # (see deploy/.env.example). Never put real secrets in this file.
-# TODO sprint 0 (RNF21): full docker-compose.yml with Nginx, BFF, app, AI Service,
-# workers and OpenBao, starting with a single command.
+# The whole stack in containers (production images): docker-compose.prod.yml, `make staging` (deploy/DEPLOYMENT.md).
 services:
   postgres:
     image: postgres:17
