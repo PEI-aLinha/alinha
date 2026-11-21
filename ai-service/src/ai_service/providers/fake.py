@@ -29,3 +29,6 @@ class FakeProvider:
         if self._error is not None:
             raise self._error
         return LlmResult(text=self._text, model=self._model)
+    
+    async def aclose(self) -> None:
+        pass  # nothing to close, but we need the method to satisfy the interface
