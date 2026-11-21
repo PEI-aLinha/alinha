@@ -45,13 +45,21 @@ class SecurityConfig {
             }
             .build()
 
-    /** Lazy, so the application starts even while Keycloak is still coming up. */
+    /**
+     * Lazy, so the application starts even while Keycloak is still coming up.
+     *
+     * With `alinha.security.jwk-set-uri` set, the keys come from that (internal) URL and the issuer is only compared
+     * with the token's `iss`. Behind a proxy the public issuer URL may not be reachable from inside the container.
+     */
     @Bean
     fun jwtDecoder(
         @Value("\${spring.security.oauth2.resourceserver.jwt.issuer-uri}") issuer: String,
         @Value("\${spring.security.oauth2.resourceserver.jwt.audiences}") audience: String,
+        @Value("\${alinha.security.jwk-set-uri:}") jwkSetUri: String,
     ): JwtDecoder = SupplierJwtDecoder {
-        NimbusJwtDecoder.withIssuerLocation(issuer).build().apply {
+        val builder =
+            if (jwkSetUri.isBlank()) NimbusJwtDecoder.withIssuerLocation(issuer) else NimbusJwtDecoder.withJwkSetUri(jwkSetUri)
+        builder.build().apply {
             setJwtValidator(alinhaJwtValidator(issuer, audience))
         }
     }
