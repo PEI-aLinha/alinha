@@ -1,14 +1,17 @@
 import { useId } from 'react'
 import { Link, Navigate, Outlet, useNavigate, useParams } from 'react-router'
+import { Briefcase, Building2, ChevronRight } from 'lucide-react'
 import type { OrganizationRefDto } from '@alinha/api-client'
 import type { FrontendPlugin } from '@alinha/plugin-sdk'
 import { HostProvider } from '../host'
-import { ForbiddenPage, StatusPage } from '../pages/StatusPages'
-import { pluginNav } from '../routing/plugins'
+import { ForbiddenPage } from '../pages/StatusPages'
+import { controlClass, EmptyState, PageHeader } from '@alinha/ui'
 import { useSession } from '../session/SessionGate'
-import { AppFrame, type FrameSection } from './AppFrame'
+import { roleLabel } from '../session/permissions'
+import { AppFrame, type FrameLink, type FrameSection } from './AppFrame'
+import { areaLinks } from './areaLinks'
 
-const PORTFOLIO = { to: '/portfolio', label: 'Carteira de clientes', end: true }
+const PORTFOLIO: FrameLink = { to: '/portfolio', label: 'Carteira de clientes', shortLabel: 'Clientes', icon: Briefcase, end: true }
 
 /** Organization switcher: changing it opens that client's area (/portfolio/:org). */
 export function OrgSwitcher({ organizations, current }: { organizations: readonly OrganizationRefDto[]; current?: string }) {
@@ -16,11 +19,11 @@ export function OrgSwitcher({ organizations, current }: { organizations: readonl
   const id = useId()
   if (organizations.length === 0) return null
   return (
-    <div className="flex flex-col gap-1 text-sm">
-      <label htmlFor={id} className="font-semibold">Cliente</label>
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor={id} className="eyebrow px-1 text-[0.6563rem] text-muted">Cliente</label>
       <select
         id={id}
-        className="rounded-md border border-line bg-paper px-2 py-1.5"
+        className={controlClass(false, 'sm')}
         value={current ?? ''}
         onChange={(e) => e.target.value && navigate(`/portfolio/${encodeURIComponent(e.target.value)}`)}
       >
@@ -40,8 +43,7 @@ export function ConsultantLayout({ plugins }: { plugins: readonly FrontendPlugin
   const organization = org ? me.organizations.find((o) => o.slug === org) : undefined
   const sections: FrameSection[] = [{ links: [PORTFOLIO] }]
   if (organization) {
-    const base = `/portfolio/${organization.slug}`
-    const links = pluginNav(plugins, 'consultant', can).map((n) => ({ to: `${base}/${n.path}`, label: n.label }))
+    const links = areaLinks(plugins, 'consultant', can, `/portfolio/${organization.slug}`)
     sections.push({ heading: organization.name, links })
   }
 
@@ -52,7 +54,7 @@ export function ConsultantLayout({ plugins }: { plugins: readonly FrontendPlugin
   // key: another organization remounts every plugin page, so no local state (e.g. a form draft) carries over.
   return (
     <HostProvider key={organization?.id ?? 'portfolio'} organization={organization ?? null}>
-      <AppFrame sections={sections} tools={<OrgSwitcher organizations={me.organizations} current={organization?.slug} />}>
+      <AppFrame sections={sections} subtitle={roleLabel(me.roles)} tools={<OrgSwitcher organizations={me.organizations} current={organization?.slug} />}>
         {content}
       </AppFrame>
     </HostProvider>
@@ -62,19 +64,35 @@ export function ConsultantLayout({ plugins }: { plugins: readonly FrontendPlugin
 /** /portfolio: the consultant's client organizations. */
 export function PortfolioPage() {
   const { me } = useSession()
-  if (me.organizations.length === 0) {
-    return <StatusPage title="Carteira de clientes">Ainda não tem clientes atribuídos. Quando lhe atribuírem uma organização, ela aparece aqui.</StatusPage>
-  }
+  const count = me.organizations.length
   return (
-    <section className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold">Carteira de clientes</h1>
-      <ul className="flex flex-col gap-2">
-        {me.organizations.map((o) => (
-          <li key={o.id}>
-            <Link to={`/portfolio/${encodeURIComponent(o.slug)}`} className="block rounded-md border border-line-soft px-4 py-3 hover:bg-paper-soft">{o.name}</Link>
-          </li>
-        ))}
-      </ul>
-    </section>
+    <>
+      <PageHeader
+        title="Carteira de clientes"
+        subtitle={count === 0 ? undefined : count === 1 ? '1 organização acompanhada' : `${count} organizações acompanhadas`}
+      />
+      {count === 0 ? (
+        <EmptyState icon={<Briefcase className="size-5" aria-hidden />} title="Ainda não tem clientes atribuídos">
+          Quando lhe atribuírem uma organização, ela aparece aqui.
+        </EmptyState>
+      ) : (
+        <ul className="grid gap-4 sm:grid-cols-2">
+          {me.organizations.map((o) => (
+            <li key={o.id}>
+              <Link
+                to={`/portfolio/${encodeURIComponent(o.slug)}`}
+                className="group flex items-center gap-4 rounded-[14px] border border-line-soft bg-paper px-5 py-[18px] transition-[border-color,box-shadow] hover:border-line hover:shadow-[0_2px_10px_rgb(var(--shadow-rgb)/0.06)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+              >
+                <span className="grid size-11 shrink-0 place-items-center rounded-[12px] bg-brand-soft text-brand">
+                  <Building2 className="size-5" aria-hidden />
+                </span>
+                <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-bold">{o.name}</span>
+                <ChevronRight className="size-5 text-muted transition-transform group-hover:translate-x-0.5" aria-hidden />
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
   )
 }
