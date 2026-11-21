@@ -57,7 +57,6 @@ Generate each secret with `openssl rand -hex 24` and set it with `gh secret set 
 | `KEYCLOAK_ADMIN`, `KEYCLOAK_ADMIN_PASSWORD` | Keycloak bootstrap admin (console not public: `ssh -L 8180:...`, see below) |
 | `BFF_CLIENT_SECRET` | client `bff` in the realm and the BFF |
 | `KEYCLOAK_PROVISIONER_SECRET` | client `alinha-provisioner` in the realm and the app (through OpenBao) |
-| `ALINHA_TEST_USER_PASSWORD` | the four test personas of `deploy/keycloak/README.md` |
 | `BAO_ROOT_TOKEN`, `BAO_APP_TOKEN` | OpenBao root token and the app's token |
 
 Variables: `ALINHA_PUBLIC_URL=https://pei-alinha.duckdns.org`, `PROXY_NETWORK` (the reverse proxy's Docker network)
@@ -106,4 +105,5 @@ make staging         # http://localhost:8088
 make staging-clean   # stop and delete the volumes
 ```
 
-The test users' password is `ALINHA_TEST_USER_PASSWORD` in `deploy/.env.staging`.
+Staging has the four test personas of `deploy/keycloak/README.md`, with the password `ALINHA_TEST_USER_PASSWORD`
+from `deploy/.env.staging`. Production has no test users: its realm only keeps the provisioner's service account.

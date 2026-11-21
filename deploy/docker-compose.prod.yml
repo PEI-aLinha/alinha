@@ -120,7 +120,6 @@ services:
       ALINHA_PUBLIC_URL: ${ALINHA_PUBLIC_URL:?}
       BFF_CLIENT_SECRET: ${BFF_CLIENT_SECRET:?}
       KEYCLOAK_PROVISIONER_SECRET: ${KEYCLOAK_PROVISIONER_SECRET:?}
-      ALINHA_TEST_USER_PASSWORD: ${ALINHA_TEST_USER_PASSWORD:?}
     healthcheck:
       # The image has no curl; the management port follows the /kc relative path.
       test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /kc/health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q ^HTTP/1.1.200 <&3"]

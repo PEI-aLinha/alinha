@@ -24,6 +24,10 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile.keycloak
+      # Staging keeps the dev personas (deploy/keycloak/README.md); production has none.
+      args: { TEST_USERS: "true" }
+    environment:
+      ALINHA_TEST_USER_PASSWORD: ${ALINHA_TEST_USER_PASSWORD:?}
 
   job-consumer:
     build:

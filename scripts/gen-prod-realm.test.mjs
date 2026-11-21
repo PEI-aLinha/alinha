@@ -39,10 +39,24 @@ describe('toProdRealm', () => {
     }
   })
 
-  it('gives the test users the secret password', () => {
-    const passwords = prod.users.flatMap((u) => u.credentials ?? []).filter((c) => c.type === 'password')
+  it('drops the test users but keeps service accounts', () => {
+    assert.deepEqual(prod.users.map((u) => u.username), ['service-account-alinha-provisioner'])
+    assert.ok(!JSON.stringify(prod).includes('ALINHA_TEST_USER_PASSWORD'))
+  })
+
+  it('with testUsers (staging), keeps every user and gives the personas the secret password', () => {
+    const staging = toProdRealm(devRealm, { testUsers: true })
+    assert.equal(staging.users.length, devRealm.users.length)
+    const passwords = staging.users.flatMap((u) => u.credentials ?? []).filter((c) => c.type === 'password')
     assert.ok(passwords.length > 0)
     for (const p of passwords) assert.equal(p.value, '${ALINHA_TEST_USER_PASSWORD}')
+  })
+
+  it('the staging compose requires the test user password for Keycloak', () => {
+    const staging = readFileSync(resolve(root, 'deploy/docker-compose.staging.yml'), 'utf8')
+    const keycloak = staging.slice(staging.indexOf('\n  keycloak:'), staging.indexOf('\n  job-consumer:'))
+    assert.match(keycloak, /TEST_USERS: "true"/)
+    assert.match(keycloak, /\bALINHA_TEST_USER_PASSWORD: \$\{ALINHA_TEST_USER_PASSWORD:\?\}/)
   })
 
   it('does not modify the dev realm', () => {
