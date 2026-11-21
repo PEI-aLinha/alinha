@@ -12,7 +12,28 @@ import { pluginNav, pluginRoutes } from './plugins'
 export const AREA_BASE: Record<Area, string> = {
   client: '/org',
   consultant: '/portfolio',
+  portfolio: '/portfolio',
   onboarding: '/onboarding',
+}
+
+/**
+ * Plugin pages across the whole portfolio share `/portfolio/` with one client's pages (`/portfolio/:org`), so their
+ * first segment must be a fixed word: React Router then prefers it to `:org` (ADR 0006). An index route would
+ * replace the client list, and a dynamic or splat first segment would swallow every client. Both are plugin bugs,
+ * so they stop the app at start-up instead of showing up as a wrong page later.
+ */
+export function checkPortfolioRoutes(plugins: readonly FrontendPlugin[]): void {
+  for (const plugin of plugins) {
+    for (const route of plugin.routes.portfolio ?? []) {
+      const first = route.path?.split('/').find((s) => s !== '')
+      if (route.index || !first || first.startsWith(':') || first.includes('*')) {
+        throw new Error(
+          `Plugin "${plugin.id}": a portfolio route needs a fixed first path segment (e.g. 'overview'), got ` +
+            `${route.index ? 'an index route' : `'${route.path ?? ''}'`}. See ADR 0006.`,
+        )
+      }
+    }
+  }
 }
 
 const isStaticPath = (path: string) => !path.split('/').some((s) => s.startsWith(':') || s.includes('*'))
@@ -85,10 +106,12 @@ const areaChildren = (plugins: readonly FrontendPlugin[], area: NavArea): RouteO
  * The whole route tree. Routes come from the plugins: no plugin is referenced by hand here.
  *   /org/:org/<path>        client area (plugins' `client` routes)
  *   /portfolio              consultant portfolio (client list)
+ *   /portfolio/<path>       consultant pages across all clients (plugins' `portfolio` routes; fixed first segment)
  *   /portfolio/:org/<path>  consultant area for one client (plugins' `consultant` routes)
  *   /onboarding/<path>      new account registering its organization (plugins' `onboarding` routes)
  */
 export function createRoutes(plugins: readonly FrontendPlugin[]): RouteObject[] {
+  checkPortfolioRoutes(plugins)
   return [
     {
       path: '/',
@@ -106,7 +129,8 @@ export function createRoutes(plugins: readonly FrontendPlugin[]): RouteObject[] 
           path: 'portfolio',
           element: <ConsultantLayout plugins={plugins} />,
           errorElement: <RouteErrorPage />,
-          children: [{ index: true, element: <PortfolioPage /> }],
+          // No '*' here: an unknown /portfolio/<x> is a client slug and goes to `portfolio/:org` below.
+          children: [{ index: true, element: <PortfolioPage /> }, ...pluginRoutes(plugins, 'portfolio')],
         },
         {
           path: 'portfolio/:org',
