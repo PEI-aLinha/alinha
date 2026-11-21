@@ -92,7 +92,10 @@ class MeServiceTest {
                 assertThat(me.organizations.map { it.name })
                     .containsExactly("Componentes Águeda", "Metalúrgica de Aveiro")
                 assertThat(me.organizations.map { it.id }).containsExactly(first, second)
-                assertThat(me.organizations).allSatisfy { assertThat(it.slug).isEqualTo(it.id) }
+                // ADR 0006: a slug that is not the tenant UUID could collide with a plugin page at /portfolio/<path>.
+                assertThat(me.organizations).allSatisfy {
+                    assertThat(it.slug).describedAs("slug of %s (ADR 0006)", it.id).isEqualTo(it.id)
+                }
             }
             .verifyComplete()
     }
