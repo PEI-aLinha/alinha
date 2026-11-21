@@ -9,10 +9,15 @@ until bao status >/dev/null 2>&1; do sleep 1; done
 bao kv put secret/alinha/app \
   db.username=alinha \
   db.password=alinha \
-  smtp.password=change-me
+  smtp.password=change-me \
+  ai-service.token=dev-ai-service-token
 
-# Secrets read by the AI Service (see ai-service/README.md).
-bao kv put secret/alinha/ai-service llm.api-key=change-me
+# Secrets read by the AI Service (see ai-service/README.md). service.token must equal
+# ai-service.token above: the AI Gateway sends it and the AI Service checks it. Kept in both
+# paths so neither policy can read the other's secrets.
+bao kv put secret/alinha/ai-service \
+  llm.api-key=change-me \
+  service.token=dev-ai-service-token
 
 # Policies live next to this script (mounted at /init) so tests can load the same files.
 bao policy write alinha-app /init/alinha-app.hcl

@@ -155,8 +155,11 @@ Numbering from the technical report (section 3.2).
 | RNF03 tenant isolation | `core.tenant.TenantContext` (tenant from the token); filtered queries | contract defined, implement in sprint 0 |
 | RNF04 audit trail | `core.audit.AuditTrail`, same transaction; `audit.audit_event` table INSERT-only | same |
 | RNF07/RNF08 OIDC + roles per endpoint | Keycloak + `@RequiresPermission` | same |
-| RNF09 no secrets in code/config | OpenBao (`secret/alinha/app` via Spring Cloud Vault); per-tenant provider credentials via `pluginapi.TenantSecretStore`; gitleaks job in CI | **done** (AI Service reads it once implemented) |
-| RNF12/RNF14 AI approval and provenance | `core.aigateway.AiDraft` (model, prompt version, sources, date) | contract defined |
+| RNF09 no secrets in code/config | OpenBao (`secret/alinha/app` via Spring Cloud Vault); AI Service reads `secret/alinha/ai-service` (policy `alinha-ai-service`) via `hvac`; per-tenant provider credentials via `pluginapi.TenantSecretStore`; gitleaks job in CI | **done** |
+| RNF11 AI Service cannot write platform data | AI Service has no database access and only returns drafts; `/v1` requires a service token shared with the AI Gateway (`contracts/ai/ai-service.v1.yaml`) | AI Service side **done**; AI Gateway client to do |
+| RNF12/RNF14 AI approval and provenance | `core.aigateway.AiDraft` and `contracts/ai` (model, prompt version, sources, date); AI Service fills model, prompt version and date, `sources` empty until RAG | partial |
+| RNF13 context redacted before leaving the core | redaction in `core.aigateway` before calling the AI Service; the AI Service treats context as untrusted data | **to do** (core) |
+| LLM processes data in the EU | `EU_LLM_HOSTS` allowlist in `ai-service/src/ai_service/config.py`, checked at startup | **done** |
 | RNF17 new plugin without touching the core | `settings.gradle.kts` and `gen-frontend-plugins.mjs` discover the submodules; `ModularityTest` | **done** |
 | RNF18 catalogues as data | `frameworks/` read at runtime by the Compliance Engine | see `frameworks/README.md` |
 | RNF19 coverage ≥ 70% and CI blocks merge | missing: Kover (Kotlin) + Vitest coverage in CI; branch protection/rulesets are available because all nine repos are public, and are applied in #4 | **to do** |

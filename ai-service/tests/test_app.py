@@ -1,7 +1,7 @@
 import pytest
 from fastapi import Depends
 from fastapi.testclient import TestClient
-from pydantic import BaseModel
+from pydantic import BaseModel, SecretStr
 
 from ai_service.main import create_app, get_provider
 from ai_service.providers.base import ProviderError, ProviderTimeout
@@ -19,8 +19,12 @@ class Spy(FakeProvider):
         Spy.closed = True
 
 
+TOKEN = "test-service-token"
+AUTH = {"Authorization": f"Bearer {TOKEN}"}
+
+
 def make(provider):
-    app = create_app(provider=provider)
+    app = create_app(provider=provider, service_token=SecretStr(TOKEN))
 
     @app.post("/probe")
     async def probe(body: Body, p=Depends(get_provider)):
@@ -68,6 +72,29 @@ def test_aclose_called():
     assert Spy.closed
 
 
+def test_startup_fails_without_openbao_token(monkeypatch):
+    # The service token always comes from OpenBao, so even the fake provider needs BAO_TOKEN.
+    monkeypatch.delenv("BAO_TOKEN", raising=False)
+    from ai_service.config import get_settings
+    get_settings.cache_clear()
+    try:
+        with pytest.raises(Exception, match="BAO_TOKEN is not set"):
+            with TestClient(create_app(provider=FakeProvider())):
+                pass
+    finally:
+        get_settings.cache_clear()
+
+
+def test_config_errors_do_not_echo_the_openbao_token(monkeypatch):
+    monkeypatch.setenv("LLM_PROVIDER", "openai_compat")
+    monkeypatch.setenv("LLM_BASE_URL", "https://llm.example")
+    monkeypatch.setenv("BAO_TOKEN", "s.LEAKME")
+    from ai_service.config import Settings
+    with pytest.raises(Exception, match="LLM_MODEL") as exc:
+        Settings()
+    assert "LEAKME" not in str(exc.value)
+
+
 def test_startup_fails_on_bad_config(monkeypatch):
     monkeypatch.setenv("LLM_PROVIDER", "openai_compat")
     from ai_service.config import get_settings
@@ -81,6 +108,8 @@ def test_startup_fails_on_bad_config(monkeypatch):
 
 
 def test_module_import_does_not_build_provider(monkeypatch):
-    import importlib, ai_service.main as m
+    import importlib
+
+    import ai_service.main as m
     monkeypatch.setenv("LLM_PROVIDER", "openai_compat")
     importlib.reload(m)  # must not raise: provider is built only at startup

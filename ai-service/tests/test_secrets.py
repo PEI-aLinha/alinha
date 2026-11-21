@@ -7,7 +7,7 @@ from pydantic import SecretStr
 
 from ai_service import secrets
 from ai_service.config import Settings
-from ai_service.secrets import SecretsError, read_llm_api_key
+from ai_service.secrets import SecretsError, read_llm_api_key, read_service_token
 
 TOKEN = "s.super-secret-token"
 
@@ -45,6 +45,23 @@ def test_reads_key_from_kv_v2(client_cls):
     client_cls.return_value.secrets.kv.v2.read_secret_version.assert_called_once_with(
         path="alinha/ai-service", mount_point="secret", raise_on_deleted_version=True
     )
+
+
+def test_reads_service_token_from_the_same_path(client_cls):
+    read_returns(client_cls, {"llm.api-key": "sk-live", "service.token": "svc"})
+
+    token = read_service_token(settings())
+
+    assert isinstance(token, SecretStr) and token.get_secret_value() == "svc"
+    kwargs = client_cls.return_value.secrets.kv.v2.read_secret_version.call_args.kwargs
+    assert kwargs["path"] == "alinha/ai-service"
+
+
+def test_missing_service_token_field(client_cls):
+    read_returns(client_cls, {"llm.api-key": "sk-live"})
+
+    with pytest.raises(SecretsError, match="'service.token' is missing or empty"):
+        read_service_token(settings())
 
 
 def test_uses_configured_path_and_field(client_cls):

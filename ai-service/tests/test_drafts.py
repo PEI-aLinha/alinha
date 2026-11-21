@@ -6,6 +6,7 @@ import pytest
 import yaml
 from fastapi.testclient import TestClient
 from jsonschema import Draft202012Validator
+from pydantic import SecretStr
 
 from ai_service.main import create_app
 from ai_service.prompts import ROADMAP_V1, TEMPLATES
@@ -18,9 +19,14 @@ SCHEMAS = yaml.safe_load(CONTRACT.read_text())["components"]["schemas"]
 CONTEXT = {"organization": {"sector": "saúde", "size": "pequena"}, "gaps": ["MFA em falta"]}
 
 
-def post(provider, body):
-    with TestClient(create_app(provider=provider)) as c:
-        return c.post("/v1/drafts", json=body)
+TOKEN = "test-service-token"
+
+
+def post(provider, body, headers=None):
+    if headers is None:
+        headers = {"Authorization": f"Bearer {TOKEN}"}
+    with TestClient(create_app(provider=provider, service_token=SecretStr(TOKEN))) as c:
+        return c.post("/v1/drafts", json=body, headers=headers)
 
 
 def test_returns_draft_matching_contract():
@@ -69,7 +75,6 @@ def test_unknown_task_is_422_and_does_not_call_provider():
     {"task": "roadmap"},                                   # context missing
     {"context": {}},                                       # task missing
     {"task": "roadmap", "context": ["not", "an", "object"]},
-    {"task": "roadmap", "context": {}, "tenantId": "x"},   # additionalProperties: false
 ])
 def test_invalid_body_is_422(body):
     provider = FakeProvider()
@@ -80,6 +85,41 @@ def test_invalid_body_is_422(body):
     assert r.json()["code"] == "invalid_request"
     Draft202012Validator(SCHEMAS["Error"]).validate(r.json())
     assert provider.calls == []
+
+
+def test_unknown_request_fields_are_ignored_and_not_sent_to_the_llm():
+    # Lets a newer core add optional fields (e.g. correlationId) without breaking v1.
+    provider = FakeProvider()
+
+    r = post(provider, {"task": "roadmap", "context": CONTEXT, "correlationId": "c-123"})
+
+    assert r.status_code == 200
+    [(system, user)] = provider.calls
+    assert "c-123" not in system and "c-123" not in user
+
+
+@pytest.mark.parametrize("headers", [
+    {},                                                  # no header
+    {"Authorization": "Bearer wrong-token"},
+    {"Authorization": f"Basic {TOKEN}"},                 # right value, wrong scheme
+    {"Authorization": "Bearer"},
+])
+def test_drafts_require_the_service_token(headers):
+    provider = FakeProvider()
+
+    r = post(provider, {"task": "roadmap", "context": CONTEXT}, headers=headers)
+
+    assert r.status_code == 401
+    assert r.json()["code"] == "unauthorized"
+    assert r.headers["WWW-Authenticate"] == "Bearer"
+    Draft202012Validator(SCHEMAS["Error"]).validate(r.json())
+    assert TOKEN not in r.text
+    assert provider.calls == []
+
+
+def test_health_needs_no_token():
+    with TestClient(create_app(provider=FakeProvider(), service_token=SecretStr(TOKEN))) as c:
+        assert c.get("/health").status_code == 200
 
 
 def test_request_examples_match_contract():

@@ -1,14 +1,52 @@
 # AI Service (Python + FastAPI, separate process)
 
-RAG over the legislation (read-only knowledge base), redaction of personal data and provenance
-(model, prompt version, sources, date — RNF14). Only called by the core's AI Gateway (contract in `contracts/ai/`).
-No write access to platform data (RNF11). The LLM provider is abstracted here and processes data in the EU (RNF13).
+RAG over the legislation (read-only knowledge base) and provenance (model, prompt version, sources,
+date — RNF14). Only called by the core's AI Gateway (contract in `contracts/ai/`). No write access to
+platform data (RNF11). Context arrives already redacted by the core (RNF13) and is treated as untrusted
+data, never as instructions.
 
-## Secrets (NFR09)
+## LLM provider and EU processing
 
-Secrets are read from OpenBao at startup, never from code or versioned config:
+The provider is abstracted (`providers/`): `fake` for dev and tests, `openai_compat` for any provider
+with an OpenAI-compatible Chat Completions API. The LLM must process data in the EU, so the host of
+`LLM_BASE_URL` must be in `EU_LLM_HOSTS` (`src/ai_service/config.py`); otherwise the service does not
+start. The list lives in code so approving a provider needs a reviewed PR.
 
-- `BAO_ADDR` (dev: `http://localhost:8200`) and `BAO_TOKEN` (dev: `dev-ai-token`, policy `alinha-ai-service`)
-- KV v2 path `secret/alinha/ai-service`, key `llm.api-key`
+| Host | Provider | Notes |
+|---|---|---|
+| `api.mistral.ai` | Mistral AI (FR) | La Plateforme |
+| `api.scaleway.ai` | Scaleway (FR) | Generative APIs |
+| `localhost`, `127.0.0.1` | self-hosted (vLLM, Ollama) | data does not leave the machine |
 
-Seeded in dev by `deploy/openbao/init.sh`. Use the `hvac` client when the service is implemented.
+Before adding a host, check where the provider processes and stores data and add a row here.
+
+## Configuration (env)
+
+| Variable | Required | Default |
+|---|---|---|
+| `LLM_PROVIDER` | always (`fake` or `openai_compat`) | none: a missing value stops startup |
+| `LLM_BASE_URL`, `LLM_MODEL` | with `openai_compat` | — |
+| `LLM_TIMEOUT_SECONDS` | no | `30` |
+| `BAO_ADDR` | no | `http://localhost:8200` |
+| `BAO_TOKEN` | always (dev: `dev-ai-token`) | — |
+
+## Secrets (RNF09)
+
+Read from OpenBao at startup, never from code, env or versioned config. KV v2 path
+`secret/alinha/ai-service` (policy `alinha-ai-service`, read-only):
+
+- `llm.api-key`: the LLM provider's API key (only with `openai_compat`)
+- `service.token`: the token the AI Gateway must send as `Authorization: Bearer <token>` on every `/v1`
+  request. The core reads the same value from `secret/alinha/app` (`ai-service.token`). `/health` needs no token.
+
+Seeded in dev by `deploy/openbao/init.sh`.
+
+## Run and test
+
+```bash
+docker compose -f deploy/docker-compose.dev.yml up -d   # from the repo root (OpenBao)
+cd ai-service
+uv sync --extra dev
+LLM_PROVIDER=fake BAO_TOKEN=dev-ai-token uv run uvicorn ai_service.main:app --port 8000
+uv run pytest --cov
+```

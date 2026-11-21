@@ -4,6 +4,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from pydantic import SecretStr
 
 from ai_service.config import get_settings
 from ai_service.deps import get_provider  # noqa: F401  (re-exported for routes and tests)
@@ -11,17 +12,22 @@ from ai_service.drafts import router as drafts_router
 from ai_service.errors import register_error_handlers
 from ai_service.providers import build_provider
 from ai_service.providers.base import LlmProvider
+from ai_service.secrets import read_service_token
 
 
-def create_app(provider: LlmProvider | None = None) -> FastAPI:
-    """Builds the app. Tests pass a provider; in production it comes from Settings.
+def create_app(
+    provider: LlmProvider | None = None, service_token: SecretStr | None = None
+) -> FastAPI:
+    """Builds the app. Tests pass a provider and token; in production they come from Settings/OpenBao.
 
-    The provider is built at startup, so a bad config or an unreachable OpenBao
+    Both are loaded at startup, so a bad config or an unreachable OpenBao
     stops the process from starting instead of failing on the first request.
+    The token is read first so a failure there never leaves an unclosed provider.
     """
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+        app.state.service_token = service_token or read_service_token(get_settings())
         app.state.provider = provider or build_provider(get_settings())
         try:
             yield

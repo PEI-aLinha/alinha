@@ -1,6 +1,6 @@
-"""Reads the LLM API key from OpenBao (NFR09).
+"""Reads the AI Service secrets from OpenBao (NFR09): the LLM API key and the service token.
 
-Called once at startup. The key never comes from code, env or versioned config;
+Called once at startup. Secrets never come from code, env or versioned config;
 only the address and token to reach OpenBao do (see config.py).
 """
 
@@ -19,6 +19,15 @@ class SecretsError(RuntimeError):
 
 
 def read_llm_api_key(settings: Settings) -> SecretStr:
+    return _read_field(settings, settings.bao_api_key_field)
+
+
+def read_service_token(settings: Settings) -> SecretStr:
+    """The token the AI Gateway must present on every /v1 request."""
+    return _read_field(settings, settings.bao_service_token_field)
+
+
+def _read_field(settings: Settings, field: str) -> SecretStr:
     if settings.bao_token is None:
         raise SecretsError("BAO_TOKEN is not set")
 
@@ -44,7 +53,7 @@ def read_llm_api_key(settings: Settings) -> SecretStr:
         raise SecretsError(f"cannot reach OpenBao at {settings.bao_addr}") from e
 
     data = response["data"]["data"]
-    value = data.get(settings.bao_api_key_field)
+    value = data.get(field)
     if not value:
-        raise SecretsError(f"field '{settings.bao_api_key_field}' is missing or empty")
+        raise SecretsError(f"field '{field}' is missing or empty")
     return SecretStr(value)

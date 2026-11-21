@@ -6,6 +6,15 @@ info:
     Contract between the core's AI Gateway (Kotlin) and the AI Service (Python).
     The AI Service only drafts; it never writes platform data.
     Context arrives already redacted by the core.
+    Only the AI Gateway may call /v1: it sends a shared service token read from OpenBao.
+
+    Compatibility within v1: new optional request fields, new response fields and new
+    endpoints are compatible changes. The service ignores unknown request fields and
+    the gateway must ignore unknown response fields. Anything else needs a v2.
+
+# Every path requires the service token unless it says otherwise (see /health).
+security:
+  - serviceToken: []
 
 paths:
   /v1/drafts:
@@ -23,6 +32,11 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/AiDraft' }
+        '401':
+          description: Missing or invalid service token
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '422':
           description: Invalid request or unknown task
           content:
@@ -43,6 +57,7 @@ paths:
     get:
       summary: Liveness check
       operationId: health
+      security: []   # open: used by the container healthcheck
       responses:
         '200':
           description: Service is up
@@ -55,11 +70,17 @@ paths:
                   status: { type: string, enum: [ok] }
 
 components:
+  securitySchemes:
+    serviceToken:
+      type: http
+      scheme: bearer
+      description: Shared token from OpenBao (AI Service side secret/alinha/ai-service, field service.token).
+
   schemas:
     DraftRequest:
       type: object
       required: [task, context]
-      additionalProperties: false
+      description: Unknown fields are ignored and never sent to the LLM.
       properties:
         task:
           type: string
@@ -71,10 +92,11 @@ components:
           additionalProperties: true
 
     AiDraft:
-      description: Mirrors pt.alinha.core.aigateway.AiDraft (AI Act labelling).
+      description: >
+        Mirrors pt.alinha.core.aigateway.AiDraft (AI Act labelling).
+        Consumers must ignore unknown fields, so v1 can grow.
       type: object
       required: [text, model, promptVersion, sources, generatedAt, aiGenerated, requiresHumanReview]
-      additionalProperties: false
       properties:
         text: { type: string }
         model:
@@ -95,6 +117,5 @@ components:
       properties:
         code: { type: string, examples: [provider_timeout] }
         message: { type: string }
-## Deixei de fora, de propósito, o id de correlação para ligar pedidos ao Audit Trail 
-## Pode entrar mais tarde sem partir o v1, porque acrescentar campos 
-## ou endpoints opcionais é uma alteração compatível.
+# A correlation id (to link requests to the Audit Trail) is left out on purpose.
+# It can be added later as an optional request field without breaking v1.

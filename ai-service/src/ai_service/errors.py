@@ -10,6 +10,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from ai_service.auth import Unauthorized
 from ai_service.providers.base import ProviderError, ProviderTimeout
 
 log = logging.getLogger(__name__)
@@ -33,6 +34,13 @@ async def _provider_error(request: Request, exc: Exception) -> JSONResponse:
     return error_response(502, "provider_error", "The LLM provider failed.")
 
 
+async def _unauthorized(request: Request, exc: Exception) -> JSONResponse:
+    log.warning("Rejected request without a valid service token on %s", request.url.path)
+    response = error_response(401, "unauthorized", "Missing or invalid service token.")
+    response.headers["WWW-Authenticate"] = "Bearer"
+    return response
+
+
 async def _unknown_task(request: Request, exc: Exception) -> JSONResponse:
     from ai_service.prompts import TEMPLATES
 
@@ -54,5 +62,6 @@ def register_error_handlers(app: FastAPI) -> None:
     # so ProviderTimeout (a ProviderError subclass) gets 504, not 502.
     app.add_exception_handler(ProviderTimeout, _provider_timeout)
     app.add_exception_handler(ProviderError, _provider_error)
+    app.add_exception_handler(Unauthorized, _unauthorized)
     app.add_exception_handler(UnknownTask, _unknown_task)
     app.add_exception_handler(RequestValidationError, _invalid_request)

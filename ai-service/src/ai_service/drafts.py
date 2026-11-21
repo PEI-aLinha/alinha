@@ -12,16 +12,19 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 
+from ai_service.auth import require_service_token
 from ai_service.deps import get_provider
 from ai_service.errors import UnknownTask
 from ai_service.prompts import get_template
 from ai_service.providers.base import LlmProvider
 
-router = APIRouter(prefix="/v1")
+router = APIRouter(prefix="/v1", dependencies=[Depends(require_service_token)])
 
 
 class DraftRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    # Unknown fields are ignored, not rejected: a newer core may add optional fields
+    # (e.g. a correlation id) before this service is updated. They never reach the LLM.
+    model_config = ConfigDict(extra="ignore")
 
     task: str
     context: dict[str, Any]
