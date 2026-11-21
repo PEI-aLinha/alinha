@@ -53,6 +53,10 @@ const testPlugin = definePlugin({
     onboarding: [
       { path: 'registration', Component: TenantProbe },
     ],
+    portfolio: [
+      { path: 'overview', handle: { title: 'Visão geral' }, Component: TenantProbe },
+      { path: 'reports', handle: { resource: 'portfolio_report' }, Component: () => <h1>Relatórios da carteira</h1> },
+    ],
     consultant: [
       { path: 'dashboard', Component: () => <h1>Painel do cliente</h1> },
       { path: 'probe', Component: TenantProbe },
@@ -63,6 +67,8 @@ const testPlugin = definePlugin({
     { label: 'Riscos', path: 'risks', area: 'client', resource: 'risk', order: 2 },
     { label: 'Ativos', path: 'assets', area: 'client', order: 1 },
     { label: 'Painel', path: 'dashboard', area: 'consultant' },
+    { label: 'Visão geral', path: 'overview', area: 'portfolio' },
+    { label: 'Relatórios', path: 'reports', area: 'portfolio', resource: 'portfolio_report' },
   ],
 })
 const plugins = [testPlugin]
@@ -275,6 +281,37 @@ describe('consultant area (/portfolio)', () => {
     renderApp({ url: '/portfolio', plugins, me: meFor('consultant') })
     await screen.findByRole('heading', { name: 'Carteira de clientes' })
     expect(screen.getByRole('combobox', { name: 'Cliente' })).toHaveValue('')
+  })
+
+  it('opens a plugin page across the portfolio, with no organization and no tenant header', async () => {
+    const { calls } = renderApp({ url: '/portfolio', plugins, me: meFor('consultant'), api: () => json({ value: 'todos' }) })
+    await screen.findByRole('heading', { name: 'Carteira de clientes' })
+    expect(nav().getByRole('link', { name: 'Visão geral' })).toHaveAttribute('href', '/portfolio/overview')
+    expect(nav().queryByRole('link', { name: 'Relatórios' })).not.toBeInTheDocument() // no portfolio_report:read
+
+    fireEvent.click(nav().getByRole('link', { name: 'Visão geral' }))
+
+    expect(await screen.findByText('Dados de : todos')).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Cliente' })).toHaveValue('')
+    const probe = calls.find((c) => c.url === '/api/probe')
+    expect(new Headers(probe?.init.headers).has('X-Alinha-Tenant')).toBe(false)
+  })
+
+  it('keeps the portfolio menu inside a client, next to that client\'s pages', async () => {
+    renderApp({ url: '/portfolio/acme/dashboard', plugins, me: meFor('consultant') })
+    await screen.findByRole('heading', { name: 'Painel do cliente' })
+    expect(nav().getByRole('link', { name: 'Visão geral' })).toHaveAttribute('href', '/portfolio/overview')
+    expect(nav().getByRole('link', { name: 'Painel' })).toHaveAttribute('href', '/portfolio/acme/dashboard')
+  })
+
+  it('guards a portfolio page with its permission', async () => {
+    renderApp({ url: '/portfolio/reports', plugins, me: meFor('consultant') })
+    expect(await screen.findByRole('heading', { name: 'Não tem acesso a esta página' })).toBeInTheDocument()
+  })
+
+  it('opens a guarded portfolio page with the permission', async () => {
+    renderApp({ url: '/portfolio/reports', plugins, me: meFor('consultant', { permissions: ['portfolio_report:read'] }) })
+    expect(await screen.findByRole('heading', { name: 'Relatórios da carteira' })).toBeInTheDocument()
   })
 
   it('refuses an organization outside the portfolio', async () => {
