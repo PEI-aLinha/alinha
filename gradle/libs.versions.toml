@@ -6,6 +6,8 @@ kotlin = "2.2.21"
 spring-boot = "4.0.9"
 spring-modulith = "2.0.9"
 spring-cloud = "2025.1.4"
+archunit = "1.4.1"
+json-schema-validator = "3.0.8"
 
 [libraries]
 spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
