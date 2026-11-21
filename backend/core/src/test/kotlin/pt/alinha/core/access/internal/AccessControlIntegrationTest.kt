@@ -25,6 +25,8 @@ import pt.alinha.core.access.RequiresPermission
 import pt.alinha.core.registry.PluginRegistry
 import pt.alinha.core.registry.PluginRegistryController
 import pt.alinha.pluginapi.AlinhaPlugin
+import pt.alinha.pluginapi.NavArea
+import pt.alinha.pluginapi.NavEntry
 import pt.alinha.pluginapi.PluginKind
 import pt.alinha.pluginapi.PluginManifest
 
@@ -91,6 +93,50 @@ class AccessControlIntegrationTest {
         getAs("analyst", "/api/plugins").andExpect { status { isOk() } }
     }
 
+    @ParameterizedTest(name = "{0} sees {1}")
+    @CsvSource(
+        "analyst, assessment help",
+        "responsible, assessment results help",
+        "consultant, portfolio",
+        "registrant, ''",
+        "analyst+responsible, assessment results help",
+        "consultant+registrant, portfolio",
+    )
+    fun `plugin registry shows only the menu entries the role may see`(role: String, paths: String?) {
+        // The onboarding has no menu, so a registrant sees none.
+        val expected = paths.orEmpty().split(" ").filter { it.isNotBlank() }
+        getAs(role, "/api/plugins").andExpect {
+            status { isOk() }
+            jsonPath("$[0].nav.length()") { value(expected.size) }
+            expected.forEachIndexed { i, path -> jsonPath("$[0].nav[$i].path") { value(path) } }
+        }
+    }
+
+    @Test
+    fun `plugin registry sends menu entries in the contract shape`() {
+        getAs("responsible", "/api/plugins").andExpect {
+            jsonPath("$[0].nav[0].label") { value("Avaliação") }
+            jsonPath("$[0].nav[0].area") { value("client") }
+            jsonPath("$[0].nav[0].resource") { value("assessment") }
+            jsonPath("$[0].nav[0].action") { value("read") }
+            jsonPath("$[0].nav[0].order") { value(1) }
+            jsonPath("$[0].nav[2].resource") { doesNotExist() }
+        }
+    }
+
+    @Test
+    fun `plugin registry does not expose role mappings`() {
+        getAs("consultant", "/api/plugins").andExpect {
+            jsonPath("$[0].id") { value("fixture") }
+            jsonPath("$[0].rolePermissions") { doesNotExist() }
+        }
+    }
+
+    @Test
+    fun `plugin registry is closed to tokens without known roles`() {
+        getAs("intruder", "/api/plugins").andExpect { status { isForbidden() } }
+    }
+
     @ParameterizedTest(name = "{0} on {1} gives {2}")
     @CsvSource(
         "consultant, /fixture/assessment, 200",
@@ -132,7 +178,7 @@ class AccessControlIntegrationTest {
     FixtureClassLevelController::class,
 )
 class AccessControlTestApplication {
-    /** The token value names the role, so requests run the real converter without Keycloak. */
+    /** The token value names the roles (`a+b` for several), so requests run the real converter without Keycloak. */
     @Bean
     @Primary
     fun testJwtDecoder(): JwtDecoder = JwtDecoder { token ->
@@ -140,7 +186,7 @@ class AccessControlTestApplication {
         Jwt.withTokenValue(token)
             .header("alg", "none")
             .subject("user-1")
-            .claim("realm_access", mapOf("roles" to listOf(token)))
+            .claim("realm_access", mapOf("roles" to token.split("+")))
             .build()
     }
 
@@ -157,6 +203,12 @@ class AccessControlTestApplication {
                 "consultant" to read,
                 "responsible" to read + "assessment:edit",
                 "analyst" to setOf("assessment:read", "assessment:edit"),
+            ),
+            nav = listOf(
+                NavEntry("Ajuda", "help", NavArea.CLIENT, order = 9),
+                NavEntry("Resultados", "results", NavArea.CLIENT, "results", order = 2),
+                NavEntry("Avaliação", "assessment", NavArea.CLIENT, "assessment", order = 1),
+                NavEntry("Carteira", "portfolio", NavArea.CONSULTANT, "assessment"),
             ),
         )
     }

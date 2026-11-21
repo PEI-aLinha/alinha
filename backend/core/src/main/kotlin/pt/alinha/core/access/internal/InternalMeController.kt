@@ -26,7 +26,7 @@ class InternalMeController(private val registry: RolePermissionRegistry) {
     @GetMapping("/internal/me")
     fun me(authentication: Authentication): InternalMeResponse {
         // Same roles the interceptor enforces; only the contract's known ones are shown.
-        val roles = rolesOf(authentication).filter { it in KNOWN_ROLES }.toSet()
+        val roles = rolesOf(authentication).filter { it in Roles.KNOWN }.toSet()
         return InternalMeResponse(
             roles = roles.sorted(),
             permissions = registry.permissionsFor(roles).sorted(),
