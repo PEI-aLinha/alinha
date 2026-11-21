@@ -1,3 +1,6 @@
+// Plugins compile these sources with their own tsconfig, which does not include assets.d.ts: point at it here.
+// eslint-disable-next-line @typescript-eslint/triple-slash-reference
+/// <reference path="./assets.d.ts" />
 import logoUrl from './assets/alinha-logo.svg'
 import { cn } from './cn'
 
