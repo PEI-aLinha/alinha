@@ -55,6 +55,7 @@ const testPlugin = definePlugin({
       { path: 'two-calls', Component: TwoCalls },
       { path: 'save', Component: SaveButton },
       { path: 'lazy', handle: { resource: 'risk' }, lazy: async () => ({ Component: () => <h1>Página carregada à parte</h1> }) },
+      { path: 'organizations', Component: OrganizationsProbe },
     ],
     onboarding: [
       { path: 'registration', Component: TenantProbe },
@@ -288,6 +289,12 @@ describe('consultant area (/portfolio)', () => {
     renderApp({ url: '/portfolio/acme/organizations', plugins, me: meFor('consultant') })
     const list = await screen.findByRole('list', { name: 'Organizações do host' })
     expect(within(list).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Acme, Lda. (acme)', 'Beta, S.A. (beta)'])
+  })
+
+  it('gives a client user only their own organization, never other clients', async () => {
+    renderApp({ url: '/org/acme/organizations', plugins, me: meFor('responsible') })
+    const list = await screen.findByRole('list', { name: 'Organizações do host' })
+    expect(within(list).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Acme, Lda. (acme)'])
   })
 
   it('refuses an organization outside the portfolio', async () => {

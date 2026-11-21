@@ -114,11 +114,13 @@ export interface paths {
          *     domain events. Not paginated: a consultant has tens of clients, not thousands.
          *
          *     **No `X-Alinha-Tenant`:** this works across the consultant's assigned tenants, never on one chosen by the
-         *     caller (ADR 0002, ADR 0006). A client without an entry has no assessment yet; the page still lists it from
-         *     the session's organizations.
+         *     caller (ADR 0002). The set comes from `TenantContext.assignedTenants()`, read from the token, and every query
+         *     is filtered with `tenant_id = ANY(:assigned)` (ADR 0006, "Reading across tenants"). A client without an entry
+         *     has no assessment yet; the page still lists it from the session's organizations.
          *
          *     The numbers are counts and the coverage the Compliance Engine computed (NFR05). This endpoint does not label a
-         *     client as compliant or not. Permission `portfolio:read` (consultant).
+         *     client as compliant or not. Permission `portfolio:read`, declared by the dashboard-reports plugin and granted
+         *     to `consultant`.
          */
         get: operations["getPortfolioSummary"];
         put?: never;
