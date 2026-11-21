@@ -1,0 +1,295 @@
+"""Consumer-group loop: read, validate, dispatch to a collector, publish one result per attempt."""
+from __future__ import annotations
+
+import json
+import logging
+import os
+import re
+import socket
+import time
+import uuid
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
+from dataclasses import dataclass, field
+from typing import Any, Callable
+
+import jsonschema
+from redis.exceptions import RedisError, ResponseError
+
+from . import collectors, contracts, results
+
+log = logging.getLogger(__name__)
+
+# Provider exception text can carry URLs or tokens; keep it in logs, never in the results stream.
+SAFE_COLLECTOR_MESSAGE = "collector failed"
+
+# `type` follows job-result.v1's pattern; the version is a positive integer.
+_JOB_TYPE = re.compile(r"[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)+:[1-9][0-9]*")
+
+
+def stream_name(type_: str, version: int) -> str:
+    return f"alinha:jobs:{type_}:v{version}"
+
+
+def _env_int(name: str, default: int) -> int:
+    return int(os.environ.get(name, default))
+
+
+def _parse_job_types(value: str) -> tuple[tuple[str, int], ...]:
+    parsed = []
+    for item in value.split(","):
+        item = item.strip()
+        if not _JOB_TYPE.fullmatch(item):
+            raise ValueError(f"WORKER_JOB_TYPES: {item!r} is not <type>:<version>, e.g. evidence.collect:1")
+        type_, _, version = item.partition(":")
+        parsed.append((type_, int(version)))
+    return tuple(parsed)
+
+
+@dataclass(frozen=True)
+class Config:
+    redis_url: str = "redis://localhost:6379/0"
+    job_types: tuple[tuple[str, int], ...] = (("evidence.collect", 1),)
+    group: str = "alinha-workers"
+    name: str = field(default_factory=socket.gethostname)
+    block_ms: int = 5000
+    batch: int = 10
+    claim_idle_ms: int = 60000
+    dedupe_ttl_s: int = 86400
+    max_deliveries: int = 3
+    collector_timeout_s: float = 50.0
+
+    @classmethod
+    def from_env(cls) -> "Config":
+        config = cls(
+            redis_url=os.environ.get("REDIS_URL", "redis://localhost:6379/0"),
+            job_types=_parse_job_types(os.environ.get("WORKER_JOB_TYPES", "evidence.collect:1")),
+            group=os.environ.get("WORKER_GROUP", "alinha-workers"),
+            name=os.environ.get("WORKER_NAME", socket.gethostname()),
+            block_ms=_env_int("WORKER_BLOCK_MS", 5000),
+            batch=_env_int("WORKER_BATCH", 10),
+            claim_idle_ms=_env_int("WORKER_CLAIM_IDLE_MS", 60000),
+            dedupe_ttl_s=_env_int("WORKER_DEDUPE_TTL_S", 86400),
+            max_deliveries=_env_int("WORKER_MAX_DELIVERIES", 3),
+            collector_timeout_s=float(os.environ.get("WORKER_COLLECTOR_TIMEOUT_S", 50)),
+        )
+        if config.collector_timeout_s * 1000 >= config.claim_idle_ms:
+            # A run longer than the claim idle time gets claimed and run again by another worker.
+            raise ValueError("WORKER_COLLECTOR_TIMEOUT_S must be below WORKER_CLAIM_IDLE_MS")
+        return config
+
+    @property
+    def streams(self) -> dict[str, tuple[str, int]]:
+        return {stream_name(type_, version): (type_, version) for type_, version in self.job_types}
+
+
+class Consumer:
+    def __init__(
+        self,
+        redis: Any,
+        config: Config | None = None,
+        collector_lookup: Callable[[str], collectors.Collector | None] = collectors.get_collector,
+    ) -> None:
+        self.redis = redis
+        self.config = config or Config.from_env()
+        self._streams = self.config.streams
+        contracts.load(self.config.job_types)
+        collectors.registered()  # scan entry points now, so duplicate provider ids are logged at startup
+        self._collector_lookup = collector_lookup
+        self._last_claim = 0.0
+
+    def ensure_groups(self) -> None:
+        for stream in self._streams:
+            try:
+                self.redis.xgroup_create(stream, self.config.group, id="0", mkstream=True)
+            except ResponseError as error:
+                if "BUSYGROUP" not in str(error):
+                    raise
+
+    def run(self) -> None:
+        self.ensure_groups()
+        while True:
+            try:
+                self.consume_once()
+                if time.monotonic() - self._last_claim >= self.config.claim_idle_ms / 1000:
+                    self.reclaim()
+            except ResponseError as error:
+                if "NOGROUP" in str(error):
+                    self.ensure_groups()
+                else:
+                    log.warning("Redis rejected the command, retrying", exc_info=True)
+                    time.sleep(1)
+            except RedisError:
+                log.warning("Redis unavailable, retrying", exc_info=True)
+                time.sleep(1)
+
+    def consume_once(self) -> None:
+        response = self.redis.xreadgroup(
+            self.config.group,
+            self.config.name,
+            {stream: ">" for stream in self._streams},
+            count=self.config.batch,
+            block=self.config.block_ms,
+        )
+        for stream, entries in response or []:
+            self._handle_batch(stream, entries)
+
+    def reclaim(self) -> None:
+        """Take over entries left pending by a worker that died."""
+        self._last_claim = time.monotonic()
+        for stream in self._streams:
+            cursor = "0-0"
+            while True:
+                cursor, entries, _ = self.redis.xautoclaim(
+                    stream,
+                    self.config.group,
+                    self.config.name,
+                    min_idle_time=self.config.claim_idle_ms,
+                    start_id=cursor,
+                    count=self.config.batch,
+                )
+                self._handle_batch(stream, entries, reclaimed=True)
+                if cursor == "0-0":
+                    break
+
+    def _handle_batch(self, stream: str, entries: list, reclaimed: bool = False) -> None:
+        ids = [entry_id for entry_id, _ in entries]
+        for index, (entry_id, fields) in enumerate(entries):
+            # The whole batch went pending at once: reset the idle time of the entries not run yet, so none of
+            # them reaches claim_idle_ms and gets claimed by another worker while this one is busy.
+            still_ours = self.redis.xclaim(
+                stream, self.config.group, self.config.name, min_idle_time=0, message_ids=ids[index:], justid=True
+            )
+            if entry_id not in still_ours:
+                continue  # ACKed or deleted meanwhile
+            deliveries = self._deliveries(stream, entry_id) if reclaimed else 1
+            self._handle_safely(stream, entry_id, fields, deliveries)
+
+    def _deliveries(self, stream: str, entry_id: str) -> int:
+        pending = self.redis.xpending_range(stream, self.config.group, min=entry_id, max=entry_id, count=1)
+        return pending[0]["times_delivered"] if pending else 1
+
+    def _handle_safely(
+        self, stream: str, entry_id: str, fields: dict[str, str] | None, deliveries: int = 1
+    ) -> None:
+        try:
+            self.handle_entry(stream, entry_id, fields, deliveries)
+        except RedisError:
+            raise
+        except Exception:
+            # Left pending: reclaim retries it and gives up after max_deliveries.
+            log.exception("unexpected error on %s from %s; left pending", entry_id, stream)
+
+    def handle_entry(
+        self, stream: str, entry_id: str, fields: dict[str, str] | None, deliveries: int = 1
+    ) -> None:
+        type_, version = self._streams[stream]
+        fields = fields or {}
+        envelope = _json(fields.get("envelope"))
+        attempt = _attempt(fields.get("attempt"))
+        job_id = envelope.get("jobId") if isinstance(envelope, dict) else None
+        tenant_id = envelope.get("tenantId") if isinstance(envelope, dict) else None
+        if not (_uuid(job_id) and _uuid(tenant_id) and attempt >= 1):
+            # Without a valid jobId/tenantId no contract-valid result exists; the core would dead-letter it.
+            log.error("dropping %s from %s: no usable jobId, tenantId or attempt", entry_id, stream)
+            self._ack(stream, entry_id)
+            return
+
+        dedupe_key = f"alinha:worker:done:{job_id}:{attempt}"
+        if self.redis.exists(dedupe_key):
+            self._ack(stream, entry_id)
+            return
+
+        if deliveries > self.config.max_deliveries:
+            log.error("giving up on %s from %s after %s deliveries", entry_id, stream, deliveries - 1)
+            outcome = results.failed(
+                envelope, type_, version, attempt, "too_many_deliveries", "the worker failed on this job repeatedly"
+            )
+        else:
+            try:
+                contracts.validate_envelope(envelope, type_, version)
+            except jsonschema.ValidationError as error:
+                outcome = results.failed(
+                    envelope, type_, version, attempt, "invalid_payload", results.safe_message(error)
+                )
+            else:
+                outcome = self._run_collector(envelope, type_, version, attempt)
+
+        self._publish(outcome, envelope, type_, version, attempt)
+        self.redis.set(dedupe_key, 1, ex=self.config.dedupe_ttl_s)
+        self._ack(stream, entry_id)
+
+    def _run_collector(
+        self, envelope: dict[str, Any], type_: str, version: int, attempt: int
+    ) -> dict[str, Any]:
+        try:
+            collector = self._collector_lookup(envelope["provider"])
+            if collector is None:
+                return results.failed(
+                    envelope,
+                    type_,
+                    version,
+                    attempt,
+                    "unknown_provider",
+                    f"no collector for {envelope['provider'][:100]}",
+                )
+            output = self._call_with_timeout(collector, envelope)
+        except collectors.TransientError as error:
+            log.warning("collector for %s transient failure: %s", envelope["provider"], error)
+            return results.failed(
+                envelope, type_, version, attempt, "transient_error", SAFE_COLLECTOR_MESSAGE, retryable=True
+            )
+        except Exception:  # collector bugs and bad credentials are not retryable
+            log.exception("collector for %s failed", envelope["provider"])
+            return results.failed(envelope, type_, version, attempt, "collector_error", SAFE_COLLECTOR_MESSAGE)
+        return results.completed(envelope, type_, version, attempt, output)
+
+    def _call_with_timeout(self, collector: collectors.Collector, envelope: dict[str, Any]) -> dict[str, Any]:
+        # shortcut: a timed-out thread cannot be killed and keeps running in the background; move collectors to a
+        # subprocess if those leaks matter.
+        executor = ThreadPoolExecutor(max_workers=1)
+        try:
+            return executor.submit(collector, envelope).result(timeout=self.config.collector_timeout_s)
+        except FutureTimeout:
+            raise collectors.TransientError(f"no answer within {self.config.collector_timeout_s}s") from None
+        finally:
+            executor.shutdown(wait=False)
+
+    def _publish(
+        self, outcome: dict[str, Any], envelope: dict[str, Any], type_: str, version: int, attempt: int
+    ) -> None:
+        try:
+            results.publish(self.redis, outcome)
+        except results.InvalidResult:
+            log.exception("collector output does not match job-result.v1")
+            # An invalid fallback raises: the entry stays pending rather than being ACKed with no result.
+            results.publish(
+                self.redis,
+                results.failed(
+                    envelope, type_, version, attempt, "invalid_result", "worker produced an invalid result"
+                ),
+            )
+
+    def _ack(self, stream: str, entry_id: str) -> None:
+        self.redis.xack(stream, self.config.group, entry_id)
+
+
+def _json(text: str | None) -> Any:
+    try:
+        return json.loads(text or "")
+    except json.JSONDecodeError:
+        return None
+
+
+def _attempt(text: str | None) -> int:
+    try:
+        return int(text or 0)
+    except ValueError:
+        return 0
+
+
+def _uuid(value: Any) -> bool:
+    """The canonical dashed form only, as the schema's `uuid` format: no braces, `urn:uuid:` or bare hex."""
+    try:
+        return isinstance(value, str) and str(uuid.UUID(value)) == value.lower()
+    except ValueError:
+        return False
