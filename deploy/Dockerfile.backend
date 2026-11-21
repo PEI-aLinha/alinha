@@ -1,0 +1,26 @@
+# syntax=docker/dockerfile:1.7
+# Spring Boot images (the app and the BFF). Build from the repo root, with the plugin submodules checked out:
+#   docker build -f deploy/Dockerfile.backend --build-arg MODULE=app -t alinha/app .
+#   docker build -f deploy/Dockerfile.backend --build-arg MODULE=bff -t alinha/bff .
+ARG MODULE=app
+
+FROM eclipse-temurin:21-jdk AS build
+ARG MODULE
+WORKDIR /src
+COPY . .
+# Tests run in CI (ci.yml), not in the image build.
+RUN --mount=type=cache,target=/root/.gradle \
+    ./gradlew --no-daemon ":${MODULE}:bootJar" \
+ && dir=$([ "$MODULE" = bff ] && echo bff || echo "backend/$MODULE") \
+ && find "$dir/build/libs" -name '*.jar' ! -name '*-plain.jar' -exec cp {} /application.jar \;
+
+FROM eclipse-temurin:21-jre
+ARG MODULE
+LABEL org.opencontainers.image.source="https://github.com/PEI-aLinha/alinha"
+RUN useradd --system --uid 10001 --home-dir /app alinha
+WORKDIR /app
+COPY --from=build /application.jar /app/application.jar
+# The app reads the framework catalogues at runtime (RNF18); compose mounts frameworks/ here.
+ENV FRAMEWORKS_DIR=/frameworks
+USER alinha
+ENTRYPOINT ["java", "-jar", "/app/application.jar"]

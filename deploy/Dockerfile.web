@@ -1,0 +1,20 @@
+# syntax=docker/dockerfile:1.7
+# Frontend shell (with every plugin frontend) behind Nginx. Build from the repo root, with the submodules checked out:
+#   docker build -f deploy/Dockerfile.web -t alinha/web .
+# The build has no environment-specific values: the same image serves any host.
+FROM node:22-slim AS build
+RUN npm install -g pnpm@10.34.9
+WORKDIR /src
+COPY . .
+# Not frozen: a plugin pointer update can change a plugin's dependencies before the root lockfile catches up.
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    pnpm install --no-frozen-lockfile \
+ && pnpm build
+
+FROM nginx:1.27-alpine
+LABEL org.opencontainers.image.source="https://github.com/PEI-aLinha/alinha"
+COPY deploy/nginx/alinha.conf.template /etc/nginx/templates/default.conf.template
+COPY deploy/nginx/proxy-headers.conf deploy/nginx/security-headers.conf /etc/nginx/snippets/
+COPY --from=build /src/frontend/shell/dist /usr/share/nginx/html
+# The address range of the proxy in front, whose X-Forwarded-For is trusted (overridden in compose).
+ENV TRUSTED_PROXY_CIDR=127.0.0.1/32

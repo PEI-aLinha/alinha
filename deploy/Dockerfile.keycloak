@@ -1,0 +1,37 @@
+# syntax=docker/dockerfile:1.7
+# Keycloak with the aLinha login theme and the production realm. Build from the repo root:
+#   docker build -f deploy/Dockerfile.keycloak -t alinha/keycloak .
+# The realm keeps ${VAR} placeholders (scripts/gen-prod-realm.mjs): secrets come from the container environment.
+
+# Keycloakify packages the theme as a jar with Maven.
+FROM node:22-bookworm-slim AS theme
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends maven openjdk-17-jdk-headless \
+ && rm -rf /var/lib/apt/lists/* \
+ && npm install -g pnpm@10.34.9
+WORKDIR /src
+COPY . .
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
+    --mount=type=cache,target=/root/.m2 \
+    pnpm install --no-frozen-lockfile --filter "@alinha/keycloak-theme..." \
+ && pnpm --filter @alinha/keycloak-theme build-keycloak-theme
+
+FROM node:22-bookworm-slim AS realm
+WORKDIR /src
+COPY scripts/gen-prod-realm.mjs deploy/keycloak/alinha-realm.json ./
+RUN node gen-prod-realm.mjs alinha-realm.json /alinha-realm.json
+
+# Build-time options (database vendor, health, relative path) are fixed here so the server starts --optimized.
+FROM quay.io/keycloak/keycloak:26.4 AS builder
+ENV KC_DB=postgres \
+    KC_HEALTH_ENABLED=true \
+    KC_HTTP_RELATIVE_PATH=/kc
+COPY --from=theme /src/frontend/keycloak-theme/dist_keycloak/alinha-keycloak-theme.jar /opt/keycloak/providers/
+RUN /opt/keycloak/bin/kc.sh build
+
+FROM quay.io/keycloak/keycloak:26.4
+LABEL org.opencontainers.image.source="https://github.com/PEI-aLinha/alinha"
+COPY --from=builder /opt/keycloak/ /opt/keycloak/
+COPY --from=realm /alinha-realm.json /opt/keycloak/data/import/alinha-realm.json
+ENTRYPOINT ["/opt/keycloak/bin/kc.sh"]
+CMD ["start", "--optimized", "--import-realm"]
