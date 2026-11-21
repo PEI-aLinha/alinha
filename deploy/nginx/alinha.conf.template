@@ -23,17 +23,18 @@ server {
     include /etc/nginx/snippets/security-headers.conf;
 
     location = /index.html {
-        include /etc/nginx/snippets/security-headers.conf;
+        include /etc/nginx/snippets/spa-headers.conf;
         add_header Cache-Control "no-cache" always;
     }
 
     location / {
+        include /etc/nginx/snippets/spa-headers.conf;
         try_files $uri /index.html;
     }
 
     # Vite puts a content hash in every file name under /assets.
     location /assets/ {
-        include /etc/nginx/snippets/security-headers.conf;
+        include /etc/nginx/snippets/spa-headers.conf;
         add_header Cache-Control "public, max-age=31536000, immutable" always;
         try_files $uri =404;
     }
@@ -69,6 +70,15 @@ server {
     }
 
     location ^~ /kc/realms/master {
+        return 404;
+    }
+
+    # Keycloak serves these on its management port (9000), not here, but never let them through if that changes.
+    location ^~ /kc/metrics {
+        return 404;
+    }
+
+    location ^~ /kc/health {
         return 404;
     }
 

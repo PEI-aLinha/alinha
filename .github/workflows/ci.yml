@@ -12,6 +12,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: node scripts/check-dev-env.mjs
+      # The web image's Nginx: the admin console, the master realm and Keycloak's metrics stay 404, the shell gets its CSP.
+      - run: sh deploy/nginx/test-routes.sh
 
   secrets:
     name: Secret scanning (gitleaks)
