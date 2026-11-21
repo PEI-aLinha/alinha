@@ -17,6 +17,7 @@ dependencies = [
 dev = [
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
+    "pytest-cov>=6.0",
     "respx>=0.21",
     "jsonschema>=4.23",  # validates responses against contracts/ai
     "pyyaml>=6.0",
@@ -33,3 +34,12 @@ packages = ["src/ai_service"]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+
+# Coverage gate (RNF19). CI runs: pytest --cov --cov-report=term-missing
+[tool.coverage.run]
+source = ["ai_service"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 70
+show_missing = true

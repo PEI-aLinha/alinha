@@ -72,3 +72,19 @@ jobs:
       - run: pnpm test
       - run: pnpm typecheck
       - run: pnpm build
+
+  ai-service:
+    name: AI Service (pytest + coverage + Docker image)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-service
+    steps:
+      - uses: actions/checkout@v4   # tests read contracts/ai, so the whole repo is needed
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: 0.9.5            # same as the Dockerfile
+          python-version: "3.12"
+      - run: uv sync --locked --extra dev   # fails if uv.lock is out of date with pyproject.toml
+      - run: uv run pytest --cov --cov-report=term-missing   # fail_under in pyproject.toml (RNF19)
+      - run: docker build -t alinha-ai-service:ci .
