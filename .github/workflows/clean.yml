@@ -23,6 +23,8 @@ env:
 jobs:
   clean:
     name: Down and Clean
+    # Same guard as deploy.yml and logs.yml: only main's version of this file may run on the production runner.
+    if: github.ref == 'refs/heads/main'
     runs-on: [self-hosted, prod]
     environment: production
     steps:
