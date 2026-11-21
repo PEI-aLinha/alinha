@@ -1,0 +1,790 @@
+openapi: 3.1.0
+
+info:
+  title: aLinha API
+  version: 1.0.0
+  description: |
+    Public HTTP contract of aLinha, shared by the BFF, the frontend and the application.
+    Every path is reached through the BFF under `/api`, using the BFF session cookie.
+
+    Conventions are documented in `contracts/openapi/README.md` and decided in
+    `docs/adr/0003-openapi-contract-first.md`.
+
+    - The tenant never appears in the URL, query or body. It comes from the token and,
+      for consultants, from the `X-Alinha-Tenant` header (ADR 0002).
+    - Errors use RFC 9457 Problem Details (`application/problem+json`).
+    - Lists use page-based pagination (`page`, `pageSize`, `items`, `total`).
+
+servers:
+  - url: /
+    description: Same origin, through the BFF
+
+tags:
+  - name: session
+    description: Who is signed in (owned by the BFF).
+  - name: registry
+    description: Plugins present in the running application.
+  - name: organization
+    description: The client organization's registration and data (organization plugin).
+  - name: audit
+    description: Who did what and when in the current organization (core audit trail).
+  - name: internal
+    description: Walking-skeleton endpoints. Temporary; remove when the real endpoint exists.
+
+security:
+  - sessionCookie: []
+
+paths:
+  /api/me:
+    get:
+      tags: [session]
+      operationId: getMe
+      summary: Who is signed in
+      description: |
+        Returns the current user, roles, `<resource>:<action>` permissions and the organizations
+        the user may work on. `401` when there is no session; `/api/**` never answers a redirect.
+      responses:
+        '200':
+          description: Current session.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/plugins:
+    get:
+      tags: [registry]
+      operationId: listPlugins
+      summary: List the plugins present in the build
+      responses:
+        '200':
+          description: >
+            Every plugin manifest, sorted by id. `nav` holds only the menu entries
+            the caller's roles may see.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PluginManifest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/organization/registration:
+    post:
+      tags: [organization]
+      operationId: registerOrganization
+      summary: Register the caller's organization
+      description: |
+        A new account (`registrant` role, no organization yet) registers its organization. This creates the
+        organization's tenant, makes the caller its Designated Officer (`responsible`) and publishes
+        `OrganizationRegistered` (ADR 0004). The session must be refreshed afterwards to work inside the
+        new organization. No `X-Alinha-Tenant`: the organization does not exist yet. Permission
+        `organization:register`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationProfileInput'
+      responses:
+        '201':
+          description: Organization registered.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationProfile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: |
+            `code` tells the cases apart:
+            - `ORGANIZATION_ALREADY_EXISTS`: this account already has an organization (refresh the session and go to it);
+            - `NIF_ALREADY_REGISTERED`: another organization already uses this NIF.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Invalid data; `errors` has one Portuguese message per field (`code` = `VALIDATION_FAILED`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: |
+            Too many registration attempts from this client (`code` = `TOO_MANY_REGISTRATIONS`): at most 5 per hour.
+            Nothing was created. A second submit while this account's registration is still running is a `503`
+            `REGISTRATION_BUSY` instead, and does not count as an attempt.
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: |
+            Nothing was created; try again later. `code` tells why:
+            - `IDENTITY_UNAVAILABLE`: the identity provider failed;
+            - `REGISTRATION_BUSY`: too many registrations at once, or this account's registration is still running.
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /api/organization/profile:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+    get:
+      tags: [organization]
+      operationId: getOrganizationProfile
+      summary: The current organization's data
+      description: Permission `organization:read` (Designated Officer, consultant, analyst).
+      responses:
+        '200':
+          description: The organization's data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationProfile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [organization]
+      operationId: updateOrganizationProfile
+      summary: Update the current organization's data
+      description: |
+        Replaces the organization's data. `version` must be the one that was read; otherwise the answer is
+        `409` (`code` = `VERSION_CONFLICT`) and nothing changes. The NIF identifies the organization and cannot
+        change after registration: a different `nif` is a `422`. Permission `organization:edit`
+        (Designated Officer, consultant).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrganizationProfileUpdate'
+      responses:
+        '200':
+          description: The updated data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationProfile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: |
+            The data changed since it was read (`code` = `VERSION_CONFLICT`): reload and edit again.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/audit/events:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+    get:
+      tags: [audit]
+      operationId: listAuditEvents
+      summary: History of changes in the current organization
+      description: |
+        Every recorded write of the current organization, newest first (US09, NFR04). Read-only: the audit
+        trail is append-only. Permission `audit:read` (consultant, Designated Officer).
+
+        `actor` is the Keycloak `sub` of the user, or `system` for jobs and event listeners. Names are not
+        stored in the audit trail (#75).
+      parameters:
+        - name: entityType
+          in: query
+          required: false
+          description: Only entries about this kind of entity, e.g. `organization`.
+          schema:
+            type: string
+        - name: entityId
+          in: query
+          required: false
+          description: Only entries about this entity (requires knowing its id).
+          schema:
+            type: string
+        - name: actor
+          in: query
+          required: false
+          description: Only entries by this actor (`sub` or `system`).
+          schema:
+            type: string
+        - name: from
+          in: query
+          required: false
+          description: Inclusive lower bound on `occurredAt`.
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: false
+          description: Exclusive upper bound on `occurredAt`. `from` after `to` is a `400`.
+          schema:
+            type: string
+            format: date-time
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: One page of history.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditEventPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/{plugin}/ping:
+    parameters:
+      - name: plugin
+        in: path
+        required: true
+        description: Plugin id exactly as declared in `plugin.yaml`.
+        schema:
+          type: string
+          enum:
+            - assessment
+            - dashboard-reports
+            - notifications
+            - organization
+            - risk-assets
+            - code-repository
+            - external-surface
+      - $ref: '#/components/parameters/Tenant'
+    get:
+      tags: [internal]
+      operationId: pingPlugin
+      summary: Walking-skeleton health check (temporary)
+      description: |
+        Proves that a plugin is wired end to end. It does not read or write tenant data; the shell
+        still sends the tenant header because it is inside an organization. Remove this path when
+        the plugin exposes its first real endpoint.
+      responses:
+        '200':
+          description: The plugin answered.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ping'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: SESSION
+      description: |
+        HttpOnly BFF session cookie. The token never reaches the browser. The BFF owns the cookie
+        name; if issue #14 chooses another one, update it here.
+
+  parameters:
+    Tenant:
+      name: X-Alinha-Tenant
+      in: header
+      required: false
+      description: |
+        Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+        own organization. Required for consultants: a missing value is `400`, an unassigned value
+        is `403`. Never put the tenant in the path, query or body (ADR 0002).
+      schema:
+        type: string
+        format: uuid
+    Page:
+      name: page
+      in: query
+      required: false
+      description: Zero-based page number.
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    PageSize:
+      name: pageSize
+      in: query
+      required: false
+      description: Items per page.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+  schemas:
+    Problem:
+      type: object
+      description: RFC 9457 Problem Details with two aLinha extensions.
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+          description: Problem type URI, or `about:blank`.
+        title:
+          type: string
+          description: Short, stable summary of the problem.
+        status:
+          type: integer
+          minimum: 100
+          maximum: 599
+          description: HTTP status code.
+        detail:
+          type: string
+          description: Human-readable explanation. When shown in the UI it is in Portuguese.
+        instance:
+          type: string
+          format: uri-reference
+          description: Request path where the problem occurred.
+        code:
+          type: string
+          description: Stable machine-readable code, for example `TENANT_FORBIDDEN`.
+        errors:
+          type: array
+          description: Field-level validation errors.
+          items:
+            type: object
+            required: [field, message]
+            properties:
+              field:
+                type: string
+                description: Field name or path.
+              message:
+                type: string
+                description: Message for that field, in Portuguese when shown in the UI.
+
+    PageMeta:
+      type: object
+      description: |
+        Base of every paginated response. A plugin extends it with its own `items`:
+        `allOf: [$ref PageMeta, { type: object, properties: { items: ... } }]`.
+      required: [page, pageSize, total]
+      properties:
+        page:
+          type: integer
+          minimum: 0
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 100
+        total:
+          type: integer
+          minimum: 0
+          description: Total number of matching items across all pages.
+
+    Role:
+      type: string
+      description: |
+        `registrant` is an account created through self-registration that has not registered its
+        organization yet (ADR 0004). It has no organizations until it does.
+      enum: [consultant, responsible, analyst, registrant]
+
+    OrganizationRef:
+      type: object
+      required: [id, slug, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Tenant UUID.
+        slug:
+          type: string
+          pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+          description: Used in URLs (`/org/:org`, `/portfolio/:org`).
+        name:
+          type: string
+
+    User:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          description: Keycloak subject identifier.
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+
+    Me:
+      type: object
+      required: [user, roles, permissions, organizations]
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/Role'
+        permissions:
+          type: array
+          description: '"<resource>:<action>" strings computed by the backend from the roles.'
+          items:
+            type: string
+        organizations:
+          type: array
+          description: |
+            The client user's own organization (exactly one), or the consultant's assigned
+            organizations (the `tenants` claim). Empty for a `registrant`.
+          items:
+            $ref: '#/components/schemas/OrganizationRef'
+
+    PluginManifest:
+      type: object
+      required: [id, name, kind, version, publishes, consumes, permissions, nav]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        kind:
+          type: string
+          enum: [FEATURE, FRAMEWORK, PROVIDER]
+        version:
+          type: string
+        publishes:
+          type: array
+          description: Events the plugin publishes.
+          items:
+            type: string
+        consumes:
+          type: array
+          description: Events the plugin consumes.
+          items:
+            type: string
+        permissions:
+          type: array
+          description: Permissions the plugin declares, as `resource:action`.
+          items:
+            type: string
+        nav:
+          type: array
+          description: >
+            Menu entries the caller may see: only areas the caller's roles open, and only entries
+            whose permission the caller holds. Sorted within this plugin by area (client, consultant),
+            then `order`, then label (Portuguese collation); a menu built from several plugins has to sort
+            the merged list again. Never in the onboarding area, which has no menu.
+          items:
+            $ref: '#/components/schemas/NavEntry'
+
+    NavEntry:
+      type: object
+      description: Same fields as `NavItem` in `@alinha/plugin-sdk`, minus the icon.
+      required: [label, path, area, action, order]
+      properties:
+        label:
+          type: string
+          description: Text shown in the menu (European Portuguese).
+        path:
+          type: string
+          description: Path relative to the area root, kebab-case segments, e.g. `organization`.
+        area:
+          type: string
+          enum: [client, consultant, onboarding]
+        resource:
+          type: string
+          description: RBAC resource needed to see the entry, checked as `resource:action`; absent when anyone in the area may.
+        action:
+          type: string
+          description: Action checked with `resource`. Defaults to `read`.
+        order:
+          type: integer
+          description: Lower comes first. Defaults to 100.
+
+    OrganizationAddress:
+      type: object
+      required: [street, postalCode, city]
+      properties:
+        street:
+          type: string
+          maxLength: 300
+        postalCode:
+          type: string
+          pattern: '^\d{4}-\d{3}$'
+          examples: ['3750-750']
+        city:
+          type: string
+          maxLength: 120
+
+    OrganizationContacts:
+      type: object
+      required: [phone, email]
+      properties:
+        phone:
+          type: string
+          maxLength: 20
+          description: 9 digits starting with 2 or 9; spaces are ignored on input.
+        email:
+          type: string
+          format: email
+          maxLength: 254
+
+    PermanentContact:
+      type: object
+      description: Person the CNCS can reach at any time in case of an incident.
+      required: [name, phone]
+      properties:
+        name:
+          type: string
+          maxLength: 120
+        phone:
+          type: string
+          maxLength: 20
+
+    OrganizationProfileInput:
+      type: object
+      description: |
+        Organization data for the NIS2 classification (FR01). Every field listed in `required` is required, and
+        `subsector` too when the chosen `sector` has subsectors (a conditional the schema does not express). The
+        server validates all of them and answers `422` with one message per missing or invalid field. NIF, CAE and phones may contain spaces, dots or dashes, never letters.
+      required: [name, nif, cae, sector, services, employees, turnover, address, contacts, permanentContact]
+      properties:
+        name:
+          type: string
+          maxLength: 200
+          description: Official name, as in the permanent certificate.
+        nif:
+          type: string
+          maxLength: 20
+          description: Portuguese tax number, 9 digits with a valid check digit.
+        cae:
+          type: string
+          maxLength: 20
+          description: Main CAE code, 5 digits.
+        sector:
+          type: string
+          maxLength: 40
+          description: Sector id from the DL 125/2025 annexes (e.g. `industria`), or `outro`.
+        subsector:
+          type: [string, 'null']
+          maxLength: 40
+          description: Required only when the sector has subsectors (e.g. `automoveis`).
+        services:
+          type: string
+          minLength: 10
+          maxLength: 2000
+        employees:
+          type: integer
+          minimum: 1
+          maximum: 10000000
+        turnover:
+          type: integer
+          minimum: 0
+          description: Annual turnover in whole euros.
+        address:
+          $ref: '#/components/schemas/OrganizationAddress'
+        contacts:
+          $ref: '#/components/schemas/OrganizationContacts'
+        permanentContact:
+          $ref: '#/components/schemas/PermanentContact'
+
+    OrganizationProfileUpdate:
+      allOf:
+        - $ref: '#/components/schemas/OrganizationProfileInput'
+        - type: object
+          required: [version]
+          properties:
+            version:
+              type: integer
+              minimum: 0
+              description: The `version` that was read.
+
+    OrganizationProfile:
+      type: object
+      required: [id, version, name, nif, cae, sector, subsector, sectorAnnex, services, employees, turnover,
+        address, contacts, permanentContact, registeredAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        version:
+          type: integer
+          description: Send it back on update.
+        name:
+          type: string
+        nif:
+          type: string
+          description: 9 digits.
+        cae:
+          type: string
+          description: 5 digits.
+        sector:
+          type: string
+        subsector:
+          type: [string, 'null']
+        sectorAnnex:
+          type: [string, 'null']
+          enum: [I, II, null]
+          description: NIS2 annex of the sector; null when the sector is not covered.
+        services:
+          type: string
+        employees:
+          type: integer
+        turnover:
+          type: integer
+          description: Annual turnover in whole euros.
+        address:
+          $ref: '#/components/schemas/OrganizationAddress'
+        contacts:
+          $ref: '#/components/schemas/OrganizationContacts'
+        permanentContact:
+          $ref: '#/components/schemas/PermanentContact'
+        registeredAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    AuditEvent:
+      type: object
+      required: [id, actor, action, entityType, entityId, details, provenance, occurredAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        actor:
+          type: string
+          description: Keycloak `sub` of the user who made the change, or `system`.
+        action:
+          type: string
+          description: '`<entity>.<verb>`, e.g. `organization.updated`.'
+        entityType:
+          type: string
+        entityId:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+          description: |
+            Ids and names of changed fields, as recorded by the writer. Never secrets or personal data
+            beyond ids (docs/audit.md). Visible to the client.
+        provenance:
+          oneOf:
+            - $ref: '#/components/schemas/AiProvenance'
+            - type: 'null'
+          description: Set when the change stored AI-generated content (NFR14).
+        occurredAt:
+          type: string
+          format: date-time
+
+    AiProvenance:
+      type: object
+      description: Where AI-generated content came from (NFR14).
+      required: [model, promptVersion, sources, generatedAt]
+      properties:
+        model:
+          type: string
+        promptVersion:
+          type: string
+        sources:
+          type: array
+          items:
+            type: string
+        generatedAt:
+          type: string
+          format: date-time
+
+    AuditEventPage:
+      allOf:
+        - $ref: '#/components/schemas/PageMeta'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/AuditEvent'
+
+    Ping:
+      type: object
+      required: [plugin, status]
+      properties:
+        plugin:
+          type: string
+        status:
+          type: string
+          enum: [ok]
+
+  headers:
+    RetryAfter:
+      description: Seconds to wait before trying again.
+      schema:
+        type: integer
+        minimum: 1
+
+  responses:
+    BadRequest:
+      description: Malformed request.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Unauthorized:
+      description: No session.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Forbidden:
+      description: The tenant or permission does not allow this operation.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: The resource does not exist in this tenant.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Conflict:
+      description: The request conflicts with the current state.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    UnprocessableEntity:
+      description: The request is syntactically valid but failed validation.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'

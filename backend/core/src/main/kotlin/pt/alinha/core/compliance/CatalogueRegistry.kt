@@ -1,0 +1,85 @@
+package pt.alinha.core.compliance
+
+import jakarta.annotation.PostConstruct
+import java.nio.file.Path
+import java.time.Instant
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.context.event.ApplicationReadyEvent
+import org.springframework.context.ApplicationEventPublisher
+import org.springframework.context.event.EventListener
+import org.springframework.stereotype.Component
+import org.springframework.transaction.support.TransactionOperations
+
+/**
+ * Announces that a catalogue version is available. Not tenant-specific: a catalogue applies to every
+ * tenant. Consumers must be idempotent, since every version is announced again on each startup.
+ */
+data class CatalogueVersionPublished(
+    val framework: String,
+    val version: Int,
+    val title: String,
+    val occurredAt: Instant,
+)
+
+/**
+ * Keeps the loaded catalogues in memory. A loaded version never changes (RNF18):
+ * assessments store (framework, version) and read their questions with [get].
+ * Catalogues are read once, at start-up: a new version is picked up by restarting the application.
+ */
+@Component
+class CatalogueRegistry(
+    @Value("\${alinha.frameworks.dir}") frameworksDir: String,
+    private val events: ApplicationEventPublisher,
+    private val transactions: TransactionOperations,
+) {
+    private val loader = CatalogueLoader(Path.of(frameworksDir))
+
+    @Volatile
+    private var catalogues: Map<CatalogueKey, Catalogue> = emptyMap()
+
+    /**
+     * Loads and validates catalogues during bean initialisation so a bad catalogue aborts
+     * startup before the port opens. Events are NOT published here: listeners are not yet
+     * registered. They are notified in [onReady].
+     */
+    @PostConstruct
+    fun onStartup() {
+        catalogues = loader.loadAll().associateBy { CatalogueKey(it.framework, it.version) }
+    }
+
+    /**
+     * Publishes [CatalogueVersionPublished] for every version loaded at startup, once all listeners
+     * are registered. It publishes inside a transaction because `@ApplicationModuleListener` only
+     * runs after a commit: without one, those listeners would be skipped in silence.
+     */
+    @EventListener(ApplicationReadyEvent::class)
+    fun onReady() {
+        val now = Instant.now()
+        transactions.executeWithoutResult {
+            all().forEach { events.publishEvent(CatalogueVersionPublished(it.framework, it.version, it.title, now)) }
+        }
+    }
+
+    /** A specific version — what an existing assessment uses. */
+    fun get(framework: String, version: Int): Catalogue? = catalogues[CatalogueKey(framework, version)]
+
+    /** The newest version of a framework — what a new assessment starts with. */
+    fun latest(framework: String): Catalogue? =
+        catalogues.values.filter { it.framework == framework }.maxByOrNull { it.version }
+
+    fun all(): List<Catalogue> = catalogues.values.sortedWith(compareBy({ it.framework }, { it.version }))
+
+    /**
+     * Canonical controls: the same control id in several frameworks is the same measure, so one answer
+     * counts for all of them. Returns the frameworks (latest versions) that use the control.
+     */
+    fun frameworksWithControl(controlId: String): List<String> =
+        catalogues.values
+            .groupBy { it.framework }
+            .mapValues { (_, versions) -> versions.maxBy { it.version } }
+            .filterValues { catalogue -> catalogue.controls.any { it.id == controlId } }
+            .keys
+            .sorted()
+
+    private data class CatalogueKey(val framework: String, val version: Int)
+}

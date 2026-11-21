@@ -36,6 +36,8 @@ for (const [name, attribute, multivalued] of [
   const found = mapper(name);
   assert.ok(found, `protocol mapper ${name} is missing`);
   assert.equal(found.config["access.token.claim"], "true");
+  // The ID token goes into the logout URL (id_token_hint): keep the client list out of browser history.
+  assert.equal(found.config["id.token.claim"], "false", `${name} must not be in the ID token`);
   assert.equal(found.config["user.attribute"], attribute);
   assert.equal(found.config.multivalued, multivalued);
 }

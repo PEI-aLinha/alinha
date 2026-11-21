@@ -17,14 +17,34 @@ dependencies {
     implementation(libs.spring.modulith.starter.core)
     implementation(libs.kotlin.reflect)
     implementation(libs.jackson.module.kotlin)
+    implementation(libs.jackson.dataformat.yaml)
     implementation(libs.spring.vault.core) // TenantSecretStore on OpenBao (KV v2)
+    implementation(libs.spring.boot.starter.data.redis) // job outbox relay -> Redis Streams (RNF02)
+    implementation(libs.json.schema.validator) // job envelopes checked against contracts/jobs
+    implementation(libs.micrometer.core) // alerts on provisioning failures
 
-    // TODO sprint 0: security (Keycloak) — JWT resource server + RBAC
-    // implementation("org.springframework.boot:spring-boot-starter-security-oauth2-resource-server")
+    implementation(libs.spring.boot.starter.security.oauth2.resource.server) // Keycloak JWTs + RBAC
 
     testImplementation(libs.spring.boot.starter.test)
+    testImplementation(libs.spring.modulith.events.api) // @ApplicationModuleListener in the wiring test
+    testImplementation(libs.spring.boot.starter.webmvc.test)
+    testImplementation(libs.spring.boot.starter.security.oauth2.resource.server.test)
+    testImplementation(libs.spring.boot.starter.actuator)
     testImplementation(libs.testcontainers.vault)
     testImplementation(libs.testcontainers.junit.jupiter)
+    testImplementation(libs.testcontainers.postgresql)
+    testImplementation(libs.spring.boot.starter.flyway) // audit tests run the real core migrations
+    testRuntimeOnly(libs.flyway.postgresql)
+    testRuntimeOnly(libs.postgresql)
+
+}
+
+// contracts/jobs is the single source of the job formats (Kotlin and Python): ship it in the jar.
+tasks.processResources {
+    from(rootProject.file("contracts/jobs")) {
+        include("*.schema.json")
+        into("contracts/jobs")
+    }
 }
 
 // OpenBaoTenantSecretStoreTest runs with the real app policy from deploy/openbao.

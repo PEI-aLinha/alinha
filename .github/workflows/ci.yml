@@ -68,7 +68,38 @@ jobs:
         with:
           node-version: 22
       - run: pnpm install
+      - name: API client matches contracts/openapi/alinha.yaml
+        run: pnpm check:api
       - run: pnpm lint
       - run: pnpm test
       - run: pnpm typecheck
       - run: pnpm build
+
+  workers:
+    name: Workers (job consumer)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e "workers/job_consumer[test]"
+      - run: pytest --cov=alinha_job_consumer --cov-fail-under=70
+        working-directory: workers/job_consumer
+
+  frameworks:
+    name: Framework catalogues
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: pipx install check-jsonschema==0.39.0
+      - run: ./scripts/validate-frameworks.sh
+
+  immutable-frameworks:
+    name: Immutable framework versions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: ./scripts/check-immutable-frameworks.sh

@@ -1,0 +1,77 @@
+server:
+  port: ${BFF_PORT:8081}
+  # X-Forwarded-* is trusted only in the prod profile (application-prod.yml), behind Nginx.
+
+spring:
+  application:
+    name: bff
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  session:
+    # Idle timeout. The ALINHA_SESSION cookie's 8 h max-age (SessionConfig) is absolute, only re-sent when the id changes.
+    timeout: 8h
+    redis:
+      namespace: alinha:session
+      flush-mode: on_save
+  security:
+    oauth2:
+      client:
+        registration:
+          keycloak:
+            provider: keycloak
+            client-id: ${BFF_CLIENT_ID:bff}
+            client-secret: ${BFF_CLIENT_SECRET}
+            authorization-grant-type: authorization_code
+            # The callback always lands on the BFF (8081); the shell may live on another dev origin.
+            redirect-uri: ${BFF_REDIRECT_URI:http://localhost:8081/login/oauth2/code/keycloak}
+            scope: openid,profile,email
+        provider:
+          keycloak:
+            authorization-uri: ${KEYCLOAK_AUTHORIZATION_URI:http://localhost:8180/realms/alinha/protocol/openid-connect/auth}
+            token-uri: ${KEYCLOAK_TOKEN_URI:http://localhost:8180/realms/alinha/protocol/openid-connect/token}
+            jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8180/realms/alinha/protocol/openid-connect/certs}
+            user-info-uri: ${KEYCLOAK_USER_INFO_URI:http://localhost:8180/realms/alinha/protocol/openid-connect/userinfo}
+            user-name-attribute: preferred_username
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: app
+              uri: ${ALINHA_APP_URL:http://localhost:8080}
+              predicates:
+                - Path=/api/**
+              filters:
+                - TokenRelay
+                # The app uses bearer auth; the browser's session cookie must not reach it.
+                - RemoveRequestHeader=Cookie
+
+alinha:
+  bff:
+    app-url: ${ALINHA_APP_URL:http://localhost:8080}
+    after-login-uri: ${BFF_AFTER_LOGIN_URI:http://localhost:5173/}
+    post-logout-uri: ${BFF_POST_LOGOUT_URI:http://localhost:5173/}
+    end-session-uri: ${KEYCLOAK_END_SESSION_URI:http://localhost:8180/realms/alinha/protocol/openid-connect/logout}
+    registration-id: keycloak
+    cookie-secure: ${BFF_COOKIE_SECURE:true}
+    rate-limit:
+      enabled: ${BFF_RATE_LIMIT_ENABLED:true}
+      requests: ${BFF_RATE_LIMIT_REQUESTS:120}
+      ip-api-requests: ${BFF_RATE_LIMIT_IP_API_REQUESTS:1200}
+      window: ${BFF_RATE_LIMIT_WINDOW:1m}
+
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      group:
+        # Redis down means no sessions or login: not ready. Liveness leaves it out so a Redis outage doesn't restart the BFF.
+        readiness:
+          include: readinessState,redis
+  endpoints:
+    web:
+      exposure:
+        include: health,info

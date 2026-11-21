@@ -20,7 +20,7 @@ export function OrgSwitcher({ organizations, current }: { organizations: readonl
       <label htmlFor={id} className="font-semibold">Cliente</label>
       <select
         id={id}
-        className="rounded-md border px-2 py-1.5"
+        className="rounded-md border border-line bg-paper px-2 py-1.5"
         value={current ?? ''}
         onChange={(e) => e.target.value && navigate(`/portfolio/${encodeURIComponent(e.target.value)}`)}
       >
@@ -71,7 +71,7 @@ export function PortfolioPage() {
       <ul className="flex flex-col gap-2">
         {me.organizations.map((o) => (
           <li key={o.id}>
-            <Link to={`/portfolio/${encodeURIComponent(o.slug)}`} className="block rounded-md border px-4 py-3 hover:bg-gray-50">{o.name}</Link>
+            <Link to={`/portfolio/${encodeURIComponent(o.slug)}`} className="block rounded-md border border-line-soft px-4 py-3 hover:bg-paper-soft">{o.name}</Link>
           </li>
         ))}
       </ul>

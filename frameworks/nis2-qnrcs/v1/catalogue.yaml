@@ -1,0 +1,45 @@
+# NIS2 / RJC / QNRCS catalogue v1 — example with 2 controls (to be completed in #22)
+# Field names and values in English; user-facing text in Portuguese.
+framework: nis2-qnrcs
+version: 1
+title: "NIS2 — Regime Jurídico da Cibersegurança"
+sources:
+  - "Decreto-Lei n.º 125/2025"
+  - "Regulamento n.º 756/2026"
+
+requirements:
+  - id: RJC-27-1-i
+    reference: "DL 125/2025, art. 27.º, n.º 1, al. i)"
+    text: "Utilização de autenticação multifator ou contínua"
+    controls: [CTRL-MFA]
+  - id: QNRCS-GR.CO-3
+    reference: "QNRCS, GR.CO-3"
+    text: "Os requisitos legais, regulamentares e contratuais são compreendidos e geridos"
+    controls: [CTRL-LEGAL-REQ]
+
+controls:
+  - id: CTRL-MFA
+    title: "Autenticação com dois fatores"
+    level: basic             # basic | substantial | high
+    technical: true          # can be assigned to an analyst
+    evidence:
+      - "Configuração do sistema de autenticação"
+    questions:
+      - id: CTRL-MFA-Q1
+        text: "Os acessos aos sistemas da empresa pedem um segundo fator, além da palavra-passe?"
+        explanation: "Além da palavra-passe, a pessoa confirma quem é com outra coisa, como um código no telemóvel."
+        example: "Ao entrar no email da empresa, recebe um código por SMS."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: CTRL-LEGAL-REQ
+    title: "Conhecer as obrigações legais"
+    level: basic
+    technical: false
+    evidence:
+      - "Lista de leis e contratos aplicáveis"
+    questions:
+      - id: CTRL-LEGAL-REQ-Q1
+        text: "A empresa tem uma lista das leis e contratos com regras de cibersegurança que tem de cumprir?"
+        explanation: "Saber que regras se aplicam é o primeiro passo para as cumprir."
+        example: "Uma folha com o RGPD, o DL 125/2025 e os contratos com clientes que exigem segurança."
+        answers: ["yes", "partial", "no", "unknown"]

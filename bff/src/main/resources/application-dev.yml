@@ -1,0 +1,12 @@
+# Local development only (SPRING_PROFILES_ACTIVE=dev): the Keycloak client from deploy/keycloak and plain http.
+spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          keycloak:
+            client-secret: ${BFF_CLIENT_SECRET:dev-bff-secret}
+
+alinha:
+  bff:
+    cookie-secure: ${BFF_COOKIE_SECURE:false}

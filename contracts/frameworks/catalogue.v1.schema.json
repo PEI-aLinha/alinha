@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://alinha.pt/contracts/frameworks/catalogue.v1.schema.json",
+  "title": "Framework catalogue v1",
+  "description": "Format of frameworks/<framework>/v<n>/catalogue.yaml. Loaded at runtime by the Compliance Engine. Field names and values in English; user-facing text in Portuguese.",
+  "type": "object",
+  "required": ["framework", "version", "title", "sources", "requirements", "controls"],
+  "additionalProperties": false,
+  "properties": {
+    "framework": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "Framework id, equal to its folder name, e.g. nis2-qnrcs"
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Catalogue version, equal to the vN folder"
+    },
+    "title": { "type": "string", "minLength": 1 },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Laws, regulations or standards this catalogue is based on"
+    },
+    "requirements": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/requirement" }
+    },
+    "controls": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/control" }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Z0-9]+([.-][A-Za-z0-9]+)*$",
+      "description": "Stable id. Never reused or changed once published."
+    },
+    "requirement": {
+      "type": "object",
+      "required": ["id", "reference", "text", "controls"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "reference": { "type": "string", "minLength": 1, "description": "Article or measure, e.g. DL 125/2025, art. 27.º" },
+        "text": { "type": "string", "minLength": 1 },
+        "controls": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/id" },
+          "description": "Ids of the canonical controls that satisfy this requirement"
+        }
+      }
+    },
+    "control": {
+      "type": "object",
+      "required": ["id", "title", "level", "technical", "evidence", "questions"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "title": { "type": "string", "minLength": 1 },
+        "level": {
+          "enum": ["basic", "substantial", "high"],
+          "description": "Lowest compliance level that requires this control (Regulation 756/2026)"
+        },
+        "technical": { "type": "boolean", "description": "true = can be assigned to an analyst" },
+        "evidence": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Evidence expected for this control"
+        },
+        "questions": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/question" }
+        }
+      }
+    },
+    "question": {
+      "type": "object",
+      "required": ["id", "text", "explanation", "example", "answers"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "text": { "type": "string", "minLength": 1 },
+        "explanation": { "type": "string", "minLength": 1, "description": "Plain-language explanation (FR09)" },
+        "example": { "type": "string", "minLength": 1, "description": "Concrete example (FR09)" },
+        "answers": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": { "enum": ["yes", "partial", "no", "unknown"] }
+        }
+      }
+    }
+  }
+}

@@ -6,6 +6,7 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "scripts": {
+    "gen:api": "pnpm dlx openapi-typescript@7.13.0 ../../../contracts/openapi/alinha.yaml -o src/schema.generated.ts",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

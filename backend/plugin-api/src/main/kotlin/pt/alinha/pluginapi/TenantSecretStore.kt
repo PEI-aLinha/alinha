@@ -5,7 +5,7 @@ package pt.alinha.pluginapi
  * Secrets never go to the database, logs or audit payloads.
  *
  * The tenant is always the current one (the core's `TenantContext`), never a caller argument, so a
- * plugin cannot reach another tenant's credentials. Calls outside a tenant-scoped request fail.
+ * plugin cannot reach another tenant's credentials. Calls outside a tenant-scoped request or `runAs` fail.
  *
  * `provider` is the provider plugin id (lowercase letters, digits and dashes). It is not yet bound to
  * the calling plugin (#60): this is a trusted, in-process API, and a provider plugin must only pass its
