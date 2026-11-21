@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Builds the production realm from the dev realm (deploy/keycloak/alinha-realm.json), so there is one source of
 // truth for roles, mappers, flows and the user profile. Run by deploy/Dockerfile.keycloak:
-//   node scripts/gen-prod-realm.mjs [--test-users] <dev-realm.json> <prod-realm.json>
-// --test-users keeps the dev personas (staging only, see deploy/docker-compose.staging.yml).
+//   node scripts/gen-prod-realm.mjs [--staging] <dev-realm.json> <prod-realm.json>
+// --staging keeps the dev personas and Mailpit as SMTP server (see deploy/docker-compose.staging.yml).
 //
 // Every dev secret and localhost URL becomes a Keycloak import placeholder (${VAR}), which Keycloak resolves from
 // the container's environment on `--import-realm`. So no production secret is ever baked into the image.
@@ -13,18 +13,37 @@ export const PUBLIC_URL = '${ALINHA_PUBLIC_URL}'
 
 /**
  * Returns a production copy of the dev realm. The input is not modified.
- * Without `testUsers` the dev personas are dropped: production only has real accounts. Service-account users stay,
- * because their client (e.g. alinha-provisioner) needs their role mappings.
+ * Production (the default): the dev personas are dropped, so only real accounts exist (service-account users stay,
+ * because their client, e.g. alinha-provisioner, needs their role mappings), and mail goes through the SMTP relay
+ * given in the environment, so verification and password-reset emails reach real users.
+ * `staging` keeps the personas (with a secret password) and the dev realm's Mailpit.
  */
-export function toProdRealm(devRealm, { testUsers = false } = {}) {
+export function toProdRealm(devRealm, { staging = false } = {}) {
   const realm = structuredClone(devRealm)
   // HTTPS is terminated by the proxy in front; Keycloak still refuses plain HTTP from public addresses.
   realm.sslRequired = 'external'
   realm.clients = realm.clients.map(prodClient)
-  realm.users = testUsers
-    ? realm.users.map(withSecretPassword)
-    : realm.users.filter((user) => user.serviceAccountClientId)
+  if (staging) {
+    realm.users = realm.users.map(withSecretPassword)
+  } else {
+    realm.users = realm.users.filter((user) => user.serviceAccountClientId)
+    realm.smtpServer = SMTP_RELAY
+  }
   return realm
+}
+
+/** The production realm's SMTP server: authenticated, STARTTLS required (never a silent plain-text fallback). */
+export const SMTP_RELAY = {
+  host: '${SMTP_HOST}',
+  port: '${SMTP_PORT}',
+  from: '${SMTP_FROM}',
+  fromDisplayName: 'aLinha',
+  replyTo: '${SMTP_FROM}',
+  auth: 'true',
+  user: '${SMTP_USERNAME}',
+  password: '${SMTP_PASSWORD}',
+  starttls: 'true',
+  ssl: 'false',
 }
 
 // The dev password is public in this repo, and whoever logs in first would enrol their own TOTP.
@@ -58,13 +77,13 @@ function prodClient(client) {
 }
 
 function main(args) {
-  const testUsers = args[0] === '--test-users'
-  const [input, output, ...extra] = testUsers ? args.slice(1) : args
+  const staging = args[0] === '--staging'
+  const [input, output, ...extra] = staging ? args.slice(1) : args
   if (!input || !output || extra.length > 0) {
-    console.error('usage: gen-prod-realm.mjs [--test-users] <dev-realm.json> <prod-realm.json>')
+    console.error('usage: gen-prod-realm.mjs [--staging] <dev-realm.json> <prod-realm.json>')
     process.exit(2)
   }
-  const realm = toProdRealm(JSON.parse(readFileSync(input, 'utf8')), { testUsers })
+  const realm = toProdRealm(JSON.parse(readFileSync(input, 'utf8')), { staging })
   writeFileSync(output, `${JSON.stringify(realm, null, 2)}\n`)
 }
 

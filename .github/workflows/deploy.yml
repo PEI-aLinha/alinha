@@ -98,9 +98,15 @@ jobs:
       KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}
       BFF_CLIENT_SECRET: ${{ secrets.BFF_CLIENT_SECRET }}
       KEYCLOAK_PROVISIONER_SECRET: ${{ secrets.KEYCLOAK_PROVISIONER_SECRET }}
-      # OpenBao
-      BAO_ROOT_TOKEN: ${{ secrets.BAO_ROOT_TOKEN }}
+      # OpenBao. The root token is never here: it stays with the operator (deploy/DEPLOYMENT.md, "OpenBao").
+      BAO_SEED_TOKEN: ${{ secrets.BAO_SEED_TOKEN }}
       BAO_APP_TOKEN: ${{ secrets.BAO_APP_TOKEN }}
+      # SMTP relay for Keycloak and the app
+      SMTP_HOST: ${{ vars.SMTP_HOST }}
+      SMTP_PORT: ${{ vars.SMTP_PORT }}
+      SMTP_FROM: ${{ vars.SMTP_FROM }}
+      SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
       # The VM's reverse proxy: its Docker network and the address range web trusts X-Forwarded-For from.
       PROXY_NETWORK: ${{ vars.PROXY_NETWORK }}
       TRUSTED_PROXY_CIDR: ${{ vars.TRUSTED_PROXY_CIDR }}

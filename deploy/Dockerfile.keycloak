@@ -17,11 +17,12 @@ RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
  && pnpm --filter @alinha/keycloak-theme build-keycloak-theme
 
 FROM node:22-bookworm-slim AS realm
-# true only for staging (docker-compose.staging.yml): the published production image has no test users.
-ARG TEST_USERS=false
+# true only for staging (docker-compose.staging.yml): test users and Mailpit. The published production image has
+# neither: it sends mail through the SMTP relay given in its environment.
+ARG STAGING=false
 WORKDIR /src
 COPY scripts/gen-prod-realm.mjs deploy/keycloak/alinha-realm.json ./
-RUN if [ "$TEST_USERS" = "true" ]; then flag=--test-users; else flag=; fi \
+RUN if [ "$STAGING" = "true" ]; then flag=--staging; else flag=; fi \
  && node gen-prod-realm.mjs $flag alinha-realm.json /alinha-realm.json
 
 # Build-time options (database vendor, health, relative path) are fixed here so the server starts --optimized.

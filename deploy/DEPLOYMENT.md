@@ -57,11 +57,16 @@ Generate each secret with `openssl rand -hex 24` and set it with `gh secret set 
 | `KEYCLOAK_ADMIN`, `KEYCLOAK_ADMIN_PASSWORD` | Keycloak bootstrap admin (console not public: `ssh -L 8180:...`, see below) |
 | `BFF_CLIENT_SECRET` | client `bff` in the realm and the BFF |
 | `KEYCLOAK_PROVISIONER_SECRET` | client `alinha-provisioner` in the realm and the app (through OpenBao) |
-| `BAO_ROOT_TOKEN` | OpenBao root token **printed by `bao operator init`** (see OpenBao below), used only by the seed job |
-| `BAO_APP_TOKEN` | the app's OpenBao token (generated like the others) |
+| `BAO_APP_TOKEN` | the app's OpenBao token |
+| `BAO_SEED_TOKEN` | the `openbao-seed` job's token: can only write `secret/alinha/{app,ai-service}` |
+| `SMTP_USERNAME`, `SMTP_PASSWORD` | the SMTP relay's login (from the mail provider, not generated) |
 
-Variables: `ALINHA_PUBLIC_URL=https://pei-alinha.duckdns.org`, `PROXY_NETWORK` (the reverse proxy's Docker network)
-and `TRUSTED_PROXY_CIDR` (that network's subnet, or the proxy's own `/32`).
+The OpenBao **root token is not a secret here**: it stays with the operator (see OpenBao below).
+
+Variables: `ALINHA_PUBLIC_URL=https://pei-alinha.duckdns.org`, `PROXY_NETWORK` (the reverse proxy's Docker network),
+`TRUSTED_PROXY_CIDR` (that network's subnet, or the proxy's own `/32`), and the SMTP relay: `SMTP_HOST`, `SMTP_PORT`
+(587, STARTTLS) and `SMTP_FROM` (the sender address, e.g. `no-reply@<domain>`). Keycloak and the app always
+authenticate and require STARTTLS.
 
 Compose refuses to start when any of them is missing (`${VAR:?}`), so an empty secret can never become a
 placeholder in the imported realm.
@@ -74,8 +79,8 @@ placeholder in the imported realm.
 - **OpenBao** is a real server with its data on the `openbao-data` volume (`deploy/openbao/server.hcl`). It is
   healthy only when unsealed. On every deploy the `openbao-seed` job writes the secrets, policies and app token
   (`deploy/openbao/init.sh`) and the app waits for it. Staging keeps dev mode. See **OpenBao** below.
-- **Emails** (verification, password reset) go to Mailpit: `ssh -L 8026:127.0.0.1:8026 <vm>`, then
-  http://localhost:8026.
+- **Emails** (Keycloak's verification and password reset, the notifications plugin) go through the SMTP relay in
+  `SMTP_*`. Staging sends them to Mailpit instead (http://localhost:8026).
 - **Keycloak admin console:** not routed by `web`. Use
   `ssh -L 8180:172.31.0.X:8080 ...` with the container's address (`docker inspect alinha-prod-keycloak-1`), then
   http://localhost:8180/kc/admin.
@@ -113,7 +118,9 @@ from `deploy/.env.staging`. Production has no test users: its realm only keeps t
 ## OpenBao
 
 Production OpenBao starts **sealed** after every container restart or VM reboot, and stays unhealthy until it is
-unsealed. The app waits for it. Run every command below on the VM.
+unsealed. The app waits for it. The **root token is only used by hand**, never by a workflow: setting OpenBao up
+(`deploy/openbao/bootstrap.sh`: secrets engine, policies, tokens) needs it, while each deploy's `openbao-seed` only
+writes the platform secrets with `BAO_SEED_TOKEN`. Run every command below on the VM.
 
 **Once, before the first deploy that uses it** (the deploy fails waiting for `openbao`, which is expected):
 
@@ -122,18 +129,44 @@ docker exec alinha-prod-openbao-1 bao operator init -key-shares=3 -key-threshold
 ```
 
 It prints 3 unseal keys and the root token, once. Give one unseal key to each of three team members and keep them
-out of the VM and out of the repo. Then:
+out of the VM and out of the repo. Then unseal and set OpenBao up. `read -s` keeps the tokens out of the shell
+history: paste the root token, then the values of the `BAO_APP_TOKEN` and `BAO_SEED_TOKEN` secrets.
 
 ```sh
-docker exec alinha-prod-openbao-1 bao operator unseal   # asks for a key; repeat with a second key
-gh secret set BAO_ROOT_TOKEN --env production           # paste the root token from init
+docker exec -it alinha-prod-openbao-1 bao operator unseal   # asks for a key; repeat with a second key
+read -rs ROOT; read -rs APP; read -rs SEED
+docker exec -e BAO_TOKEN="$ROOT" -e ALINHA_BAO_APP_TOKEN="$APP" -e ALINHA_BAO_SEED_TOKEN="$SEED" \
+  alinha-prod-openbao-1 sh /init/bootstrap.sh
+docker exec -e BAO_TOKEN="$ROOT" alinha-prod-openbao-1 bao token revoke -self   # the root token is no longer needed
+unset ROOT APP SEED
 ```
 
-Run **Deploy to Production VM** again. `openbao-seed` enables `secret/` and writes everything.
+Run **Deploy to Production VM** again. `openbao-seed` writes the secrets.
 
-**After a VM reboot or an OpenBao restart:** run `bao operator unseal` twice (two key holders), then re-run the deploy,
-or wait for the app's `restart: always` to pick it up.
+**Changing a policy file** (`deploy/openbao/*.hcl`) or a token: create a root token for the occasion with
+`bao operator generate-root` (two key holders), run `bootstrap.sh` as above, then revoke it.
+
+**After a VM reboot or an OpenBao restart:** run `bao operator unseal` twice (two key holders). Until then the app
+cannot read its secrets: `restart: always` keeps restarting it, and it comes up by itself once OpenBao is unsealed.
+A deploy before the unseal fails waiting for `openbao`.
 
 **Losing the volume or the unseal keys loses every secret**, including the per-tenant provider credentials
 (`TenantSecretStore`): back up the `alinha-prod_openbao-data` volume with the database.
 
+## Rotating a secret
+
+Changing a GitHub secret and deploying is enough only for what is read on every start: the values that
+`openbao-seed` writes into OpenBao (`POSTGRES_PASSWORD` and `ALINHA_APP_DB_PASSWORD` as the app sees them,
+`KEYCLOAK_PROVISIONER_SECRET`, `SMTP_PASSWORD`), and everything passed to a container's environment. Keycloak's realm
+is imported only once and Postgres roles are created only on a fresh volume, so for these **change the running system
+first, then the GitHub secret, then deploy**:
+
+| Secret | Change it first in |
+|---|---|
+| `BFF_CLIENT_SECRET`, `KEYCLOAK_PROVISIONER_SECRET` | Keycloak, client `bff` / `alinha-provisioner` → Credentials (admin console through the SSH tunnel) |
+| `SMTP_*` | Keycloak, realm `alinha` → Realm settings → Email (the app reads the new values on deploy) |
+| `KEYCLOAK_ADMIN_PASSWORD` | Keycloak, realm `master` → the admin user (the env value is only used on the very first start) |
+| `POSTGRES_PASSWORD`, `ALINHA_APP_DB_PASSWORD`, `KEYCLOAK_DB_PASSWORD` | `docker exec -it alinha-prod-postgres-1 psql -U alinha -c '\password <role>'` with role `alinha`, `alinha_app` or `keycloak` |
+| `BAO_APP_TOKEN`, `BAO_SEED_TOKEN` | OpenBao: revoke the old token and run `bootstrap.sh` with the new one (see OpenBao) |
+
+`\password` asks for the new value, so it never appears in the shell history or the process list.

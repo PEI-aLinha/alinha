@@ -19,9 +19,15 @@ services:
       context: ..
       dockerfile: deploy/Dockerfile.backend
       args: { MODULE: app }
+    environment:
+      # Staging sends every email to Mailpit (below), not to a real relay.
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      SMTP_AUTH: "false"
+      SMTP_STARTTLS: "false"
 
   # Staging keeps OpenBao in dev mode (in memory, unsealed, root token from deploy/.env.staging): no init or unseal
-  # to do, and the seed job fills it on every start like in production.
+  # to do. The seed job runs init.sh with the root token instead of production's narrow token: bootstrap + secrets.
   openbao:
     # Straight to bao: the image's entrypoint would add the production -config, whose listener clashes with -dev's.
     entrypoint: ["bao", "server", "-dev", "-dev-listen-address=0.0.0.0:8200"]
@@ -29,16 +35,36 @@ services:
     environment:
       BAO_DEV_ROOT_TOKEN_ID: ${BAO_ROOT_TOKEN:?}
 
+  openbao-seed:
+    entrypoint: ["/bin/sh", "/init/init.sh"]
+    environment:
+      BAO_TOKEN: ${BAO_ROOT_TOKEN:?}
+      ALINHA_BAO_APP_TOKEN: ${BAO_APP_TOKEN:?}
+      ALINHA_BAO_SEED_TOKEN: ${BAO_SEED_TOKEN:?}
+      ALINHA_BAO_AI_TOKEN: "" # no AI Service, like production
+
   keycloak:
     build:
       context: ..
       dockerfile: deploy/Dockerfile.keycloak
-      # Staging keeps the dev personas (deploy/keycloak/README.md); production has none.
-      args: { TEST_USERS: "true" }
+      # Staging realm: the dev personas (deploy/keycloak/README.md) and Mailpit as SMTP server. Production has
+      # neither.
+      args: { STAGING: "true" }
     environment:
       ALINHA_TEST_USER_PASSWORD: ${ALINHA_TEST_USER_PASSWORD:?}
+    depends_on:
+      mailpit:
+        condition: service_started
 
   job-consumer:
     build:
       context: ..
       dockerfile: workers/job_consumer/Dockerfile
+
+  # Catches every email Keycloak and the app send. UI: http://localhost:8026
+  mailpit:
+    image: axllent/mailpit:v1.33.1
+    restart: always
+    mem_limit: 64m
+    networks: [alinha]
+    ports: ["127.0.0.1:8026:8025"]

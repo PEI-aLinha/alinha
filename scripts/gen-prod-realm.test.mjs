@@ -3,7 +3,7 @@ import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { PUBLIC_URL, toProdRealm } from './gen-prod-realm.mjs'
+import { PUBLIC_URL, SMTP_RELAY, toProdRealm } from './gen-prod-realm.mjs'
 
 const root = resolve(import.meta.dirname, '..')
 const devRealm = JSON.parse(readFileSync(resolve(root, 'deploy/keycloak/alinha-realm.json'), 'utf8'))
@@ -44,8 +44,19 @@ describe('toProdRealm', () => {
     assert.ok(!JSON.stringify(prod).includes('ALINHA_TEST_USER_PASSWORD'))
   })
 
-  it('with testUsers (staging), keeps every user and gives the personas the secret password', () => {
-    const staging = toProdRealm(devRealm, { testUsers: true })
+  it('sends mail through the SMTP relay from the environment, with auth and STARTTLS', () => {
+    assert.deepEqual(prod.smtpServer, SMTP_RELAY)
+    assert.equal(prod.smtpServer.auth, 'true')
+    assert.equal(prod.smtpServer.starttls, 'true')
+    assert.ok(!JSON.stringify(prod).includes('mailpit'))
+  })
+
+  it('staging keeps Mailpit as SMTP server', () => {
+    assert.deepEqual(toProdRealm(devRealm, { staging: true }).smtpServer, devRealm.smtpServer)
+  })
+
+  it('staging keeps every user and gives the personas the secret password', () => {
+    const staging = toProdRealm(devRealm, { staging: true })
     assert.equal(staging.users.length, devRealm.users.length)
     const passwords = staging.users.flatMap((u) => u.credentials ?? []).filter((c) => c.type === 'password')
     assert.ok(passwords.length > 0)
@@ -55,7 +66,7 @@ describe('toProdRealm', () => {
   it('the staging compose requires the test user password for Keycloak', () => {
     const staging = readFileSync(resolve(root, 'deploy/docker-compose.staging.yml'), 'utf8')
     const keycloak = staging.slice(staging.indexOf('\n  keycloak:'), staging.indexOf('\n  job-consumer:'))
-    assert.match(keycloak, /TEST_USERS: "true"/)
+    assert.match(keycloak, /STAGING: "true"/)
     assert.match(keycloak, /\bALINHA_TEST_USER_PASSWORD: \$\{ALINHA_TEST_USER_PASSWORD:\?\}/)
   })
 
