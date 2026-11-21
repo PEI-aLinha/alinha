@@ -1,6 +1,6 @@
 # Demo data for local development and the demo environment (#42): turn on with SPRING_PROFILES_ACTIVE=demo.
-# Never on a real customer deployment: together with any other profile the app refuses to start (DemoProfileGuard)
-# unless the demo server also sets ALINHA_DEMO_ALLOW_IN_DEPLOYMENT=true.
+# Never on a real customer deployment: unless the demo server sets ALINHA_DEMO_ALLOW_IN_DEPLOYMENT=true, the app
+# refuses to start (DemoProfileGuard) when demo is not the only profile or the database is not on localhost.
 spring:
   flyway:
     # db/demo holds only repeatable (R__) scripts: they run after every versioned migration and can be switched on
