@@ -16,6 +16,7 @@ import reactor.core.publisher.Mono
 /**
  * Forces a new access token after the account changes in Keycloak (registration, #102). Calls the refresh token
  * grant directly: `RefreshTokenReactiveOAuth2AuthorizedClientProvider` skips tokens that have not expired yet.
+ * The new id_token is dropped, so name and email in `/api/me` keep their login-time values until the next login.
  */
 @Service
 class TokenRefreshService(
