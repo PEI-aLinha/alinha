@@ -4,8 +4,8 @@
 [versions]
 kotlin = "2.2.21"
 spring-boot = "4.0.9"
-spring-modulith = "2.0.0"
-spring-cloud = "2025.1.0"
+spring-modulith = "2.0.9"
+spring-cloud = "2025.1.4"
 archunit = "1.4.1"
 json-schema-validator = "3.0.8"
 
