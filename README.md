@@ -61,6 +61,7 @@ git config --global push.recurseSubmodules on-demand   # pushing the main repo p
 git clone --recurse-submodules git@github.com:PEI-aLinha/alinha.git
 cd alinha
 cp deploy/.env.example deploy/.env                     # optional: dev defaults work without it
+pnpm install && pnpm --filter @alinha/keycloak-theme build-keycloak-theme  # aLinha login pages (needs Maven)
 docker compose -f deploy/docker-compose.dev.yml up -d  # Postgres, Redis, Keycloak, Mailpit, OpenBao
 # Existing volume from before #10? See docs/audit.md (DB role alinha_app needs LOGIN)
 BAO_TOKEN=dev-app-token ./gradlew :app:bootRun         # backend on :8080
@@ -77,10 +78,10 @@ pnpm install && pnpm dev                               # frontend on :5173
 | OpenBao | http://localhost:8200 | `BAO_TOKEN=dev-app-token` (root `dev-root-token`) |
 
 The `alinha` realm, test users (Rui, Pedro, Marta, João) and their roles/tenants are in
-[deploy/keycloak/README.md](deploy/keycloak/README.md). The dev password is `alinha`; the first
+[deploy/keycloak/README.md](deploy/keycloak/README.md). The dev password is `alinha-dev-1`; the first
 login sets up TOTP (MFA). Emails land in Mailpit.
 
-Requirements: JDK 21, Node 22, pnpm 10, Docker (Compose v2). The flow above is verified on Linux;
+Requirements: JDK 21, Node 22, pnpm 10, Docker (Compose v2), Maven (only to build the Keycloak theme). The flow above is verified on Linux;
 on macOS use Docker Desktop and the same commands.
 
 `pnpm test` needs the plugin submodules (it checks that every plugin frontend is registered). If you cloned without
@@ -159,6 +160,7 @@ Numbering from the technical report (section 3.2).
 
 | NFR | How | Status |
 |---|---|---|
+| RNF02 no job lost on failure | `core.jobs.JobDispatcher` writes to `core.job_outbox` in the caller's transaction; `OutboxRelay` publishes to Redis Streams (`SKIP LOCKED`, backoff, at-least-once); `JobResultConsumer` applies worker results (`JobCompleted`/`JobFailed`, retries, dead letters); see `docs/jobs.md` | **done** (watchdog #86, retention and alerts #87) |
 | RNF03 tenant isolation | `core.tenant.TenantContext` (tenant from the token, consultant picks with `X-Alinha-Tenant`); entities extend `TenantOwnedEntity` (Hibernate `@TenantId`); see `docs/tenancy.md` | **done** in the backend (Keycloak claims pending #5); the BFF relays the header |
 | RNF04 audit trail | `core.audit.AuditTrail` in the caller's transaction; app role `alinha_app` INSERT/SELECT only + trigger blocking UPDATE/DELETE/TRUNCATE; history `GET /api/audit/events` (see `docs/audit.md`) | **done** |
 | RNF07/RNF08 OIDC + roles per endpoint | Keycloak JWTs + `@RequiresPermission`, deny by default; the BFF owns the login and relays tokens; see `docs/rbac.md` | **done** in the backend (not yet tested against a real Keycloak realm, see #5) |

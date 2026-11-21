@@ -84,22 +84,27 @@ class AuditHistoryWebTest {
     }
 
     @Test
-    fun `size is capped at 200`() {
-        mockMvc.get(PATH) {
-            header("Authorization", "Bearer responsible")
-            param("size", "1000")
-        }.andExpect { jsonPath("$.size") { value(200) } }
+    fun `pageSize defaults to 20`() {
+        mockMvc.get(PATH) { header("Authorization", "Bearer responsible") }.andExpect { jsonPath("$.pageSize") { value(20) } }
     }
 
     @Test
-    fun `zero or negative size and page fall back to the smallest valid values`() {
+    fun `pageSize is capped at 100`() {
         mockMvc.get(PATH) {
             header("Authorization", "Bearer responsible")
-            param("size", "0")
+            param("pageSize", "1000")
+        }.andExpect { jsonPath("$.pageSize") { value(100) } }
+    }
+
+    @Test
+    fun `zero or negative pageSize and page fall back to the smallest valid values`() {
+        mockMvc.get(PATH) {
+            header("Authorization", "Bearer responsible")
+            param("pageSize", "0")
             param("page", "-3")
         }.andExpect {
             status { isOk() }
-            jsonPath("$.size") { value(1) }
+            jsonPath("$.pageSize") { value(1) }
             jsonPath("$.page") { value(0) }
         }
     }

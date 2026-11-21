@@ -45,7 +45,23 @@ spring:
     host: ${SMTP_HOST:localhost}
     port: ${SMTP_PORT:1025}
     username: ${SMTP_USERNAME:}
-    password: ${smtp.password:}   # OpenBao secret/alinha/app; empty when Vault is off (tests, Mailpit needs none)
+    password: ${smtp.password:}   # OpenBao secret/alinha/app; Mailpit ignores it because the username is empty, so no auth is attempted
+    properties:
+      # JavaMail defaults to no timeouts: a hung SMTP server would block the @Async sender thread forever
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 5000
+      mail.smtp.writetimeout: 5000
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      # Short: the outbox relay holds row locks while it publishes (RNF02, docs/jobs.md).
+      timeout: 2s
+      connect-timeout: 2s         # Lettuce defaults to 10s when Redis is unreachable
+  task:
+    scheduling:
+      pool:
+        size: 4                   # outbox relay, dead job notifier and results consumer never queue behind each other
   modulith:
     events:
       jdbc:
@@ -62,11 +78,36 @@ management:
     web:
       exposure:
         include: health,info,modulith
+  health:
+    mail:
+      # SMTP down must not mark the app down: emails stay in the outbox and are retried (RNF02)
+      enabled: false
+    redis:
+      # Redis down must not mark the app down: dispatch keeps writing to the outbox and the relay catches up
+      # (RNF02). Alerting on the age of the oldest pending job is #87.
+      enabled: false
 
 alinha:
   frameworks:
     # Folder with the framework catalogues (RNF18). Mounted into the container in production.
     dir: ${FRAMEWORKS_DIR:../../frameworks}
+  # Job dispatcher (RNF02): outbox in PostgreSQL -> Redis Streams. See docs/jobs.md.
+  jobs:
+    relay:
+      enabled: true
+      poll-interval-ms: 1000
+      batch-size: 50
+      max-publish-failures: 10
+      backoff-base: 2s
+      backoff-max: 5m
+    results:
+      enabled: true
+      poll-interval-ms: 1000
+      batch-size: 50
+      claim-min-idle: 1m
+      max-deliveries: 5
+      max-total-deliveries: 100
+    default-max-attempts: 3
   identity:
     # Admin access to Keycloak for tenant provisioning (ADR 0004). The secret comes from OpenBao.
     base-url: ${KEYCLOAK_URL:http://localhost:8180}

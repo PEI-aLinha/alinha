@@ -37,9 +37,10 @@ The model, prompt version, sources and generation date are stored in their own c
 ## Reading the history
 
 - Inside the backend: `pt.alinha.core.audit.AuditHistory.find(filter, pageable)`, current tenant only.
-- HTTP: `GET /api/audit/events?entityType=&entityId=&actor=&from=&to=&page=&size=` (`audit:read`,
-  consultant and Designated Officer). `from`/`to` are ISO-8601 instants (`from` inclusive, `to` exclusive),
-  `from` after `to` is a 400. Newest first, `size` at most 200.
+- HTTP: `GET /api/audit/events?entityType=&entityId=&actor=&from=&to=&page=&pageSize=` (`audit:read`,
+  consultant and Designated Officer; `listAuditEvents` in `contracts/openapi/alinha.yaml`). `from`/`to` are
+  ISO-8601 instants (`from` inclusive, `to` exclusive), `from` after `to` is a 400. Newest first, `pageSize`
+  20 by default and at most 100, like every list in the contract.
 
 ## Append-only guarantees
 
