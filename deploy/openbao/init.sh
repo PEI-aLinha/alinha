@@ -25,7 +25,7 @@ bao policy write alinha-ai-service /init/alinha-ai-service.hcl
 # Only an existing token (re-run) is skipped; any other failure stops the script.
 create_token() {
   if bao token lookup "$1" >/dev/null 2>&1; then
-    echo "token $1 already exists"
+    echo "token for $2 already exists"  # never print the token itself
   else
     bao token create -id="$1" -policy="$2" -orphan -period=768h >/dev/null
   fi

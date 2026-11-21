@@ -114,6 +114,8 @@ jobs:
           docker image prune -af \
             --filter "label=org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}"
 
+      # Public job logs: every service except OpenBao, whose dev server prints its root token at startup.
+      # The secrets in this job's env are masked by GitHub.
       - name: Show logs on failure
         if: failure()
-        run: ${{ env.PROD_COMPOSE }} logs --tail=100
+        run: ${{ env.PROD_COMPOSE }} logs --tail=100 web bff app job-consumer keycloak postgres redis mailpit

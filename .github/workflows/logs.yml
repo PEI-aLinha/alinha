@@ -23,12 +23,24 @@ jobs:
     if: github.ref == 'refs/heads/main'
     env:
       TAIL: ${{ inputs.tail }}
+      # Never used here: referencing the secrets makes GitHub mask their values if a container ever logs one.
+      MASK_POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+      MASK_ALINHA_APP_DB_PASSWORD: ${{ secrets.ALINHA_APP_DB_PASSWORD }}
+      MASK_KEYCLOAK_DB_PASSWORD: ${{ secrets.KEYCLOAK_DB_PASSWORD }}
+      MASK_KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}
+      MASK_BFF_CLIENT_SECRET: ${{ secrets.BFF_CLIENT_SECRET }}
+      MASK_KEYCLOAK_PROVISIONER_SECRET: ${{ secrets.KEYCLOAK_PROVISIONER_SECRET }}
+      MASK_ALINHA_TEST_USER_PASSWORD: ${{ secrets.ALINHA_TEST_USER_PASSWORD }}
+      MASK_BAO_ROOT_TOKEN: ${{ secrets.BAO_ROOT_TOKEN }}
+      MASK_BAO_APP_TOKEN: ${{ secrets.BAO_APP_TOKEN }}
     steps:
       - name: Print logs
         run: |
           case "$TAIL" in ''|*[!0-9]*) echo "::error::tail must be a number"; exit 1 ;; esac
           if [ "$TAIL" -gt 2000 ]; then TAIL=2000; fi
-          containers=$(docker ps -a --filter label=com.docker.compose.project=alinha-prod --format '{{.Names}}' | sort)
+          # Public repository, public job logs. OpenBao's dev server prints its root token at startup: never dump it.
+          containers=$(docker ps -a --filter label=com.docker.compose.project=alinha-prod --format '{{.Names}}' \
+            | grep -v -- '-openbao-' | sort)
           if [ -z "$containers" ]; then
             echo "::warning::No alinha-prod containers found."
             exit 0
