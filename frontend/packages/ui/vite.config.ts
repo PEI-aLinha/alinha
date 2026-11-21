@@ -10,7 +10,8 @@ export default defineConfig({
     setupFiles: ['./src/test-setup.ts'],
     coverage: {
       provider: 'v8',
-      reporter: ['text-summary', 'text'],
+      // lcov paths relative to the repo root, so SonarCloud can map them (sonar-project.properties).
+      reporter: ['text-summary', 'text', ['lcov', { projectRoot: '../../..' }]],
       include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/**/*.test.{ts,tsx}', 'src/test-setup.ts', 'src/index.ts'],
       // RNF19: coverage target ≥ 70%.
