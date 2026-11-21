@@ -1,6 +1,7 @@
 name: Build & Publish to GHCR
 
 # A release tag (vX.Y.Z) builds every production image and pushes it as X.Y.Z, X.Y, X and latest.
+# Only a plain vX.Y.Z tag on a commit of main whose CI passed is published (job `verify`).
 # Deploy with .github/workflows/deploy.yml. See deploy/DEPLOYMENT.md.
 on:
   push:
@@ -10,13 +11,48 @@ on:
 permissions:
   contents: read
   packages: write
+  actions: read # verify: read the CI run of the tagged commit
 
 env:
   IMAGE_PREFIX: ghcr.io/pei-alinha/alinha
 
 jobs:
+  verify:
+    name: Verify the release commit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Plain vX.Y.Z tag on main
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          # No pre-release or other suffix: those would also move `latest`.
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Release tags must be vX.Y.Z, got '$TAG'."
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::$TAG points at $GITHUB_SHA, which is not on main. Tag a merged commit."
+            exit 1
+          fi
+      - name: CI passed on that commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # ci.yml runs the Gradle build (tests, ModularityTest), the frontend checks and the realm test on every push
+          # to main. Images are built without tests, so they are published only for a commit where CI went green.
+          conclusion=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$GITHUB_SHA" --event push \
+            --json conclusion --jq '[.[] | select(.conclusion == "success")] | length')
+          if [ "$conclusion" -lt 1 ]; then
+            echo "::error::No successful CI run (push to main) for $GITHUB_SHA. Wait for CI or fix it, then tag again."
+            exit 1
+          fi
+
   build:
     name: Build & Push ${{ matrix.image }}
+    needs: verify
     # The production VM is aarch64: build natively on GitHub's ARM runners (no QEMU).
     runs-on: ubuntu-24.04-arm
     strategy:
