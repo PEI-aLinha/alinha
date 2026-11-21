@@ -17,6 +17,11 @@ spring:
         default-context: alinha/app
         # Required: without it Spring Cloud Vault also reads secret/data/<spring.application.name> (alinha) and gets 403.
         application-name: alinha/app
+  web:
+    resources:
+      # The app serves no static files (the frontend is Nginx's). Without the mappings nothing bypasses
+      # @RequiresPermission; any such request would be denied by RequiresPermissionInterceptor anyway.
+      add-mappings: false
   security:
     oauth2:
       resourceserver:
@@ -81,7 +86,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,modulith
+        include: health   # everything else is denied by SecurityConfig
   health:
     mail:
       # SMTP down must not mark the app down: emails stay in the outbox and are retried (RNF02)

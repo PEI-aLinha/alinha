@@ -3,8 +3,13 @@ package pt.alinha.core.access.internal
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatCode
 import org.assertj.core.api.Assertions.assertThatThrownBy
+import jakarta.servlet.http.HttpServletRequest
 import org.junit.jupiter.api.Test
+import org.springframework.boot.autoconfigure.web.ErrorProperties
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner
+import org.springframework.boot.webmvc.autoconfigure.error.BasicErrorController
+import org.springframework.boot.webmvc.error.DefaultErrorAttributes
+import org.springframework.boot.webmvc.error.ErrorController
 import org.springframework.context.annotation.Configuration
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RestController
@@ -28,9 +33,34 @@ class PermissionCatalogVerifierTest {
     private fun handler(name: String) = HandlerMethod(Endpoints(), Endpoints::class.java.getMethod(name))
 
     @Test
-    fun `accepts plugin, core and unannotated permissions`() {
-        assertThatCode { verifier.verify(listOf(handler("pluginRead"), handler("plugins"), handler("audit"), handler("open"))) }
+    fun `accepts plugin and core permissions`() {
+        assertThatCode { verifier.verify(listOf(handler("pluginRead"), handler("plugins"), handler("audit"))) }
             .doesNotThrowAnyException()
+    }
+
+    @Test
+    fun `fails on endpoint without RequiresPermission`() {
+        assertThatThrownBy { verifier.verify(listOf(handler("pluginRead"), handler("open"))) }
+            .isInstanceOf(IllegalStateException::class.java)
+            .hasMessageContaining("without @RequiresPermission")
+            .hasMessageContaining("open")
+    }
+
+    @Test
+    fun `exempts Spring's error controller`() {
+        val controller = BasicErrorController(DefaultErrorAttributes(), ErrorProperties())
+        val error = HandlerMethod(controller, BasicErrorController::class.java.getMethod("error", HttpServletRequest::class.java))
+
+        assertThatCode { verifier.verify(listOf(error)) }.doesNotThrowAnyException()
+    }
+
+    @Test
+    fun `another ErrorController still needs a permission, as the interceptor checks it`() {
+        val error = HandlerMethod(CustomErrorEndpoint(), CustomErrorEndpoint::class.java.getMethod("error"))
+
+        assertThatThrownBy { verifier.verify(listOf(error)) }
+            .isInstanceOf(IllegalStateException::class.java)
+            .hasMessageContaining("without @RequiresPermission")
     }
 
     @Test
@@ -76,6 +106,11 @@ class PermissionCatalogVerifierTest {
         @RequiresPermission("a")
         @GetMapping("/known")
         fun known() = "ok"
+    }
+
+    @Suppress("unused")
+    class CustomErrorEndpoint : ErrorController {
+        fun error() = "error"
     }
 
     @Suppress("unused")
