@@ -263,6 +263,16 @@ describe('eslint.config.js wiring', () => {
     })
   }
 
+  it('applies the rule to every JavaScript and TypeScript extension', async () => {
+    const escape = '../../../../../frontend/shell/src/main'
+    for (const ext of ['js', 'jsx', 'mjs', 'cjs', 'ts', 'tsx', 'mts', 'cts']) {
+      const code = ['cjs', 'cts'].includes(ext) ? `module.exports = require('${escape}')\n` : `import x from '${escape}'\nexport default x\n`
+      const [result] = await eslint.lintText(code, { filePath: resolve(root, `plugins/feature/assessment/frontend/src/Probe.${ext}`) })
+      const ids = result.messages.map((m) => m.ruleId)
+      assert.ok(ids.includes('alinha/plugin-boundaries'), `not applied to .${ext}: ${JSON.stringify(result.messages)}`)
+    }
+  })
+
   it('allows the platform packages in a plugin', async () => {
     const ids = await ruleIds('plugins/feature/assessment/frontend/src/Probe.ts',
       "import '@alinha/plugin-sdk'\nimport '@alinha/ui'\nimport '@alinha/api-client'")
