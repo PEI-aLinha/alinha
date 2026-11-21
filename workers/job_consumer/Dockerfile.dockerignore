@@ -1,0 +1,6 @@
+# The build context is the repo root: send only what the Dockerfile copies.
+*
+!workers/job_consumer/pyproject.toml
+!workers/job_consumer/src
+!contracts/jobs
+**/__pycache__

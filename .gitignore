@@ -19,6 +19,9 @@ frontend/shell/src/plugins.generated.ts
 __pycache__/
 *.pyc
 .venv/
+*.egg-info/
+.coverage
+.pytest_cache/
 
 # IDE / SO
 .idea/
