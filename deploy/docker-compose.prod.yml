@@ -177,8 +177,6 @@ services:
       timeout: 3s
       retries: 30
 
-  # Dev-mode OpenBao (in memory) until it gets persistent storage. The seed runs inside the same container, so
-  # every restart of OpenBao (a VM reboot included) seeds it again; it is healthy only once the app's secrets exist.
   # A real server with persistent storage (deploy/openbao/server.hcl). It starts sealed after every restart and is
   # healthy only once unsealed: see "OpenBao" in deploy/DEPLOYMENT.md.
   openbao:
@@ -207,7 +205,8 @@ services:
 
   # Writes the platform secrets into OpenBao on every deploy (deploy/openbao/secrets.sh), so a changed GitHub secret
   # reaches OpenBao. Its token can only write secret/alinha/{app,ai-service} (alinha-seed.hcl): no root token here.
-  # Runs once and exits; the app waits for it.
+  # Runs once and exits; the app waits for it. Keep that depends_on: `up --wait` (deploy.yml) fails on a one-shot
+  # service that nothing depends on ("exited (0)"). deploy/openbao/test-seed.sh checks this path.
   openbao-seed:
     image: openbao/openbao:2.4.1
     restart: "no"
