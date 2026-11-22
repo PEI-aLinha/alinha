@@ -104,9 +104,8 @@ jobs:
         with:
           submodules: recursive
           token: ${{ secrets.ALINHA_READ_TOKEN || github.token }}
+      # No version: it reads packageManager in package.json, the same pnpm the Dockerfiles install.
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
       - uses: actions/setup-node@v4
         with:
           node-version: 22
