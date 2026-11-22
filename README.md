@@ -172,7 +172,7 @@ Numbering from the technical report (section 3.2).
 | RNF12/RNF14 AI approval and provenance | `core.aigateway.AiDraft` (model, prompt version, sources, date); `AiDraft.provenance()` stored in the audit trail | provenance recorded; approval to do |
 | RNF17 new plugin without touching the core | `settings.gradle.kts` and `gen-frontend-plugins.mjs` discover the submodules; `ModularityTest`; `PluginRegistry` validates the manifests at startup and serves `GET /api/plugins`; `PluginYamlConsistencyTest` | **done** |
 | RNF18 catalogues as data | `frameworks/` read from disk at start-up by `core.compliance.CatalogueRegistry` (`CatalogueLoader`); schema in `contracts/frameworks/`; released versions frozen by `scripts/check-immutable-frameworks.sh` | **done** for loading and versioning; see `frameworks/README.md` |
-| RNF19 coverage ≥ 70% and CI blocks merge | missing: Kover (Kotlin) + Vitest coverage in CI; branch protection/rulesets are available because all nine repos are public, and are applied in #4 | **to do** |
+| RNF19 coverage ≥ 70% and CI blocks merge | `./gradlew koverVerify` (Kotlin, core modules only; plugin backends are not counted yet), Vitest and pytest fail CI below 70%; reports go to SonarCloud (`sonar-project.properties`, job `sonar`). Missing: branch protection/rulesets, applied in #4 | partial |
 | RNF21 whole system starts with one command | missing: full `deploy/docker-compose.yml` (Nginx, BFF, app, AI Service, workers, OpenBao) | **to do** |
 
 ## New plugin
