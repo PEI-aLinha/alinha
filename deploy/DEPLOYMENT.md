@@ -77,13 +77,19 @@ placeholder in the imported realm.
   `scripts/gen-prod-realm.mjs`. `--import-realm` only imports a realm that does not exist yet: after the first
   deploy, realm changes must be made in the admin console (or the `keycloak` database reset).
 - **OpenBao** is a real server with its data on the `openbao-data` volume (`deploy/openbao/server.hcl`). It is
-  healthy only when unsealed. On every deploy the `openbao-seed` job writes the secrets, policies and app token
-  (`deploy/openbao/init.sh`) and the app waits for it. Staging keeps dev mode. See **OpenBao** below.
+  healthy only when unsealed. The secrets engine, policies and tokens are set up by hand with the root token
+  (`deploy/openbao/bootstrap.sh`). On every deploy the `openbao-seed` job only writes the platform secrets
+  (`deploy/openbao/secrets.sh`) with the narrow `BAO_SEED_TOKEN`, and the app waits for it. Staging keeps dev mode
+  but seeds with the same narrow token; `deploy/openbao/test-seed.sh` (CI) runs the real server path. See **OpenBao** below.
 - **Emails** (Keycloak's verification and password reset, the notifications plugin) go through the SMTP relay in
   `SMTP_*`. Staging sends them to Mailpit instead (http://localhost:8026).
 - **Keycloak admin console:** not routed by `web`. Use
   `ssh -L 8180:172.31.0.X:8080 ...` with the container's address (`docker inspect alinha-prod-keycloak-1`), then
   http://localhost:8180/kc/admin.
+- **`pnpm-lock.yaml` follows the plugin pointers.** The root lockfile has an importer for every
+  `plugins/*/frontend`, and CI and the `web`/`keycloak` images install with `--frozen-lockfile`. A pointer update
+  that changes a plugin's `package.json` must commit a regenerated `pnpm-lock.yaml` with it (see `CLAUDE.md`), or
+  the release cannot build.
 - **Memory:** limits add up to about 3 GB (`mem_limit` in the compose file); the VM has about 4.8 GB free.
 
 ## One-time setup of the VM
