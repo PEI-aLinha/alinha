@@ -86,12 +86,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      # Not frozen: the lockfile lives in the main repo and matches its submodule pointers, so it cannot know
-      # a dependency this plugin commit (or a plugin main newer than the pointer) adds. The main repo's CI
-      # keeps --frozen-lockfile and checks the lockfile when the pointer is updated.
+      # Frozen lockfile (the CI default). The lockfile lives in the main repo, so a plugin change that adds a
+      # frontend dependency needs the main repo's branch of the same name with the updated pnpm-lock.yaml
+      # (input main-ref), like any other coordinated change.
       - name: Frontend
         run: |
-          pnpm install --no-frozen-lockfile
+          pnpm install --frozen-lockfile
           pnpm gen:plugins
           pnpm --filter "$NPM_PACKAGE" typecheck
           pnpm lint
