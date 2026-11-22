@@ -1,5 +1,5 @@
 #!/bin/sh
-# Dev (docker-compose.dev.yml) and staging: sets OpenBao up and seeds it, with the root token, on every start.
+# Dev (docker-compose.dev.yml) and staging: sets OpenBao up (root token) and seeds it, on every start.
 # Dev gets the defaults below; staging passes its own values. Production does not use this file: see bootstrap.sh
 # and secrets.sh.
 set -eu
@@ -17,4 +17,10 @@ export ALINHA_BAO_APP_TOKEN="${ALINHA_BAO_APP_TOKEN:-dev-app-token}"
 export ALINHA_BAO_AI_TOKEN="${ALINHA_BAO_AI_TOKEN-dev-ai-token}"
 
 sh /init/bootstrap.sh
-sh /init/secrets.sh
+# Staging seeds like production, with the narrow alinha-seed token bootstrap.sh just created; dev has none and seeds
+# with the root token.
+if [ -n "${ALINHA_BAO_SEED_TOKEN:-}" ]; then
+  BAO_TOKEN="$ALINHA_BAO_SEED_TOKEN" sh /init/secrets.sh
+else
+  sh /init/secrets.sh
+fi

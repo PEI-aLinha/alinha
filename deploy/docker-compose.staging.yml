@@ -27,7 +27,8 @@ services:
       SMTP_STARTTLS: "false"
 
   # Staging keeps OpenBao in dev mode (in memory, unsealed, root token from deploy/.env.staging): no init or unseal
-  # to do. The seed job runs init.sh with the root token instead of production's narrow token: bootstrap + secrets.
+  # to do. The seed job runs init.sh: bootstrap.sh with the root token (by hand in production), then secrets.sh with
+  # production's narrow alinha-seed token. deploy/openbao/test-seed.sh covers the non-dev server.
   openbao:
     # Straight to bao: the image's entrypoint would add the production -config, whose listener clashes with -dev's.
     entrypoint: ["bao", "server", "-dev", "-dev-listen-address=0.0.0.0:8200"]

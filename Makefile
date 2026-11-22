@@ -72,7 +72,7 @@ staging-build: staging-env
 
 staging: staging-env
 	@docker network inspect $(STAGING_NETWORK) >/dev/null 2>&1 || docker network create $(STAGING_NETWORK)
-	$(STAGING_COMPOSE) up -d --remove-orphans
+	$(STAGING_COMPOSE) up -d --remove-orphans --wait --wait-timeout 600
 
 staging-down:
 	$(STAGING_COMPOSE) down --remove-orphans
