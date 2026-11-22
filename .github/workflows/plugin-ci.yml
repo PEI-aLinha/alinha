@@ -7,7 +7,9 @@
 #         plugin-path: plugins/feature/<id>
 #         gradle-project: <id>
 #         npm-package: "@alinha/plugin-<id>"
-#       secrets: inherit   # ALINHA_READ_TOKEN, SONAR_TOKEN
+#       secrets:
+#         ALINHA_READ_TOKEN: ${{ secrets.ALINHA_READ_TOKEN }}   # private repos only
+#         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 #
 # It tests the plugin inside the main repo (core + every other plugin), with the plugin's commit in place of
 # its submodule, then sends the analysis and the coverage to the plugin's SonarCloud project
