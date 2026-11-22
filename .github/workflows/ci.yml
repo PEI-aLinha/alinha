@@ -57,6 +57,14 @@ jobs:
           name: coverage-backend
           path: build/reports/kover/report.xml
           retention-days: 1
+      # The Java/Kotlin analysers need the compiled classes (sonar.java.binaries); plugins are analysed in their repos.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: classes-backend
+          path: |
+            backend/*/build/classes/
+            bff/build/classes/
+          retention-days: 1
 
   frontend:
     name: Frontend (shell + plugins)
@@ -123,6 +131,10 @@ jobs:
         with:
           name: coverage-backend
           path: build/reports/kover
+      - uses: actions/download-artifact@v4
+        with:
+          name: classes-backend
+          path: .
       - uses: actions/download-artifact@v4
         with:
           name: coverage-frontend
