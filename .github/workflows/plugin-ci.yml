@@ -92,6 +92,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      # Typecheck and lint only this plugin: a problem elsewhere in the workspace fails that repo's CI, not this one.
       # Frozen lockfile (the CI default). The lockfile lives in the main repo, so a plugin change that adds a
       # frontend dependency needs the main repo's branch of the same name with the updated pnpm-lock.yaml
       # (input main-ref), like any other coordinated change.
@@ -100,7 +101,7 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm gen:plugins
           pnpm --filter "$NPM_PACKAGE" typecheck
-          pnpm lint
+          pnpm exec eslint "$PLUGIN_PATH/frontend"
       # Thresholds come from the plugin's vitest.config.ts; its lcov reporter writes frontend/coverage/lcov.info.
       - name: Frontend tests + coverage
         if: hashFiles(format('{0}/frontend/vitest.config.ts', inputs.plugin-path)) != ''
