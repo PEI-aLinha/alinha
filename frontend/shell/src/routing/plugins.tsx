@@ -37,7 +37,13 @@ export const INTEGRATIONS_PATH = 'integrations'
 
 const isIntegration = (n: NavItem) => n.path === INTEGRATIONS_PATH || n.path.startsWith(`${INTEGRATIONS_PATH}/`)
 
-const trimSlashes = (path: string) => path.replace(/^\/+|\/+$/g, '')
+const trimSlashes = (path: string) => {
+  let start = 0
+  let end = path.length
+  while (start < end && path[start] === '/') start++
+  while (end > start && path[end - 1] === '/') end--
+  return path.slice(start, end)
+}
 
 /**
  * `integrations` itself is the shell's "Integrações" page, registered before the plugins' routes: a plugin route or

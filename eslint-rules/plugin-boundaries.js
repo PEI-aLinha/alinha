@@ -126,7 +126,7 @@ const isDeclared = (name, pluginRoot) => {
 const isNodeBuiltin = (spec) => spec.startsWith('node:') || builtinModules.includes(packageNameOf(spec))
 
 /** A package specifier without Vite's query (`?inline`, `?url`) or a hash. */
-const withoutQuery = (spec) => spec.replace(/[?#].*$/, '')
+const withoutQuery = (spec) => spec.split(/[?#]/, 1)[0]
 
 const isRelative = (spec) => spec === '.' || spec === '..' || spec.startsWith('./') || spec.startsWith('../')
 
