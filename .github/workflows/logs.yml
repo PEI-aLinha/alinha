@@ -15,6 +15,11 @@ on:
 permissions:
   contents: read
 
+# Shared with deploy.yml and the other VM workflows: one run at a time on the VM.
+concurrency:
+  group: prod-vm
+  cancel-in-progress: false
+
 jobs:
   logs:
     name: Save Container Logs

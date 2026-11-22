@@ -16,6 +16,11 @@ on:
 permissions:
   contents: read
 
+# Shared with deploy.yml and the other VM workflows: one run at a time on the VM.
+concurrency:
+  group: prod-vm
+  cancel-in-progress: false
+
 # By project name, so no compose file or secrets are needed to take the stack down.
 env:
   PROJECT: alinha-prod

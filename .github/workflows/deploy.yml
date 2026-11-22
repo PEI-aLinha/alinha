@@ -11,6 +11,11 @@ on:
         default: ""
         type: string
 
+# One run at a time on the VM, across deploy, logs and clean: never cancelled halfway through `up`.
+concurrency:
+  group: prod-vm
+  cancel-in-progress: false
+
 env:
   REGISTRY: ghcr.io
   PROD_COMPOSE: docker compose --project-name alinha-prod -f deploy/docker-compose.prod.yml
@@ -43,9 +48,10 @@ jobs:
           echo "Deploying image tag $tag"
           echo "image_tag=$tag" >> "$GITHUB_OUTPUT"
 
-  pull:
-    name: Pull Images
+  deploy:
+    name: Deploy Stack
     runs-on: [self-hosted, prod]
+    # One job, so the production environment asks for approval once.
     environment: production
     if: github.ref == 'refs/heads/main'
     needs: resolve
@@ -56,11 +62,20 @@ jobs:
       IMAGE_TAG: ${{ needs.resolve.outputs.image_tag }}
     steps:
       # The release's own compose file, scripts and frameworks/ (mounted into app), so they always match the images,
-      # including on a rollback.
+      # including on a rollback. Full history, for the check below.
       - name: Checkout the release
         uses: actions/checkout@v4
         with:
           ref: v${{ env.IMAGE_TAG }}
+          fetch-depth: 0
+
+      # publish.yml checked this when it built the images; check again in case the tag was moved since.
+      - name: Check the release is on main
+        run: |
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "::error::Tag v$IMAGE_TAG ($(git rev-parse --short HEAD)) is not on main"
+            exit 1
+          fi
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -70,31 +85,12 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       # Our images by name: `compose config --images` would need every secret just to interpolate the file.
-      # The third-party images (postgres, redis, ...) are pulled by `up` in the deploy job.
-      - name: Pull all images
+      # The third-party images (postgres, redis, ...) are pulled by `up` below.
+      - name: Pull our images
         run: |
           for image in app bff web keycloak job-consumer; do
             docker pull "$REGISTRY/pei-alinha/alinha/$image:$IMAGE_TAG"
           done
-
-  deploy:
-    name: Deploy Stack
-    runs-on: [self-hosted, prod]
-    environment: production
-    if: github.ref == 'refs/heads/main'
-    needs: [resolve, pull]
-    permissions:
-      packages: read
-      contents: read
-    env:
-      IMAGE_TAG: ${{ needs.resolve.outputs.image_tag }}
-    steps:
-      # The release's own compose file, scripts and frameworks/ (mounted into app), so they always match the images,
-      # including on a rollback.
-      - name: Checkout the release
-        uses: actions/checkout@v4
-        with:
-          ref: v${{ env.IMAGE_TAG }}
 
       # The secrets only reach this step, not the third-party actions above (checkout).
       - name: Deploy
