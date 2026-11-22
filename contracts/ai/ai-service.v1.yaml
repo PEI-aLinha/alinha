@@ -1,0 +1,145 @@
+openapi: 3.1.0
+info:
+  title: aLinha AI Service
+  version: 1.0.0
+  description: >
+    Contract between the core's AI Gateway (Kotlin) and the AI Service (Python).
+    The AI Service only drafts; it never writes platform data.
+    Context arrives already redacted by the core.
+    Only the AI Gateway may call /v1: it sends a shared service token read from OpenBao.
+
+    Compatibility within v1: new optional request fields, new response fields and new
+    endpoints are compatible changes. The service ignores unknown request fields and
+    the gateway must ignore unknown response fields. Anything else needs a v2.
+
+# Every path requires the service token unless it says otherwise (see /health).
+security:
+  - serviceToken: []
+
+paths:
+  /v1/drafts:
+    post:
+      summary: Generate an AI draft for a task
+      operationId: createDraft
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DraftRequest' }
+      responses:
+        '200':
+          description: Draft generated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiDraft' }
+        '400':
+          description: Body is not valid JSON
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '413':
+          description: Body larger than the service limit (MAX_REQUEST_BYTES, default 256 KiB)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401':
+          description: Missing or invalid service token
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '422':
+          description: Invalid request or unknown task
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '502':
+          description: >
+            LLM provider failed (code provider_error), or the draft hit the output limit
+            LLM_MAX_OUTPUT_TOKENS and was cut off (code draft_truncated)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '504':
+          description: LLM provider timed out
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '500':
+          description: Unexpected error in the AI Service
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        default:
+          description: Any other error (e.g. 404, 405); always the Error body
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /health:
+    get:
+      summary: Liveness check
+      operationId: health
+      security: []   # open: used by the container healthcheck
+      responses:
+        '200':
+          description: Service is up
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, enum: [ok] }
+
+components:
+  securitySchemes:
+    serviceToken:
+      type: http
+      scheme: bearer
+      description: Shared token from OpenBao (AI Service side secret/alinha/ai-service, field service.token).
+
+  schemas:
+    DraftRequest:
+      type: object
+      required: [task, context]
+      description: Unknown fields are ignored and never sent to the LLM.
+      properties:
+        task:
+          type: string
+          description: What to draft (e.g. "roadmap"). Selects the prompt template.
+          examples: [roadmap]
+        context:
+          type: object
+          description: >
+            Redacted input data for the task. Untrusted; never treated as instructions.
+            At most 20 levels of nested objects/arrays (otherwise 422).
+          additionalProperties: true
+
+    AiDraft:
+      description: >
+        Mirrors pt.alinha.core.aigateway.AiDraft (AI Act labelling).
+        Consumers must ignore unknown fields, so v1 can grow.
+      type: object
+      required: [text, model, promptVersion, sources, generatedAt, aiGenerated, requiresHumanReview]
+      properties:
+        text: { type: string }
+        model:
+          type: string
+          description: Provider and model that produced the draft
+        promptVersion: { type: string }
+        sources:
+          type: array
+          items: { type: string }
+          description: References used (e.g. legislation articles from RAG)
+        generatedAt: { type: string, format: date-time }
+        aiGenerated: { type: boolean, const: true }
+        requiresHumanReview: { type: boolean, const: true }
+
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string, examples: [provider_timeout, draft_truncated] }
+        message: { type: string }
+# A correlation id (to link requests to the Audit Trail) is left out on purpose.
+# It can be added later as an optional request field without breaking v1.

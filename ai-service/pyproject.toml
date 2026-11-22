@@ -1,0 +1,47 @@
+[project]
+name = "ai-service"
+version = "0.1.0"
+description = "aLinha AI Service: drafts behind the core's AI Gateway"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "httpx>=0.28",
+    "hvac>=2.3",
+    "requests>=2.32",  # imported directly by secrets.py (also pulled in by hvac)
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=6.0",
+    "respx>=0.21",
+    "jsonschema>=4.23",  # validates responses against contracts/ai
+    "pyyaml>=6.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ai_service"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# CI installs only the locked dependencies (no build of this project), so the tests import the service from src/.
+pythonpath = ["src"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+# Coverage gate (RNF19). CI runs: pytest --cov --cov-report=term-missing --cov-report=xml
+[tool.coverage.run]
+source = ["ai_service"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 70
+show_missing = true

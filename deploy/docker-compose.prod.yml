@@ -230,6 +230,7 @@ services:
       KEYCLOAK_PROVISIONER_SECRET: ${KEYCLOAK_PROVISIONER_SECRET:?}
       SMTP_PASSWORD: ${SMTP_PASSWORD:?}
       LLM_API_KEY: none # no AI Service in production yet
+      AI_SERVICE_TOKEN: none # no AI Service in production yet
     volumes:
       - ./openbao:/init:ro
     depends_on:

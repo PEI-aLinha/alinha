@@ -11,6 +11,7 @@ export POSTGRES_USER="${POSTGRES_USER:-alinha}"
 export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-alinha}"
 export SMTP_PASSWORD="${SMTP_PASSWORD:-change-me}"
 export LLM_API_KEY="${LLM_API_KEY:-change-me}"
+export AI_SERVICE_TOKEN="${AI_SERVICE_TOKEN:-dev-ai-service-token}"
 export KEYCLOAK_PROVISIONER_SECRET="${KEYCLOAK_PROVISIONER_SECRET:-dev-provisioner-secret}"
 export ALINHA_BAO_APP_TOKEN="${ALINHA_BAO_APP_TOKEN:-dev-app-token}"
 # Staging passes an empty AI Service token (no AI Service yet); dev gets its fixed one.

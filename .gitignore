@@ -19,6 +19,11 @@ frontend/shell/src/plugins.generated.ts
 __pycache__/
 *.pyc
 .venv/
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
 *.egg-info/
 .coverage
 .pytest_cache/

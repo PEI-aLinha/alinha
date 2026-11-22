@@ -139,6 +139,31 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm build
 
+  ai-service:
+    name: AI Service (pytest + coverage + Docker image)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-service
+    steps:
+      - uses: actions/checkout@v4   # tests read contracts/ai, so the whole repo is needed
+      # v6.8.0, pinned by commit.
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e
+        with:
+          version: 0.9.5            # same as the Dockerfile
+          python-version: "3.12"
+      # Locked wheels only (--locked fails if uv.lock is out of date; --no-build runs no setup scripts). The service
+      # itself is not installed: pytest finds it through `pythonpath` in pyproject.toml.
+      - run: uv sync --locked --no-build --no-install-project --extra dev
+      # The venv synced above, not `uv run`, which would sync again and install the project. fail_under in
+      # pyproject.toml (RNF19). coverage.xml has the absolute source dir, the same path in the sonar job.
+      - run: .venv/bin/pytest --cov --cov-report=term-missing --cov-report=xml
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: coverage-ai-service
+          path: ai-service/coverage.xml
+          retention-days: 1
+      - run: docker build -t alinha-ai-service:ci .
   workers:
     name: Workers (job consumer)
     runs-on: ubuntu-latest
@@ -160,7 +185,7 @@ jobs:
 
   sonar:
     name: SonarCloud (analysis + coverage)
-    needs: [backend, frontend, workers]
+    needs: [backend, frontend, workers, ai-service]
     # Dependabot and fork PRs get no SONAR_TOKEN; skip instead of failing them (secrets cannot be read in `if`).
     if: >-
       github.event_name == 'push' ||
@@ -191,6 +216,10 @@ jobs:
         with:
           name: coverage-workers
           path: workers/job_consumer
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          name: coverage-ai-service
+          path: ai-service
       # v8.4.1, pinned by commit.
       - uses: SonarSource/sonarqube-scan-action@e805d875275f728fac1885b413934be6d7c63f65
         env:

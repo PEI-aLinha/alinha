@@ -14,9 +14,13 @@ bao kv put secret/alinha/app \
   db.migration-username="${POSTGRES_USER:?}" \
   db.migration-password="${POSTGRES_PASSWORD:?}" \
   smtp.password="${SMTP_PASSWORD:?}" \
-  identity.provisioner-secret="${KEYCLOAK_PROVISIONER_SECRET:?}"
+  identity.provisioner-secret="${KEYCLOAK_PROVISIONER_SECRET:?}" \
+  ai-service.token="${AI_SERVICE_TOKEN:?}"
 
-# Secrets read by the AI Service (see ai-service/README.md).
-bao kv put secret/alinha/ai-service llm.api-key="${LLM_API_KEY:?}"
+# Secrets read by the AI Service (see ai-service/README.md). service.token must equal ai-service.token above: the AI
+# Gateway sends it and the AI Service checks it. Kept in both paths so neither policy can read the other's secrets.
+bao kv put secret/alinha/ai-service \
+  llm.api-key="${LLM_API_KEY:?}" \
+  service.token="${AI_SERVICE_TOKEN:?}"
 
 echo "OpenBao seeded: secret/alinha/app, secret/alinha/ai-service"
