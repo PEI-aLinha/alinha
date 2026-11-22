@@ -21,3 +21,18 @@ for v in $(grep -o '\${[A-Z_]*:?' docker-compose.prod.yml | sed 's/^\${//; s/:?$
 done
 if [ "$missing" -gt 0 ]; then exit 1; fi
 echo "ok   deploy.yml sets every required variable"
+
+# The app trusts X-Forwarded-For only from ALINHA_TRUSTED_PROXIES, a regex for the BFF's fixed address. If they
+# disagree, the app sees the BFF as every client and the per-IP rate limit applies to everyone at once.
+for files in "-f docker-compose.prod.yml" "-f docker-compose.prod.yml -f docker-compose.staging.yml"; do
+  # shellcheck disable=SC2086
+  docker compose $files config --format json | python3 -c '
+import json, re, sys
+c = json.load(sys.stdin)["services"]
+ip = c["bff"]["networks"]["alinha"]["ipv4_address"]
+regex = c["app"]["environment"]["ALINHA_TRUSTED_PROXIES"]
+if not re.fullmatch(regex, ip):
+    sys.exit(f"FAIL ALINHA_TRUSTED_PROXIES {regex!r} does not match BFF_IP {ip}")
+' || exit 1
+done
+echo "ok   ALINHA_TRUSTED_PROXIES matches BFF_IP"
