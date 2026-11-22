@@ -93,12 +93,19 @@ jobs:
         if: hashFiles(format('{0}/worker/pyproject.toml', inputs.plugin-path)) != ''
         with:
           python-version: "3.12"
+      # Locked, hashed wheels only, and the worker itself is not installed: no setup scripts run (same as
+      # workers/ in the main repo). A worker with runtime dependencies adds its own hashed
+      # worker/requirements-test.txt, installed the same way.
       - name: Worker (providers) + coverage
         if: hashFiles(format('{0}/worker/pyproject.toml', inputs.plugin-path)) != ''
         working-directory: ${{ inputs.plugin-path }}/worker
         run: |
-          python -m pip install -q -e ".[dev]" pytest-cov
-          python -m pytest -q --cov=src --cov-report=term --cov-report=xml
+          python -m pip install -q --only-binary :all: --require-hashes \
+            -r "$GITHUB_WORKSPACE/.github/plugin-ci/worker-requirements-test.txt"
+          if [ -f requirements-test.txt ]; then
+            python -m pip install -q --only-binary :all: --require-hashes -r requirements-test.txt
+          fi
+          PYTHONPATH=src python -m pytest -q --cov=src --cov-report=term --cov-report=xml
 
       # Only the folders that exist: a plugin without a worker (or without tests yet) still gets analysed.
       - name: SonarCloud settings
