@@ -24,15 +24,16 @@ describe('the 7 plugins in the shell', () => {
     await waitFor(() => expect(router.state.location.pathname).toBe('/org/acme/dashboard'))
     // Evidence providers (integrations/*) are grouped under the shell's own "Integrações" entry.
     expect(await navLabels()).toEqual([
-      'Início', 'Avaliação', 'Ativos', 'Integrações', 'Notificações', 'Organização',
+      'Início', 'Organização', 'Avaliação', 'Ativos', 'Integrações', 'Notificações',
     ])
   })
 
   it('calls the API with the organization', async () => {
-    const { calls } = renderApp({ url: '/org/acme/organization', plugins, api: async () => json({ plugin: 'x', status: 'UP' }) })
-    await waitFor(() => expect(calls.some((c) => c.url.endsWith('/ping'))).toBe(true))
-    const ping = calls.find((c) => c.url.endsWith('/ping'))!
-    expect(new Headers(ping.init.headers).get('X-Alinha-Tenant')).toBe(ACME.id)
+    const notRegistered = { status: 404, code: 'ORGANIZATION_NOT_REGISTERED' }
+    const { calls } = renderApp({ url: '/org/acme/organization', plugins, api: async () => json(notRegistered, 404) })
+    await waitFor(() => expect(calls.some((c) => c.url.endsWith('/organization/profile'))).toBe(true))
+    const profile = calls.find((c) => c.url.endsWith('/organization/profile'))!
+    expect(new Headers(profile.init.headers).get('X-Alinha-Tenant')).toBe(ACME.id)
   })
 
   it('lists the evidence providers on the Integrações page', async () => {
