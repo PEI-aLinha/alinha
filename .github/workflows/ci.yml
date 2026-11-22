@@ -104,7 +104,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -e "workers/job_consumer[test]"
+      # Locked, hashed wheels only: no setup scripts run (pytest finds the package through `pythonpath`).
+      - run: pip install --only-binary :all: --require-hashes -r workers/job_consumer/requirements-test.txt
       # coverage.xml has the absolute source dir of the runner workspace, which is the same path in the sonar job.
       - run: pytest --cov=alinha_job_consumer --cov-fail-under=70 --cov-report=term --cov-report=xml
         working-directory: workers/job_consumer
