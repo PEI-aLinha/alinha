@@ -1,5 +1,14 @@
-# NIS2 / RJC / QNRCS catalogue v1 — example with 2 controls (to be completed in #22)
+# NIS2 / RJC / QNRCS catalogue v1 (alinha#22).
 # Field names and values in English; user-facing text in Portuguese.
+#
+# Requirements: every QNRCS control with a mandatory measure in Annex III of Regulamento 756/2026 (text from
+# Annex I, the QNRCS), plus the areas of RJC art. 27.º n.º 1. Controls: one per Annex III row, i.e. per QNRCS
+# control and compliance level (<code>-B basic, -S substantial, -E high). Levels are cumulative (Regulamento
+# 756/2026, art. 30.º n.º 2): an entity at a level answers the controls of that level and the ones below.
+# Evidence: the row's verification criteria, verbatim. Titles and questions are plain-language and ours.
+# Not covered: Annex IV (relevant public entities) and QNRCS controls with no Annex III measure.
+# RJC-27-1-*: our mapping of each art. 27.º area to QNRCS controls, pending advisor review. No Annex III control
+# covers the "sistemas seguros de comunicações de emergência" of al. i).
 framework: nis2-qnrcs
 version: 1
 title: "NIS2 — Regime Jurídico da Cibersegurança"
@@ -8,38 +17,2719 @@ sources:
   - "Regulamento n.º 756/2026"
 
 requirements:
+  - id: QNRCS-GR.CO-1
+    reference: "Regulamento 756/2026, anexos I e III, GR.CO-1"
+    text: "A missão, visão, estratégia de gestão dos riscos e objetivos da entidade são definidos e comunicados."
+    controls: [GR.CO-1-S]
+  - id: QNRCS-GR.CO-3
+    reference: "Regulamento 756/2026, anexos I e III, GR.CO-3"
+    text: "Os requisitos legais, regulamentares e contratuais para a cibersegurança, são compreendidos e geridos."
+    controls: [GR.CO-3-B]
+  - id: QNRCS-GR.CO-4
+    reference: "Regulamento 756/2026, anexos I e III, GR.CO-4"
+    text: "Os serviços críticos da entidade dos quais as partes interessadas externas dependem são identificados e comunicados."
+    controls: [GR.CO-4-B, GR.CO-4-S]
+  - id: QNRCS-GR.CO-5
+    reference: "Regulamento 756/2026, anexos I e III, GR.CO-5"
+    text: "Os requisitos de resiliência necessários para suportar a prestação de serviços críticos são definidos."
+    controls: [GR.CO-5-B, GR.CO-5-S, GR.CO-5-E]
+  - id: QNRCS-GR.CO-6
+    reference: "Regulamento 756/2026, anexos I e III, GR.CO-6"
+    text: "Os serviços externos dos quais a entidade depende, são identificados e comunicados."
+    controls: [GR.CO-6-B]
+  - id: QNRCS-GR.GR-1
+    reference: "Regulamento 756/2026, anexos I e III, GR.GR-1"
+    text: "O apetite e a tolerância ao risco da entidade são definidos, aprovados, comunicados e revistos regularmente."
+    controls: [GR.GR-1-S]
+  - id: QNRCS-GR.GR-2
+    reference: "Regulamento 756/2026, anexos I e III, GR.GR-2"
+    text: "Os processos de gestão dos riscos de cibersegurança estão incluídos na estratégia transversal de gestão dos riscos da entidade."
+    controls: [GR.GR-2-B, GR.GR-2-S]
+  - id: QNRCS-GR.GR-3
+    reference: "Regulamento 756/2026, anexos I e III, GR.GR-3"
+    text: "A entidade define a sua estratégia de tratamento do risco."
+    controls: [GR.GR-3-S]
+  - id: QNRCS-GR.GR-4
+    reference: "Regulamento 756/2026, anexos I e III, GR.GR-4"
+    text: "A entidade estabelece um canal de comunicação interno para partilha de riscos de cibersegurança."
+    controls: [GR.GR-4-S]
+  - id: QNRCS-GR.GR-5
+    reference: "Regulamento 756/2026, anexos I e III, GR.GR-5"
+    text: "A entidade define uma Política de Gestão dos Riscos de Cibersegurança a qual prevê uma metodologia para a gestão dos riscos de cibersegurança."
+    controls: [GR.GR-5-S, GR.GR-5-E]
+  - id: QNRCS-GR.FR-1
+    reference: "Regulamento 756/2026, anexos I e III, GR.FR-1"
+    text: "Os órgãos de gestão, direção e administração compreendem as suas funções e responsabilidades, e promovem uma cultura de cibersegurança, ética e de melhoria contínua."
+    controls: [GR.FR-1-B]
+  - id: QNRCS-GR.FR-2
+    reference: "Regulamento 756/2026, anexos I e III, GR.FR-2"
+    text: "São atribuídos recursos adequados e proporcionais à estratégia de gestão do risco de cibersegurança, às funções, responsabilidades e políticas de cibersegurança da entidade."
+    controls: [GR.FR-2-S]
+  - id: QNRCS-GR.FR-3
+    reference: "Regulamento 756/2026, anexos I e III, GR.FR-3"
+    text: "As funções, responsabilidades e autoridades em matéria de cibersegurança são definidas e comunicadas ao pessoal, fornecedores e partes interessadas."
+    controls: [GR.FR-3-S]
+  - id: QNRCS-GR.FR-4
+    reference: "Regulamento 756/2026, anexos I e III, GR.FR-4"
+    text: "A cibersegurança é contemplada nos processos de gestão de recursos humanos."
+    controls: [GR.FR-4-B, GR.FR-4-S]
+  - id: QNRCS-GR.PP-1
+    reference: "Regulamento 756/2026, anexos I e III, GR.PP-1"
+    text: "As Políticas para a gestão de Cibersegurança, incluindo a Política de Cibersegurança, são definidas com base no contexto organizacional, na estratégia de cibersegurança e nas prioridades da entidade."
+    controls: [GR.PP-1-B, GR.PP-1-S]
+  - id: QNRCS-GR.PP-2
+    reference: "Regulamento 756/2026, anexos I e III, GR.PP-2"
+    text: "O Plano de Resposta a Incidentes é definido, comunicado, mantido e melhorado."
+    controls: [GR.PP-2-B]
+  - id: QNRCS-GR.PP-3
+    reference: "Regulamento 756/2026, anexos I e III, GR.PP-3"
+    text: "O Plano de Recuperação de Desastres é definido, comunicado, mantido e melhorado."
+    controls: [GR.PP-3-S]
+  - id: QNRCS-GR.SP-2
+    reference: "Regulamento 756/2026, anexos I e III, GR.SP-2"
+    text: "A estratégia de gestão de riscos de cibersegurança é regularmente revista e adaptada para garantir a cobertura dos requisitos e riscos organizacionais."
+    controls: [GR.SP-2-E]
+  - id: QNRCS-GR.SP-3
+    reference: "Regulamento 756/2026, anexos I e III, GR.SP-3"
+    text: "O desempenho da gestão dos riscos de cibersegurança da entidade é avaliado e revisto para alterações necessárias."
+    controls: [GR.SP-3-E]
+  - id: QNRCS-GR.CA-1
+    reference: "Regulamento 756/2026, anexos I e III, GR.CA-1"
+    text: "As políticas e processos de gestão dos riscos da cadeia de abastecimento são identificados, estabelecidos, avaliados e geridos."
+    controls: [GR.CA-1-E]
+  - id: QNRCS-GR.CA-3
+    reference: "Regulamento 756/2026, anexos I e III, GR.CA-3"
+    text: "Os processos de gestão dos riscos de cibersegurança da cadeia de abastecimento da entidade estão incluídos nos processos transversais de cibersegurança e na estratégia de gestão dos riscos da entidade."
+    controls: [GR.CA-3-S]
+  - id: QNRCS-GR.CA-5
+    reference: "Regulamento 756/2026, anexos I e III, GR.CA-5"
+    text: "A entidade define e integra nos contratos e outros acordos com fornecedores os requisitos para gerir os riscos de cibersegurança da cadeia de abastecimento."
+    controls: [GR.CA-5-S, GR.CA-5-E]
+  - id: QNRCS-GR.CA-6
+    reference: "Regulamento 756/2026, anexos I e III, GR.CA-6"
+    text: "Antes da contratação de fornecedores são realizados processos de devida diligência para reduzir os riscos da entidade."
+    controls: [GR.CA-6-E]
+  - id: QNRCS-GR.CA-7
+    reference: "Regulamento 756/2026, anexos I e III, GR.CA-7"
+    text: "A entidade avalia os riscos de cibersegurança da cadeia de abastecimento."
+    controls: [GR.CA-7-B, GR.CA-7-S, GR.CA-7-E]
+  - id: QNRCS-GR.CA-8
+    reference: "Regulamento 756/2026, anexos I e III, GR.CA-8"
+    text: "O Plano de Resposta a Incidentes e o Plano de Recuperação de Desastres são testados com o acompanhamento dos fornecedores."
+    controls: [GR.CA-8-S, GR.CA-8-E]
+  - id: QNRCS-ID.GA-1
+    reference: "Regulamento 756/2026, anexos I e III, ID.GA-1"
+    text: "Os equipamentos e os demais recursos físicos geridos ou detidos pela entidade são inventariados."
+    controls: [ID.GA-1-B, ID.GA-1-E]
+  - id: QNRCS-ID.GA-2
+    reference: "Regulamento 756/2026, anexos I e III, ID.GA-2"
+    text: "Os recursos lógicos que suportam os processos dos serviços da entidade são inventariados"
+    controls: [ID.GA-2-B, ID.GA-2-E]
+  - id: QNRCS-ID.GA-3
+    reference: "Regulamento 756/2026, anexos I e III, ID.GA-3"
+    text: "As redes e fluxos de comunicação são mapeados."
+    controls: [ID.GA-3-S, ID.GA-3-E]
+  - id: QNRCS-ID.GA-4
+    reference: "Regulamento 756/2026, anexos I e III, ID.GA-4"
+    text: "Os serviços prestados por fornecedores são inventariados."
+    controls: [ID.GA-4-B]
+  - id: QNRCS-ID.GA-5
+    reference: "Regulamento 756/2026, anexos I e III, ID.GA-5"
+    text: "Os ativos são classificados de acordo com a sua criticidade."
+    controls: [ID.GA-5-B]
+  - id: QNRCS-ID.GA-6
+    reference: "Regulamento 756/2026, anexos I e III, ID.GA-6"
+    text: "Os dados e respetivos metadados são identificados e registados."
+    controls: [ID.GA-6-E]
+  - id: QNRCS-ID.GA-7
+    reference: "Regulamento 756/2026, anexos I e III, ID.GA-7"
+    text: "Sistemas, hardware, software, serviços e dados são geridos ao longo dos seus ciclos de vida"
+    controls: [ID.GA-7-B, ID.GA-7-S]
+  - id: QNRCS-ID.GA-8
+    reference: "Regulamento 756/2026, anexos I e III, ID.GA-8"
+    text: "Os dados são destruídos de acordo com a Política de Classificação e Gestão de Dados definida."
+    controls: [ID.GA-8-S, ID.GA-8-E]
+  - id: QNRCS-ID.GA-9
+    reference: "Regulamento 756/2026, anexos I e III, ID.GA-9"
+    text: "A entidade implementa um processo de gestão de alterações."
+    controls: [ID.GA-9-E]
+  - id: QNRCS-ID.AR-1
+    reference: "Regulamento 756/2026, anexos I e III, ID.AR-1"
+    text: "As vulnerabilidades dos ativos são identificadas e documentadas com base na metodologia definida."
+    controls: [ID.AR-1-B, ID.AR-1-S, ID.AR-1-E]
+  - id: QNRCS-ID.AR-4
+    reference: "Regulamento 756/2026, anexos I e III, ID.AR-4"
+    text: "São identificados e registados potenciais impactos e as respetivas probabilidades de ameaças."
+    controls: [ID.AR-4-B]
+  - id: QNRCS-ID.AR-5
+    reference: "Regulamento 756/2026, anexos I e III, ID.AR-5"
+    text: "A entidade avalia os riscos identificados."
+    controls: [ID.AR-5-B, ID.AR-5-S]
+  - id: QNRCS-ID.AR-6
+    reference: "Regulamento 756/2026, anexos I e III, ID.AR-6"
+    text: "A entidade garante que as respostas aos riscos são identificadas e priorizadas."
+    controls: [ID.AR-6-B, ID.AR-6-S, ID.AR-6-E]
+  - id: QNRCS-ID.AR-7
+    reference: "Regulamento 756/2026, anexos I e III, ID.AR-7"
+    text: "A entidade define processos para receber informação, analisar e responder a vulnerabilidades provenientes de fontes internas e externas."
+    controls: [ID.AR-7-B, ID.AR-7-S, ID.AR-7-E]
+  - id: QNRCS-ID.MC-2
+    reference: "Regulamento 756/2026, anexos I e III, ID.MC-2"
+    text: "São identificadas melhorias a partir de testes e exercícios de cibersegurança."
+    controls: [ID.MC-2-E]
+  - id: QNRCS-ID.MC-3
+    reference: "Regulamento 756/2026, anexos I e III, ID.MC-3"
+    text: "As melhorias são identificadas a partir da execução de processos, procedimentos e atividades operacionais."
+    controls: [ID.MC-3-B, ID.MC-3-S]
+  - id: QNRCS-PR.GA-1
+    reference: "Regulamento 756/2026, anexos I e III, PR.GA-1"
+    text: "Os ciclos de vida de gestão de identidades são definidos"
+    controls: [PR.GA-1-B, PR.GA-1-S, PR.GA-1-E]
+  - id: QNRCS-PR.GA-2
+    reference: "Regulamento 756/2026, anexos I e III, PR.GA-2"
+    text: "A entidade verifica a identidade dos utilizadores e vincula-a às respetivas credenciais."
+    controls: [PR.GA-2-S, PR.GA-2-E]
+  - id: QNRCS-PR.GA-3
+    reference: "Regulamento 756/2026, anexos I e III, PR.GA-3"
+    text: "São definidos mecanismos de autenticação de utilizadores, dispositivos e outros ativos de sistemas de informação."
+    controls: [PR.GA-3-B, PR.GA-3-S, PR.GA-3-E]
+  - id: QNRCS-PR.GA-4
+    reference: "Regulamento 756/2026, anexos I e III, PR.GA-4"
+    text: "As afirmações de identidade são protegidas, transmitidas e verificadas."
+    controls: [PR.GA-4-E]
+  - id: QNRCS-PR.GA-5
+    reference: "Regulamento 756/2026, anexos I e III, PR.GA-5"
+    text: "As permissões de acesso, os direitos e as autorizações são definidas numa política, são geridas, aplicadas e atualizadas, e incorporam os princípios do menor privilégio e da separação de funções."
+    controls: [PR.GA-5-B, PR.GA-5-S, PR.GA-5-E]
+  - id: QNRCS-PR.GA-6
+    reference: "Regulamento 756/2026, anexos I e III, PR.GA-6"
+    text: "Os controlos de acesso físico a ativos da entidade são geridos, monitorizados e aplicados em função do risco."
+    controls: [PR.GA-6-B, PR.GA-6-S, PR.GA-6-E]
+  - id: QNRCS-PR.GA-7
+    reference: "Regulamento 756/2026, anexos I e III, PR.GA-7"
+    text: "A entidade gere os seus acessos remotos."
+    controls: [PR.GA-7-B, PR.GA-7-S, PR.GA-7-E]
+  - id: QNRCS-PR.FC-1
+    reference: "Regulamento 756/2026, anexos I e III, PR.FC-1"
+    text: "Todo o pessoal é sensibilizado e formado em matérias de cibersegurança."
+    controls: [PR.FC-1-B, PR.FC-1-S, PR.FC-1-E]
+  - id: QNRCS-PR.FC-2
+    reference: "Regulamento 756/2026, anexos I e III, PR.FC-2"
+    text: "O pessoal com funções especializadas em cibersegurança e os órgãos de gestão, direção e administração recebem formação adequada para o exercício das suas funções."
+    controls: [PR.FC-2-B, PR.FC-2-S]
+  - id: QNRCS-PR.SD-1
+    reference: "Regulamento 756/2026, anexos I e III, PR.SD-1"
+    text: "A entidade protege a confidencialidade, integridade e disponibilidade dos dados em repouso."
+    controls: [PR.SD-1-S, PR.SD-1-E]
+  - id: QNRCS-PR.SD-2
+    reference: "Regulamento 756/2026, anexos I e III, PR.SD-2"
+    text: "A entidade protege a confidencialidade, integridade e disponibilidade dos dados em trânsito."
+    controls: [PR.SD-2-B, PR.SD-2-E]
+  - id: QNRCS-PR.SD-3
+    reference: "Regulamento 756/2026, anexos I e III, PR.SD-3"
+    text: "A entidade implementa proteções que evitem exfiltração de dados."
+    controls: [PR.SD-3-E]
+  - id: QNRCS-PR.SD-4
+    reference: "Regulamento 756/2026, anexos I e III, PR.SD-4"
+    text: "A entidade protege a confidencialidade, integridade e disponibilidade dos dados em uso."
+    controls: [PR.SD-4-E]
+  - id: QNRCS-PR.SD-5
+    reference: "Regulamento 756/2026, anexos I e III, PR.SD-5"
+    text: "São realizadas, mantidas e testadas cópias de segurança dos dados da entidade."
+    controls: [PR.SD-5-B, PR.SD-5-S, PR.SD-5-E]
+  - id: QNRCS-PR.SP-1
+    reference: "Regulamento 756/2026, anexos I e III, PR.SP-1"
+    text: "É criada e mantida uma configuração base de redes e sistemas de informação que incorpora os princípios de segurança."
+    controls: [PR.SP-1-B, PR.SP-1-S, PR.SP-1-E]
+  - id: QNRCS-PR.SP-2
+    reference: "Regulamento 756/2026, anexos I e III, PR.SP-2"
+    text: "Os logs de sistemas e o histórico de atividades são documentados, implementados e revistos de acordo com as Políticas da entidade."
+    controls: [PR.SP-2-B, PR.SP-2-S, PR.SP-2-E]
+  - id: QNRCS-PR.SP-3
+    reference: "Regulamento 756/2026, anexos I e III, PR.SP-3"
+    text: "A instalação e execução de software não autorizado são impedidas."
+    controls: [PR.SP-3-B]
+  - id: QNRCS-PR.SP-4
+    reference: "Regulamento 756/2026, anexos I e III, PR.SP-4"
+    text: "É implementado um ciclo de vida de desenvolvimento seguro de software."
+    controls: [PR.SP-4-S, PR.SP-4-E]
+  - id: QNRCS-PR.RI-1
+    reference: "Regulamento 756/2026, anexos I e III, PR.RI-1"
+    text: "A entidade protege a integridade das redes de comunicações."
+    controls: [PR.RI-1-B, PR.RI-1-S, PR.RI-1-E]
+  - id: QNRCS-PR.RI-2
+    reference: "Regulamento 756/2026, anexos I e III, PR.RI-2"
+    text: "Os ambientes de desenvolvimento e de teste são separados de ambientes de produção."
+    controls: [PR.RI-2-S]
+  - id: QNRCS-PR.RI-3
+    reference: "Regulamento 756/2026, anexos I e III, PR.RI-3"
+    text: "Os ativos tecnológicos da entidade são protegidos de ameaças naturais."
+    controls: [PR.RI-3-E]
+  - id: QNRCS-PR.RI-4
+    reference: "Regulamento 756/2026, anexos I e III, PR.RI-4"
+    text: "São implementados mecanismos para cumprir os requisitos de resiliência em situações adversas."
+    controls: [PR.RI-4-S]
+  - id: QNRCS-PR.RI-5
+    reference: "Regulamento 756/2026, anexos I e III, PR.RI-5"
+    text: "A entidade planeia a capacidade adequada dos recursos para garantir a disponibilidade das suas redes e sistemas de informação."
+    controls: [PR.RI-5-S]
+  - id: QNRCS-DE.MC-1
+    reference: "Regulamento 756/2026, anexos I e III, DE.MC-1"
+    text: "As redes e sistemas de informação são monitorizados para detetar potenciais incidentes."
+    controls: [DE.MC-1-B, DE.MC-1-S, DE.MC-1-E]
+  - id: QNRCS-DE.MC-2
+    reference: "Regulamento 756/2026, anexos I e III, DE.MC-2"
+    text: "O ambiente físico é monitorizado para possibilitar a deteção de potenciais incidentes de segurança."
+    controls: [DE.MC-2-S, DE.MC-2-E]
+  - id: QNRCS-DE.MC-4
+    reference: "Regulamento 756/2026, anexos I e III, DE.MC-4"
+    text: "A entidade identifica e implementa mecanismos para deteção de código malicioso."
+    controls: [DE.MC-4-B]
+  - id: QNRCS-DE.MC-5
+    reference: "Regulamento 756/2026, anexos I e III, DE.MC-5"
+    text: "A utilização de aplicações não autorizadas em dispositivos móveis é detetada."
+    controls: [DE.MC-5-B, DE.MC-5-S, DE.MC-5-E]
+  - id: QNRCS-DE.MC-6
+    reference: "Regulamento 756/2026, anexos I e III, DE.MC-6"
+    text: "As atividades dos prestadores de serviços externos são monitorizadas para deteção de incidentes."
+    controls: [DE.MC-6-S]
+  - id: QNRCS-DE.MC-7
+    reference: "Regulamento 756/2026, anexos I e III, DE.MC-7"
+    text: "O hardware, software, os ambientes em produção e os seus dados são monitorizados para detetar eventos potencialmente adversos."
+    controls: [DE.MC-7-S, DE.MC-7-E]
+  - id: QNRCS-DE.AE-1
+    reference: "Regulamento 756/2026, anexos I e III, DE.AE-1"
+    text: "Os eventos detetados são analisados."
+    controls: [DE.AE-1-S, DE.AE-1-E]
+  - id: QNRCS-DE.AE-2
+    reference: "Regulamento 756/2026, anexos I e III, DE.AE-2"
+    text: "Os eventos são recolhidos e correlacionados a partir de várias fontes e sensores."
+    controls: [DE.AE-2-B, DE.AE-2-E]
+  - id: QNRCS-DE.AE-3
+    reference: "Regulamento 756/2026, anexos I e III, DE.AE-3"
+    text: "O impacto estimado e o âmbito dos eventos adversos detetados são compreendidos e identificados."
+    controls: [DE.AE-3-E]
+  - id: QNRCS-DE.AE-4
+    reference: "Regulamento 756/2026, anexos I e III, DE.AE-4"
+    text: "As informações sobre deteções de eventos são comunicadas."
+    controls: [DE.AE-4-S]
+  - id: QNRCS-DE.AE-6
+    reference: "Regulamento 756/2026, anexos I e III, DE.AE-6"
+    text: "Os critérios para a declaração de incidentes são definidos"
+    controls: [DE.AE-6-B]
+  - id: QNRCS-RS.GI-1
+    reference: "Regulamento 756/2026, anexos I e III, RS.GI-1"
+    text: "O Plano de Resposta a Incidentes é executado, em coordenação com as partes interessadas, durante ou após a ocorrência de um incidente."
+    controls: [RS.GI-1-B, RS.GI-1-S]
+  - id: QNRCS-RS.GI-2
+    reference: "Regulamento 756/2026, anexos I e III, RS.GI-2"
+    text: "As notificações dos sistemas de deteção são triadas e validadas."
+    controls: [RS.GI-2-S]
+  - id: QNRCS-RS.GI-3
+    reference: "Regulamento 756/2026, anexos I e III, RS.GI-3"
+    text: "Os incidentes são categorizados de acordo com o Plano de Resposta a Incidentes definido."
+    controls: [RS.GI-3-S, RS.GI-3-E]
+  - id: QNRCS-RS.GI-5
+    reference: "Regulamento 756/2026, anexos I e III, RS.GI-5"
+    text: "São aplicados os critérios para iniciar a recuperação de incidentes."
+    controls: [RS.GI-5-S]
+  - id: QNRCS-RS.AI-1
+    reference: "Regulamento 756/2026, anexos I e III, RS.AI-1"
+    text: "É realizada uma análise forense para determinar o que ocorreu durante um incidente e a sua causa raiz."
+    controls: [RS.AI-1-E]
+  - id: QNRCS-RS.AI-2
+    reference: "Regulamento 756/2026, anexos I e III, RS.AI-2"
+    text: "As ações realizadas durante uma investigação são registadas e a integridade e proveniência dos registos são preservadas."
+    controls: [RS.AI-2-E]
+  - id: QNRCS-RS.AI-3
+    reference: "Regulamento 756/2026, anexos I e III, RS.AI-3"
+    text: "Os dados e metadados do incidente são recolhidos, e a sua integridade e proveniência são preservadas."
+    controls: [RS.AI-3-E]
+  - id: QNRCS-RS.AI-4
+    reference: "Regulamento 756/2026, anexos I e III, RS.AI-4"
+    text: "O impacto do incidente é estimado e validado."
+    controls: [RS.AI-4-E]
+  - id: QNRCS-RS.NC-1
+    reference: "Regulamento 756/2026, anexos I e III, RS.NC-1"
+    text: "As partes interessadas internas e externas são notificadas dos incidentes."
+    controls: [RS.NC-1-B, RS.NC-1-S]
+  - id: QNRCS-RS.MI-1
+    reference: "Regulamento 756/2026, anexos I e III, RS.MI-1"
+    text: "Os incidentes são contidos."
+    controls: [RS.MI-1-S]
+  - id: QNRCS-RS.MI-2
+    reference: "Regulamento 756/2026, anexos I e III, RS.MI-2"
+    text: "Os incidentes são resolvidos."
+    controls: [RS.MI-2-E]
+  - id: QNRCS-RC.PR-1
+    reference: "Regulamento 756/2026, anexos I e III, RC.PR-1"
+    text: "A entidade segue um plano de recuperação durante ou após um incidente."
+    controls: [RC.PR-1-B]
+  - id: QNRCS-RC.PR-3
+    reference: "Regulamento 756/2026, anexos I e III, RC.PR-3"
+    text: "A integridade das cópias de segurança e de outros ativos de restauro é verificada antes da sua utilização."
+    controls: [RC.PR-3-B]
+  - id: QNRCS-RC.PR-5
+    reference: "Regulamento 756/2026, anexos I e III, RC.PR-5"
+    text: "A integridade dos ativos restaurados é verificada, os sistemas e serviços são restaurados e o estado de normal funcionamento é confirmado."
+    controls: [RC.PR-5-S]
+  - id: QNRCS-RC.PR-6
+    reference: "Regulamento 756/2026, anexos I e III, RC.PR-6"
+    text: "O fim da recuperação do incidente é documentado e declarado com base em critérios predefinidos."
+    controls: [RC.PR-6-S]
+  - id: QNRCS-RC.CO-1
+    reference: "Regulamento 756/2026, anexos I e III, RC.CO-1"
+    text: "As atividades de recuperação são comunicadas às partes interessadas, bem como aos órgãos de gestão, direção e administração."
+    controls: [RC.CO-1-S]
+  - id: QNRCS-RC.CO-2
+    reference: "Regulamento 756/2026, anexos I e III, RC.CO-2"
+    text: "As atualizações sobre a recuperação de incidentes são partilhadas utilizando métodos aprovados pela entidade."
+    controls: [RC.CO-2-S, RC.CO-2-E]
+  - id: RJC-27-1-a
+    reference: "DL 125/2025, art. 27.º, n.º 1, al. a)"
+    text: "Tratamento de incidentes"
+    controls: [GR.PP-2-B, ID.MC-3-B, ID.MC-3-S, PR.SP-2-B, PR.SP-2-S, PR.SP-2-E, DE.AE-1-S, DE.AE-1-E, DE.AE-2-B, DE.AE-2-E, DE.AE-4-S, DE.AE-6-B, RS.GI-1-B, RS.GI-1-S, RS.GI-2-S, RS.GI-3-S, RS.GI-3-E, RS.GI-5-S, RS.AI-1-E, RS.AI-2-E, RS.AI-3-E, RS.AI-4-E, RS.NC-1-B, RS.NC-1-S, RS.MI-1-S, RS.MI-2-E]
+  - id: RJC-27-1-b
+    reference: "DL 125/2025, art. 27.º, n.º 1, al. b)"
+    text: "Continuidade das atividades, como a gestão de cópias de segurança e a recuperação de desastres, e gestão de crises"
+    controls: [GR.CO-5-B, GR.CO-5-S, GR.CO-5-E, GR.PP-3-S, PR.SD-5-B, PR.SD-5-S, PR.SD-5-E, PR.RI-4-S, RC.PR-1-B, RC.PR-3-B, RC.PR-5-S, RC.PR-6-S, RC.CO-1-S, RC.CO-2-S, RC.CO-2-E]
+  - id: RJC-27-1-c
+    reference: "DL 125/2025, art. 27.º, n.º 1, al. c)"
+    text: "Segurança da cadeia de abastecimento, incluindo aspetos de segurança respeitantes às relações entre cada entidade e os respetivos fornecedores ou prestadores de serviços diretos"
+    controls: [GR.CO-6-B, GR.CA-1-E, GR.CA-3-S, GR.CA-5-S, GR.CA-5-E, GR.CA-6-E, GR.CA-7-B, GR.CA-7-S, GR.CA-7-E, GR.CA-8-S, GR.CA-8-E, ID.GA-4-B, DE.MC-6-S]
+  - id: RJC-27-1-d
+    reference: "DL 125/2025, art. 27.º, n.º 1, al. d)"
+    text: "Segurança na aquisição, desenvolvimento e manutenção das redes e sistemas de informação, incluindo o tratamento e a divulgação de vulnerabilidades"
+    controls: [GR.CA-6-E, ID.GA-7-B, ID.GA-7-S, ID.GA-9-E, ID.AR-1-B, ID.AR-1-S, ID.AR-1-E, ID.AR-7-B, ID.AR-7-S, ID.AR-7-E, PR.SP-1-B, PR.SP-1-S, PR.SP-1-E, PR.SP-4-S, PR.SP-4-E, PR.RI-2-S]
+  - id: RJC-27-1-e
+    reference: "DL 125/2025, art. 27.º, n.º 1, al. e)"
+    text: "Políticas e procedimentos para avaliar a eficácia das medidas de gestão dos riscos de cibersegurança"
+    controls: [GR.SP-2-E, GR.SP-3-E, ID.AR-6-B, ID.AR-6-S, ID.AR-6-E, ID.MC-2-E, ID.MC-3-B, ID.MC-3-S, PR.FC-1-B, PR.FC-1-S, PR.FC-1-E]
+  - id: RJC-27-1-f
+    reference: "DL 125/2025, art. 27.º, n.º 1, al. f)"
+    text: "Práticas básicas de ciber-higiene e formação em cibersegurança, incluindo os titulares de órgãos máximos de gestão e trabalhadores"
+    controls: [GR.FR-4-B, GR.FR-4-S, ID.GA-7-B, ID.GA-7-S, PR.GA-1-B, PR.GA-1-S, PR.GA-1-E, PR.FC-1-B, PR.FC-1-S, PR.FC-1-E, PR.FC-2-B, PR.FC-2-S, PR.SP-1-B, PR.SP-1-S, PR.SP-1-E, PR.SP-3-B, DE.MC-4-B]
+  - id: RJC-27-1-g
+    reference: "DL 125/2025, art. 27.º, n.º 1, al. g)"
+    text: "Políticas e procedimentos relativos à utilização de criptografia e, se for caso disso, de cifragem, sem prejuízo das competências conferidas a outras entidades em matéria de criptografia no âmbito nacional ou perante outras organizações internacionais de que Portugal seja membro"
+    controls: [PR.GA-1-B, PR.GA-1-S, PR.GA-1-E, PR.GA-7-B, PR.GA-7-S, PR.GA-7-E, PR.SD-1-S, PR.SD-1-E, PR.SD-2-B, PR.SD-2-E]
+  - id: RJC-27-1-h
+    reference: "DL 125/2025, art. 27.º, n.º 1, al. h)"
+    text: "Segurança dos recursos humanos, políticas seguidas em matéria de controlo do acesso e gestão de ativos"
+    controls: [GR.FR-4-B, GR.FR-4-S, GR.PP-1-B, GR.PP-1-S, ID.GA-1-B, ID.GA-1-E, ID.GA-2-B, ID.GA-2-E, ID.GA-3-S, ID.GA-3-E, ID.GA-5-B, ID.GA-6-E, ID.GA-7-B, ID.GA-7-S, ID.GA-8-S, ID.GA-8-E, PR.GA-1-B, PR.GA-1-S, PR.GA-1-E, PR.GA-2-S, PR.GA-2-E, PR.GA-3-B, PR.GA-3-S, PR.GA-3-E, PR.GA-4-E, PR.GA-5-B, PR.GA-5-S, PR.GA-5-E, PR.GA-6-B, PR.GA-6-S, PR.GA-6-E, PR.GA-7-B, PR.GA-7-S, PR.GA-7-E]
   - id: RJC-27-1-i
     reference: "DL 125/2025, art. 27.º, n.º 1, al. i)"
-    text: "Utilização de autenticação multifator ou contínua"
-    controls: [CTRL-MFA]
-  - id: QNRCS-GR.CO-3
-    reference: "QNRCS, GR.CO-3"
-    text: "Os requisitos legais, regulamentares e contratuais são compreendidos e geridos"
-    controls: [CTRL-LEGAL-REQ]
+    text: "Utilização de autenticação multifator ou de autenticação contínua, comunicações seguras e sistemas seguros de comunicações de emergência no seio da entidade"
+    controls: [PR.GA-1-B, PR.GA-1-S, PR.GA-1-E, PR.GA-3-B, PR.GA-3-S, PR.GA-3-E, PR.GA-7-B, PR.GA-7-S, PR.GA-7-E, PR.SD-2-B, PR.SD-2-E]
 
 controls:
-  - id: CTRL-MFA
-    title: "Autenticação com dois fatores"
-    level: basic             # basic | substantial | high
-    technical: true          # can be assigned to an analyst
+  - id: GR.CO-1-S
+    title: "Missão, objetivos e prioridades de cibersegurança"
+    level: substantial
+    technical: false
     evidence:
-      - "Configuração do sistema de autenticação"
+      - "Registo documentado da missão, visão, estratégia de gestão do risco e objetivos no âmbito da cibersegurança e respetivas prioridades."
     questions:
-      - id: CTRL-MFA-Q1
-        text: "Os acessos aos sistemas da empresa pedem um segundo fator, além da palavra-passe?"
-        explanation: "Além da palavra-passe, a pessoa confirma quem é com outra coisa, como um código no telemóvel."
-        example: "Ao entrar no email da empresa, recebe um código por SMS."
+      - id: GR.CO-1-S-Q1
+        text: "A empresa tem por escrito a sua missão, visão, estratégia de gestão dos riscos, objetivos e prioridades de cibersegurança, e deu-os a conhecer?"
+        explanation: "Saber o que é mais importante para a empresa ajuda a decidir o que proteger primeiro."
+        example: "Um documento aprovado pela gerência que diz que a prioridade é manter a faturação e a produção a funcionar, partilhado com as chefias."
         answers: ["yes", "partial", "no", "unknown"]
 
-  - id: CTRL-LEGAL-REQ
-    title: "Conhecer as obrigações legais"
+  - id: GR.CO-3-B
+    title: "Conhecer as obrigações legais de cibersegurança"
     level: basic
     technical: false
     evidence:
-      - "Lista de leis e contratos aplicáveis"
+      - "Evidência da gestão quotidiana da entidade que demonstre o cumprimento dos requisitos e obrigações legais de cibersegurança aplicáveis à entidade."
     questions:
-      - id: CTRL-LEGAL-REQ-Q1
-        text: "A empresa tem uma lista das leis e contratos com regras de cibersegurança que tem de cumprir?"
+      - id: GR.CO-3-B-Q1
+        text: "A empresa sabe que leis e regulamentos de cibersegurança tem de cumprir e aplica-os no dia a dia?"
         explanation: "Saber que regras se aplicam é o primeiro passo para as cumprir."
-        example: "Uma folha com o RGPD, o DL 125/2025 e os contratos com clientes que exigem segurança."
+        example: "Uma lista com o Regime Jurídico da Cibersegurança e o RGPD, com quem trata de cada obrigação."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: GR.CO-4-B
+    title: "Serviços de que os clientes dependem"
+    level: basic
+    technical: false
+    evidence:
+      - "Registo documentado da identificação dos serviços críticos dos quais as partes interessadas externas dependem."
+    questions:
+      - id: GR.CO-4-B-Q1
+        text: "A empresa tem por escrito quais dos seus serviços são críticos para os clientes ou outras entidades que dependem dela?"
+        explanation: "São os serviços que, se pararem, causam problemas sérios a quem depende da empresa."
+        example: "Uma lista que indica que a entrega de peças a um fabricante automóvel não pode parar mais de um dia."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: GR.CO-4-S
+    title: "Prioridade dos serviços críticos na gestão de riscos"
+    level: substantial
+    technical: false
+    evidence:
+      - "Registo do processo de gestão dos riscos que contempla os serviços críticos das quais as partes interessadas externas dependem, incluindo a definição de critérios para a classificação e priorização dos serviços críticos."
+    questions:
+      - id: GR.CO-4-S-Q1
+        text: "Os serviços críticos da empresa estão classificados por importância e entram na análise de riscos?"
+        explanation: "Os serviços mais importantes devem ter os riscos analisados e tratados primeiro."
+        example: "Na análise de riscos, a faturação aparece como prioridade alta e o site institucional como prioridade baixa."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: GR.CO-5-B
+    title: "O que é preciso para os serviços críticos continuarem"
+    level: basic
+    technical: false
+    evidence:
+      - "Registo documentando da identificação dos requisitos de resiliência necessários para garantir o suporte dos serviços críticos."
+    questions:
+      - id: GR.CO-5-B-Q1
+        text: "A empresa registou o que é preciso para os seus serviços críticos continuarem a funcionar, mesmo com problemas?"
+        explanation: "Por exemplo, quanto tempo um serviço pode estar parado e de que sistemas depende."
+        example: "Um registo que diz que as encomendas não podem parar mais de 4 horas e dependem do servidor de gestão e da internet."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: GR.CO-5-S
+    title: "Redundância e plano de continuidade"
+    level: substantial
+    technical: false
+    evidence:
+      - "Evidencia técnica da implementação de mecanismos de redundância que garantam a disponibilidade dos serviços críticos."
+      - "Plano de Continuidade de Negócio aprovado e implementado e que contenha a definição dos tempos necessários para a recuperação de cada serviço critico e respetivos processos."
+    questions:
+      - id: GR.CO-5-S-Q1
+        text: "Os serviços críticos têm alternativas preparadas (redundância) para continuarem a funcionar se algo falhar?"
+        explanation: "Redundância é ter um segundo meio pronto a entrar quando o principal falha."
+        example: "Duas ligações à internet de operadores diferentes, ou um segundo servidor pronto a substituir o principal."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: GR.CO-5-S-Q2
+        text: "A empresa tem um Plano de Continuidade de Negócio aprovado, com os tempos de recuperação de cada serviço crítico?"
+        explanation: "O plano diz o que fazer e em quanto tempo para pôr os serviços críticos a funcionar depois de uma falha grave."
+        example: "Um plano aprovado pela gerência que diz que a faturação tem de voltar a funcionar em menos de um dia, e como."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: GR.CO-5-E
+    title: "Testar o plano de continuidade"
+    level: high
+    technical: false
+    evidence:
+      - "Evidência da execução de testes ao Plano de Continuidade de Negócio."
+    questions:
+      - id: GR.CO-5-E-Q1
+        text: "O Plano de Continuidade de Negócio é testado com regularidade?"
+        explanation: "Um plano que nunca foi testado pode falhar quando for preciso."
+        example: "Uma simulação anual em que se desliga o servidor principal e se confirma que o serviço volta no tempo previsto."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: GR.CO-6-B
+    title: "Serviços externos de que a empresa depende"
+    level: basic
+    technical: false
+    evidence:
+      - "Registo da identificação, e da comunicação dos serviços críticos externos dos quais a entidade depende."
+      - "Registo do processo de gestão dos riscos que contempla os serviços críticos externos dos quais a entidade depende, incluindo a definição de critérios para a classificação e priorização destes serviços."
+    questions:
+      - id: GR.CO-6-B-Q1
+        text: "A empresa tem uma lista, por ordem de importância, dos serviços externos críticos de que depende, e comunicou-a a quem precisa de saber?"
+        explanation: "São serviços de outras empresas sem os quais a sua não funciona, como o fornecedor de internet ou o software de faturação."
+        example: "Uma lista com o operador de internet, o serviço de email e o programa de contabilidade, com a importância de cada um."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: GR.CO-6-B-Q2
+        text: "Esses serviços externos críticos entram na análise de riscos da empresa?"
+        explanation: "Se um fornecedor falhar, a empresa também é afetada, por isso esse risco tem de ser analisado."
+        example: "A análise de riscos inclui o que acontece se o serviço de email na nuvem ficar indisponível."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: GR.GR-1-S
+    title: "Risco que a empresa aceita correr"
+    level: substantial
+    technical: false
+    evidence:
+      - "Registo documentado e aprovado da definição do apetite e tolerância ao risco."
+      - "Registo da sua comunicação às partes interessadas internas."
+    questions:
+      - id: GR.GR-1-S-Q1
+        text: "A empresa definiu e aprovou quanto risco está disposta a aceitar, comunica-o internamente e revê-o com regularidade?"
+        explanation: "É decidir que riscos são aceitáveis e quais têm de ser reduzidos, para não decidir caso a caso."
+        example: "A gerência aprovou que qualquer risco que possa parar a produção mais de um dia tem de ser tratado."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: GR.GR-2-B
+    title: "Processo de gestão de riscos de cibersegurança"
+    level: basic
+    technical: false
+    evidence:
+      - "Evidência da gestão quotidiana que demonstre a implementação das várias fases de gestão de riscos da cibersegurança."
+    questions:
+      - id: GR.GR-2-B-Q1
+        text: "A empresa tem um processo aprovado para identificar e gerir os riscos de cibersegurança, e mantém-no atualizado?"
+        explanation: "Gerir riscos é ver o que pode correr mal, quão grave seria e o que fazer para o evitar."
+        example: "Uma vez por ano, a empresa revê uma lista de riscos (como um ataque de ransomware, um programa que bloqueia os ficheiros e pede um resgate) e as medidas para cada um."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: GR.GR-2-S
+    title: "Riscos de cibersegurança na gestão de riscos geral"
+    level: substantial
+    technical: false
+    evidence:
+      - "Evidência de gestão quotidiana que demonstre a implementação das várias fases de gestão de risco da cibersegurança nos processos transversais de gestão dos riscos da entidade."
+    questions:
+      - id: GR.GR-2-S-Q1
+        text: "Os riscos de cibersegurança fazem parte da gestão de riscos geral da empresa, junto com os riscos financeiros e operacionais?"
+        explanation: "A cibersegurança não deve ser tratada à parte: os seus riscos afetam o negócio como os outros."
+        example: "O mapa de riscos da empresa tem, ao lado do risco de perder um cliente grande, o risco de um ataque informático."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: GR.GR-3-S
+    title: "Estratégia para tratar os riscos"
+    level: substantial
+    technical: false
+    evidence:
+      - "Registo documentado da estratégia de tratamento do risco e da sua comunicação às partes interessadas."
+    questions:
+      - id: GR.GR-3-S-Q1
+        text: "A empresa definiu como trata os riscos (reduzir, aceitar, transferir ou evitar) e comunicou-o a quem precisa de saber?"
+        explanation: "Para cada risco há várias opções, por exemplo fazer um seguro ou mudar a forma de trabalhar."
+        example: "A empresa decidiu fazer um seguro de ciber-risco e reduzir os restantes riscos com cópias de segurança."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: GR.GR-4-S
+    title: "Canal interno para falar de riscos"
+    level: substantial
+    technical: false
+    evidence:
+      - "Canal interno de comunicação usado para a partilha de riscos de cibersegurança."
+    questions:
+      - id: GR.GR-4-S-Q1
+        text: "Existe um canal interno para partilhar informação sobre riscos de cibersegurança com a gerência e as áreas relevantes?"
+        explanation: "Quem deteta um risco deve saber a quem o comunicar, e a gerência deve ser informada."
+        example: "Uma reunião mensal entre o responsável de informática e a gerência, ou um endereço de email próprio para estes assuntos."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: GR.GR-5-S
+    title: "Método para avaliar os riscos"
+    level: substantial
+    technical: false
+    evidence:
+      - "Registo da metodologia de gestão dos riscos de cibersegurança."
+    questions:
+      - id: GR.GR-5-S-Q1
+        text: "A empresa tem um método definido para identificar, registar, calcular e ordenar os riscos de cibersegurança?"
+        explanation: "Um método igual para todos os riscos permite compará-los e decidir quais tratar primeiro."
+        example: "Cada risco recebe uma nota de 1 a 5 para a probabilidade e outra para o impacto, e multiplica-se uma pela outra."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: GR.GR-5-E
+    title: "Política de gestão de riscos de cibersegurança"
+    level: high
+    technical: false
+    evidence:
+      - "Política de Gestão dos Riscos de Cibersegurança aprovada e implementada."
+    questions:
+      - id: GR.GR-5-E-Q1
+        text: "A empresa tem uma Política de Gestão dos Riscos de Cibersegurança aprovada e em prática?"
+        explanation: "A política é o documento oficial que diz como a empresa gere os riscos de cibersegurança."
+        example: "Uma política aprovada pela administração, que todos os responsáveis de área seguem."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: GR.FR-1-B
+    title: "Recursos da gerência para a cibersegurança"
+    level: basic
+    technical: false
+    evidence:
+      - "Plano de Melhoria Contínua de Cibersegurança com medidas, prazos e recursos a afetar, aprovado pelos órgãos de gestão, direção e administração."
+    questions:
+      - id: GR.FR-1-B-Q1
+        text: "A gerência disponibiliza os recursos necessários para melhorar a cibersegurança, com um plano aprovado?"
+        explanation: "Melhorar a cibersegurança precisa de tempo, pessoas e orçamento decididos pela gerência."
+        example: "Um plano de melhoria com medidas, prazos e orçamento, aprovado pela gerência."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: GR.FR-2-S
+    title: "Recursos adequados à gestão de riscos"
+    level: substantial
+    technical: false
+    evidence:
+      - "Registo do planeamento das atividades em matéria de cibersegurança a curto ou médio prazo, e evidência da gestão quotidiana que demonstre a alocação dos recursos para a gestão do risco de cibersegurança."
+    questions:
+      - id: GR.FR-2-S-Q1
+        text: "Os recursos dedicados à cibersegurança (pessoas, tempo, orçamento) são suficientes para as funções e políticas que a empresa definiu?"
+        explanation: "Não basta ter políticas: é preciso ter quem as aplique e meios para isso."
+        example: "Uma verba anual para cibersegurança e um técnico com tempo dedicado, previstos no orçamento."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: GR.FR-3-S
+    title: "Funções e responsabilidades de cibersegurança"
+    level: substantial
+    technical: false
+    evidence:
+      - "Registo documentado e aprovado das funções, responsabilidades e autoridades e da sua comunicação às partes interessadas."
+    questions:
+      - id: GR.FR-3-S-Q1
+        text: "As funções e responsabilidades de cibersegurança estão por escrito, aprovadas, comunicadas a quem as tem e atualizadas?"
+        explanation: "Cada pessoa deve saber o que lhe cabe fazer em matéria de cibersegurança."
+        example: "Um documento que indica o responsável de cibersegurança, quem trata das cópias de segurança e quem contacta os fornecedores."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: GR.FR-4-B
+    title: "Regras de uso dos equipamentos e sistemas"
+    level: basic
+    technical: false
+    evidence:
+      - "Política de Uso Aceitável aprovada e implementada e registo da tomada de conhecimento pelo pessoal aquando da sua entrada."
+    questions:
+      - id: GR.FR-4-B-Q1
+        text: "A empresa tem uma Política de Uso Aceitável e dá-a a conhecer a cada pessoa quando entra?"
+        explanation: "É o documento com as regras para usar com segurança os computadores, o email e os outros recursos da empresa."
+        example: "Um novo colaborador assina que leu as regras, como não instalar programas sem autorização."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: GR.FR-4-S
+    title: "Cibersegurança na contratação e saída de pessoas"
+    level: substantial
+    technical: false
+    evidence:
+      - "Registo das medidas de cibersegurança para a gestão de recursos humanos, desde a entrada até à saída do pessoal."
+    questions:
+      - id: GR.FR-4-S-Q1
+        text: "A empresa aplica medidas de cibersegurança quando contrata, durante o contrato e quando uma pessoa sai?"
+        explanation: "Por exemplo, dar só os acessos necessários a quem entra e retirar todos os acessos a quem sai."
+        example: "No último dia de trabalho, a conta de email e os acessos aos sistemas da pessoa são desativados."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: GR.PP-1-B
+    title: "Política de Cibersegurança"
+    level: basic
+    technical: false
+    evidence:
+      - "Política de Cibersegurança, aprovada pelos órgãos de gestão, direção e administração."
+      - "Registos da comunicação interna da Política de Cibersegurança."
+    questions:
+      - id: GR.PP-1-B-Q1
+        text: "A empresa tem uma Política de Cibersegurança aprovada pela gerência, com as responsabilidades de cada um, e divulgada internamente?"
+        explanation: "A política é o documento base que diz como a empresa protege a sua informação e sistemas."
+        example: "Uma política de duas páginas aprovada pela gerência e enviada a todos os colaboradores."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: GR.PP-1-S
+    title: "Política de classificação e gestão de dados"
+    level: substantial
+    technical: false
+    evidence:
+      - "Política de Classificação e Gestão de Dados aprovada e implementada."
+    questions:
+      - id: GR.PP-1-S-Q1
+        text: "A empresa tem uma Política de Classificação e Gestão de Dados aprovada e em prática?"
+        explanation: "Classificar os dados é dizer quais são públicos, internos ou confidenciais, para os proteger de acordo."
+        example: "Os documentos de clientes são marcados como confidenciais e só a equipa comercial lhes acede."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: GR.PP-2-B
+    title: "Plano de resposta a incidentes"
+    level: basic
+    technical: false
+    evidence:
+      - "Plano de Resposta a Incidentes aprovado e implementado e devidamente atualizado."
+    questions:
+      - id: GR.PP-2-B-Q1
+        text: "A empresa tem um Plano de Resposta a Incidentes aprovado, em prática e atualizado, que diz quem faz o quê?"
+        explanation: "O plano diz o que fazer quando há um ataque ou outro incidente, para reagir depressa e sem improvisar."
+        example: "Um plano que diz que, se houver um ataque, se desliga a rede, se avisa o responsável de cibersegurança e se contacta o CNCS."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: GR.PP-3-S
+    title: "Plano de recuperação de desastres"
+    level: substantial
+    technical: false
+    evidence:
+      - "Plano de Recuperação de Desastres aprovado implementado, e devidamente atualizado."
+    questions:
+      - id: GR.PP-3-S-Q1
+        text: "A empresa tem um Plano de Recuperação de Desastres aprovado, em prática e atualizado, que diz quem faz o quê?"
+        explanation: "O plano diz como recuperar os sistemas e a informação depois de um desastre, como um incêndio ou um ataque grave."
+        example: "Um plano que explica como repor os servidores a partir das cópias de segurança e quem o faz."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: GR.SP-2-E
+    title: "Rever a estratégia de gestão de riscos"
+    level: high
+    technical: false
+    evidence:
+      - "Evidência de que a entidade tem atualizado o quadro de ameaças e que revê e adapta a estratégia de gestão dos riscos em conformidade."
+    questions:
+      - id: GR.SP-2-E-Q1
+        text: "A estratégia de gestão dos riscos de cibersegurança é revista com regularidade e ajustada quando os riscos mudam?"
+        explanation: "Os riscos mudam com novos sistemas, clientes ou ameaças, e a estratégia tem de acompanhar."
+        example: "Uma revisão anual da estratégia, registada em ata, com as alterações decididas."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: GR.SP-3-E
+    title: "Avaliar se a gestão de riscos funciona"
+    level: high
+    technical: false
+    evidence:
+      - "Registo da definição de mecanismos para avaliar o desempenho da gestão dos riscos de cibersegurança."
+    questions:
+      - id: GR.SP-3-E-Q1
+        text: "A empresa tem uma forma definida de avaliar se a gestão dos riscos de cibersegurança está a dar resultado?"
+        explanation: "É preciso medir se as medidas tomadas reduzem mesmo os riscos."
+        example: "Indicadores como o número de incidentes por ano ou a percentagem de riscos tratados dentro do prazo."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: GR.CA-1-E
+    title: "Política de riscos da cadeia de abastecimento"
+    level: high
+    technical: false
+    evidence:
+      - "Política e procedimento de Gestão de Riscos da Cadeia de Abastecimento aprovados, implementados e atualizados."
+    questions:
+      - id: GR.CA-1-E-Q1
+        text: "A empresa tem uma Política de Gestão de Riscos da Cadeia de Abastecimento aprovada, aplicada e revista, com o respetivo procedimento?"
+        explanation: "A cadeia de abastecimento são os fornecedores e prestadores de serviços: um problema num deles pode afetar a empresa."
+        example: "Uma política que define como se escolhem e acompanham os fornecedores de informática."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: GR.CA-3-S
+    title: "Riscos dos fornecedores na gestão de riscos"
+    level: substantial
+    technical: false
+    evidence:
+      - "Registo documentado da identificação, aprovação, gestão e atualização dos riscos de cibersegurança associados à cadeia de abastecimento."
+    questions:
+      - id: GR.CA-3-S-Q1
+        text: "A empresa identifica e gere os riscos de cibersegurança dos seus fornecedores, e atualiza-os quando algo muda?"
+        explanation: "Um fornecedor com falhas de segurança pode ser a porta de entrada de um ataque à empresa."
+        example: "Quando se muda de fornecedor de software, avalia-se de novo o risco associado."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: GR.CA-3-S-Q2
+        text: "Os riscos dos fornecedores fazem parte da gestão de riscos geral da empresa?"
+        explanation: "Os riscos dos fornecedores devem ser tratados como os restantes riscos da empresa, e não à parte."
+        example: "O mapa de riscos da empresa inclui o risco de o fornecedor de alojamento ser atacado."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: GR.CA-5-S
+    title: "Segurança nos contratos com fornecedores"
+    level: substantial
+    technical: false
+    evidence:
+      - "Modelos de contratos/acordos contendo cláusulas específicas de requisitos de cibersegurança."
+    questions:
+      - id: GR.CA-5-S-Q1
+        text: "Os contratos com fornecedores incluem requisitos de cibersegurança e a forma de partilhar informação sensível?"
+        explanation: "O contrato deve dizer o que o fornecedor tem de cumprir para proteger a informação da empresa."
+        example: "O contrato com a empresa de manutenção informática obriga a avisar em 24 horas se houver um incidente."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: GR.CA-5-E
+    title: "Avaliar e corrigir a segurança dos fornecedores"
+    level: high
+    technical: false
+    evidence:
+      - "Modelos de contratos/acordos contendo cláusulas específicas que permitam a avaliação contínua da cibersegurança dos fornecedores e a correção de eventuais falhas identificadas."
+    questions:
+      - id: GR.CA-5-E-Q1
+        text: "Os contratos com fornecedores permitem avaliar continuamente a sua cibersegurança e exigir a correção de falhas?"
+        explanation: "Assim a empresa pode verificar o fornecedor ao longo do contrato e obrigá-lo a corrigir problemas."
+        example: "Uma cláusula que permite auditorias anuais e dá 30 dias ao fornecedor para corrigir falhas encontradas."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: GR.CA-6-E
+    title: "Verificar fornecedores antes de contratar"
+    level: high
+    technical: false
+    evidence:
+      - "Registo dos processos de devida diligência realizados antes da contratação."
+    questions:
+      - id: GR.CA-6-E-Q1
+        text: "Antes de contratar um fornecedor, a empresa verifica, sempre que possível, se ele é seguro?"
+        explanation: "Verificar antes de contratar (devida diligência) evita trazer riscos para dentro da empresa."
+        example: "Pedir ao fornecedor de serviços na nuvem as certificações de segurança antes de assinar."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: GR.CA-7-B
+    title: "Avaliar os riscos dos fornecedores"
+    level: basic
+    technical: false
+    evidence:
+      - "Registo documentado das avaliações do risco da cadeia de abastecimento."
+    questions:
+      - id: GR.CA-7-B-Q1
+        text: "A empresa avalia os riscos de cibersegurança dos seus fornecedores pelo menos uma vez por ano, ou sempre que se justifique?"
+        explanation: "Os fornecedores mudam e as suas falhas também podem mudar, por isso a avaliação deve ser regular."
+        example: "Uma vez por ano, revê-se a lista de fornecedores críticos e o risco que cada um representa."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: GR.CA-7-S
+    title: "Reduzir os riscos dos fornecedores"
+    level: substantial
+    technical: false
+    evidence:
+      - "Registo das medidas de mitigação aplicadas face aos riscos identificados durante o processo de avaliação do risco da cadeia de abastecimento."
+    questions:
+      - id: GR.CA-7-S-Q1
+        text: "A empresa toma medidas para reduzir os riscos encontrados na avaliação dos fornecedores?"
+        explanation: "Avaliar os riscos só serve se, depois, se fizer alguma coisa para os reduzir."
+        example: "Depois da avaliação, pede-se a um fornecedor que passe a usar autenticação com dois fatores."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: GR.CA-7-E
+    title: "Avaliar a cibersegurança dos fornecedores"
+    level: high
+    technical: false
+    evidence:
+      - "Registo da avaliação de cibersegurança dos fornecedores em conformidade com o nível de exigência requerido, nomeadamente:"
+      - "Certificados válidos no âmbito do Selo de Maturidade Digital; Relatórios de auditorias realizadas; Resultados de testes realizados no âmbito da cibersegurança."
+    questions:
+      - id: GR.CA-7-E-Q1
+        text: "A empresa avalia a cibersegurança dos seus fornecedores com o rigor que cada um exige?"
+        explanation: "Os fornecedores mais críticos devem ser avaliados com mais detalhe do que os restantes."
+        example: "Um questionário de segurança para todos os fornecedores e uma auditoria aos mais críticos."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: GR.CA-8-S
+    title: "Contactos dos fornecedores nos planos de incidentes"
+    level: substantial
+    technical: false
+    evidence:
+      - "Registo da inclusão do pessoal-chave dos fornecedores nas atividades previstas nos Plano de Resposta a Incidentes e no Plano de Recuperação de Desastres."
+    questions:
+      - id: GR.CA-8-S-Q1
+        text: "Os planos de resposta a incidentes e de recuperação de desastres indicam as pessoas-chave dos fornecedores que participam?"
+        explanation: "Num incidente, é preciso saber logo quem contactar em cada fornecedor."
+        example: "O plano tem o nome e o telefone do técnico do fornecedor de alojamento que ajuda na recuperação."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: GR.CA-8-E
+    title: "Fornecedores nos testes dos planos"
+    level: high
+    technical: false
+    evidence:
+      - "Registo de testes e exercícios ao Plano de Resposta a Incidentes e Plano de Recuperação de Desastres com a inclusão do pessoalchave dos fornecedores."
+    questions:
+      - id: GR.CA-8-E-Q1
+        text: "As pessoas-chave dos fornecedores participam nos exercícios e testes dos planos de resposta a incidentes e de recuperação de desastres?"
+        explanation: "Testar com os fornecedores confirma que a ajuda deles chega a tempo quando é precisa."
+        example: "Na simulação anual de um ataque, o fornecedor de alojamento participa e repõe um servidor."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: ID.GA-1-B
+    title: "Inventário de equipamentos"
+    level: basic
+    technical: true
+    evidence:
+      - "Inventário atualizado de equipamentos e recursos físicos."
+    questions:
+      - id: ID.GA-1-B-Q1
+        text: "A empresa tem uma lista atualizada dos seus equipamentos (computadores, servidores, routers, telemóveis)?"
+        explanation: "Só se protege o que se sabe que existe. A lista deve estar escrita e ser atualizada quando algo muda."
+        example: "Uma folha de cálculo com cada computador, quem o usa, onde está e quando foi comprado."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: ID.GA-1-E
+    title: "Ferramenta para gerir os equipamentos"
+    level: high
+    technical: true
+    evidence:
+      - "Evidência técnica da ferramenta de inventariação e de suporte à gestão de equipamentos e os demais recursos físicos."
+    questions:
+      - id: ID.GA-1-E-Q1
+        text: "A empresa usa uma ferramenta informática de gestão do inventário de equipamentos?"
+        explanation: "Uma ferramenta mantém o inventário atualizado com menos esforço e menos erros do que uma lista feita à mão."
+        example: "Um programa de gestão de ativos que deteta automaticamente os computadores ligados à rede."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: ID.GA-2-B
+    title: "Inventário de software e aplicações"
+    level: basic
+    technical: true
+    evidence:
+      - "Inventário atualizado de recursos lógicos."
+    questions:
+      - id: ID.GA-2-B-Q1
+        text: "A empresa tem uma lista atualizada dos programas e aplicações que usa ou de que é dona?"
+        explanation: "Inclui os programas instalados e os serviços usados pela internet, como o email ou a faturação."
+        example: "Uma lista com o Windows, o Office, o programa de faturação e o serviço de email, com a versão de cada um."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: ID.GA-2-E
+    title: "Ferramenta para gerir o software"
+    level: high
+    technical: true
+    evidence:
+      - "Evidência técnica da ferramenta de inventariação e de suporte à gestão de recursos lógicos."
+    questions:
+      - id: ID.GA-2-E-Q1
+        text: "A empresa usa uma ferramenta informática de gestão do inventário de software e aplicações?"
+        explanation: "Uma ferramenta mostra que programas estão instalados em cada máquina sem ter de os contar à mão."
+        example: "Um sistema que lista os programas instalados em todos os computadores e avisa quando aparece um novo."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: ID.GA-3-S
+    title: "Mapa da rede interna"
+    level: substantial
+    technical: true
+    evidence:
+      - "Diagramas de rede e sistemas e de fluxos de comunicação internos"
+    questions:
+      - id: ID.GA-3-S-Q1
+        text: "A empresa tem diagramas da sua rede e dos fluxos de comunicação entre os sistemas internos?"
+        explanation: "O desenho da rede mostra como os equipamentos estão ligados, o que ajuda a encontrar pontos fracos."
+        example: "Um esquema com o router, o servidor, os computadores e as ligações entre eles."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: ID.GA-3-E
+    title: "Mapa das comunicações com o exterior"
+    level: high
+    technical: true
+    evidence:
+      - "Diagramas de rede e sistemas e de fluxos de comunicação externos aprovados e atualizados."
+    questions:
+      - id: ID.GA-3-E-Q1
+        text: "As comunicações dos sistemas da empresa com o exterior estão mapeadas, aprovadas e atualizadas?"
+        explanation: "Saber que sistemas falam com o exterior, e com quem, ajuda a detetar ligações que não deviam existir."
+        example: "Um documento que diz que só o servidor de email e o de faturação comunicam com a internet, e para onde."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: ID.GA-4-B
+    title: "Serviços de fornecedores no inventário"
+    level: basic
+    technical: false
+    evidence:
+      - "Inventário de ativos que inclua os serviços prestados por fornecedores que a entidade utiliza e depende."
+    questions:
+      - id: ID.GA-4-B-Q1
+        text: "O inventário de ativos inclui os serviços prestados por fornecedores de que a empresa depende?"
+        explanation: "Serviços externos, como o alojamento do site ou o email na nuvem, também são ativos a proteger."
+        example: "O inventário inclui o serviço de email na nuvem e o fornecedor de internet, além dos equipamentos."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: ID.GA-5-B
+    title: "Classificar os ativos pela importância"
+    level: basic
+    technical: false
+    evidence:
+      - "Registo da classificação dos ativos de acordo com a sua criticidade e valor."
+    questions:
+      - id: ID.GA-5-B-Q1
+        text: "Os ativos estão classificados pela sua importância (criticidade) e valor para a empresa?"
+        explanation: "Os ativos mais importantes merecem mais proteção do que os restantes."
+        example: "O servidor de faturação está marcado como crítico e a impressora da receção como pouco importante."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: ID.GA-6-E
+    title: "Identificar e classificar os dados"
+    level: high
+    technical: false
+    evidence:
+      - "Registo da identificação e classificação dos dados e respetivos metadados, de acordo com a Política de Classificação e Gestão de Dados."
+    questions:
+      - id: ID.GA-6-E-Q1
+        text: "A empresa identificou os dados que trata e classificou-os segundo a sua Política de Classificação e Gestão de Dados?"
+        explanation: "Saber que dados existem e quão sensíveis são permite protegê-los na medida certa."
+        example: "Os dados de clientes estão marcados como confidenciais e os catálogos de produtos como públicos."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: ID.GA-7-B
+    title: "Atualizações de segurança e manutenção"
+    level: basic
+    technical: true
+    evidence:
+      - "Evidência técnica das atualizações de segurança e aplicação de patches nas aplicações e sistemas. Evidência técnica de aplicação de controlos compensatórios, que sejam aplicados de acordo com uma análise de risco, na eventual impossibilidade de realização de atualizações de segurança e de aplicação de patches. Registo da execução de manutenções de equipamentos e demais recursos físicos."
+      - "Registo da aprovação das ações de manutenção de software e hardware."
+    questions:
+      - id: ID.GA-7-B-Q1
+        text: "Os sistemas e aplicações recebem atualizações de segurança com regularidade, ou outras proteções quando não é possível atualizar?"
+        explanation: "As atualizações corrigem falhas que os atacantes usam. Quando um sistema não pode ser atualizado, é preciso protegê-lo de outra forma."
+        example: "As atualizações do Windows instalam-se todos os meses; uma máquina antiga que não pode ser atualizada fica isolada da internet."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: ID.GA-7-B-Q2
+        text: "Os equipamentos têm manutenção periódica, e as ações de manutenção de software e hardware são aprovadas?"
+        explanation: "A manutenção evita avarias, e aprová-la garante que ninguém mexe nos sistemas sem autorização."
+        example: "Um registo das revisões feitas aos servidores, cada uma autorizada pelo responsável de informática."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: ID.GA-7-S
+    title: "Política de ciclo de vida dos ativos"
+    level: substantial
+    technical: false
+    evidence:
+      - "Política de Gestão do Ciclo de Vida de Ativos aprovada e implementada."
+      - "Registo documentado do planeamento das ações de manutenção e reparações de componentes críticos dos sistemas, em conformidade com a Política de Gestão do Ciclo de Vida de Ativos."
+    questions:
+      - id: ID.GA-7-S-Q1
+        text: "A empresa tem uma Política de Gestão do Ciclo de Vida de Ativos aprovada, que trata da perda, mau uso, dano ou roubo de ativos?"
+        explanation: "A política diz como se gere um ativo desde que é comprado até ser abatido, incluindo o que fazer se for perdido ou roubado."
+        example: "Uma política que diz o que fazer quando um portátil é roubado: avisar, bloquear o acesso e apagar os dados à distância."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: ID.GA-7-S-Q2
+        text: "A manutenção preventiva e as reparações dos componentes críticos são planeadas, feitas e registadas segundo essa política?"
+        explanation: "Planear a manutenção dos sistemas mais importantes evita que falhem quando são mais precisos."
+        example: "Um calendário de manutenção dos servidores e um registo de cada reparação feita."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: ID.GA-8-S
+    title: "Destruir dados de forma segura"
+    level: substantial
+    technical: true
+    evidence:
+      - "Registo da inclusão de medidas para a destruição dos dados dos sistemas críticos e das informações sensíveis na Política de Classificação e Gestão de Dados."
+    questions:
+      - id: ID.GA-8-S-Q1
+        text: "Os dados dos sistemas críticos e a informação sensível são destruídos como manda a Política de Classificação e Gestão de Dados?"
+        explanation: "Apagar um ficheiro não chega: os dados podem ser recuperados de discos ou papéis deitados fora."
+        example: "Os discos dos computadores abatidos são destruídos por uma empresa certificada, que entrega um certificado."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: ID.GA-8-E
+    title: "Documentar e testar a destruição de dados"
+    level: high
+    technical: true
+    evidence:
+      - "Registo do processo de sanitização e dos testes realizados."
+    questions:
+      - id: ID.GA-8-E-Q1
+        text: "Os processos de destruição de dados, em papel e digitais, estão documentados e testados para confirmar que funcionam?"
+        explanation: "Testar confirma que os dados destruídos não podem mesmo ser recuperados."
+        example: "Depois de apagar um disco, tenta-se recuperar os dados com uma ferramenta própria para confirmar que não é possível."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: ID.GA-9-E
+    title: "Gestão de alterações aos sistemas"
+    level: high
+    technical: true
+    evidence:
+      - "Registo do processo documentado de gestão de alterações que inclua, pelo menos, a avaliação e aprovação prévia das regras para a realização de alterações."
+      - "Registo do resultado dos testes e da validação às alterações efetuadas antes da sua implementação em produção."
+      - "Evidência de uma gestão do quotidiano que reflita atualizações de procedimentos quando existam alterações."
+    questions:
+      - id: ID.GA-9-E-Q1
+        text: "A empresa tem regras para avaliar e aprovar antes as alterações aos seus sistemas?"
+        explanation: "Uma alteração feita sem avaliação pode parar um serviço ou abrir uma falha de segurança."
+        example: "Antes de mudar a configuração do servidor, o pedido é avaliado e aprovado pelo responsável."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: ID.GA-9-E-Q2
+        text: "As alterações são testadas antes de chegarem aos sistemas em produção, e os procedimentos são atualizados a seguir?"
+        explanation: "Testar evita surpresas, e atualizar os procedimentos garante que a documentação corresponde ao que existe."
+        example: "Uma nova versão do programa de faturação é testada num computador à parte antes de ser instalada para todos."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: ID.AR-1-B
+    title: "Identificar vulnerabilidades"
+    level: basic
+    technical: true
+    evidence:
+      - "Registo documentado das vulnerabilidades identificadas"
+    questions:
+      - id: ID.AR-1-B-Q1
+        text: "A empresa identifica as vulnerabilidades (falhas de segurança) dos seus equipamentos e programas?"
+        explanation: "Uma vulnerabilidade é uma falha que um atacante pode usar para entrar ou causar danos."
+        example: "Um registo das falhas encontradas, como um router com a palavra-passe de fábrica."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: ID.AR-1-S
+    title: "Política de gestão de vulnerabilidades"
+    level: substantial
+    technical: true
+    evidence:
+      - "Política de Monitorização, Identificação e Documentação das Vulnerabilidades aprovada e implementada."
+    questions:
+      - id: ID.AR-1-S-Q1
+        text: "A empresa tem uma Política de Monitorização, Identificação e Documentação das Vulnerabilidades dos sistemas críticos, aprovada e com um processo em prática?"
+        explanation: "A política define como e com que frequência se procuram e registam as falhas dos sistemas mais importantes."
+        example: "Uma política que manda verificar as vulnerabilidades dos servidores todos os meses e registar o resultado."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: ID.AR-1-E
+    title: "Monitorização contínua e testes de intrusão"
+    level: high
+    technical: true
+    evidence:
+      - "Evidência técnica de ferramentas de identificação e monitorização contínua das vulnerabilidades."
+      - "Registo do resultado da realização regular de testes de intrusão."
+    questions:
+      - id: ID.AR-1-E-Q1
+        text: "A empresa usa ferramentas que procuram vulnerabilidades nos seus ativos de forma contínua?"
+        explanation: "Ferramentas automáticas detetam falhas novas assim que aparecem, sem esperar por uma verificação manual."
+        example: "Um programa que analisa a rede todas as semanas e avisa quando encontra uma falha."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: ID.AR-1-E-Q2
+        text: "A empresa faz testes de intrusão regulares?"
+        explanation: "Num teste de intrusão, especialistas tentam entrar nos sistemas como faria um atacante, para descobrir falhas."
+        example: "Uma empresa especializada faz um teste de intrusão por ano e entrega um relatório."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: ID.AR-4-B
+    title: "Probabilidade e impacto das ameaças"
+    level: basic
+    technical: false
+    evidence:
+      - "Critérios para determinar a probabilidade das ameaças e para a avaliar os potenciais impactos das mesmas."
+    questions:
+      - id: ID.AR-4-B-Q1
+        text: "Na gestão de riscos, a empresa regista a probabilidade de cada ameaça acontecer e o impacto que teria?"
+        explanation: "Estimar a probabilidade e o impacto ajuda a perceber quais as ameaças mais graves."
+        example: "Um ataque de ransomware (um programa que bloqueia os ficheiros e pede um resgate) tem probabilidade média e impacto alto, porque pararia a produção."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: ID.AR-5-B
+    title: "Avaliar os riscos"
+    level: basic
+    technical: false
+    evidence:
+      - "Evidência da gestão quotidiana que demonstre realização de avaliações do risco tendo como base a análise de ameaças, vulnerabilidades, probabilidades e impactos nos processos e ativos organizacionais"
+    questions:
+      - id: ID.AR-5-B-Q1
+        text: "A empresa avalia os riscos com base nas ameaças, vulnerabilidades, probabilidade e impacto, incluindo os ativos dos serviços críticos?"
+        explanation: "A avaliação junta tudo o que pode correr mal para decidir onde atuar."
+        example: "Uma análise de riscos anual que cobre os sistemas de faturação, produção e email."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: ID.AR-5-S
+    title: "Avaliação de riscos contínua"
+    level: substantial
+    technical: false
+    evidence:
+      - "Registo documentado da avaliação do risco e respetiva atualização, tendo por base os critérios definidos na metodologia."
+    questions:
+      - id: ID.AR-5-S-Q1
+        text: "As avaliações de risco são feitas, registadas e atualizadas de forma contínua, segundo a metodologia da empresa?"
+        explanation: "Os riscos mudam ao longo do ano, por isso a avaliação deve acompanhar essas mudanças."
+        example: "A análise de riscos é atualizada sempre que entra um sistema novo, e não só uma vez por ano."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: ID.AR-6-B
+    title: "Controlos para os riscos identificados"
+    level: basic
+    technical: true
+    evidence:
+      - "Evidência técnica da implementação de controlos de segurança para os riscos identificados."
+    questions:
+      - id: ID.AR-6-B-Q1
+        text: "A empresa aplicou medidas de segurança para os riscos que identificou?"
+        explanation: "Para cada risco importante deve haver uma medida que o reduza."
+        example: "Para o risco de perda de dados, a empresa passou a fazer cópias de segurança diárias."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: ID.AR-6-S
+    title: "Planear e acompanhar as respostas aos riscos"
+    level: substantial
+    technical: false
+    evidence:
+      - "Registo da identificação, priorização, planeamento, acompanhamento e comunicação das respostas aos riscos."
+    questions:
+      - id: ID.AR-6-S-Q1
+        text: "As respostas aos riscos são priorizadas, planeadas, acompanhadas e comunicadas?"
+        explanation: "Um plano com prioridades, prazos e responsáveis garante que as medidas são mesmo aplicadas."
+        example: "Uma lista de medidas com o responsável e o prazo de cada uma, revista mensalmente."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: ID.AR-6-E
+    title: "Melhorar continuamente as respostas aos riscos"
+    level: high
+    technical: false
+    evidence:
+      - "Registo da inclusão de um plano de monitorização, revisão e melhoria contínua, na estratégia de tratamento dos riscos."
+    questions:
+      - id: ID.AR-6-E-Q1
+        text: "A estratégia de tratamento dos riscos inclui um plano para monitorizar, rever e melhorar as respostas aos riscos?"
+        explanation: "É preciso confirmar que as medidas funcionam e ajustá-las quando não chegam."
+        example: "Todos os trimestres verifica-se se as medidas reduziram os riscos e decidem-se melhorias."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: ID.AR-7-B
+    title: "Tratar as vulnerabilidades conhecidas"
+    level: basic
+    technical: true
+    evidence:
+      - "Registo da identificação e de tratamento das vulnerabilidades."
+    questions:
+      - id: ID.AR-7-B-Q1
+        text: "A empresa corrige as vulnerabilidades de que tem conhecimento?"
+        explanation: "Uma falha conhecida e não corrigida é das formas mais fáceis de um atacante entrar."
+        example: "Quando o fabricante do router avisa de uma falha, a empresa instala a correção."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: ID.AR-7-S
+    title: "Processo de gestão de vulnerabilidades"
+    level: substantial
+    technical: true
+    evidence:
+      - "Registo dos processos de gestão de vulnerabilidades que incluam processamento, análise e correção de vulnerabilidades de fontes internas e externas, o qual deve estar alinhado com a Instrução Técnica de Divulgação Coordenada de Vulnerabilidades."
+    questions:
+      - id: ID.AR-7-S-Q1
+        text: "A empresa tem um processo para receber, analisar e corrigir vulnerabilidades vindas de fontes internas e externas?"
+        explanation: "As falhas podem ser descobertas pela equipa, por fornecedores ou por alertas públicos, e todas devem ser tratadas."
+        example: "Os alertas do CNCS e dos fabricantes são registados, analisados e corrigidos por ordem de gravidade."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: ID.AR-7-S-Q2
+        text: "Esse processo segue a Instrução Técnica de Divulgação Coordenada de Vulnerabilidades do CNCS?"
+        explanation: "A instrução técnica do CNCS diz como receber e tratar falhas comunicadas por terceiros."
+        example: "A empresa tem um contacto público para quem descobrir uma falha a poder comunicar, como pede a instrução."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: ID.AR-7-E
+    title: "Análise sistemática e acompanhamento automático"
+    level: high
+    technical: true
+    evidence:
+      - "Registo do resultado da análise e avaliação das vulnerabilidades identificadas."
+      - "Evidência técnica da implementação de mecanismos automatizados para a divulgação e acompanhamento dos esforços de correção de vulnerabilidades."
+    questions:
+      - id: ID.AR-7-E-Q1
+        text: "As vulnerabilidades registadas são analisadas e avaliadas de forma sistemática?"
+        explanation: "Todas as falhas registadas devem ser avaliadas segundo os mesmos critérios, sem exceções."
+        example: "Cada falha registada recebe uma gravidade e um prazo de correção."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: ID.AR-7-E-Q2
+        text: "A empresa usa meios automáticos para comunicar e acompanhar a correção das vulnerabilidades junto das partes interessadas?"
+        explanation: "Meios automáticos mostram a quem precisa de saber em que ponto está a correção de cada falha."
+        example: "Uma ferramenta de tickets que avisa automaticamente os responsáveis e mostra o estado de cada correção."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: ID.MC-2-E
+    title: "Melhorias a partir de testes e exercícios"
+    level: high
+    technical: false
+    evidence:
+      - "Registo da realização de testes e exercícios de cibersegurança, incluindo os efetuados com partes interessadas."
+    questions:
+      - id: ID.MC-2-E-Q1
+        text: "A empresa usa os testes e exercícios de cibersegurança para encontrar melhorias, e faz testes com as partes interessadas?"
+        explanation: "Os exercícios mostram o que não funciona como esperado antes de acontecer um incidente real."
+        example: "Depois de uma simulação de ataque com o fornecedor de informática, a empresa atualiza o plano de resposta."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: ID.MC-3-B
+    title: "Lições aprendidas depois de incidentes"
+    level: basic
+    technical: false
+    evidence:
+      - "Registo documentado das avaliações pósincidentes, com identificação de lições aprendidas, definição e implementação de melhorias."
+    questions:
+      - id: ID.MC-3-B-Q1
+        text: "Depois de um incidente, a empresa analisa o que aconteceu para aprender e melhorar os processos e a tecnologia?"
+        explanation: "Cada incidente mostra pontos fracos que se podem corrigir para não se repetirem."
+        example: "Depois de um email falso enganar um colaborador, a empresa fez uma sessão de sensibilização e ativou um filtro de email."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: ID.MC-3-S
+    title: "Melhorias a partir da monitorização"
+    level: substantial
+    technical: false
+    evidence:
+      - "Registo das melhorias derivadas da monitorização e avaliação periódicas nos seus planos e processos de gestão de cibersegurança."
+    questions:
+      - id: ID.MC-3-S-Q1
+        text: "As melhorias que resultam da monitorização e avaliação periódica das medidas de cibersegurança entram nos planos da empresa?"
+        explanation: "Avaliar com regularidade as medidas mostra o que melhorar, e essas melhorias devem ficar planeadas."
+        example: "A revisão semestral das medidas leva a acrescentar ao plano a mudança das palavras-passe de administração."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.GA-1-B
+    title: "Gerir contas e palavras-passe"
+    level: basic
+    technical: true
+    evidence:
+      - "Evidência técnica da gestão de identidades e respetivas credenciais de dispositivos, serviços e utilizadores."
+      - "Política de Gestão de Identidades, Autenticação e Controlo de Acessos aprovada e implementada."
+      - "Política de Palavra-passe aprovada e implementada."
+    questions:
+      - id: PR.GA-1-B-Q1
+        text: "As contas e credenciais de pessoas, equipamentos e serviços são geridas (criadas, alteradas e desativadas de forma controlada)?"
+        explanation: "Cada acesso aos sistemas deve ter um dono conhecido, e as contas que já não são precisas devem ser desativadas."
+        example: "Uma lista das contas de cada sistema, revista quando alguém entra ou sai da empresa."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: PR.GA-1-B-Q2
+        text: "A empresa tem uma Política de Palavra-passe e uma Política de Gestão de Identidades, Autenticação e Controlo de Acessos em prática?"
+        explanation: "Estas políticas dizem como devem ser as palavras-passe e quem pode aceder a quê."
+        example: "As palavras-passe têm pelo menos 12 caracteres e só a contabilidade acede ao programa de salários."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.GA-1-S
+    title: "Contas inativas e uso estranho de credenciais"
+    level: substantial
+    technical: true
+    evidence:
+      - "Evidência técnica da desativação de credenciais dos sistemas, após o período específico de inatividade definido de acordo com a Política de Gestão de Identidades, Autenticação e Controlo de Acessos."
+      - "Registo da monitorização contínua dos sistemas críticos quanto à utilização atípica de credenciais dos sistemas."
+    questions:
+      - id: PR.GA-1-S-Q1
+        text: "As contas sem utilização durante o período definido na política de acessos são desativadas?"
+        explanation: "Contas esquecidas são uma porta de entrada fácil para atacantes."
+        example: "Uma conta sem utilização há 90 dias é desativada, salvo se isso parar um processo crítico."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: PR.GA-1-S-Q2
+        text: "Os sistemas críticos são vigiados para detetar uso estranho de credenciais?"
+        explanation: "Um uso fora do habitual pode indicar que uma palavra-passe foi roubada."
+        example: "Um alerta quando a mesma conta entra a partir de dois países no mesmo dia."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.GA-1-E
+    title: "Gestão automática de credenciais e autenticação entre sistemas"
+    level: high
+    technical: true
+    evidence:
+      - "Evidência técnica de mecanismos automatizados de suporte à gestão de identidades e credenciais dos dispositivos, serviços e utilizadores."
+      - "Evidência técnica da aplicação de autenticação segura nas transações entre sistemas críticos."
+    questions:
+      - id: PR.GA-1-E-Q1
+        text: "As contas e credenciais de pessoas, equipamentos e serviços são geridas por meios automáticos?"
+        explanation: "Meios automáticos criam e retiram acessos sem esquecimentos nem atrasos."
+        example: "Quando alguém sai da empresa, o sistema de recursos humanos desativa automaticamente todas as suas contas."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: PR.GA-1-E-Q2
+        text: "A comunicação entre sistemas críticos usa autenticação segura (dois fatores, certificados ou chaves criptográficas)?"
+        explanation: "Os sistemas também se devem identificar uns aos outros de forma segura, e não só as pessoas."
+        example: "O servidor de faturação só aceita ligações do servidor de base de dados que apresente um certificado válido."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.GA-2-S
+    title: "Confirmar a identidade antes de dar acesso"
+    level: substantial
+    technical: false
+    evidence:
+      - "Registo da implementação de procedimentos de verificação da identidade dos utilizadores, antes da emissão de credenciais."
+    questions:
+      - id: PR.GA-2-S-Q1
+        text: "A empresa confirma a identidade de cada pessoa antes de lhe dar acesso aos sistemas, como diz a política de acessos?"
+        explanation: "Assim evita-se dar acesso a alguém que se faz passar por outra pessoa."
+        example: "A conta de um novo colaborador só é criada depois de os recursos humanos confirmarem o contrato e o documento de identificação."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.GA-2-E
+    title: "Credenciais únicas para sistemas críticos"
+    level: high
+    technical: true
+    evidence:
+      - "Evidência técnica da atribuição de credenciais únicas para cada utilizador, dispositivo ou processo que interaja com sistemas críticos da entidade."
+      - "Registo documentado das exceções à Política de Gestão de Identidades, Autenticação e Controlo de Acessos e a sua respetiva aprovação."
+    questions:
+      - id: PR.GA-2-E-Q1
+        text: "Cada pessoa, equipamento e processo que acede aos sistemas críticos tem as suas próprias credenciais, sem contas partilhadas?"
+        explanation: "Com contas individuais sabe-se sempre quem fez o quê."
+        example: "Cada técnico tem a sua conta de administrador, em vez de todos usarem a mesma conta 'admin'."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: PR.GA-2-E-Q2
+        text: "As exceções a esta regra estão documentadas e aprovadas?"
+        explanation: "Quando uma conta partilhada é inevitável, isso deve ficar registado e autorizado."
+        example: "Uma conta de serviço partilhada por um equipamento industrial, registada e aprovada pelo responsável."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.GA-3-B
+    title: "Dois fatores no acesso remoto e de administração"
+    level: basic
+    technical: true
+    evidence:
+      - "Evidência técnica da implementação de autenticação multifator (MFA) nos acessos remotos e contas privilegiadas."
+    questions:
+      - id: PR.GA-3-B-Q1
+        text: "Os acessos remotos e as contas de administração pedem um segundo fator, além da palavra-passe?"
+        explanation: "Além da palavra-passe, a pessoa confirma quem é com outra coisa, como um código no telemóvel."
+        example: "Para entrar na VPN a partir de casa, é preciso a palavra-passe e um código numa aplicação do telemóvel."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.GA-3-S
+    title: "Autenticação adequada ao risco e dois fatores nos sistemas críticos"
+    level: substantial
+    technical: true
+    evidence:
+      - "Registo da avaliação do risco das comunicações entre sistemas críticos."
+      - "Evidência técnica dos mecanismos de autenticação aplicados aos utilizadores, dispositivos e outros ativos."
+      - "Evidência técnica da implementação de autenticação multifator (MFA) nos sistemas críticos."
+    questions:
+      - id: PR.GA-3-S-Q1
+        text: "A empresa avaliou o risco das comunicações entre os seus sistemas críticos e aplica uma autenticação adequada a esse risco?"
+        explanation: "Quanto mais importante o sistema, mais forte deve ser a forma de confirmar quem lhe acede."
+        example: "Uma análise que levou a exigir certificados nas ligações entre o servidor de produção e o de base de dados."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: PR.GA-3-S-Q2
+        text: "Os sistemas críticos pedem dois fatores de autenticação a quem lhes acede?"
+        explanation: "Nos sistemas mais importantes, a palavra-passe sozinha não chega."
+        example: "Para entrar no programa de gestão, é preciso a palavra-passe e um código no telemóvel."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.GA-3-E
+    title: "Acordos com sistemas externos e dois fatores em tudo"
+    level: high
+    technical: true
+    evidence:
+      - "Modelos de acordos entre a entidade e terceiros para comunicação entre sistemas."
+      - "Evidência técnica da implementação de autenticação multifator (MFA) em todos os seus dispositivos e outros ativos de sistemas de informação, quando possível."
+    questions:
+      - id: PR.GA-3-E-Q1
+        text: "As ligações entre os sistemas da empresa e sistemas externos (parceiros, fornecedores, nuvem) estão definidas num acordo?"
+        explanation: "O acordo diz que dados passam, como e com que proteções."
+        example: "Um acordo com o fornecedor de serviços na nuvem que define como os sistemas trocam dados."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: PR.GA-3-E-Q2
+        text: "Todos os equipamentos e sistemas que o permitem pedem dois fatores de autenticação?"
+        explanation: "Neste nível, os dois fatores deixam de ser só para os sistemas críticos."
+        example: "Os computadores, o email e as aplicações pedem um código no telemóvel além da palavra-passe."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.GA-4-E
+    title: "Proteger as confirmações de identidade"
+    level: high
+    technical: true
+    evidence:
+      - "Evidência técnica da proteção, transmissão e verificação das afirmações de identidade."
+    questions:
+      - id: PR.GA-4-E-Q1
+        text: "As confirmações de identidade trocadas entre sistemas são protegidas, transmitidas de forma segura e verificadas?"
+        explanation: "Quando um sistema diz a outro quem é o utilizador, essa informação não pode ser falsificada nem intercetada."
+        example: "O sistema de entrada única (single sign-on) assina digitalmente cada confirmação, e as aplicações verificam a assinatura."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.GA-5-B
+    title: "Dar só os acessos necessários"
+    level: basic
+    technical: true
+    evidence:
+      - "Registo documentado da definição e evidência técnica da gestão de acessos dos utilizadores aos sistemas da entidade em conformidade com a Política de Gestão de Identidades, Autenticação e Controlo de Acessos."
+      - "Inclusão na Política de Gestão de Identidades, Autenticação e Controlo de Acessos de critérios que garantam a aplicação do princípio do menor privilégio."
+      - "Registo documentado dos utilizadores com privilégios de administração atribuídos e respetiva aprovação."
+    questions:
+      - id: PR.GA-5-B-Q1
+        text: "As permissões de cada pessoa são definidas segundo a política de acessos e revistas periodicamente?"
+        explanation: "Com o tempo, as pessoas acumulam acessos de que já não precisam."
+        example: "Duas vezes por ano, cada chefe confirma os acessos da sua equipa."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: PR.GA-5-B-Q2
+        text: "O acesso a dados e sistemas críticos segue o princípio do menor privilégio (cada pessoa só acede ao que precisa)?"
+        explanation: "Quanto menos acessos cada pessoa tiver, menos estragos faz uma conta roubada."
+        example: "Os comerciais acedem à lista de clientes, mas não aos salários."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: PR.GA-5-B-Q3
+        text: "As contas novas são criadas sem privilégios de administração?"
+        explanation: "Os privilégios de administração só devem ser dados a quem precisa, quando precisa."
+        example: "Os colaboradores usam contas normais e só o técnico tem uma conta de administrador separada."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.GA-5-S
+    title: "Gerir acessos e separar funções"
+    level: substantial
+    technical: true
+    evidence:
+      - "Evidência técnica da implementação de mecanismos para apoiar a gestão do ciclo de vida dos acessos aos sistemas críticos."
+      - "Registo da segregação de perfis de administração de ativos críticos em função da lista de papéis, funções e responsabilidades."
+      - "Registo documentado da atribuição de privilégios elevados a utilizadores."
+    questions:
+      - id: PR.GA-5-S-Q1
+        text: "A empresa tem meios para desativar, vigiar, comunicar e apagar as contas dos sistemas críticos?"
+        explanation: "Estes meios garantem que as contas dos sistemas críticos estão sempre sob controlo."
+        example: "Uma consola central onde se veem e desativam as contas de todos os sistemas críticos."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: PR.GA-5-S-Q2
+        text: "As permissões respeitam a separação de funções (a mesma pessoa não controla sozinha todo um processo sensível)?"
+        explanation: "Separar funções evita que uma única pessoa cometa ou esconda um erro ou uma fraude."
+        example: "Quem cria um pagamento não é a mesma pessoa que o aprova."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: PR.GA-5-S-Q3
+        text: "As contas com privilégios elevados são geridas, documentadas e revistas regularmente?"
+        explanation: "As contas de administrador são as mais perigosas se forem roubadas."
+        example: "Uma lista das contas de administrador, revista todos os trimestres."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.GA-5-E
+    title: "Vigiar acessos fora do habitual e contas privilegiadas"
+    level: high
+    technical: true
+    evidence:
+      - "Evidência técnica da aplicação de restrições e monitorização ativa do contexto em que ocorre a autenticação de utilizadores. Evidência técnica da monitorização das atividades realizadas por utilizadores com privilégios elevados."
+    questions:
+      - id: PR.GA-5-E-Q1
+        text: "A empresa vigia o contexto dos acessos e deteta entradas a partir de equipamentos, locais ou horários fora do habitual?"
+        explanation: "Um acesso a uma hora ou de um local estranho pode indicar que uma conta foi roubada."
+        example: "Um alerta quando alguém entra no sistema às 3 da manhã a partir de outro país."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: PR.GA-5-E-Q2
+        text: "As ações feitas com contas de privilégios elevados são vigiadas?"
+        explanation: "O que um administrador faz pode mudar tudo, por isso deve ficar registado e ser vigiado."
+        example: "Todas as ações das contas de administrador ficam registadas e são revistas semanalmente."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.GA-6-B
+    title: "Zonas de acesso restrito"
+    level: basic
+    technical: false
+    evidence:
+      - "Evidência da definição das zonas de acesso restrito."
+      - "Evidência da aplicação de medidas para proteção das zonas de acesso restrito."
+    questions:
+      - id: PR.GA-6-B-Q1
+        text: "A empresa definiu as zonas onde estão a informação confidencial, a rede ou os sistemas, e protege o acesso físico a elas?"
+        explanation: "Quem entra fisicamente na sala dos servidores pode copiar ou estragar a informação."
+        example: "A sala dos servidores está fechada à chave e só o responsável de informática tem a chave."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.GA-6-S
+    title: "Vigiar o acesso físico e prever emergências"
+    level: substantial
+    technical: false
+    evidence:
+      - "Registo da monitorização do acesso físico a zonas de acesso restrito."
+      - "Registo da definição de medidas para o acesso físico a zonas de acesso restrito a aplicar em situações de emergência."
+    questions:
+      - id: PR.GA-6-S-Q1
+        text: "O acesso físico às zonas restritas é vigiado e registado?"
+        explanation: "Registar quem entra permite saber quem esteve na sala se algo acontecer."
+        example: "Um cartão de acesso que regista cada entrada na sala dos servidores."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: PR.GA-6-S-Q2
+        text: "O acesso às zonas restritas tem medidas previstas para situações de emergência?"
+        explanation: "Numa emergência, como um incêndio, é preciso entrar ou sair sem pôr a segurança em causa."
+        example: "Um procedimento que diz quem pode abrir a sala dos servidores numa emergência e como fica registado."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.GA-6-E
+    title: "Proteção física dos equipamentos"
+    level: high
+    technical: false
+    evidence:
+      - "Evidência técnica da implementação de proteções físicas aos ativos alojados nas zonas críticas."
+    questions:
+      - id: PR.GA-6-E-Q1
+        text: "Os equipamentos que estão nas zonas restritas têm proteção física própria?"
+        explanation: "Além da porta da sala, os próprios equipamentos devem estar protegidos."
+        example: "Os servidores estão num armário fechado à chave dentro da sala."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.GA-7-B
+    title: "Controlar o acesso remoto"
+    level: basic
+    technical: true
+    evidence:
+      - "Registo documentado dos utilizadores e dispositivos autorizados a aceder remotamente a redes e sistemas da entidade."
+      - "Evidência técnica da implementação de controlos de segurança para proteção adequada de ligações remotas aos sistemas da entidade."
+    questions:
+      - id: PR.GA-7-B-Q1
+        text: "A empresa tem uma lista das pessoas e equipamentos autorizados a aceder remotamente às suas redes e sistemas?"
+        explanation: "Só quem está na lista deve conseguir entrar a partir de fora."
+        example: "Uma lista com os colaboradores em teletrabalho e o técnico externo que pode aceder por VPN."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: PR.GA-7-B-Q2
+        text: "Os acessos remotos estão protegidos com medidas de segurança adequadas?"
+        explanation: "Um acesso remoto mal protegido é das formas mais comuns de os atacantes entrarem."
+        example: "O acesso remoto é feito por VPN com dois fatores, e não abrindo o computador diretamente à internet."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.GA-7-S
+    title: "Regras do acesso remoto e manutenção remota"
+    level: substantial
+    technical: true
+    evidence:
+      - "Evidencia técnica da implementação de medidas de segurança para garantir que os acessos remotos ao ambiente dos sistemas críticos da entidade cumprem as restrições de utilização, os requisitos de ligação e as autorizações definidas."
+      - "Evidencia técnica da monitorização das manutenções remotas, e dos acessos autorizados, atribuídos, e revogados após a conclusão da manutenção."
+    questions:
+      - id: PR.GA-7-S-Q1
+        text: "Estão definidas e aplicadas as regras, requisitos de ligação e autorizações para o acesso remoto aos sistemas críticos?"
+        explanation: "As regras dizem quem pode entrar remotamente, a que sistemas e em que condições."
+        example: "Só o técnico de manutenção pode aceder remotamente ao servidor de produção, e apenas a partir de um computador da empresa."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: PR.GA-7-S-Q2
+        text: "O que é feito nas manutenções remotas é vigiado?"
+        explanation: "Assim deteta-se se alguém faz algo que põe em causa a segurança durante a manutenção."
+        example: "As sessões de manutenção remota do fornecedor ficam gravadas e são revistas."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: PR.GA-7-S-Q3
+        text: "Os acessos dados para manutenções remotas são retirados logo que deixam de ser necessários?"
+        explanation: "Um acesso de manutenção esquecido pode ser usado mais tarde por um atacante."
+        example: "O acesso do fornecedor é ativado só no dia da manutenção e desativado no fim."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.GA-7-E
+    title: "Acesso remoto vigiado e por canais seguros"
+    level: high
+    technical: true
+    evidence:
+      - "Evidencia técnica da implementação de canais seguros para acesso remoto (incluindo ações de manutenção)."
+      - "Evidência técnica da recolha e análise dos registos de atividades dos utilizadores em formato remoto aquando do seu acesso aos sistemas críticos da entidade."
+    questions:
+      - id: PR.GA-7-E-Q1
+        text: "O acesso remoto aos sistemas críticos é vigiado e feito por canais seguros, com encriptação forte e protocolos aprovados, incluindo na manutenção remota?"
+        explanation: "A encriptação impede que alguém leia ou altere a comunicação pelo caminho."
+        example: "Todos os acessos remotos passam por uma VPN com encriptação forte e ficam registados."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.FC-1-B
+    title: "Sensibilização de todos para a cibersegurança"
+    level: basic
+    technical: false
+    evidence:
+      - "Registo documentado da participação do pessoal em ações de sensibilização em matéria de cibersegurança."
+    questions:
+      - id: PR.FC-1-B-Q1
+        text: "Todas as pessoas da empresa participam periodicamente em ações de sensibilização sobre cibersegurança?"
+        explanation: "Muitos ataques começam com um email falso; pessoas atentas são a primeira defesa."
+        example: "Uma sessão anual sobre emails falsos e palavras-passe, com registo de presenças."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.FC-1-S
+    title: "Formação sobre incidentes e ameaças internas"
+    level: substantial
+    technical: false
+    evidence:
+      - "Registo documentado da participação periódica do pessoal em ações de formação em matérias de cibersegurança."
+    questions:
+      - id: PR.FC-1-S-Q1
+        text: "As pessoas têm formação periódica sobre o que lhes cabe fazer durante um incidente de cibersegurança?"
+        explanation: "Num incidente, cada pessoa deve saber o que fazer e a quem avisar."
+        example: "Uma formação que explica que, ao ver um ecrã de resgate, se desliga o computador da rede e se avisa o responsável."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: PR.FC-1-S-Q2
+        text: "A formação inclui a forma de reconhecer e comunicar ameaças internas?"
+        explanation: "As ameaças também podem vir de dentro, por exemplo de alguém que copia dados antes de sair."
+        example: "Uma sessão que explica a que sinais estar atento e como comunicar uma suspeita de forma confidencial."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.FC-1-E
+    title: "Medir a eficácia da formação"
+    level: high
+    technical: false
+    evidence:
+      - "Registo da definição dos indicadores para avaliar a eficácia das ações de sensibilização e formação, e recolha dos resultados dos mesmos com a respetiva integração em processos de melhoria continua."
+    questions:
+      - id: PR.FC-1-E-Q1
+        text: "A empresa usa indicadores para medir se a sensibilização e a formação funcionam, e usa os resultados para melhorar?"
+        explanation: "Medir mostra se as pessoas aprenderam e o que é preciso reforçar."
+        example: "Uma campanha de email falso a cada semestre, para medir quantas pessoas clicam, e mais formação para essas pessoas."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.FC-2-B
+    title: "Formação da gerência"
+    level: basic
+    technical: false
+    evidence:
+      - "Registo documentado da participação periódica dos membros dos órgãos de gestão, direção e administração em ações de formação em matéria de cibersegurança."
+    questions:
+      - id: PR.FC-2-B-Q1
+        text: "Os membros da gerência ou administração fazem formação periódica em cibersegurança?"
+        explanation: "A gerência decide os recursos e responde pela cibersegurança, por isso tem de a compreender."
+        example: "A administração faz todos os anos uma formação sobre as obrigações do Regime Jurídico da Cibersegurança."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.FC-2-S
+    title: "Plano de formação para os especialistas"
+    level: substantial
+    technical: false
+    evidence:
+      - "Registo documentado da definição do Plano de sensibilização e formação para pessoal com funções especializadas em cibersegurança, e da respetiva execução do mesmo."
+    questions:
+      - id: PR.FC-2-S-Q1
+        text: "Existe um plano de formação em cibersegurança, atualizado periodicamente, para as pessoas com funções especializadas nesta área?"
+        explanation: "Quem trata da cibersegurança precisa de formação contínua para acompanhar novas ameaças."
+        example: "Um plano anual com os cursos que o técnico de segurança vai fazer."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.SD-1-S
+    title: "Integridade dos dados guardados e dispositivos amovíveis"
+    level: substantial
+    technical: true
+    evidence:
+      - "Evidência técnica da implementação de controlos de verificação da integridade da informação do software e firmware."
+      - "Evidência técnica da configuração da restrição da utilização de suportes de armazenamento amovíveis."
+    questions:
+      - id: PR.SD-1-S-Q1
+        text: "A empresa verifica a integridade da informação, do software e do firmware para detetar alterações não autorizadas?"
+        explanation: "Assim deteta-se se alguém alterou dados ou programas sem autorização."
+        example: "Uma ferramenta que avisa quando um ficheiro de configuração do servidor é alterado."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: PR.SD-1-S-Q2
+        text: "O uso de dispositivos amovíveis (como pens USB) é limitado, como diz a Política de Uso Aceitável?"
+        explanation: "As pens USB podem trazer vírus ou levar dados para fora da empresa."
+        example: "Os computadores só aceitam pens USB autorizadas pela empresa."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.SD-1-E
+    title: "Encriptar a informação sensível guardada"
+    level: high
+    technical: true
+    evidence:
+      - "Evidência técnica da implementação de controlos de segurança, e de mecanismos criptográficos, para proteção da informação armazenada nos sistemas críticos e que seja considerada crítica/sensível."
+    questions:
+      - id: PR.SD-1-E-Q1
+        text: "A informação crítica ou sensível dos sistemas críticos está encriptada quando guardada?"
+        explanation: "Encriptar torna os dados ilegíveis para quem os roube sem a chave."
+        example: "Os discos dos servidores e dos portáteis estão encriptados."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.SD-2-B
+    title: "Encriptar o acesso a informação sensível"
+    level: basic
+    technical: true
+    evidence:
+      - "Evidência técnica da implementação de mecanismos criptográficos para os dados em trânsito."
+    questions:
+      - id: PR.SD-2-B-Q1
+        text: "O acesso a dados e informação crítica ou sensível é feito com encriptação?"
+        explanation: "Sem encriptação, quem estiver na mesma rede pode ler os dados que passam."
+        example: "O programa de gestão só se abre por HTTPS e o email usa ligações encriptadas."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.SD-2-E
+    title: "Proteger toda a informação que sai da empresa"
+    level: high
+    technical: true
+    evidence:
+      - "Evidência técnica da implementação dos controlos de segurança para proteção dos dados em trânsito, de acordo com a classificação, e em conformidade com a Política de Classificação e Gestão de Dados, inclusive nos fluxos de dados e interfaces de comunicação para o exterior."
+    questions:
+      - id: PR.SD-2-E-Q1
+        text: "Todos os fluxos de dados e ligações para o exterior, incluindo dispositivos amovíveis, estão protegidos conforme a classificação da informação, com as exceções registadas?"
+        explanation: "A informação deve estar protegida sempre que sai da empresa, seja pela internet ou numa pen USB."
+        example: "Os ficheiros confidenciais enviados a clientes vão encriptados, e as pens USB da empresa também são encriptadas."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.SD-3-E
+    title: "Impedir a saída indevida de dados"
+    level: high
+    technical: true
+    evidence:
+      - "Evidência técnica da implementação de controlos de segurança adequados para monitorizar os sistemas críticos nas fronteiras externas e nos pontos críticos internos, para evitar acessos e atividades não autorizadas, incluindo exfiltração de dados."
+    questions:
+      - id: PR.SD-3-E-Q1
+        text: "Os sistemas críticos são vigiados nas ligações ao exterior e nos pontos internos mais importantes para impedir acessos indevidos e a saída de dados?"
+        explanation: "Um atacante que entra tenta muitas vezes copiar dados para fora sem ser notado."
+        example: "Uma ferramenta que alerta quando sai uma quantidade de dados fora do normal para a internet."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.SD-4-E
+    title: "Proteção contra ataques de negação de serviço"
+    level: high
+    technical: true
+    evidence:
+      - "Evidência técnica da implementação de controlos de segurança para proteger os sistemas críticos ou limitar o impacto de ataques de negação de serviço."
+    questions:
+      - id: PR.SD-4-E-Q1
+        text: "Os sistemas críticos estão protegidos contra ataques de negação de serviço, ou o seu impacto está limitado?"
+        explanation: "Um ataque de negação de serviço enche um sistema de pedidos falsos até ele deixar de responder."
+        example: "O site e a loja online estão atrás de um serviço de proteção que filtra o tráfego de ataque."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.SD-5-B
+    title: "Cópias de segurança"
+    level: basic
+    technical: true
+    evidence:
+      - "Evidência técnica da execução regular de cópias de segurança, e armazenamento num sistema distinto do dispositivo no qual os dados originais estão alojados."
+    questions:
+      - id: PR.SD-5-B-Q1
+        text: "A empresa faz cópias de segurança regulares dos dados críticos?"
+        explanation: "As cópias de segurança permitem recuperar os dados depois de uma avaria ou de um ataque."
+        example: "Uma cópia diária automática da base de dados de faturação."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: PR.SD-5-B-Q2
+        text: "As cópias de segurança ficam guardadas num sistema diferente do equipamento onde estão os dados originais?"
+        explanation: "Se a cópia estiver no mesmo equipamento, perde-se junto com os dados originais."
+        example: "A cópia do servidor fica num disco externo noutro edifício ou num serviço na nuvem."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.SD-5-S
+    title: "Política de cópias de segurança e testes de recuperação"
+    level: substantial
+    technical: true
+    evidence:
+      - "Política de Cópias de Segurança aprovada e implementada."
+      - "Evidência técnica da verificação e de testes regulares, de acordo com a periodicidade definida na Política de Cópias de Segurança, da integridade das cópias de segurança."
+      - "Evidência técnica da implementação de um esquema de redundância das cópias de segurança, e seu armazenamento em local distinto e protegido."
+    questions:
+      - id: PR.SD-5-S-Q1
+        text: "A empresa tem uma Política de Cópias de Segurança aprovada, com regras formais para fazer as cópias?"
+        explanation: "A política diz o que se copia, com que frequência e onde se guarda."
+        example: "Uma política que diz que a faturação é copiada todos os dias e guardada durante um ano."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: PR.SD-5-S-Q2
+        text: "A disponibilidade e a integridade das cópias são testadas regularmente, de forma independente do sistema protegido?"
+        explanation: "Uma cópia que nunca foi testada pode não servir quando for precisa."
+        example: "Uma vez por mês, recupera-se uma cópia num computador à parte para confirmar que os dados estão completos."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: PR.SD-5-S-Q3
+        text: "Existe um esquema de redundância para as cópias de segurança (mais do que uma cópia de cada conjunto de dados)?"
+        explanation: "Se a única cópia falhar, perde-se tudo; com várias cópias isso não acontece."
+        example: "Cada cópia diária é feita em dois suportes diferentes."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: PR.SD-5-S-Q4
+        text: "As cópias de segurança estão guardadas em locais diferentes, todos com a mesma proteção?"
+        explanation: "Guardar as cópias em sítios diferentes evita perder tudo num único incidente, como um incêndio."
+        example: "Uma cópia num disco no escritório e outra num serviço na nuvem, ambas encriptadas."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.SD-5-E
+    title: "Cópias alinhadas com os planos e separadas por tipo"
+    level: high
+    technical: true
+    evidence:
+      - "Registo de um processo de verificação das cópias de segurança em conformidade com os restantes procedimentos, planos e políticas da entidade."
+      - "Evidência técnica do armazenamento em locais separados, das cópias de segurança dos sistemas críticos e das informações críticas."
+    questions:
+      - id: PR.SD-5-E-Q1
+        text: "A verificação das cópias de segurança está alinhada com os outros planos de cibersegurança, como o de continuidade e o de resposta a incidentes?"
+        explanation: "As cópias são a base para recuperar num incidente, por isso têm de corresponder ao que os planos preveem."
+        example: "O plano de continuidade prevê recuperar a faturação em 4 horas, e os testes às cópias confirmam que é possível."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: PR.SD-5-E-Q2
+        text: "As cópias dos sistemas críticos (sistemas operativos, configurações, aplicações) estão separadas das cópias da informação crítica?"
+        explanation: "Separar as cópias permite recuperar os sistemas e os dados de forma independente."
+        example: "As imagens dos servidores ficam num local e as cópias da base de dados noutro."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.SP-1-B
+    title: "Configuração base segura"
+    level: basic
+    technical: true
+    evidence:
+      - "Registo da configuração base aplicada nos diferentes sistemas e componentes de rede da entidade."
+    questions:
+      - id: PR.SP-1-B-Q1
+        text: "A empresa mantém uma configuração base para as redes e sistemas que inclui princípios de segurança?"
+        explanation: "Uma configuração base é o ponto de partida seguro usado sempre que se instala um sistema."
+        example: "Todos os computadores novos são instalados com a mesma configuração: antivírus, firewall ativa e sem contas de fábrica."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.SP-1-S
+    title: "Configuração base documentada"
+    level: substantial
+    technical: true
+    evidence:
+      - "Evidencia técnica das configurações base de segurança das redes e sistemas de informação."
+    questions:
+      - id: PR.SP-1-S-Q1
+        text: "A configuração base de segurança das redes e sistemas está documentada e atualizada?"
+        explanation: "Documentar a configuração permite repô-la e verificar se algo foi alterado."
+        example: "Um documento com as definições de segurança do servidor e do router, revisto a cada mudança."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.SP-1-E
+    title: "Só o essencial ligado"
+    level: high
+    technical: true
+    evidence:
+      - "Evidência técnica da aplicação do princípio da funcionalidade mínima e desativação de todos os protocolos, portos e serviços desnecessários, aquando da configuração das redes e sistemas da entidade."
+      - "Evidência técnica da implementação de controlos alinhados com os princípios de segurança de “denyall” e “permit by exception”."
+    questions:
+      - id: PR.SP-1-E-Q1
+        text: "Os sistemas críticos têm apenas as funcionalidades necessárias, com os protocolos, portos e serviços desnecessários desligados?"
+        explanation: "Cada serviço ligado sem necessidade é mais uma porta que um atacante pode usar."
+        example: "No servidor de faturação só está ligado o serviço de faturação; a partilha de ficheiros foi desativada."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: PR.SP-1-E-Q2
+        text: "Os controlos de segurança seguem a regra de bloquear tudo e só permitir o que for autorizado?"
+        explanation: "É mais seguro bloquear tudo e abrir só o necessário do que permitir tudo e bloquear o que se lembra."
+        example: "A firewall bloqueia todo o tráfego, exceto as ligações autorizadas uma a uma."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.SP-2-B
+    title: "Registos de atividade (logs)"
+    level: basic
+    technical: true
+    evidence:
+      - "Evidência técnica da recolha, armazenamento e análise regular dos logs dos sistemas da entidade."
+    questions:
+      - id: PR.SP-2-B-Q1
+        text: "Os registos de atividade (logs) dos equipamentos e sistemas são recolhidos, guardados, protegidos e revistos regularmente?"
+        explanation: "Os logs mostram o que aconteceu nos sistemas e são essenciais para investigar um incidente."
+        example: "Os logs do servidor e da firewall são guardados num local central e revistos todas as semanas."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: PR.SP-2-B-Q2
+        text: "O tempo que os logs são guardados foi definido com base no risco de cada sistema?"
+        explanation: "Os sistemas mais importantes justificam guardar os registos durante mais tempo."
+        example: "Os logs dos sistemas críticos são guardados durante um ano e os restantes durante três meses."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.SP-2-S
+    title: "Relógio sincronizado nos registos"
+    level: substantial
+    technical: true
+    evidence:
+      - "Evidencia técnica da sincronização temporal dos logs dos ativos."
+    questions:
+      - id: PR.SP-2-S-Q1
+        text: "Os registos de atividade usam um relógio interno sincronizado com uma fonte oficial de hora?"
+        explanation: "Com a hora certa em todos os sistemas, é possível reconstruir a sequência de um incidente."
+        example: "Todos os servidores acertam a hora pelo mesmo servidor interno, que segue a hora oficial."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.SP-2-E
+    title: "Alertas, capacidade e isolamento dos registos"
+    level: high
+    technical: true
+    evidence:
+      - "Evidência técnica de alarmística para situações de falha de processamento de logs."
+      - "Evidência técnica do armazenamento de logs gerados por sistemas críticos em sistema autónomo."
+    questions:
+      - id: PR.SP-2-E-Q1
+        text: "As falhas no processamento dos registos geram alertas?"
+        explanation: "Se os registos deixarem de ser recolhidos sem ninguém saber, perde-se a informação quando ela for precisa."
+        example: "Um alerta por email quando o servidor de logs deixa de receber registos de um sistema."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: PR.SP-2-E-Q2
+        text: "A capacidade de guardar registos é revista periodicamente e aumentada quando necessário?"
+        explanation: "Sem espaço suficiente, os registos mais antigos são apagados antes do tempo."
+        example: "Uma revisão semestral do espaço ocupado pelos logs, com compra de mais espaço quando falta."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: PR.SP-2-E-Q3
+        text: "Os registos dos sistemas críticos ficam guardados num sistema autónomo, separado desses sistemas?"
+        explanation: "Um atacante que entre num sistema tenta apagar os registos para esconder o que fez."
+        example: "Os logs são enviados para um servidor próprio a que só a equipa de segurança acede."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.SP-3-B
+    title: "Bloquear programas não autorizados e filtrar tráfego"
+    level: basic
+    technical: true
+    evidence:
+      - "Evidência técnica de configuração implementada para impedir a instalação e execução de software não autorizado."
+      - "Evidência técnica da implementação de tecnologias de filtro de rede, e-mail e web."
+    questions:
+      - id: PR.SP-3-B-Q1
+        text: "A empresa impede a instalação e a execução de programas não autorizados?"
+        explanation: "Programas não autorizados podem trazer vírus ou abrir portas a atacantes."
+        example: "Os colaboradores não têm permissões para instalar programas; os pedidos passam pelo técnico."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: PR.SP-3-B-Q2
+        text: "A empresa usa filtros de rede, de email e de navegação na internet?"
+        explanation: "Os filtros bloqueiam emails falsos, anexos perigosos e sites maliciosos antes de chegarem às pessoas."
+        example: "Um filtro de email que bloqueia anexos executáveis e um filtro web que bloqueia sites de risco."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.SP-4-S
+    title: "Segurança no desenvolvimento de software"
+    level: substantial
+    technical: true
+    evidence:
+      - "Evidência técnica da aplicação dos princípios de segurança aplicadas ao ciclo de vida de desenvolvimento de sistemas e aplicações."
+      - "Registos da gestão de alterações aplicável ao desenvolvimento de software."
+    questions:
+      - id: PR.SP-4-S-Q1
+        text: "O desenvolvimento de sistemas e aplicações segue os princípios de segurança desde a conceção e segurança por defeito?"
+        explanation: "Pensar na segurança desde o início sai mais barato e é mais eficaz do que corrigir no fim. Se a empresa não desenvolve software, responda 'sim'."
+        example: "Cada nova funcionalidade da aplicação começa com uma análise do que pode correr mal em termos de segurança."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: PR.SP-4-S-Q2
+        text: "Alterações e exceções no desenvolvimento têm uma análise de impacto na segurança, num ambiente de teste separado, antes de chegar à produção?"
+        explanation: "Testar à parte evita que uma alteração com falhas chegue aos clientes."
+        example: "Uma alteração à loja online é testada num servidor de testes, com verificação de segurança, antes de ser publicada."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.SP-4-E
+    title: "Práticas de desenvolvimento seguro acompanhadas"
+    level: high
+    technical: true
+    evidence:
+      - "Registo dos testes de qualidade de software, respetivas conclusões e acompanhamento da devida integração dos critérios de segurança definidos."
+    questions:
+      - id: PR.SP-4-E-Q1
+        text: "As práticas de desenvolvimento seguro estão integradas em todo o ciclo de desenvolvimento e o seu desempenho é acompanhado?"
+        explanation: "Não basta ter regras: é preciso confirmar que são seguidas e que resultam. Se a empresa não desenvolve software, responda 'sim'."
+        example: "Cada versão passa por uma análise automática de vulnerabilidades no código, e os resultados são acompanhados mensalmente."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.RI-1-B
+    title: "Firewalls, segmentação e redes sem fios"
+    level: basic
+    technical: true
+    evidence:
+      - "Evidência técnica da instalação e ativação de firewalls em todas as redes da entidade."
+      - "Evidência técnica da segmentação e segregação das redes."
+      - "Evidência técnica da configuração segura dos pontos de acesso a redes sem fio da entidade, da sua gestão e monitorização."
+    questions:
+      - id: PR.RI-1-B-Q1
+        text: "Todas as redes da empresa têm firewalls instaladas, configuradas e com as regras atualizadas?"
+        explanation: "A firewall controla o que pode entrar e sair da rede."
+        example: "O router tem a firewall ativa e as regras são revistas sempre que se abre ou fecha um serviço."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: PR.RI-1-B-Q2
+        text: "A rede dos sistemas críticos está separada (segmentada) do resto da rede?"
+        explanation: "Separar a rede impede que um problema num computador de escritório chegue aos sistemas críticos."
+        example: "Os servidores e as máquinas de produção estão numa rede separada da rede dos computadores e dos convidados."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: PR.RI-1-B-Q3
+        text: "As redes sem fios (Wi-Fi) estão configuradas de forma segura, geridas e vigiadas?"
+        explanation: "Um Wi-Fi mal protegido permite que alguém no exterior entre na rede da empresa."
+        example: "O Wi-Fi da empresa usa WPA3 com palavra-passe forte, e os convidados usam uma rede à parte."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.RI-1-S
+    title: "Controlar as ligações dos sistemas críticos"
+    level: substantial
+    technical: true
+    evidence:
+      - "Diagrama de redes da entidade com referência à sua segmentação dos sistemas críticos."
+      - "Demonstração das configurações para bloqueio de ligações não autorizadas aos sistemas críticos."
+      - "Evidência técnica da monitorização de rede das ligações e comunicações aos sistemas críticos."
+    questions:
+      - id: PR.RI-1-S-Q1
+        text: "As ligações entre os componentes dos sistemas críticos estão identificadas, documentadas e controladas, e as ligações externas estão limitadas?"
+        explanation: "Saber e limitar com quem os sistemas críticos falam reduz os caminhos que um atacante pode usar."
+        example: "Um documento com as ligações do servidor de produção, que só pode falar com a base de dados e com o fornecedor."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: PR.RI-1-S-Q2
+        text: "As comunicações nas fronteiras externas e nas principais fronteiras internas dos sistemas críticos são vigiadas e controladas com equipamentos de proteção?"
+        explanation: "Estes equipamentos detetam e bloqueiam tráfego suspeito à entrada e à saída dos sistemas críticos."
+        example: "Uma firewall com deteção de intrusões entre a rede de escritório e a rede de produção."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.RI-1-E
+    title: "Proxy, tolerância a falhas e fluxos de dados"
+    level: high
+    technical: true
+    evidence:
+      - "Evidência técnica da implementação de servidores proxy para a comunicação entre os sistemas críticos e redes externas."
+      - "Evidência técnica da implementação de controlos de segurança para a tolerância a falhas dos dispositivos e tecnologias de proteção."
+      - "Evidência técnica da monitorização dos fluxos de dados dos sistemas críticos."
+    questions:
+      - id: PR.RI-1-E-Q1
+        text: "O tráfego entre os sistemas críticos e as redes externas passa por servidores proxy com autenticação?"
+        explanation: "Um proxy é um intermediário que controla e regista as ligações para fora."
+        example: "Os servidores de produção só acedem à internet através de um proxy que pede autenticação."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: PR.RI-1-E-Q2
+        text: "Os equipamentos e tecnologias de proteção têm controlos de segurança e tolerância a falhas?"
+        explanation: "Se a firewall avariar, a proteção não pode simplesmente desaparecer."
+        example: "Duas firewalls em paralelo, em que a segunda assume se a primeira falhar."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: PR.RI-1-E-Q3
+        text: "A empresa controla os fluxos de dados dos seus sistemas críticos?"
+        explanation: "Controlar os fluxos é saber e limitar que dados entram e saem dos sistemas críticos."
+        example: "Regras que só deixam sair do servidor de produção os relatórios enviados ao cliente."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.RI-2-S
+    title: "Separar desenvolvimento e testes da produção"
+    level: substantial
+    technical: true
+    evidence:
+      - "Evidência técnica da separação de ambientes de teste e de produção."
+    questions:
+      - id: PR.RI-2-S-Q1
+        text: "Os ambientes de desenvolvimento e de teste estão separados do ambiente de produção?"
+        explanation: "Testar em produção pode estragar dados reais ou parar o serviço. Se a empresa não desenvolve nem testa software, responda 'sim'."
+        example: "As alterações à aplicação são testadas num servidor de testes, sem acesso aos dados reais dos clientes."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.RI-3-E
+    title: "Proteção contra incêndios e testes ao ambiente físico"
+    level: high
+    technical: false
+    evidence:
+      - "Evidência técnica da implementação de dispositivos de deteção contra ameaças naturais e registo da realização periódica de testes."
+    questions:
+      - id: PR.RI-3-E-Q1
+        text: "Existem detetores de incêndio que disparam e avisam automaticamente as pessoas indicadas?"
+        explanation: "Um incêndio na sala dos servidores pode destruir os sistemas e os dados."
+        example: "Um detetor de fumo na sala dos servidores que envia uma mensagem ao responsável."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: PR.RI-3-E-Q2
+        text: "A eficácia das proteções do ambiente físico é testada periodicamente?"
+        explanation: "Detetores e outras proteções podem avariar sem ninguém dar por isso."
+        example: "Um teste anual aos detetores de incêndio e ao sistema de alimentação de emergência."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.RI-4-S
+    title: "Resiliência em situações adversas"
+    level: substantial
+    technical: true
+    evidence:
+      - "Evidência técnica da implementação de controlos adequados que permitam a resposta a disrupções de acordo com o Plano de Continuidade de Negócio."
+      - "Evidência técnica da implementação de redundâncias técnicas nos sistemas críticos."
+    questions:
+      - id: PR.RI-4-S-Q1
+        text: "Existem controlos para responder a tempo a interrupções das operações, como prevê o Plano de Continuidade de Negócio?"
+        explanation: "Quando algo falha, a resposta deve seguir o que o plano diz, nos tempos previstos."
+        example: "Se o servidor principal falhar, o servidor de reserva assume em menos de uma hora, como diz o plano."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: PR.RI-4-S-Q2
+        text: "Os sistemas críticos têm mecanismos de disponibilidade, como balanceamento de carga e redundância?"
+        explanation: "Estes mecanismos mantêm os sistemas a funcionar quando um componente falha ou fica sobrecarregado."
+        example: "A loja online corre em dois servidores, e o tráfego é dividido entre eles."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PR.RI-5-S
+    title: "Capacidade suficiente dos sistemas"
+    level: substantial
+    technical: true
+    evidence:
+      - "Registo do planeamento da capacidade dos recursos para o processamento de informações dos sistemas críticos, redes, telecomunicações e armazenamento de dados."
+    questions:
+      - id: PR.RI-5-S-Q1
+        text: "A empresa planeia e garante capacidade suficiente (processamento, rede, telecomunicações, armazenamento) para o volume atual e futuro dos sistemas críticos?"
+        explanation: "Um sistema sem capacidade suficiente fica lento ou para quando o volume aumenta."
+        example: "Uma revisão anual do espaço em disco e da capacidade da rede, com compras planeadas antes de faltar."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: DE.MC-1-B
+    title: "Vigiar o tráfego da rede"
+    level: basic
+    technical: true
+    evidence:
+      - "Evidência técnica de instalação, configuração e atualização de soluções de monitorização de tráfego da rede e proteção contra atividade não autorizada e potencialmente maliciosa."
+    questions:
+      - id: DE.MC-1-B-Q1
+        text: "A empresa tem soluções de vigilância do tráfego da rede (como firewalls) bem configuradas, instaladas e atualizadas para bloquear atividade suspeita?"
+        explanation: "Estas soluções detetam e bloqueiam ligações que podem ser um ataque."
+        example: "A firewall regista e bloqueia tentativas de ligação vindas de endereços conhecidos por fazer ataques."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: DE.MC-1-S
+    title: "Bloquear comunicações não autorizadas"
+    level: substantial
+    technical: true
+    evidence:
+      - "Evidência da monitorização, identificação e bloqueio de comunicações não autorizadas e conteúdo/ações malicioso/maliciosas."
+    questions:
+      - id: DE.MC-1-S-Q1
+        text: "A empresa vigia, identifica e bloqueia comunicações não autorizadas, locais ou remotas, aos sistemas críticos, e remove conteúdo malicioso?"
+        explanation: "Não basta detetar: as comunicações indevidas devem ser bloqueadas e o conteúdo malicioso removido."
+        example: "Um sistema que bloqueia uma ligação estranha ao servidor de produção e coloca em quarentena um ficheiro infetado."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: DE.MC-1-E
+    title: "Vigilância contínua com resposta automática"
+    level: high
+    technical: true
+    evidence:
+      - "Registo de monitorização contínua dos sistemas críticos quanto a potenciais incidentes."
+    questions:
+      - id: DE.MC-1-E-Q1
+        text: "Os sistemas críticos são vigiados de forma contínua, com respostas automáticas quando surgem sinais de incidente?"
+        explanation: "Uma resposta automática trava um ataque em segundos, sem esperar que alguém repare."
+        example: "Quando é detetado ransomware num computador, este é isolado da rede automaticamente."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: DE.MC-2-S
+    title: "Vigiar o ambiente físico"
+    level: substantial
+    technical: false
+    evidence:
+      - "Evidência técnica da monitorização do ambiente físico."
+    questions:
+      - id: DE.MC-2-S-Q1
+        text: "O ambiente físico da empresa é vigiado para detetar situações que possam pôr a segurança em risco?"
+        explanation: "Inclui, por exemplo, entradas indevidas, inundações ou falhas de energia."
+        example: "Câmaras na entrada e um sensor de inundação na sala dos servidores."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: DE.MC-2-E
+    title: "Alarmes e vigilância dos sistemas críticos"
+    level: high
+    technical: false
+    evidence:
+      - "Evidência técnica da implementação de alarmes de intrusão física e equipamento de vigilância no acesso físico aos sistemas e dispositivos críticos."
+      - "Registo de monitorização do acesso físico por equipas independentes."
+    questions:
+      - id: DE.MC-2-E-Q1
+        text: "O acesso físico aos sistemas e dispositivos críticos é vigiado com alarmes de intrusão, equipamento de vigilância e equipas de vigilância independentes?"
+        explanation: "Neste nível, além das instalações, os próprios equipamentos críticos têm vigilância dedicada."
+        example: "A sala dos servidores tem alarme de intrusão e câmaras ligadas a uma empresa de segurança externa."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: DE.MC-4-B
+    title: "Antivírus e proteção dos computadores"
+    level: basic
+    technical: true
+    evidence:
+      - "Evidência técnica da instalação de ferramentas de monitorização de postos cliente, e da sua atualização."
+    questions:
+      - id: DE.MC-4-B-Q1
+        text: "Os computadores e outros equipamentos dos utilizadores têm ferramentas instaladas e atualizadas para detetar atividade maliciosa?"
+        explanation: "São programas como antivírus que detetam vírus e comportamentos suspeitos em cada máquina."
+        example: "Todos os computadores têm um antivírus com atualizações automáticas, gerido a partir de uma consola central."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: DE.MC-5-B
+    title: "Aplicações aprovadas e uso de equipamentos pessoais"
+    level: basic
+    technical: false
+    evidence:
+      - "Registo das aplicações aprovadas para uso em ativos corporativos."
+      - "Documentação da aprovação das exceções."
+      - "Registo da inclusão de critérios para a Utilização de Dispositivos Pessoais no Trabalho (BYOD) na Política de Uso Aceitável."
+    questions:
+      - id: DE.MC-5-B-Q1
+        text: "A empresa tem uma lista de aplicações aprovadas para os seus equipamentos, com as exceções aprovadas e registadas?"
+        explanation: "Saber que aplicações são permitidas ajuda a detetar as que não deviam estar instaladas."
+        example: "Uma lista com as aplicações autorizadas nos telemóveis da empresa, e um registo das exceções aprovadas."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: DE.MC-5-B-Q2
+        text: "Se as pessoas usam equipamentos pessoais no trabalho, a Política de Uso Aceitável define as regras para isso?"
+        explanation: "Telemóveis e computadores pessoais também acedem a dados da empresa e precisam de regras. Se ninguém usa equipamentos pessoais, responda 'sim'."
+        example: "A política diz que o email da empresa no telemóvel pessoal só é permitido com bloqueio de ecrã e código."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: DE.MC-5-S
+    title: "Regras para os telemóveis da empresa"
+    level: substantial
+    technical: false
+    evidence:
+      - "Registo documentado de inclusão na Política de Uso Aceitável de requisitos para a utilização de dispositivos móveis corporativos e registo da monitorização do cumprimento destes requisitos."
+    questions:
+      - id: DE.MC-5-S-Q1
+        text: "A Política de Uso Aceitável tem regras para os dispositivos móveis da empresa, e o cumprimento dessas regras é vigiado?"
+        explanation: "Os telemóveis e tablets da empresa também guardam e acedem a informação, e o seu uso deve ser acompanhado."
+        example: "Um sistema de gestão de telemóveis que avisa quando um aparelho da empresa não tem bloqueio de ecrã."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: DE.MC-5-E
+    title: "Gestão central de software e alertas"
+    level: high
+    technical: true
+    evidence:
+      - "Evidência técnica da ferramenta centralizada de suporte de software."
+      - "Evidência técnica de alarmística relativamente à instalação de software indevido e integração deste processo de gestão de incidentes."
+    questions:
+      - id: DE.MC-5-E-Q1
+        text: "A instalação e o suporte de software são geridos numa ferramenta central?"
+        explanation: "Uma ferramenta central permite saber e controlar o que está instalado em cada equipamento."
+        example: "As aplicações são instaladas a partir de uma consola central, e não diretamente em cada aparelho."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: DE.MC-5-E-Q2
+        text: "A instalação de software indevido gera alertas, tratados no processo de gestão de incidentes?"
+        explanation: "Um alerta permite reagir logo que alguém instala algo que não devia."
+        example: "Quando aparece um programa não autorizado num computador, é aberto automaticamente um pedido de análise."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: DE.MC-6-S
+    title: "Vigiar os acessos de fornecedores"
+    level: substantial
+    technical: true
+    evidence:
+      - "Registo da monitorização de todas as ligações aos sistemas, aplicações ou infraestrutura da entidade, efetuadas por fornecedores ou qualquer entidade externa."
+      - "Registo da avaliação periódica dos prestadores de serviços com acesso às redes e sistemas da entidade por forma a garantir o cumprimento dos requisitos de segurança previamente definidos."
+    questions:
+      - id: DE.MC-6-S-Q1
+        text: "Todas as ligações de fornecedores ou outras entidades externas aos sistemas da empresa são vigiadas e protegidas?"
+        explanation: "Um fornecedor com acesso aos sistemas pode, sem querer, trazer um ataque."
+        example: "O acesso remoto do fornecedor de informática fica registado e só funciona através da VPN da empresa."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: DE.MC-6-S-Q2
+        text: "A empresa confirma de forma contínua que os prestadores de serviços cumprem as suas políticas e os requisitos de segurança dos contratos?"
+        explanation: "Os requisitos assinados no contrato devem ser verificados ao longo do tempo."
+        example: "Uma verificação anual de que o fornecedor de alojamento mantém as medidas de segurança contratadas."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: DE.MC-7-S
+    title: "Vigiar equipamentos, programas e dados em produção"
+    level: substantial
+    technical: true
+    evidence:
+      - "Evidência técnica da recolha de eventos potencialmente adversos."
+    questions:
+      - id: DE.MC-7-S-Q1
+        text: "Os equipamentos, programas, sistemas em produção e os seus dados são vigiados para detetar situações potencialmente perigosas?"
+        explanation: "Vigiar permite detetar cedo falhas, alterações estranhas ou sinais de ataque."
+        example: "Alertas quando um servidor fica sem espaço, um serviço para ou um ficheiro importante é alterado."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: DE.MC-7-E
+    title: "Integridade do hardware e sistema de alertas"
+    level: high
+    technical: true
+    evidence:
+      - "Evidência técnica da monitorização de integridade de hardware dos sistemas críticos."
+      - "Registo da inclusão da deteção de adulteração de hardware dos sistemas críticos no Plano de Resposta a Incidentes."
+      - "Evidência técnica da implementação de sistemas de deteção de falsos positivos na deteção e bloqueio de código e atividades maliciosas."
+    questions:
+      - id: DE.MC-7-E-Q1
+        text: "A empresa verifica a integridade do hardware dos sistemas críticos para detetar adulterações?"
+        explanation: "Um equipamento adulterado pode dar acesso a um atacante mesmo com tudo o resto protegido."
+        example: "Selos de segurança nos servidores, verificados mensalmente."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: DE.MC-7-E-Q2
+        text: "O Plano de Resposta a Incidentes prevê o que fazer quando se deteta hardware adulterado nos sistemas críticos?"
+        explanation: "Sem um procedimento previsto, a reação a um equipamento adulterado fica improvisada."
+        example: "Um passo no plano que manda desligar o servidor, avisar o responsável e chamar o fornecedor quando um selo está partido."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: DE.MC-7-E-Q3
+        text: "A empresa tem um sistema de deteção e alerta de eventos de segurança que distingue os falsos alarmes?"
+        explanation: "Distinguir os falsos alarmes evita que os alertas verdadeiros se percam no meio dos outros."
+        example: "Um sistema que junta os alertas, descarta os conhecidos como inofensivos e destaca os suspeitos."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: DE.AE-1-S
+    title: "Analisar os eventos detetados"
+    level: substantial
+    technical: true
+    evidence:
+      - "Evidência técnica da análise da informação sobre os eventos detetados."
+    questions:
+      - id: DE.AE-1-S-Q1
+        text: "A empresa analisa os eventos detetados para separar os relevantes e identificar a origem, o alvo e o método de ataque?"
+        explanation: "Nem todos os alertas são ataques; a análise separa o que importa e mostra o que aconteceu."
+        example: "Perante várias tentativas falhadas de entrada, o técnico verifica de onde vieram e que conta tentaram usar."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: DE.AE-1-E
+    title: "Análise automática dos eventos"
+    level: high
+    technical: true
+    evidence:
+      - "Evidência técnica da implementação de sistemas automatizados para agregação, correlação e análise dos eventos de segurança detetados."
+    questions:
+      - id: DE.AE-1-E-Q1
+        text: "A empresa tem um sistema automático que junta, relaciona e analisa os eventos de segurança detetados?"
+        explanation: "Um sistema automático relaciona eventos de várias origens que, vistos à parte, pareceriam inofensivos."
+        example: "Uma plataforma (SIEM) que junta os registos da firewall, dos servidores e dos computadores."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: DE.AE-2-B
+    title: "Recolher e guardar os eventos de segurança"
+    level: basic
+    technical: true
+    evidence:
+      - "Evidência técnica da recolha sistemática de eventos."
+      - "Evidência técnica da preservação da informação da análise de eventos através de cópias de segurança."
+    questions:
+      - id: DE.AE-2-B-Q1
+        text: "A recolha de eventos de segurança está ativa nos sistemas e aplicações, e esses eventos são analisados e guardados em cópia durante o tempo definido?"
+        explanation: "Sem eventos guardados não é possível perceber o que aconteceu num incidente."
+        example: "Os registos de segurança do servidor estão ativos, são revistos e copiados para um arquivo durante seis meses."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: DE.AE-2-E
+    title: "Juntar todas as fontes na análise automática"
+    level: high
+    technical: true
+    evidence:
+      - "Registo da integração de toda a informação proveniente das diversas fontes e sensores existentes (incluindo rastreamentos de vulnerabilidades e estatísticas de performance dos sistemas e aplicações) para a agregação, correlação e análise dos eventos de segurança dos ativos críticos da entidade."
+    questions:
+      - id: DE.AE-2-E-Q1
+        text: "O sistema automático de análise de eventos considera as várias fontes e sensores dos ativos críticos?"
+        explanation: "Quantas mais fontes, mais completa é a imagem do que se passa nos sistemas críticos."
+        example: "O SIEM recebe registos da firewall, dos servidores, das aplicações e dos sensores de rede."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: DE.AE-2-E-Q2
+        text: "Esse sistema integra também a informação das análises de vulnerabilidades e o desempenho dos sistemas e aplicações?"
+        explanation: "Juntar as vulnerabilidades e o desempenho ajuda a perceber se um evento é um ataque a uma falha conhecida."
+        example: "O SIEM cruza um alerta num servidor com uma vulnerabilidade conhecida desse servidor."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: DE.AE-3-E
+    title: "Impacto dos eventos na gestão de riscos"
+    level: high
+    technical: false
+    evidence:
+      - "Registo documentado da revisão do processo de gestão dos riscos tendo em o impacto dos eventos de segurança detetados."
+    questions:
+      - id: DE.AE-3-E-Q1
+        text: "O impacto possível dos eventos de segurança detetados (no funcionamento, nas operações, nos ativos ou nas pessoas) é considerado na gestão de riscos?"
+        explanation: "Os eventos reais mostram que riscos se estão a concretizar e quão graves podem ser."
+        example: "Depois de várias tentativas de ataque ao site, o risco de paragem da loja online passa para prioridade alta."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: DE.AE-4-S
+    title: "Partilhar a informação sobre eventos"
+    level: substantial
+    technical: true
+    evidence:
+      - "Registo da disponibilização da informação sobre eventos adversos ao pessoal autorizado."
+    questions:
+      - id: DE.AE-4-S-Q1
+        text: "A informação sobre eventos adversos é dada às pessoas autorizadas e configurada nos sistemas relevantes para deteção, investigação e resposta?"
+        explanation: "Quem tem de investigar ou responder precisa de receber a informação a tempo."
+        example: "Os alertas de segurança chegam por email ao técnico de serviço e ficam registados na ferramenta de incidentes."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: DE.AE-6-B
+    title: "Quando um evento é um incidente"
+    level: basic
+    technical: false
+    evidence:
+      - "Registo da definição dos limites que determinam quando um evento ou correlação de múltiplos eventos configura um incidente."
+    questions:
+      - id: DE.AE-6-B-Q1
+        text: "A empresa definiu a partir de quando um evento, ou um conjunto de eventos, passa a ser considerado um incidente?"
+        explanation: "Definir este limite ajuda a decidir quando ativar o plano de resposta a incidentes."
+        example: "Mais de 10 tentativas de entrada falhadas na mesma conta, ou qualquer ficheiro encriptado sem motivo, é um incidente."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: RS.GI-1-B
+    title: "Executar o plano de resposta a incidentes"
+    level: basic
+    technical: false
+    evidence:
+      - "Registo da inclusão das funções, responsabilidades e competências dos envolvidos no Plano de Resposta a Incidentes."
+    questions:
+      - id: RS.GI-1-B-Q1
+        text: "O Plano de Resposta a Incidentes indica as funções, responsabilidades e competências de cada pessoa, e é posto em prática durante ou logo após um incidente?"
+        explanation: "Ter o plano não chega: tem de ser seguido quando acontece um incidente."
+        example: "No último incidente, a equipa seguiu os passos do plano e registou o que fez em cada um."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: RS.GI-1-S
+    title: "Coordenar a resposta com as partes interessadas"
+    level: substantial
+    technical: false
+    evidence:
+      - "Registo documentado do planeamento e atualização dos processos de resposta a incidentes que incluam requisitos para escalonamento."
+    questions:
+      - id: RS.GI-1-S-Q1
+        text: "A resposta a incidentes é coordenada com as partes interessadas definidas no Plano de Resposta a Incidentes?"
+        explanation: "Fornecedores, clientes ou autoridades podem ter de participar ou ser informados durante a resposta."
+        example: "Durante um ataque, o fornecedor de informática e o responsável de cibersegurança trabalham juntos, como diz o plano."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: RS.GI-2-S
+    title: "Triar e validar os alertas"
+    level: substantial
+    technical: true
+    evidence:
+      - "Registo da triagem e validação das notificações de incidentes."
+    questions:
+      - id: RS.GI-2-S-Q1
+        text: "Os alertas de possíveis incidentes são triados e validados como diz o Plano de Resposta a Incidentes?"
+        explanation: "Triar é confirmar se o alerta é real e quão urgente é, antes de agir."
+        example: "Um alerta do antivírus é verificado pelo técnico, que confirma se é um vírus real e decide a prioridade."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: RS.GI-3-S
+    title: "Classificar os incidentes"
+    level: substantial
+    technical: false
+    evidence:
+      - "Registo da categorização de incidentes e a sua classificação, de acordo com a taxonomia de categorização de incidentes."
+    questions:
+      - id: RS.GI-3-S-Q1
+        text: "Os incidentes são classificados por gravidade e impacto, segundo os critérios do Plano de Resposta a Incidentes e uma taxonomia de incidentes?"
+        explanation: "Classificar os incidentes da mesma forma ajuda a decidir a resposta e a comunicar ao CNCS."
+        example: "A empresa usa a taxonomia da Rede Nacional de CSIRT para classificar cada incidente como, por exemplo, 'malware' ou 'phishing'."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: RS.GI-3-E
+    title: "Procedimentos por tipo de incidente e ferramentas de investigação"
+    level: high
+    technical: true
+    evidence:
+      - "Registo documentado da inclusão de procedimentos de resposta a diferentes tipos de incidente, no Plano de Resposta a Incidentes."
+      - "Evidência técnica da implementação de ferramentas automatizadas de apoio à investigação e avaliação do impacto de incidentes."
+    questions:
+      - id: RS.GI-3-E-Q1
+        text: "O Plano de Resposta a Incidentes tem procedimentos próprios para cada tipo de incidente da taxonomia usada?"
+        explanation: "Um ataque de phishing não se trata da mesma forma que uma falha de energia."
+        example: "O plano tem um procedimento para ransomware, outro para roubo de credenciais e outro para fuga de dados."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: RS.GI-3-E-Q2
+        text: "A empresa usa ferramentas automáticas para investigar e avaliar o impacto dos incidentes confirmados?"
+        explanation: "As ferramentas automáticas aceleram a investigação e dão uma ideia mais rigorosa do impacto."
+        example: "Uma ferramenta que mostra que computadores contactaram o endereço usado no ataque."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: RS.GI-5-S
+    title: "Quando começar a recuperação"
+    level: substantial
+    technical: false
+    evidence:
+      - "Registo de critérios e evidência da sua aplicação na fase inicial da recuperação de incidentes."
+    questions:
+      - id: RS.GI-5-S-Q1
+        text: "Estão definidos e são aplicados critérios para decidir quando começar a recuperação de um incidente?"
+        explanation: "Recuperar antes de o incidente estar controlado pode trazer o problema de volta."
+        example: "A recuperação só começa depois de confirmado que o atacante já não tem acesso aos sistemas."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: RS.AI-1-E
+    title: "Análise forense"
+    level: high
+    technical: true
+    evidence:
+      - "Registo documentado da realização de análises forenses."
+    questions:
+      - id: RS.AI-1-E-Q1
+        text: "A empresa faz análises forenses dos vestígios recolhidos para descobrir a causa dos incidentes?"
+        explanation: "A análise forense examina os vestígios deixados para perceber exatamente o que aconteceu e porquê."
+        example: "Depois de um ataque, os registos e uma cópia do disco afetado são analisados para descobrir por onde o atacante entrou."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: RS.AI-1-E-Q2
+        text: "A empresa tem meios, internos ou externos, disponíveis para fazer análises forenses quando precisa?"
+        explanation: "Num incidente não há tempo para procurar quem faça a análise; os meios devem estar garantidos antes."
+        example: "Um contrato com uma empresa especializada que faz a análise forense em 24 horas quando é chamada."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: RS.AI-2-E
+    title: "Registar as ações da investigação"
+    level: high
+    technical: true
+    evidence:
+      - "Registo documentado das ações realizadas durante a investigação dos incidentes."
+    questions:
+      - id: RS.AI-2-E-Q1
+        text: "As ações feitas durante uma investigação são registadas, com a integridade e a origem dos registos preservadas?"
+        explanation: "Os registos da investigação podem ser precisos como prova, por isso não podem ser alterados."
+        example: "Cada passo da investigação fica num registo com data, hora e autor, guardado sem possibilidade de alteração."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: RS.AI-3-E
+    title: "Recolher e preservar os dados do incidente"
+    level: high
+    technical: true
+    evidence:
+      - "Evidência do armazenamento dos dados e metadados dos incidentes e da implementação de mecanismos que garantam a preservação da integridade e proveniência dos mesmos."
+    questions:
+      - id: RS.AI-3-E-Q1
+        text: "Os dados do incidente são recolhidos e guardados de forma a proteger a sua autenticidade, exatidão e rastreabilidade?"
+        explanation: "Dados bem preservados permitem perceber o incidente e, se for preciso, usá-los em tribunal."
+        example: "Uma cópia do disco do computador atacado é feita com uma ferramenta própria e guardada num cofre digital."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: RS.AI-4-E
+    title: "Estimar o impacto a partir da análise"
+    level: high
+    technical: false
+    evidence:
+      - "Registo da inclusão dos resultados da análise das investigações realizadas, na avaliação de impacto do incidente."
+    questions:
+      - id: RS.AI-4-E-Q1
+        text: "O resultado da análise de cada incidente é usado para avaliar o seu impacto?"
+        explanation: "A análise mostra o que foi afetado, o que permite medir o impacto real do incidente."
+        example: "Depois da análise, confirma-se que só os dados de 20 clientes foram expostos, e o impacto é revisto."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: RS.NC-1-B
+    title: "Comunicar incidentes ao pessoal e às autoridades"
+    level: basic
+    technical: false
+    evidence:
+      - "Evidência da partilha de informações quanto à ocorrência de incidentes."
+    questions:
+      - id: RS.NC-1-B-Q1
+        text: "A empresa informa o seu pessoal dos incidentes, de forma clara e simples?"
+        explanation: "As pessoas devem saber o que aconteceu e o que fazer, para não agravar o problema."
+        example: "Uma mensagem a todos a explicar que o email está em baixo por causa de um ataque e o que fazer entretanto."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: RS.NC-1-B-Q2
+        text: "Os incidentes com impacto significativo são notificados à autoridade competente, como manda o Regime Jurídico da Cibersegurança?"
+        explanation: "A lei obriga a notificar os incidentes significativos, em prazos curtos, ao CNCS ou à autoridade do setor."
+        example: "A empresa sabe como notificar o CNCS e fê-lo nas primeiras 24 horas depois de um ataque que parou a produção."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: RS.NC-1-S
+    title: "Informar as partes externas dentro do prazo"
+    level: substantial
+    technical: false
+    evidence:
+      - "Registo da partilha de informações sobre incidentes com as partes interessadas externas relevantes."
+    questions:
+      - id: RS.NC-1-S-Q1
+        text: "A empresa partilha a informação sobre incidentes com as partes externas relevantes dentro do prazo definido no Plano de Resposta a Incidentes?"
+        explanation: "Clientes ou fornecedores afetados devem ser avisados a tempo para se poderem proteger."
+        example: "O plano diz que os clientes afetados são avisados em 48 horas, e isso foi cumprido no último incidente."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: RS.MI-1-S
+    title: "Conter e resolver os incidentes"
+    level: substantial
+    technical: true
+    evidence:
+      - "Evidência dos processos de contenção de incidentes. Registo de decisões tomadas durante o processo de resposta."
+    questions:
+      - id: RS.MI-1-S-Q1
+        text: "A empresa contém e resolve os incidentes?"
+        explanation: "Conter é impedir que o incidente se espalhe; resolver é eliminar a causa."
+        example: "Um computador infetado é desligado da rede de imediato e limpo antes de voltar a ser usado."
+        answers: ["yes", "partial", "no", "unknown"]
+      - id: RS.MI-1-S-Q2
+        text: "Quando decide não conter ou não resolver um incidente, essa decisão fica registada?"
+        explanation: "Às vezes há motivos para não agir logo, mas a decisão e o motivo devem ficar por escrito."
+        example: "A decisão de manter um servidor ligado durante um ataque, para não parar a produção, fica registada com o nome de quem a tomou."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: RS.MI-2-E
+    title: "Quando o incidente está resolvido"
+    level: high
+    technical: false
+    evidence:
+      - "Registo da inclusão de critérios para declarar a conclusão da resolução do incidente no Plano de Resposta a Incidentes."
+    questions:
+      - id: RS.MI-2-E-Q1
+        text: "O Plano de Resposta a Incidentes tem critérios para declarar que um incidente está resolvido?"
+        explanation: "Critérios claros evitam dar o incidente por terminado antes de tempo."
+        example: "Um incidente só se dá por resolvido quando os sistemas estão limpos, testados e sem sinais de atividade suspeita há 48 horas."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: RC.PR-1-B
+    title: "Procedimentos de recuperação"
+    level: basic
+    technical: false
+    evidence:
+      - "Registo das ações tomadas em resposta a incidentes."
+    questions:
+      - id: RC.PR-1-B-Q1
+        text: "A empresa tem procedimentos para recuperar de incidentes, de acordo com o Plano de Resposta a Incidentes, e segue-os?"
+        explanation: "Os procedimentos dizem, passo a passo, como voltar a pôr tudo a funcionar depois de um incidente."
+        example: "Um procedimento que diz como repor o servidor a partir da última cópia de segurança e quem o faz."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: RC.PR-3-B
+    title: "Verificar as cópias antes de as usar"
+    level: basic
+    technical: true
+    evidence:
+      - "Registo das ações tomadas em resposta a incidentes, que inclua a verificação da integridade das cópias de segurança."
+    questions:
+      - id: RC.PR-3-B-Q1
+        text: "Antes de usar uma cópia de segurança para recuperar de um incidente, a empresa verifica se ela está completa e não foi alterada?"
+        explanation: "Uma cópia danificada ou infetada pode trazer o problema de volta."
+        example: "Antes de repor a cópia, o técnico confirma que abre corretamente e que não tem ficheiros encriptados pelo ataque."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: RC.PR-5-S
+    title: "Confirmar que tudo voltou ao normal"
+    level: substantial
+    technical: true
+    evidence:
+      - "Registo do processo de verificação da integridade dos ativos, recuperação de sistemas e serviços e confirmação do normal estado de funcionamento."
+    questions:
+      - id: RC.PR-5-S-Q1
+        text: "Depois de recuperar, a empresa verifica a integridade do que foi reposto e confirma que os sistemas e serviços funcionam normalmente?"
+        explanation: "É preciso confirmar que o que foi reposto está correto e que o serviço voltou mesmo ao normal."
+        example: "Depois de repor a faturação, emite-se uma fatura de teste e confere-se que os dados estão completos."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: RC.PR-6-S
+    title: "Declarar o fim da recuperação"
+    level: substantial
+    technical: false
+    evidence:
+      - "Registo da definição de critérios para a declaração do fim da recuperação do incidente e evidência da sua implementação."
+    questions:
+      - id: RC.PR-6-S-Q1
+        text: "O fim da recuperação de um incidente é registado e declarado com base em critérios definidos antes?"
+        explanation: "Critérios definidos antes evitam dar a recuperação por terminada sem estar completa."
+        example: "Um relatório final que confirma que todos os critérios foram cumpridos e declara o fim da recuperação."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: RC.CO-1-S
+    title: "Comunicar o progresso da recuperação"
+    level: substantial
+    technical: false
+    evidence:
+      - "Registo da comunicação das atividades de recuperação e progresso do restauro, às partes interessadas, internas e externas."
+    questions:
+      - id: RC.CO-1-S-Q1
+        text: "As atividades e o progresso da recuperação são comunicados às partes interessadas internas e externas?"
+        explanation: "Quem depende dos sistemas precisa de saber quando voltam a funcionar."
+        example: "Atualizações a cada 4 horas para a gerência e os clientes afetados, até a recuperação terminar."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: RC.CO-2-S
+    title: "Comunicação pública aprovada"
+    level: substantial
+    technical: false
+    evidence:
+      - "Registo dos procedimentos para a comunicação de atualizações públicas sobre a recuperação de incidentes."
+    questions:
+      - id: RC.CO-2-S-Q1
+        text: "As informações públicas sobre a recuperação de um incidente são partilhadas pelos meios de comunicação definidos e aprovados pela empresa?"
+        explanation: "Comunicar por canais aprovados evita mensagens contraditórias ou informação que não devia sair."
+        example: "Só o gabinete de comunicação publica atualizações, através do site e de um comunicado aprovado pela gerência."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: RC.CO-2-E
+    title: "Estratégia de comunicação de crise"
+    level: high
+    technical: false
+    evidence:
+      - "Registo documentado da estratégia de comunicação para situações de crise."
+    questions:
+      - id: RC.CO-2-E-Q1
+        text: "A empresa tem uma estratégia de comunicação de crise posta em prática para limitar os impactos negativos de uma crise?"
+        explanation: "Numa crise, uma comunicação preparada protege a confiança de clientes e parceiros."
+        example: "Um plano com mensagens preparadas, porta-vozes definidos e os contactos dos meios de comunicação social."
         answers: ["yes", "partial", "no", "unknown"]
