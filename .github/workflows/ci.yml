@@ -147,7 +147,8 @@ jobs:
         working-directory: ai-service
     steps:
       - uses: actions/checkout@v4   # tests read contracts/ai, so the whole repo is needed
-      - uses: astral-sh/setup-uv@v6
+      # v6.8.0, pinned by commit.
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e
         with:
           version: 0.9.5            # same as the Dockerfile
           python-version: "3.12"
