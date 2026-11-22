@@ -23,7 +23,8 @@ export default defineConfig({
     include: ['src/**/*.test.{ts,tsx}'],
     coverage: {
       provider: 'v8',
-      reporter: ['text-summary'],
+      // lcov paths relative to the repo root, so SonarCloud can map them (sonar-project.properties).
+      reporter: ['text-summary', ['lcov', { projectRoot: '../..' }]],
       // Logic only: the pages are checked against a running Keycloak (see README).
       include: ['src/login/passwordRules.ts', 'src/login/text.ts'],
       thresholds: { lines: 70, statements: 70, functions: 70, branches: 70 },

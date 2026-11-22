@@ -46,6 +46,8 @@ docker compose -f deploy/docker-compose.dev.yml up -d   # Postgres :5432, Redis 
 ./gradlew build                                         # core + all plugins + ModularityTest
 BAO_TOKEN=dev-app-token SPRING_PROFILES_ACTIVE=demo ./gradlew :app:bootRun  # backend :8080 (OpenBao secrets, demo orgs)
 ./gradlew :<plugin-id>:test :app:test                   # one plugin + module verification
+./gradlew dependencies :plugin-api:dependencies :core:dependencies :app:dependencies :bff:dependencies --write-locks
+                                                        # refresh gradle.lockfile files after a dependency change
 pnpm install && pnpm dev                                # frontend :5173 (runs gen:plugins first)
 pnpm check:api && pnpm lint && pnpm test && pnpm typecheck && pnpm build  # what CI runs for the frontend
 pnpm --filter @alinha/plugin-<id> typecheck
@@ -165,7 +167,7 @@ Avoid this unless the task needs it. Before starting, say so explicitly and list
 - Branches `feat/<topic>`, `fix/<topic>`. Keep PRs small and follow `.github/pull_request_template.md`.
 - RNFxx numbers refer to section 3.2 of the technical report. The table in `README.md` maps them to code. Update
   it when you implement one.
-- Coverage target ≥ 70% (RNF19, not wired into CI yet). Write tests together with the code.
+- Coverage target ≥ 70% (RNF19): CI fails below it (Kover for the core modules only, Vitest, pytest) and sends the reports to SonarCloud. Write tests together with the code.
 
 ## Don't
 
