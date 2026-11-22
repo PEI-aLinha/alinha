@@ -79,12 +79,13 @@ services:
       KEYCLOAK_ISSUER_URI: ${ALINHA_PUBLIC_URL:?}/kc/realms/alinha
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/kc/realms/alinha/protocol/openid-connect/certs
       KEYCLOAK_URL: http://keycloak:8080/kc
-      # The real SMTP relay (notifications plugin). The password is smtp.password in OpenBao (openbao-seed).
-      SMTP_HOST: ${SMTP_HOST:?}
-      SMTP_PORT: ${SMTP_PORT:?}
-      SMTP_USERNAME: ${SMTP_USERNAME:?}
-      SMTP_AUTH: "true"
-      SMTP_STARTTLS: "true"
+      # SMTP for the notifications plugin: Mailpit (below) unless SMTP_* name a relay (DEPLOYMENT.md, "Emails").
+      # The password is smtp.password in OpenBao (openbao-seed).
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_AUTH: ${SMTP_AUTH:-false}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-false}
       # Regex for BFF_IP.
       ALINHA_TRUSTED_PROXIES: ${ALINHA_TRUSTED_PROXIES:-172\.31\.0\.10}
     volumes:
@@ -134,12 +135,14 @@ services:
       ALINHA_PUBLIC_URL: ${ALINHA_PUBLIC_URL:?}
       BFF_CLIENT_SECRET: ${BFF_CLIENT_SECRET:?}
       KEYCLOAK_PROVISIONER_SECRET: ${KEYCLOAK_PROVISIONER_SECRET:?}
-      # The realm's SMTP server: verification, password reset and invitations reach real users.
-      SMTP_HOST: ${SMTP_HOST:?}
-      SMTP_PORT: ${SMTP_PORT:?}
-      SMTP_FROM: ${SMTP_FROM:?}
-      SMTP_USERNAME: ${SMTP_USERNAME:?}
-      SMTP_PASSWORD: ${SMTP_PASSWORD:?}
+      # The realm's SMTP server (verification, password reset, invitations): the same as the app's.
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_FROM: ${SMTP_FROM:-no-reply@alinha.pt}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_AUTH: ${SMTP_AUTH:-false}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-false}
     healthcheck:
       # The image has no curl; the management port follows the /kc relative path.
       test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /kc/health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q ^HTTP/1.1.200 <&3"]
@@ -150,6 +153,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      mailpit:
+        condition: service_started
 
   postgres:
     image: postgres:17
@@ -228,7 +233,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
       ALINHA_APP_DB_PASSWORD: ${ALINHA_APP_DB_PASSWORD:?}
       KEYCLOAK_PROVISIONER_SECRET: ${KEYCLOAK_PROVISIONER_SECRET:?}
-      SMTP_PASSWORD: ${SMTP_PASSWORD:?}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-none} # none: Mailpit needs no login
       LLM_API_KEY: none # no AI Service in production yet
       AI_SERVICE_TOKEN: none # no AI Service in production yet
     volumes:
@@ -236,6 +241,22 @@ services:
     depends_on:
       openbao:
         condition: service_healthy
+
+  # Catches every email while SMTP_* name no relay, so nothing reaches a real inbox. UI at
+  # ${ALINHA_PUBLIC_URL}/mail/ through the VM's proxy (alias alinha-mail), user "alinha", password MAILPIT_UI_PASSWORD;
+  # or on the VM: ssh -L 8026:127.0.0.1:8026, then http://localhost:8026/mail/
+  mailpit:
+    image: axllent/mailpit:v1.33.1
+    restart: always
+    mem_limit: 64m
+    networks:
+      alinha: {}
+      proxy:
+        aliases: [alinha-mail]
+    ports: ["127.0.0.1:8026:8025"]
+    environment:
+      MP_WEBROOT: /mail
+      MP_UI_AUTH: alinha:${MAILPIT_UI_PASSWORD:?}
 
 volumes:
   pgdata:

@@ -108,12 +108,15 @@ jobs:
           # OpenBao. The root token is never here: it stays with the operator (deploy/DEPLOYMENT.md, "OpenBao").
           BAO_SEED_TOKEN: ${{ secrets.BAO_SEED_TOKEN }}
           BAO_APP_TOKEN: ${{ secrets.BAO_APP_TOKEN }}
-          # SMTP relay for Keycloak and the app
+          # SMTP for Keycloak and the app. All unset: Mailpit (deploy/DEPLOYMENT.md, "Emails").
+          SMTP_AUTH: ${{ vars.SMTP_AUTH }}
+          SMTP_STARTTLS: ${{ vars.SMTP_STARTTLS }}
           SMTP_HOST: ${{ vars.SMTP_HOST }}
           SMTP_PORT: ${{ vars.SMTP_PORT }}
           SMTP_FROM: ${{ vars.SMTP_FROM }}
           SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          MAILPIT_UI_PASSWORD: ${{ secrets.MAILPIT_UI_PASSWORD }}
           # The VM's reverse proxy: its Docker network and the address range web trusts X-Forwarded-For from.
           PROXY_NETWORK: ${{ vars.PROXY_NETWORK }}
           TRUSTED_PROXY_CIDR: ${{ vars.TRUSTED_PROXY_CIDR }}

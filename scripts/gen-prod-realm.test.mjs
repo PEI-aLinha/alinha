@@ -3,7 +3,7 @@ import { describe, it } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { PUBLIC_URL, SMTP_RELAY, toProdRealm } from './gen-prod-realm.mjs'
+import { PUBLIC_URL, SMTP_SERVER, toProdRealm } from './gen-prod-realm.mjs'
 
 const root = resolve(import.meta.dirname, '..')
 const devRealm = JSON.parse(readFileSync(resolve(root, 'deploy/keycloak/alinha-realm.json'), 'utf8'))
@@ -44,15 +44,24 @@ describe('toProdRealm', () => {
     assert.ok(!JSON.stringify(prod).includes('ALINHA_TEST_USER_PASSWORD'))
   })
 
-  it('sends mail through the SMTP relay from the environment, with auth and STARTTLS', () => {
-    assert.deepEqual(prod.smtpServer, SMTP_RELAY)
-    assert.equal(prod.smtpServer.auth, 'true')
-    assert.equal(prod.smtpServer.starttls, 'true')
+  it('takes the whole SMTP server from the environment, in production and staging', () => {
+    assert.deepEqual(prod.smtpServer, SMTP_SERVER)
+    assert.deepEqual(toProdRealm(devRealm, { staging: true }).smtpServer, SMTP_SERVER)
+    assert.equal(prod.smtpServer.auth, '${SMTP_AUTH}')
+    assert.equal(prod.smtpServer.starttls, '${SMTP_STARTTLS}')
     assert.ok(!JSON.stringify(prod).includes('mailpit'))
   })
 
-  it('staging keeps Mailpit as SMTP server', () => {
-    assert.deepEqual(toProdRealm(devRealm, { staging: true }).smtpServer, devRealm.smtpServer)
+  it('the production compose defaults to its Mailpit, without auth or TLS', () => {
+    const compose = readFileSync(resolve(root, 'deploy/docker-compose.prod.yml'), 'utf8')
+    assert.match(compose, /\n  mailpit:\n/)
+    for (const service of ['app', 'keycloak']) {
+      const start = compose.indexOf(`\n  ${service}:`)
+      const block = compose.slice(start, compose.indexOf('\n\n', start))
+      assert.match(block, /SMTP_HOST: \$\{SMTP_HOST:-mailpit\}/, service)
+      assert.match(block, /SMTP_AUTH: \$\{SMTP_AUTH:-false\}/, service)
+      assert.match(block, /SMTP_STARTTLS: \$\{SMTP_STARTTLS:-false\}/, service)
+    }
   })
 
   it('staging keeps every user and gives the personas the secret password', () => {
@@ -75,14 +84,15 @@ describe('toProdRealm', () => {
     assert.equal(devRealm.clients.find((c) => c.clientId === 'bff').secret, 'dev-bff-secret')
   })
 
-  it('only uses placeholders that the production compose requires for Keycloak', () => {
-    // An unset placeholder is imported as the literal text "${...}", so each one must fail compose when missing.
+  it('only uses placeholders that the production compose always sets for Keycloak', () => {
+    // An unset placeholder is imported as the literal text "${...}", so each one must either fail compose when
+    // missing (${VAR:?}) or have a default (${VAR:-...}).
     const compose = readFileSync(resolve(root, 'deploy/docker-compose.prod.yml'), 'utf8')
     const keycloak = compose.slice(compose.indexOf('\n  keycloak:'), compose.indexOf('\n  postgres:'))
     const placeholders = new Set([...JSON.stringify(prod).matchAll(/\$\{([A-Z_]+)\}/g)].map((m) => m[1]))
     assert.ok(placeholders.size > 0)
     for (const name of placeholders) {
-      assert.match(keycloak, new RegExp(`\\b${name}: \\$\\{${name}:\\?\\}`), `${name} is not required for Keycloak`)
+      assert.match(keycloak, new RegExp(`\\b${name}: \\$\\{${name}:(\\?|-[^}]*)\\}`), `${name} is not always set for Keycloak`)
     }
   })
 

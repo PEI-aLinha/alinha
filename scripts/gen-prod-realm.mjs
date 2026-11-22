@@ -2,7 +2,7 @@
 // Builds the production realm from the dev realm (deploy/keycloak/alinha-realm.json), so there is one source of
 // truth for roles, mappers, flows and the user profile. Run by deploy/Dockerfile.keycloak:
 //   node scripts/gen-prod-realm.mjs [--staging] <dev-realm.json> <prod-realm.json>
-// --staging keeps the dev personas and Mailpit as SMTP server (see deploy/docker-compose.staging.yml).
+// --staging keeps the dev personas (see deploy/docker-compose.staging.yml).
 //
 // Every dev secret and localhost URL becomes a Keycloak import placeholder (${VAR}), which Keycloak resolves from
 // the container's environment on `--import-realm`. So no production secret is ever baked into the image.
@@ -14,35 +14,36 @@ export const PUBLIC_URL = '${ALINHA_PUBLIC_URL}'
 /**
  * Returns a production copy of the dev realm. The input is not modified.
  * Production (the default): the dev personas are dropped, so only real accounts exist (service-account users stay,
- * because their client, e.g. alinha-provisioner, needs their role mappings), and mail goes through the SMTP relay
- * given in the environment, so verification and password-reset emails reach real users.
- * `staging` keeps the personas (with a secret password) and the dev realm's Mailpit.
+ * because their client, e.g. alinha-provisioner, needs their role mappings).
+ * `staging` keeps the personas (with a secret password).
+ * Both send mail through the SMTP server given in the environment (SMTP_SERVER): Mailpit until there is a relay.
  */
 export function toProdRealm(devRealm, { staging = false } = {}) {
   const realm = structuredClone(devRealm)
   // HTTPS is terminated by the proxy in front; Keycloak still refuses plain HTTP from public addresses.
   realm.sslRequired = 'external'
   realm.clients = realm.clients.map(prodClient)
-  if (staging) {
-    realm.users = realm.users.map(withSecretPassword)
-  } else {
-    realm.users = realm.users.filter((user) => user.serviceAccountClientId)
-    realm.smtpServer = SMTP_RELAY
-  }
+  realm.users = staging
+    ? realm.users.map(withSecretPassword)
+    : realm.users.filter((user) => user.serviceAccountClientId)
+  realm.smtpServer = SMTP_SERVER
   return realm
 }
 
-/** The production realm's SMTP server: authenticated, STARTTLS required (never a silent plain-text fallback). */
-export const SMTP_RELAY = {
+/**
+ * The realm's SMTP server, all from the environment: docker-compose.prod.yml defaults to its Mailpit (no auth, no
+ * TLS); a real relay sets SMTP_AUTH and SMTP_STARTTLS to true (deploy/DEPLOYMENT.md, "Emails").
+ */
+export const SMTP_SERVER = {
   host: '${SMTP_HOST}',
   port: '${SMTP_PORT}',
   from: '${SMTP_FROM}',
   fromDisplayName: 'aLinha',
   replyTo: '${SMTP_FROM}',
-  auth: 'true',
+  auth: '${SMTP_AUTH}',
   user: '${SMTP_USERNAME}',
   password: '${SMTP_PASSWORD}',
-  starttls: 'true',
+  starttls: '${SMTP_STARTTLS}',
   ssl: 'false',
 }
 
