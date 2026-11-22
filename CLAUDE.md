@@ -161,7 +161,7 @@ Avoid this unless the task needs it. Before starting, say so explicitly and list
 - Branches `feat/<topic>`, `fix/<topic>`. Keep PRs small and follow `.github/pull_request_template.md`.
 - RNFxx numbers refer to section 3.2 of the technical report. The table in `README.md` maps them to code. Update
   it when you implement one.
-- Coverage target ≥ 70% (RNF19): CI fails below it (Kover, Vitest, pytest) and sends the reports to SonarCloud. Write tests together with the code.
+- Coverage target ≥ 70% (RNF19): CI fails below it (Kover for the core modules only, Vitest, pytest) and sends the reports to SonarCloud. Write tests together with the code.
 
 ## Don't
 
