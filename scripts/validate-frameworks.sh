@@ -7,7 +7,7 @@ cd "$(dirname "$0")/.."
 shopt -s nullglob
 catalogues=(frameworks/*/v*/catalogue.yaml)
 
-if [ ${#catalogues[@]} -eq 0 ]; then
+if [[ ${#catalogues[@]} -eq 0 ]]; then
   echo "No catalogues to validate."
   exit 0
 fi

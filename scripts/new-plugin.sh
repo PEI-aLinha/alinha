@@ -22,7 +22,7 @@ esac
 path="plugins/$kind/$id"
 
 cd "$(git rev-parse --show-toplevel)"
-[ -e "$path" ] && { echo "$path already exists"; exit 1; }
+[[ -e "$path" ]] && { echo "$path already exists"; exit 1; }
 
 echo "→ creating $ORG/$repo from the template"
 gh repo create "$ORG/$repo" "$VISIBILITY" --template "$ORG/alinha-plugin-template"

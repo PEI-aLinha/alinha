@@ -11,7 +11,7 @@ if ! git rev-parse --verify --quiet origin/main >/dev/null; then
 fi
 
 released=$(git show origin/main:frameworks/RELEASES 2>/dev/null | grep -E '^[^#[:space:]]' || true)
-if [ -z "$released" ]; then
+if [[ -z "$released" ]]; then
   echo "No released versions on main -- nothing to protect."
   exit 0
 fi
@@ -30,5 +30,5 @@ while IFS= read -r version; do
   done <<< "$changed"
 done <<< "$released"
 
-[ $fail -eq 0 ] || exit 1
+[[ $fail -eq 0 ]] || exit 1
 echo "ok -- released framework versions are unchanged"

@@ -9,7 +9,8 @@ WORKDIR /app
 # Build from the repo root so the contracts can be copied in:
 #   docker build -f workers/job_consumer/Dockerfile .
 COPY workers/job_consumer /app/worker
-RUN pip install --no-cache-dir /app/worker && useradd --create-home worker
+# Dependencies only from wheels, so no third-party setup script runs at build time.
+RUN pip install --no-cache-dir --only-binary :all: /app/worker && useradd --create-home worker
 
 COPY contracts/jobs /app/contracts/jobs
 
