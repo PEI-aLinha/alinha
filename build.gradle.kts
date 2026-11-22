@@ -1,3 +1,4 @@
+import org.gradle.api.artifacts.dsl.LockMode
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 
 plugins {
@@ -40,3 +41,15 @@ coreModules.forEach { path ->
 }
 dependencies { coreModules.forEach { kover(project(it)) } }
 kover { reports { verify { rule { minBound(70) } } } } // RNF19, same bar as Vitest and pytest
+
+// Dependency locking: each core module and the root keep a gradle.lockfile with the resolved versions.
+// After changing a dependency or libs.versions.toml, refresh them with
+//   ./gradlew dependencies :plugin-api:dependencies :core:dependencies :app:dependencies :bff:dependencies --write-locks
+// :app is lenient because it also pulls in the plugins, whose dependencies change in their own repos.
+dependencyLocking { lockAllConfigurations() }
+coreModules.forEach { path ->
+    project(path).dependencyLocking {
+        lockAllConfigurations()
+        if (path == ":app") lockMode = LockMode.LENIENT
+    }
+}
