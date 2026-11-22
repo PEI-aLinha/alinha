@@ -31,13 +31,14 @@ subprojects {
 }
 
 // Coverage (RNF19) for the modules that live in this repo. `./gradlew koverXmlReport` writes
-// build/reports/kover/report.xml, which the CI uploads to SonarCloud. Plugins measure their own coverage.
+// build/reports/kover/report.xml, which the CI uploads to SonarCloud. Plugins measure their own coverage:
+// they get Kover too, but stay out of the merged report. Their CI (.github/workflows/plugin-ci.yml) runs
+// `./gradlew :<id>:koverXmlReport` and sends <plugin>/backend/build/reports/kover/report.xml to the
+// plugin's own SonarCloud project.
 repositories { mavenCentral() } // the root resolves the Kover reporter
 val coreModules = listOf(":plugin-api", ":core", ":app", ":bff")
-coreModules.forEach { path ->
-    project(path).pluginManager.withPlugin("org.jetbrains.kotlin.jvm") {
-        project(path).pluginManager.apply("org.jetbrains.kotlinx.kover")
-    }
+subprojects {
+    pluginManager.withPlugin("org.jetbrains.kotlin.jvm") { pluginManager.apply("org.jetbrains.kotlinx.kover") }
 }
 dependencies { coreModules.forEach { kover(project(it)) } }
 kover { reports { verify { rule { minBound(70) } } } } // RNF19, same bar as Vitest and pytest
