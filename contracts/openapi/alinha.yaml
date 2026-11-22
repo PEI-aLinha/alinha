@@ -223,6 +223,8 @@ paths:
 
         The questions are cut to the scope computed from `scope` with the core applicability rules. For
         `nis2-qnrcs`, the NIS2 classification sets `maxLevel`; other frameworks get every level.
+        The submitted `scope` is stored with the assessment, together with `rulesVersion`, so it can be
+        checked later. The classification is indicative and self-declared: the consultant confirms it.
 
         At most one open (not `validated`) assessment per framework: a second one is a `409`
         (`code` = `ASSESSMENT_ALREADY_OPEN`, with `assessmentId` of the open one). Permission
@@ -942,6 +944,7 @@ components:
         until the core stores each organization's applicability (core#25); then this field is deprecated.
         Mirrors `pt.alinha.core.compliance.ApplicabilityInput`.
         Omitted booleans mean `false`; an omitted `entityTypes` means none.
+        Self-declared by the organization and stored as sent with the assessment (see `startAssessment`).
       required: [size, nis2, gdpr, aiAct]
       properties:
         size:
