@@ -6,7 +6,8 @@ set -eu
 
 until bao status >/dev/null 2>&1; do sleep 1; done
 
-# Platform secrets read by the app at startup (spring.cloud.vault, context alinha/app).
+# Platform secrets read by the app at startup (spring.cloud.vault, context alinha/app). `kv put` replaces the whole
+# secret on purpose: it holds exactly these keys, and a key added by hand is lost on the next deploy (DEPLOYMENT.md).
 bao kv put secret/alinha/app \
   db.username=alinha_app \
   db.password="${ALINHA_APP_DB_PASSWORD:?}" \

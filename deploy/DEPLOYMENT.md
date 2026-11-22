@@ -43,7 +43,12 @@ browser ─► reverse proxy (TLS, PROXY_NETWORK) ─► web (alias alinha-web)
    the `production` environment, then the runner pulls the images and runs `up -d --wait`.
 4. If it fails, the job prints the last logs. **Get Production Logs** dumps the logs of every container at any time.
 
-Rolling back = running the deploy again with the previous version as `image_tag`.
+Only one of **Deploy**, **Get Production Logs** and **Clean** runs on the VM at a time (`concurrency: prod-vm`);
+a second run waits for the first instead of starting halfway through its `up`.
+
+**Rolling back** = running the deploy again with the previous version as `image_tag`. That works only if no Flyway
+migration was added since that version: migrations are forward-only, and an older `app` refuses to start against
+a schema it does not know (Flyway validation). If one was, roll forward instead: fix it in a new release.
 
 ## Secrets and variables (environment `production`)
 
@@ -82,7 +87,9 @@ placeholder in the imported realm.
   (`deploy/openbao/secrets.sh`) with the narrow `BAO_SEED_TOKEN`, and the app waits for it. Staging keeps dev mode
   but seeds with the same narrow token; `deploy/openbao/test-seed.sh` (CI) runs the real server path. See **OpenBao** below.
 - **Emails** (Keycloak's verification and password reset, the notifications plugin) go through the SMTP relay in
-  `SMTP_*`. Staging sends them to Mailpit instead (http://localhost:8026).
+  `SMTP_*`. Staging sends them to Mailpit instead (http://localhost:8026). Registration and password reset are
+  open to anyone, so `web` rate limits `/kc/realms/alinha/login-actions/` per client address (10 a minute, burst
+  10, then 429): one address cannot make the relay send mail in bulk. Check the relay's own quota as well.
 - **Keycloak admin console:** not routed by `web`. Use
   `ssh -L 8180:172.31.0.X:8080 ...` with the container's address (`docker inspect alinha-prod-keycloak-1`), then
   http://localhost:8180/kc/admin.
@@ -102,9 +109,16 @@ placeholder in the imported realm.
    sudo ./svc.sh install ubuntu && sudo ./svc.sh start
    ```
 2. GitHub environment `production`: required reviewers, deployment branches = `main`, secrets and variable above.
-3. Reverse proxy: in the `pei-alinha.duckdns.org` block, `proxy_set_header X-Forwarded-For $remote_addr;`
+3. **Lock the runner to `main`'s workflows.** The `if: github.ref == 'refs/heads/main'` and `environment:` lines are
+   in the workflow files, so a run dispatched from another branch uses that branch's copy, which could drop them
+   and run anything on the VM (the runner has Docker: root-equivalent). Put the runner in its own runner group
+   (organisation → Settings → Actions → Runner groups), with access for this repository only and **Selected
+   workflows** limited to `PEI-aLinha/alinha/.github/workflows/{deploy,logs,clean}.yml@refs/heads/main`.
+4. **Protect the release tags:** repository → Settings → Rules → a tag ruleset for `v*` that blocks updates and
+   deletions, so a deployed tag cannot be moved. `deploy.yml` also checks that the tag is on `main`.
+5. Reverse proxy: in the `pei-alinha.duckdns.org` block, `proxy_set_header X-Forwarded-For $remote_addr;`
    (back up the file first), then test and reload that Nginx (`nginx -t && nginx -s reload`).
-4. Retire the static prototype only when the first deploy runs:
+6. Retire the static prototype only when the first deploy runs:
    `docker inspect alinha-web > ~/backups/alinha-web-prototype.json && docker rm -f alinha-web`.
    `/var/www/alinha` stays; recreating that container (same mounts, network `PROXY_NETWORK`, alias
    `alinha-web`) brings the prototype back.
@@ -154,7 +168,16 @@ Run **Deploy to Production VM** again. `openbao-seed` writes the secrets.
 
 **After a VM reboot or an OpenBao restart:** run `bao operator unseal` twice (two key holders). Until then the app
 cannot read its secrets: `restart: always` keeps restarting it, and it comes up by itself once OpenBao is unsealed.
-A deploy before the unseal fails waiting for `openbao`.
+A deploy before the unseal fails waiting for `openbao`: if a deploy times out, check
+`docker exec alinha-prod-openbao-1 bao status` (`Sealed true`) first.
+
+**Token expiry:** `BAO_APP_TOKEN` and `BAO_SEED_TOKEN` are periodic tokens (768h, 32 days), renewed by the OpenBao
+healthcheck and by every seed while the stack runs. If the stack is down for more than 32 days they expire: run
+`bootstrap.sh` again as above (it recreates them with the same values).
+
+**`secret/alinha/app` belongs to the deploy.** `openbao-seed` writes it with `bao kv put`, which replaces the whole
+secret on every deploy, so a key added there by hand is lost on the next one. Add new platform secrets to
+`deploy/openbao/secrets.sh` (and the workflow) instead.
 
 **Losing the volume or the unseal keys loses every secret**, including the per-tenant provider credentials
 (`TenantSecretStore`): back up the `alinha-prod_openbao-data` volume with the database.
