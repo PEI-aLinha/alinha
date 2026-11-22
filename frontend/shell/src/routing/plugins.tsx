@@ -32,10 +32,48 @@ export function pluginRoutes(plugins: readonly FrontendPlugin[], area: Area): Ro
   return plugins.flatMap((p) => p.routes[area] ?? []).map(guard)
 }
 
-/** Menu entries for one area that the user may see, by `order` then label. */
-export function pluginNav(plugins: readonly FrontendPlugin[], area: NavArea, can: Can): NavItem[] {
+/** Menu entries of evidence providers live under this path; the shell groups them on its "Integrações" page. */
+export const INTEGRATIONS_PATH = 'integrations'
+
+const isIntegration = (n: NavItem) => n.path === INTEGRATIONS_PATH || n.path.startsWith(`${INTEGRATIONS_PATH}/`)
+
+const trimSlashes = (path: string) => path.replace(/^\/+|\/+$/g, '')
+
+/**
+ * `integrations` itself is the shell's "Integrações" page, registered before the plugins' routes: a plugin route or
+ * menu entry at exactly that path would be silently replaced by it. Providers use `integrations/<id>` instead.
+ * A plugin bug, so it stops the app at start-up, naming the plugin.
+ */
+export function checkReservedPaths(plugins: readonly FrontendPlugin[]): void {
+  const areas: NavArea[] = ['client', 'consultant', 'portfolio']
+  for (const plugin of plugins) {
+    const routes = areas.flatMap((area) => plugin.routes[area] ?? [])
+    const clash =
+      routes.some((r) => r.path !== undefined && trimSlashes(r.path) === INTEGRATIONS_PATH) ||
+      (plugin.nav ?? []).some((n) => trimSlashes(n.path) === INTEGRATIONS_PATH)
+    if (clash) {
+      throw new Error(
+        `Plugin "${plugin.id}": '${INTEGRATIONS_PATH}' is the shell's Integrações page. ` +
+          `Use '${INTEGRATIONS_PATH}/<id>' for an evidence provider's page and menu entry.`,
+      )
+    }
+  }
+}
+
+/** Every entry for one area that the user may see, by `order` then label. */
+function visibleNav(plugins: readonly FrontendPlugin[], area: NavArea, can: Can): NavItem[] {
   return plugins
     .flatMap((p) => p.nav ?? [])
     .filter((n) => n.area === area && (!n.resource || can(n.resource, n.action)))
     .sort((a, b) => (a.order ?? 100) - (b.order ?? 100) || a.label.localeCompare(b.label, 'pt'))
+}
+
+/** Side menu entries for one area. Integrations are left out: they are reached through the "Integrações" page. */
+export function pluginNav(plugins: readonly FrontendPlugin[], area: NavArea, can: Can): NavItem[] {
+  return visibleNav(plugins, area, can).filter((n) => !isIntegration(n))
+}
+
+/** Entries under `integrations/` (evidence providers) that the user may see, for the "Integrações" page. */
+export function integrationNav(plugins: readonly FrontendPlugin[], area: NavArea, can: Can): NavItem[] {
+  return visibleNav(plugins, area, can).filter(isIntegration)
 }

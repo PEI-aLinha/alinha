@@ -53,6 +53,10 @@ Dev tenant UUIDs, reused by the persona seed data (#42):
 | Componentes Águeda | `11111111-1111-4111-8111-111111111111` |
 | Metalúrgica de Aveiro | `22222222-2222-4222-8222-222222222222` |
 
+Their organization profiles (name, NIF, sector…) come from
+`backend/app/src/main/resources/db/demo/R__demo_organization_profiles.sql`, loaded only when the app runs with the
+`demo` Spring profile. Without it the menu shows the tenant UUID instead of the organization name.
+
 Marta can act on both organisations; João only on Metalúrgica de Aveiro, so "organization not
 assigned to this consultant" (403) can be exercised locally.
 
