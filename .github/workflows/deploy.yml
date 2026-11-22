@@ -114,10 +114,22 @@ jobs:
           SMTP_FROM: ${{ vars.SMTP_FROM }}
           SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          # Only for the VM's temporary test override (below): OpenBao in dev mode and Mailpit.
+          BAO_ROOT_TOKEN: ${{ secrets.BAO_ROOT_TOKEN }}
+          MAILPIT_UI_PASSWORD: ${{ secrets.MAILPIT_UI_PASSWORD }}
           # The VM's reverse proxy: its Docker network and the address range web trusts X-Forwarded-For from.
           PROXY_NETWORK: ${{ vars.PROXY_NETWORK }}
           TRUSTED_PROXY_CIDR: ${{ vars.TRUSTED_PROXY_CIDR }}
-        run: ${{ env.PROD_COMPOSE }} up -d --remove-orphans --wait --wait-timeout 600
+        run: |
+          # Temporary, while production is only tested: the VM's own override (not in the repo) sends every email to
+          # Mailpit and keeps OpenBao in dev mode. Delete ~/alinha-prod.override.yml on the VM to deploy the real stack.
+          compose="$PROD_COMPOSE"
+          override="$HOME/alinha-prod.override.yml"
+          if [ -f "$override" ]; then
+            echo "::warning::Test deploy: using $override (Mailpit, OpenBao dev mode)"
+            compose="$compose -f $override"
+          fi
+          $compose up -d --remove-orphans --wait --wait-timeout 600
 
       - name: Clean old images
         run: |
