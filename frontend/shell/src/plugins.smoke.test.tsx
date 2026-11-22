@@ -19,13 +19,17 @@ describe('the 7 plugins in the shell', () => {
     ])
   })
 
-  it('mounts the client menu and pages, and calls the API with the organization', async () => {
-    const { router, calls } = renderApp({ url: '/org/acme', plugins, api: async () => json({ plugin: 'x', status: 'UP' }) })
-    await waitFor(() => expect(router.state.location.pathname).toBe('/org/acme/assets'))
+  it('mounts the client menu and lands on the dashboard', async () => {
+    const { router } = renderApp({ url: '/org/acme', plugins, api: async () => json({ status: 'UP' }) })
+    await waitFor(() => expect(router.state.location.pathname).toBe('/org/acme/dashboard'))
     // Evidence providers (integrations/*) are grouped under the shell's own "Integrações" entry.
     expect(await navLabels()).toEqual([
-      'Integrações', 'Ativos e riscos', 'Avaliação', 'Notificações', 'Organização', 'Painel',
+      'Início', 'Avaliação', 'Ativos', 'Integrações', 'Notificações', 'Organização',
     ])
+  })
+
+  it('calls the API with the organization', async () => {
+    const { calls } = renderApp({ url: '/org/acme/organization', plugins, api: async () => json({ plugin: 'x', status: 'UP' }) })
     await waitFor(() => expect(calls.some((c) => c.url.endsWith('/ping'))).toBe(true))
     const ping = calls.find((c) => c.url.endsWith('/ping'))!
     expect(new Headers(ping.init.headers).get('X-Alinha-Tenant')).toBe(ACME.id)
@@ -41,6 +45,6 @@ describe('the 7 plugins in the shell', () => {
   it('mounts the consultant menu for a client organization', async () => {
     const { router } = renderApp({ url: '/portfolio/acme', plugins, me: meFor('consultant'), api: async () => json({ status: 'UP' }) })
     await waitFor(() => expect(router.state.location.pathname).toBe('/portfolio/acme/dashboard'))
-    expect(await navLabels()).toEqual(['Carteira de clientes', 'Painel'])
+    expect(await navLabels()).toEqual(['Carteira de clientes', 'Visão geral'])
   })
 })
