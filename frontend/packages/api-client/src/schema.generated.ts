@@ -100,6 +100,116 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/assessment/assessments": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The current organization's assessments
+         * @description Most recently worked on first (`updatedAt` descending), so the user can resume where they stopped.
+         *     Permission `assessment:read` (Designated Officer, analyst, consultant).
+         */
+        get: operations["listAssessments"];
+        put?: never;
+        /**
+         * Start an assessment of one framework
+         * @description Starts a `draft` assessment on the newest catalogue version of `framework` (assessment#2, FR07, US13).
+         *     The catalogue version and the highest compliance level asked are fixed when the assessment starts:
+         *     a newer catalogue never changes the questions of an existing assessment (NFR05, NFR18).
+         *
+         *     The questions are cut to the scope computed from `scope` with the core applicability rules. For
+         *     `nis2-qnrcs`, the NIS2 classification sets `maxLevel`; other frameworks get every level.
+         *
+         *     At most one open (not `validated`) assessment per framework: a second one is a `409`
+         *     (`code` = `ASSESSMENT_ALREADY_OPEN`, with `assessmentId` of the open one). Permission
+         *     `assessment:start` (Designated Officer).
+         */
+        post: operations["startAssessment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/assessment/assessments/{assessmentId}": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path: {
+                assessmentId: components["parameters"]["AssessmentId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * One assessment with its questions and saved answers
+         * @description The questions come from the catalogue version fixed at start, with the answers saved so far.
+         *     An id of another organization is a `404` (`code` = `ASSESSMENT_NOT_FOUND`).
+         *     Permission `assessment:read`.
+         */
+        get: operations["getAssessment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/assessment/assessments/{assessmentId}/answers/{questionId}": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path: {
+                assessmentId: components["parameters"]["AssessmentId"];
+                /** @description Question id from the catalogue, e.g. `GV.OC-01-Q1`. */
+                questionId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Save the answer to one question
+         * @description Saves one answer (autosave). Idempotent: sending the value already saved changes nothing, keeps
+         *     `answeredAt` and writes no audit entry. Every real change is audited with the previous and the
+         *     new value (NFR04).
+         *
+         *     Answers can only change while the assessment is `draft`; otherwise `409`
+         *     (`code` = `ASSESSMENT_NOT_EDITABLE`). A value the question does not offer is a `422`
+         *     (`code` = `VALIDATION_FAILED`, field `answer`). Permission `assessment:answer`
+         *     (Designated Officer, analyst).
+         */
+        put: operations["saveAnswer"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/dashboard-reports/portfolio": {
         parameters: {
             query?: never;
@@ -400,6 +510,153 @@ export interface components {
              */
             lastAssessedAt: string | null;
         };
+        StartAssessmentRequest: {
+            /** @description Framework id, as in `frameworks/<id>/`, e.g. `nis2-qnrcs`, `gdpr`, `ai-act`. */
+            framework: string;
+            scope: components["schemas"]["ApplicabilityInput"];
+        };
+        /**
+         * @description **Temporary.** The facts the core applicability rules need (`docs/applicability.md`). Sent on start
+         *     until the core stores each organization's applicability (core#25); then this field is deprecated.
+         *     Mirrors `pt.alinha.core.compliance.ApplicabilityInput`.
+         */
+        ApplicabilityInput: {
+            size: {
+                employees: number;
+                /** Format: int64 */
+                annualTurnoverEur: number;
+                /**
+                 * Format: int64
+                 * @description Optional. When known, a company can stay in a smaller category.
+                 */
+                annualBalanceSheetEur?: number | null;
+            };
+            /** @default false */
+            publicBody: boolean;
+            nis2: {
+                /**
+                 * @description Types from NIS2 annexes I and II that describe the organization. Empty when none does.
+                 * @default []
+                 */
+                entityTypes: ("ELECTRICITY_SUPPLIER" | "ELECTRICITY_DISTRIBUTION_OPERATOR" | "ELECTRICITY_TRANSMISSION_OPERATOR" | "ELECTRICITY_PRODUCER" | "ELECTRICITY_MARKET_OPERATOR" | "ELECTRICITY_MARKET_PARTICIPANT" | "CHARGING_POINT_OPERATOR" | "DISTRICT_HEATING_COOLING" | "OIL_PIPELINE_OPERATOR" | "OIL_OPERATOR" | "OIL_CENTRAL_STOCKHOLDING" | "GAS_SUPPLIER" | "GAS_DISTRIBUTION_OPERATOR" | "GAS_TRANSMISSION_OPERATOR" | "GAS_STORAGE_OPERATOR" | "LNG_OPERATOR" | "NATURAL_GAS_UNDERTAKING" | "GAS_REFINING_OPERATOR" | "HYDROGEN_OPERATOR" | "AIR_CARRIER" | "AIRPORT" | "AIR_TRAFFIC_CONTROL" | "RAIL_INFRASTRUCTURE_MANAGER" | "RAILWAY_UNDERTAKING" | "WATER_TRANSPORT_COMPANY" | "PORT_MANAGING_BODY" | "VESSEL_TRAFFIC_SERVICE" | "ROAD_TRAFFIC_AUTHORITY" | "INTELLIGENT_TRANSPORT_SYSTEMS" | "CREDIT_INSTITUTION" | "TRADING_VENUE" | "CENTRAL_COUNTERPARTY" | "HEALTHCARE_PROVIDER" | "EU_REFERENCE_LABORATORY" | "MEDICINAL_PRODUCT_RESEARCH" | "DRINKING_WATER" | "WASTE_WATER" | "INTERNET_EXCHANGE_POINT" | "DNS_SERVICE_PROVIDER" | "TLD_NAME_REGISTRY" | "CLOUD_COMPUTING_PROVIDER" | "DATA_CENTRE_PROVIDER" | "CONTENT_DELIVERY_NETWORK" | "QUALIFIED_TRUST_SERVICE_PROVIDER" | "TRUST_SERVICE_PROVIDER" | "PUBLIC_ELECTRONIC_COMMUNICATIONS_NETWORK" | "PUBLIC_ELECTRONIC_COMMUNICATIONS_SERVICE" | "MANAGED_SERVICE_PROVIDER" | "MANAGED_SECURITY_SERVICE_PROVIDER" | "SPACE_GROUND_INFRASTRUCTURE" | "POSTAL_COURIER" | "WASTE_MANAGEMENT" | "CHEMICALS" | "FOOD" | "MEDICAL_DEVICES" | "ELECTRONICS_MANUFACTURING" | "ELECTRICAL_EQUIPMENT_MANUFACTURING" | "MACHINERY_MANUFACTURING" | "MOTOR_VEHICLE_MANUFACTURING" | "OTHER_TRANSPORT_EQUIPMENT_MANUFACTURING" | "ONLINE_MARKETPLACE" | "ONLINE_SEARCH_ENGINE" | "SOCIAL_NETWORK_PLATFORM" | "RESEARCH_ORGANISATION")[];
+                /** @default false */
+                criticalEntity: boolean;
+                /** @default false */
+                significantImpact: boolean;
+                /** @default false */
+                higherEducation: boolean;
+            };
+            /** @description When `processesPersonalData` is false, every other field must be false (otherwise `422`). */
+            gdpr: {
+                processesPersonalData: boolean;
+                /** @default false */
+                regularOrRiskyProcessing: boolean;
+                /** @default false */
+                specialOrCriminalData: boolean;
+                /** @default false */
+                largeScaleMonitoring: boolean;
+                /** @default false */
+                largeScaleSpecialData: boolean;
+            };
+            /**
+             * @description `highRiskArea` and `interactsOrGeneratesContent` need `usesAiSystems` or `providesAiSystems`
+             *     (otherwise `422`).
+             */
+            aiAct: {
+                /** @default false */
+                usesAiSystems: boolean;
+                /** @default false */
+                providesAiSystems: boolean;
+                /** @default false */
+                highRiskArea: boolean;
+                /** @default false */
+                interactsOrGeneratesContent: boolean;
+            };
+        };
+        /**
+         * @description Lifecycle. Answers change only in `draft`.
+         * @enum {string}
+         */
+        AssessmentStatus: "draft" | "submitted" | "evaluated" | "validated";
+        /** @enum {string} */
+        ComplianceLevel: "basic" | "substantial" | "high";
+        /** @enum {string} */
+        AnswerValue: "yes" | "partial" | "no" | "unknown";
+        Progress: {
+            answered: number;
+            total: number;
+        };
+        AssessmentSummary: {
+            /** Format: uuid */
+            id: string;
+            framework: string;
+            /** @description Catalogue version fixed at start (`frameworks/<framework>/v<n>/`). */
+            catalogueVersion: number;
+            status: components["schemas"]["AssessmentStatus"];
+            progress: components["schemas"]["Progress"];
+            /** Format: date-time */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description Last real change, including the last answer saved.
+             */
+            updatedAt: string;
+        };
+        AssessmentDetail: components["schemas"]["AssessmentSummary"] & {
+            catalogueTitle: string;
+            /**
+             * @description Indicative, from the applicability rules at start. The official one is the CNCS's.
+             * @enum {string}
+             */
+            nis2Classification: "essential" | "important" | "not-covered" | "to-be-assessed";
+            maxLevel: components["schemas"]["ComplianceLevel"];
+            /** @description Version of the applicability rules used at start (NFR05). */
+            rulesVersion: string;
+            /** @description Controls up to `maxLevel`, in catalogue order. */
+            controls: components["schemas"]["QuestionnaireControl"][];
+        };
+        QuestionnaireControl: {
+            id: string;
+            title: string;
+            level: components["schemas"]["ComplianceLevel"];
+            /** @description Questions an analyst usually answers. */
+            technical: boolean;
+            questions: components["schemas"]["QuestionnaireQuestion"][];
+        };
+        QuestionnaireQuestion: {
+            id: string;
+            text: string;
+            explanation: string;
+            example: string;
+            options: components["schemas"]["AnswerValue"][];
+            /** @description The saved answer; null while unanswered. */
+            answer: components["schemas"]["AnswerValue"] | null;
+            /** Format: date-time */
+            answeredAt: string | null;
+        };
+        SaveAnswerRequest: {
+            answer: components["schemas"]["AnswerValue"];
+        };
+        SavedAnswer: {
+            questionId: string;
+            answer: components["schemas"]["AnswerValue"];
+            /**
+             * Format: date-time
+             * @description Unchanged when the same value is sent again.
+             */
+            answeredAt: string;
+            progress: components["schemas"]["Progress"];
+        };
+        AssessmentPage: components["schemas"]["PageMeta"] & {
+            items: components["schemas"]["AssessmentSummary"][];
+        };
+        AssessmentAlreadyOpenProblem: components["schemas"]["Problem"] & {
+            /**
+             * Format: uuid
+             * @description The open assessment of this framework.
+             */
+            assessmentId: string;
+        };
         AuditEvent: {
             /** Format: uuid */
             id: string;
@@ -505,6 +762,7 @@ export interface components {
         Page: number;
         /** @description Items per page. */
         PageSize: number;
+        AssessmentId: string;
     };
     requestBodies: never;
     headers: {
@@ -699,6 +957,194 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             /** @description The data changed since it was read (`code` = `VERSION_CONFLICT`): reload and edit again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    listAssessments: {
+        parameters: {
+            query?: {
+                /** @description Zero-based page number. */
+                page?: components["parameters"]["Page"];
+                /** @description Items per page. */
+                pageSize?: components["parameters"]["PageSize"];
+            };
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of assessments. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssessmentPage"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    startAssessment: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartAssessmentRequest"];
+            };
+        };
+        responses: {
+            /** @description The new assessment, with its questions. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssessmentDetail"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /**
+             * @description An assessment of this framework is already open (`code` = `ASSESSMENT_ALREADY_OPEN`).
+             *     `assessmentId` is the open one: continue it.
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["AssessmentAlreadyOpenProblem"];
+                };
+            };
+            /**
+             * @description `code` is one of:
+             *     - `VALIDATION_FAILED`: invalid or contradictory `scope` answers, or unknown `framework` format.
+             *     - `FRAMEWORK_NOT_IN_SCOPE`: by the `scope` answers, the framework does not apply.
+             *     - `CATALOGUE_NOT_FOUND`: there is no catalogue for this framework yet.
+             */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getAssessment: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path: {
+                assessmentId: components["parameters"]["AssessmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The assessment. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssessmentDetail"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    saveAnswer: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path: {
+                assessmentId: components["parameters"]["AssessmentId"];
+                /** @description Question id from the catalogue, e.g. `GV.OC-01-Q1`. */
+                questionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveAnswerRequest"];
+            };
+        };
+        responses: {
+            /** @description The saved answer and the new progress. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SavedAnswer"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /**
+             * @description `code` is `ASSESSMENT_NOT_FOUND` (no such assessment in this organization) or
+             *     `QUESTION_NOT_IN_ASSESSMENT` (the question exists but is not part of this assessment).
+             */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The assessment was already submitted (`code` = `ASSESSMENT_NOT_EDITABLE`). */
             409: {
                 headers: {
                     [name: string]: unknown;
