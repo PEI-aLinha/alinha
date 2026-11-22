@@ -1,26 +1,30 @@
 import type { ReactNode } from 'react'
 import { isRouteErrorResponse, Link, useRouteError } from 'react-router'
 import { ApiError } from '@alinha/plugin-sdk'
+import { buttonClass, Skeleton } from '@alinha/ui'
 
 /** Full-area message: what happened and what the person can do next (Portuguese, plain language). */
 export function StatusPage({ title, children, actions }: { title: string; children?: ReactNode; actions?: ReactNode }) {
   return (
-    <section aria-labelledby="status-title" className="mx-auto flex max-w-lg flex-col items-start gap-3 py-16">
-      <h1 id="status-title" className="text-2xl font-semibold">{title}</h1>
-      {children && <p className="text-ink-soft">{children}</p>}
-      {actions && <div className="mt-2 flex flex-wrap gap-3">{actions}</div>}
+    <section aria-labelledby="status-title" className="mx-auto flex w-full max-w-lg flex-col items-start gap-3 px-5 py-16">
+      <h1 id="status-title" className="title-tight text-[1.875rem] font-extrabold">{title}</h1>
+      {children && <p className="text-[0.9375rem] text-ink-soft">{children}</p>}
+      {actions && <div className="mt-3 flex flex-wrap gap-3">{actions}</div>}
     </section>
   )
 }
 
-const linkClass = 'rounded-md border border-line px-4 py-2 font-medium hover:bg-paper-soft'
+const linkClass = buttonClass({ variant: 'secondary' })
 
 export const HomeLink = () => <Link to="/" className={linkClass}>Voltar ao início</Link>
 
 export function LoadingPage({ label = 'A carregar…' }: { label?: string }) {
   return (
-    <div role="status" aria-live="polite" className="flex min-h-[40vh] items-center justify-center text-ink-soft">
-      {label}
+    <div className="mx-auto flex w-full max-w-[1152px] flex-col gap-4 px-5 py-11">
+      <p role="status" aria-live="polite" className="text-[0.875rem] text-ink-soft">{label}</p>
+      <Skeleton className="h-8 w-2/5" />
+      <Skeleton className="h-4 w-3/5" />
+      <Skeleton className="mt-4 h-32 w-full" />
     </div>
   )
 }

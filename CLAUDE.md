@@ -44,7 +44,7 @@ unless asked.
 ```bash
 docker compose -f deploy/docker-compose.dev.yml up -d   # Postgres :5432, Redis :6379, Keycloak :8180, OpenBao :8200
 ./gradlew build                                         # core + all plugins + ModularityTest
-BAO_TOKEN=dev-app-token ./gradlew :app:bootRun          # backend :8080 (secrets from OpenBao)
+BAO_TOKEN=dev-app-token SPRING_PROFILES_ACTIVE=demo ./gradlew :app:bootRun  # backend :8080 (OpenBao secrets, demo orgs)
 ./gradlew :<plugin-id>:test :app:test                   # one plugin + module verification
 pnpm install && pnpm dev                                # frontend :5173 (runs gen:plugins first)
 pnpm check:api && pnpm lint && pnpm test && pnpm typecheck && pnpm build  # what CI runs for the frontend
@@ -147,7 +147,8 @@ Avoid this unless the task needs it. Before starting, say so explicitly and list
 - The platform has two sides:
   - **client** area (`/org/:org/...`): the SME's designated responsible person
   - **consultant** area (`/portfolio` for the client list, `/portfolio/:org/...` for one client): the service
-    provider managing several client organisations
+    provider managing several client organisations. Plugin pages across all clients go at `/portfolio/<path>`
+    (area `portfolio`, no organization; ADR 0006)
 
   Before either, a new account with the `registrant` role and no organization only sees the **onboarding** area
   (`/onboarding/...`, plugin route area `onboarding`: full page, no tenant). After registering, the plugin calls
