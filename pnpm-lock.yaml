@@ -355,6 +355,9 @@ importers:
       '@alinha/ui':
         specifier: workspace:*
         version: link:../../../../frontend/packages/ui
+      lucide-react:
+        specifier: ^1.61.0
+        version: 1.77.0(@types/react@19.3.0)(react@19.3.1)
     devDependencies:
       '@tanstack/react-query':
         specifier: ^5.104.5
@@ -383,6 +386,9 @@ importers:
       '@alinha/ui':
         specifier: workspace:*
         version: link:../../../../frontend/packages/ui
+      lucide-react:
+        specifier: ^1.61.0
+        version: 1.77.0(@types/react@19.3.0)(react@19.3.1)
     devDependencies:
       '@tanstack/react-query':
         specifier: ^5.104.5
@@ -494,6 +500,9 @@ importers:
       '@alinha/ui':
         specifier: workspace:*
         version: link:../../../../frontend/packages/ui
+      lucide-react:
+        specifier: ^1.61.0
+        version: 1.77.0(@types/react@19.3.0)(react@19.3.1)
     devDependencies:
       '@tanstack/react-query':
         specifier: ^5.104.5
