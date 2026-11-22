@@ -3,7 +3,7 @@
 #   docker build -f deploy/Dockerfile.web -t alinha/web .
 # The build has no environment-specific values: the same image serves any host.
 FROM node:22-slim AS build
-RUN npm install -g pnpm@10.34.9
+RUN npm install -g --ignore-scripts pnpm@10.34.9
 WORKDIR /src
 # Dependencies from the lockfile alone, in their own layer: a source change does not download them again
 # (CI's layer cache is the GitHub Actions cache, which does not keep the --mount caches).
