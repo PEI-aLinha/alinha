@@ -22,6 +22,7 @@ docker run -d --name "$NAME" --network "$NET" -p 127.0.0.1::80 -e TRUSTED_PROXY_
   -v "$PWD/proxy-headers.conf:/etc/nginx/snippets/proxy-headers.conf:ro" \
   -v "$PWD/security-headers.conf:/etc/nginx/snippets/security-headers.conf:ro" \
   -v "$PWD/spa-headers.conf:/etc/nginx/snippets/spa-headers.conf:ro" \
+  -v "$PWD/keycloak-proxy.conf:/etc/nginx/snippets/keycloak-proxy.conf:ro" \
   -v "$HTML:/usr/share/nginx/html:ro" nginx:1.27-alpine >/dev/null
 PORT=$(docker port "$NAME" 80/tcp | head -1 | sed 's/.*://')
 BASE="http://127.0.0.1:$PORT"
@@ -59,6 +60,17 @@ done
 # Keycloak's pages have inline scripts: the shell's CSP must not reach them (502 here: no Keycloak upstream).
 expect_no_header /kc/realms/alinha/account 'content-security-policy:'
 expect_header /kc/realms/alinha/account 'x-frame-options:'
+
+# Login actions send mail (registration, password reset): past the burst, one address gets 429. 502 before that,
+# because there is no Keycloak upstream here. Last, so the limit does not affect the checks above.
+limited=0
+for _ in $(seq 1 20); do
+  got=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$BASE/kc/realms/alinha/login-actions/registration")
+  if [ "$got" = 429 ]; then limited=$((limited + 1)); fi
+done
+if [ "$limited" -gt 0 ]; then echo "ok   login actions rate limited ($limited of 20 got 429)"
+else echo "FAIL login actions: no 429 after 20 requests"; failures=$((failures + 1)); fi
+expect_status 502 /kc/realms/alinha/protocol/openid-connect/certs
 
 if [ "$failures" -gt 0 ]; then echo "$failures check(s) failed"; exit 1; fi
 echo "All Nginx route checks passed"

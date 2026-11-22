@@ -4,6 +4,13 @@
 #   /          the shell (SPA)
 #   /api/ /oauth2/ /login/oauth2/ /auth/   the BFF (session cookie, OIDC login, token relay to the app)
 #   /kc/       Keycloak (login pages, OIDC endpoints); the admin console is not public
+# Keycloak's login actions (sign-in, registration, password reset, resending the verification mail) per client
+# address. Registration and reset send real mail through the SMTP relay: this caps how fast one address can make
+# it send. Keycloak's brute-force detection still applies to passwords. $binary_remote_addr is the client, after
+# real_ip below.
+limit_req_zone $binary_remote_addr zone=kc_login_actions:10m rate=10r/m;
+limit_req_status 429;
+
 server {
     listen 80;
     server_name _;
@@ -82,13 +89,13 @@ server {
         return 404;
     }
 
+    location ^~ /kc/realms/alinha/login-actions/ {
+        # A burst covers a normal sign-in with a typo or two; a script sending mail hits 429.
+        limit_req zone=kc_login_actions burst=10 nodelay;
+        include /etc/nginx/snippets/keycloak-proxy.conf;
+    }
+
     location ^~ /kc/ {
-        set $keycloak http://keycloak:8080;
-        proxy_pass $keycloak;
-        include /etc/nginx/snippets/proxy-headers.conf;
-        # Keycloak's login responses carry large cookies and headers.
-        proxy_buffer_size 128k;
-        proxy_buffers 4 256k;
-        proxy_busy_buffers_size 256k;
+        include /etc/nginx/snippets/keycloak-proxy.conf;
     }
 }

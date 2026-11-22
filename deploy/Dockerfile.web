@@ -14,7 +14,8 @@ RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
 FROM nginx:1.27-alpine
 LABEL org.opencontainers.image.source="https://github.com/PEI-aLinha/alinha"
 COPY deploy/nginx/alinha.conf.template /etc/nginx/templates/default.conf.template
-COPY deploy/nginx/proxy-headers.conf deploy/nginx/security-headers.conf deploy/nginx/spa-headers.conf /etc/nginx/snippets/
+COPY deploy/nginx/proxy-headers.conf deploy/nginx/security-headers.conf deploy/nginx/spa-headers.conf \
+     deploy/nginx/keycloak-proxy.conf /etc/nginx/snippets/
 COPY --from=build /src/frontend/shell/dist /usr/share/nginx/html
 # The address range of the proxy in front, whose X-Forwarded-For is trusted (overridden in compose).
 ENV TRUSTED_PROXY_CIDR=127.0.0.1/32
