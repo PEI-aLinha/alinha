@@ -186,7 +186,7 @@ Releases go to https://pei-alinha.duckdns.org: a `vX.Y.Z` release publishes the 
 | `make staging-build` | Build the production images from this checkout |
 | `make staging` | Start the production stack locally on http://localhost:8088 |
 | `make staging-down` / `make staging-clean` | Stop it (`-clean` also deletes the volumes) |
-| `make prod-logs` / `make prod-ps` | On the VM: follow the logs / list the containers |
+| Actions → **Get Production Logs** | Production: save every container's logs on the VM (`deploy/DEPLOYMENT.md`) |
 
 ## New plugin
 

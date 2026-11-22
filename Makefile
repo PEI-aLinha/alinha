@@ -1,18 +1,12 @@
-.PHONY: help prod prod-pull prod-down prod-logs prod-ps staging staging-env staging-build staging-down staging-clean staging-logs
+.PHONY: help staging staging-env staging-build staging-down staging-clean staging-logs
 
-PROD_COMPOSE    := docker compose --project-name alinha-prod -f deploy/docker-compose.prod.yml --env-file deploy/.env.prod
 STAGING_COMPOSE := docker compose --project-name alinha-staging -f deploy/docker-compose.prod.yml -f deploy/docker-compose.staging.yml --env-file deploy/.env.staging
 STAGING_NETWORK := alinha-staging-proxy
 
 help:
 	@echo "Local development: see README.md (docker compose -f deploy/docker-compose.dev.yml up -d)."
 	@echo ""
-	@echo "Production (on the VM; normally run by .github/workflows/deploy.yml):"
-	@echo "  make prod          - Start the stack with deploy/.env.prod"
-	@echo "  make prod-pull     - Pull the images of IMAGE_TAG"
-	@echo "  make prod-down     - Stop the stack (keeps the volumes)"
-	@echo "  make prod-logs     - Follow the logs"
-	@echo "  make prod-ps       - List the containers"
+	@echo "Production: only .github/workflows/deploy.yml, logs.yml and clean.yml (see deploy/DEPLOYMENT.md)."
 	@echo ""
 	@echo "Staging (production images built from this checkout, http://localhost:8088):"
 	@echo "  make staging-env   - Create deploy/.env.staging with random secrets"
@@ -21,27 +15,6 @@ help:
 	@echo "  make staging-down  - Stop the stack"
 	@echo "  make staging-clean - Stop the stack and delete its volumes"
 	@echo "  make staging-logs  - Follow the logs"
-
-## --- Production
-deploy/.env.prod:
-	@echo "Error: deploy/.env.prod not found. Production secrets live in the GitHub environment 'production';"
-	@echo "the deploy workflow passes them. See deploy/DEPLOYMENT.md."
-	@exit 1
-
-prod: deploy/.env.prod
-	$(PROD_COMPOSE) up -d --remove-orphans
-
-prod-pull: deploy/.env.prod
-	$(PROD_COMPOSE) pull
-
-prod-down: deploy/.env.prod
-	$(PROD_COMPOSE) down --remove-orphans
-
-prod-logs: deploy/.env.prod
-	$(PROD_COMPOSE) logs -f
-
-prod-ps: deploy/.env.prod
-	$(PROD_COMPOSE) ps
 
 ## --- Staging
 staging-env:
