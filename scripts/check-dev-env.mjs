@@ -83,7 +83,8 @@ assert.equal(users.get("joao.pereira@alinha.pt").attributes.tenants.length, 1);
 
 assert.equal(realm.smtpServer.host, "mailpit");
 const compose = JSON.parse(
-  execFileSync("docker", ["compose", "-f", "deploy/docker-compose.dev.yml", "config", "--format", "json"], {
+  // Dev check: it runs the developer's own `docker` from PATH on purpose.
+  execFileSync("docker", ["compose", "-f", "deploy/docker-compose.dev.yml", "config", "--format", "json"], { // NOSONAR
     cwd: root,
     encoding: "utf8",
   }),
