@@ -32,10 +32,12 @@ packages = ["src/ai_service"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# CI installs only the locked dependencies (no build of this project), so the tests import the service from src/.
+pythonpath = ["src"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 
-# Coverage gate (RNF19). CI runs: pytest --cov --cov-report=term-missing
+# Coverage gate (RNF19). CI runs: pytest --cov --cov-report=term-missing --cov-report=xml
 [tool.coverage.run]
 source = ["ai_service"]
 branch = true

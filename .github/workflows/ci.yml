@@ -152,8 +152,12 @@ jobs:
         with:
           version: 0.9.5            # same as the Dockerfile
           python-version: "3.12"
-      - run: uv sync --locked --extra dev   # fails if uv.lock is out of date with pyproject.toml
-      - run: uv run pytest --cov --cov-report=term-missing   # fail_under in pyproject.toml (RNF19)
+      # Locked wheels only (--locked fails if uv.lock is out of date; --no-build runs no setup scripts). The service
+      # itself is not installed: pytest finds it through `pythonpath` in pyproject.toml.
+      - run: uv sync --locked --no-build --no-install-project --extra dev
+      # The venv synced above, not `uv run`, which would sync again and install the project. fail_under in
+      # pyproject.toml (RNF19). coverage.xml has the absolute source dir, the same path in the sonar job.
+      - run: .venv/bin/pytest --cov --cov-report=term-missing --cov-report=xml
       - run: docker build -t alinha-ai-service:ci .
   workers:
     name: Workers (job consumer)

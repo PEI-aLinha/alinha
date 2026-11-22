@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Build from this folder: docker build -t alinha-ai-service ai-service/
 
-# --- build: install the locked dependencies and the service into a venv ---
+# --- build: install the locked dependencies into a venv ---
 FROM python:3.12-slim AS build
 
 COPY --from=ghcr.io/astral-sh/uv:0.9.5 /uv /bin/uv
@@ -12,21 +12,21 @@ ENV UV_COMPILE_BYTECODE=1 \
 
 WORKDIR /app
 
-# Dependencies first, so this layer is cached while only the code changes.
+# Locked wheels only: --no-build runs no setup scripts. The service is not built into the venv; the runtime stage
+# copies src/ and puts it on PYTHONPATH.
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev --no-install-project
+RUN uv sync --frozen --no-dev --no-build --no-install-project
 
-COPY src ./src
-RUN uv sync --frozen --no-dev --no-editable
-
-# --- runtime: only the venv, no uv, no build tools, non-root ---
+# --- runtime: only the venv and the code, no uv, no build tools, non-root ---
 FROM python:3.12-slim
 
 RUN useradd --system --uid 10001 --no-create-home app
 
 COPY --from=build /app/.venv /app/.venv
+COPY src /app/src
 
 ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONPATH=/app/src \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     ALLOW_LOCAL_LLM=false \
