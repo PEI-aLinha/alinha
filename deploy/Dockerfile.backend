@@ -7,6 +7,10 @@ ARG MODULE=app
 FROM eclipse-temurin:21-jdk AS build
 ARG MODULE
 WORKDIR /src
+# The Gradle distribution in its own layer, so a source change does not download it again.
+COPY gradlew ./
+COPY gradle/wrapper gradle/wrapper
+RUN ./gradlew --no-daemon --version
 COPY . .
 # Tests run in CI (ci.yml), not in the image build.
 RUN --mount=type=cache,target=/root/.gradle \
