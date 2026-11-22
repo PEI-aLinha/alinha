@@ -21,6 +21,14 @@ services:
       alinha: {}
       proxy:
         aliases: [alinha-web]
+    # Nginx is up and its template rendered (a bad TRUSTED_PROXY_CIDR stops it), so `up --wait` cannot go green
+    # on a broken web.
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/index.html"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
     depends_on: [bff, keycloak]
 
   bff:
