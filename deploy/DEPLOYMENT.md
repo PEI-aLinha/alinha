@@ -64,17 +64,18 @@ Generate each secret with `openssl rand -hex 24` and set it with `gh secret set 
 | `KEYCLOAK_PROVISIONER_SECRET` | client `alinha-provisioner` in the realm and the app (through OpenBao) |
 | `BAO_APP_TOKEN` | the app's OpenBao token |
 | `BAO_SEED_TOKEN` | the `openbao-seed` job's token: can only write `secret/alinha/{app,ai-service}` |
-| `SMTP_USERNAME`, `SMTP_PASSWORD` | the SMTP relay's login (from the mail provider, not generated) |
+| `MAILPIT_UI_PASSWORD` | Mailpit's web UI, user `alinha` (see Emails below) |
+| `SMTP_USERNAME`, `SMTP_PASSWORD` | only with a real SMTP relay: its login (from the mail provider, not generated) |
 
 The OpenBao **root token is not a secret here**: it stays with the operator (see OpenBao below).
 
 Variables: `ALINHA_PUBLIC_URL=https://pei-alinha.duckdns.org`, `PROXY_NETWORK` (the reverse proxy's Docker network),
-`TRUSTED_PROXY_CIDR` (that network's subnet, or the proxy's own `/32`), and the SMTP relay: `SMTP_HOST`, `SMTP_PORT`
-(587, STARTTLS) and `SMTP_FROM` (the sender address, e.g. `no-reply@<domain>`). Keycloak and the app always
-authenticate and require STARTTLS.
+`TRUSTED_PROXY_CIDR` (that network's subnet, or the proxy's own `/32`). Only with a real SMTP relay: `SMTP_HOST`,
+`SMTP_PORT` (587), `SMTP_FROM` (the sender address, e.g. `no-reply@<domain>`), `SMTP_AUTH=true` and
+`SMTP_STARTTLS=true`. Left unset, every email goes to Mailpit.
 
-Compose refuses to start when any of them is missing (`${VAR:?}`), so an empty secret can never become a
-placeholder in the imported realm.
+Compose refuses to start when a required one is missing (`${VAR:?}`); the SMTP values have defaults (Mailpit). Either
+way an empty value can never become a literal placeholder in the imported realm.
 
 ## Things to know
 
@@ -86,10 +87,14 @@ placeholder in the imported realm.
   (`deploy/openbao/bootstrap.sh`). On every deploy the `openbao-seed` job only writes the platform secrets
   (`deploy/openbao/secrets.sh`) with the narrow `BAO_SEED_TOKEN`, and the app waits for it. Staging keeps dev mode
   but seeds with the same narrow token; `deploy/openbao/test-seed.sh` (CI) runs the real server path. See **OpenBao** below.
-- **Emails** (Keycloak's verification and password reset, the notifications plugin) go through the SMTP relay in
-  `SMTP_*`. Staging sends them to Mailpit instead (http://localhost:8026). Registration and password reset are
-  open to anyone, so `web` rate limits `/kc/realms/alinha/login-actions/` per client address (10 a minute, burst
-  10, then 429): one address cannot make the relay send mail in bulk. Check the relay's own quota as well.
+- **Emails** (Keycloak's verification and password reset, the notifications plugin) go to **Mailpit** for now, in
+  production and staging: no email reaches a real inbox. Read them at `https://pei-alinha.duckdns.org/mail/` (the
+  VM's proxy routes `/mail/` to the alias `alinha-mail`), user `alinha`, password `MAILPIT_UI_PASSWORD`; staging at
+  http://localhost:8026/mail/. **Moving to a real relay** needs no code change: set the `SMTP_*` variables and
+  secrets above, deploy, and change the running realm in the admin console (Realm settings → Email), because the
+  realm is imported only once. Registration and password reset are open to anyone, so `web` rate limits
+  `/kc/realms/alinha/login-actions/` per client address (10 a minute, burst 10, then 429): one address cannot make
+  the relay send mail in bulk. Check the relay's own quota as well.
 - **Keycloak admin console:** not routed by `web`. Use
   `ssh -L 8180:172.31.0.X:8080 ...` with the container's address (`docker inspect alinha-prod-keycloak-1`), then
   http://localhost:8180/kc/admin.
