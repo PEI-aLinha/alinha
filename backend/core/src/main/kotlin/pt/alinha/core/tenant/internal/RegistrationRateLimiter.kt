@@ -120,5 +120,5 @@ internal fun clientKey(address: String): String {
     // A string with a colon is only ever parsed as an IPv6 literal, never looked up.
     val ip = runCatching { InetAddress.getByName(address) }.getOrNull() ?: return address
     if (ip !is Inet6Address) return ip.hostAddress
-    return "v6:" + ip.address.take(IPV6_PREFIX_BYTES).joinToString("") { "%02x".format(it) } + "::/64"
+    return "v6:" + ip.address.take(IPV6_PREFIX_BYTES).joinToString("") { "%02x".format(it) } + "/64"
 }
