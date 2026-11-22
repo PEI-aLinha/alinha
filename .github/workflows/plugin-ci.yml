@@ -86,9 +86,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      # Not frozen: the lockfile lives in the main repo and matches its submodule pointers, so it cannot know
+      # a dependency this plugin commit (or a plugin main newer than the pointer) adds. The main repo's CI
+      # keeps --frozen-lockfile and checks the lockfile when the pointer is updated.
       - name: Frontend
         run: |
-          pnpm install
+          pnpm install --no-frozen-lockfile
           pnpm gen:plugins
           pnpm --filter "$NPM_PACKAGE" typecheck
           pnpm lint
