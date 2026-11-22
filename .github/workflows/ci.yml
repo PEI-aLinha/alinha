@@ -131,6 +131,7 @@ jobs:
         with:
           name: coverage-frontend
           path: |
+            coverage/lcov.info
             frontend/shell/coverage/lcov.info
             frontend/packages/*/coverage/lcov.info
             frontend/keycloak-theme/coverage/lcov.info
@@ -185,7 +186,7 @@ jobs:
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
         with:
           name: coverage-frontend
-          path: frontend
+          path: .
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
         with:
           name: coverage-workers
