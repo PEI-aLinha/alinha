@@ -61,15 +61,21 @@ jobs:
           ref: ${{ inputs.main-ref }}
           submodules: recursive
           token: ${{ secrets.ALINHA_READ_TOKEN || github.token }}   # only needed for private repos
+          # The next steps run the plugin PR's own code (Gradle, pnpm scripts, pytest): keep the token out of
+          # .git/config. The one fetch below passes it for that command only.
+          persist-credentials: false
 
       # Full history of the plugin: SonarCloud needs blame data and the PR's target branch for new code.
       - name: Put this commit in place of the submodule
         env:
           SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          TOKEN: ${{ secrets.ALINHA_READ_TOKEN || github.token }}
         run: |
           cd "$PLUGIN_PATH"
-          if [ "$(git rev-parse --is-shallow-repository)" = true ]; then git fetch -q --unshallow origin; fi
-          git fetch -q origin "$SHA"
+          auth="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)"
+          fetch() { git -c "http.https://github.com/.extraheader=$auth" fetch -q "$@"; }
+          if [ "$(git rev-parse --is-shallow-repository)" = true ]; then fetch --unshallow origin; fi
+          fetch origin "$SHA"
           git checkout -q --detach "$SHA"
 
       - uses: actions/setup-java@v4
