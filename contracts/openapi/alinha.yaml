@@ -941,6 +941,7 @@ components:
         **Temporary.** The facts the core applicability rules need (`docs/applicability.md`). Sent on start
         until the core stores each organization's applicability (core#25); then this field is deprecated.
         Mirrors `pt.alinha.core.compliance.ApplicabilityInput`.
+        Omitted booleans mean `false`; an omitted `entityTypes` means none.
       required: [size, nis2, gdpr, aiAct]
       properties:
         size:
@@ -961,14 +962,12 @@ components:
               description: Optional. When known, a company can stay in a smaller category.
         publicBody:
           type: boolean
-          default: false
         nis2:
           type: object
           properties:
             entityTypes:
               type: array
               uniqueItems: true
-              default: []
               description: Types from NIS2 annexes I and II that describe the organization. Empty when none does.
               items:
                 type: string
@@ -991,13 +990,10 @@ components:
                   ONLINE_MARKETPLACE, ONLINE_SEARCH_ENGINE, SOCIAL_NETWORK_PLATFORM, RESEARCH_ORGANISATION]
             criticalEntity:
               type: boolean
-              default: false
             significantImpact:
               type: boolean
-              default: false
             higherEducation:
               type: boolean
-              default: false
         gdpr:
           type: object
           required: [processesPersonalData]
@@ -1007,16 +1003,12 @@ components:
               type: boolean
             regularOrRiskyProcessing:
               type: boolean
-              default: false
             specialOrCriminalData:
               type: boolean
-              default: false
             largeScaleMonitoring:
               type: boolean
-              default: false
             largeScaleSpecialData:
               type: boolean
-              default: false
         aiAct:
           type: object
           description: |
@@ -1025,16 +1017,12 @@ components:
           properties:
             usesAiSystems:
               type: boolean
-              default: false
             providesAiSystems:
               type: boolean
-              default: false
             highRiskArea:
               type: boolean
-              default: false
             interactsOrGeneratesContent:
               type: boolean
-              default: false
 
     AssessmentStatus:
       type: string

@@ -519,6 +519,7 @@ export interface components {
          * @description **Temporary.** The facts the core applicability rules need (`docs/applicability.md`). Sent on start
          *     until the core stores each organization's applicability (core#25); then this field is deprecated.
          *     Mirrors `pt.alinha.core.compliance.ApplicabilityInput`.
+         *     Omitted booleans mean `false`; an omitted `entityTypes` means none.
          */
         ApplicabilityInput: {
             size: {
@@ -531,46 +532,31 @@ export interface components {
                  */
                 annualBalanceSheetEur?: number | null;
             };
-            /** @default false */
-            publicBody: boolean;
+            publicBody?: boolean;
             nis2: {
-                /**
-                 * @description Types from NIS2 annexes I and II that describe the organization. Empty when none does.
-                 * @default []
-                 */
-                entityTypes: ("ELECTRICITY_SUPPLIER" | "ELECTRICITY_DISTRIBUTION_OPERATOR" | "ELECTRICITY_TRANSMISSION_OPERATOR" | "ELECTRICITY_PRODUCER" | "ELECTRICITY_MARKET_OPERATOR" | "ELECTRICITY_MARKET_PARTICIPANT" | "CHARGING_POINT_OPERATOR" | "DISTRICT_HEATING_COOLING" | "OIL_PIPELINE_OPERATOR" | "OIL_OPERATOR" | "OIL_CENTRAL_STOCKHOLDING" | "GAS_SUPPLIER" | "GAS_DISTRIBUTION_OPERATOR" | "GAS_TRANSMISSION_OPERATOR" | "GAS_STORAGE_OPERATOR" | "LNG_OPERATOR" | "NATURAL_GAS_UNDERTAKING" | "GAS_REFINING_OPERATOR" | "HYDROGEN_OPERATOR" | "AIR_CARRIER" | "AIRPORT" | "AIR_TRAFFIC_CONTROL" | "RAIL_INFRASTRUCTURE_MANAGER" | "RAILWAY_UNDERTAKING" | "WATER_TRANSPORT_COMPANY" | "PORT_MANAGING_BODY" | "VESSEL_TRAFFIC_SERVICE" | "ROAD_TRAFFIC_AUTHORITY" | "INTELLIGENT_TRANSPORT_SYSTEMS" | "CREDIT_INSTITUTION" | "TRADING_VENUE" | "CENTRAL_COUNTERPARTY" | "HEALTHCARE_PROVIDER" | "EU_REFERENCE_LABORATORY" | "MEDICINAL_PRODUCT_RESEARCH" | "DRINKING_WATER" | "WASTE_WATER" | "INTERNET_EXCHANGE_POINT" | "DNS_SERVICE_PROVIDER" | "TLD_NAME_REGISTRY" | "CLOUD_COMPUTING_PROVIDER" | "DATA_CENTRE_PROVIDER" | "CONTENT_DELIVERY_NETWORK" | "QUALIFIED_TRUST_SERVICE_PROVIDER" | "TRUST_SERVICE_PROVIDER" | "PUBLIC_ELECTRONIC_COMMUNICATIONS_NETWORK" | "PUBLIC_ELECTRONIC_COMMUNICATIONS_SERVICE" | "MANAGED_SERVICE_PROVIDER" | "MANAGED_SECURITY_SERVICE_PROVIDER" | "SPACE_GROUND_INFRASTRUCTURE" | "POSTAL_COURIER" | "WASTE_MANAGEMENT" | "CHEMICALS" | "FOOD" | "MEDICAL_DEVICES" | "ELECTRONICS_MANUFACTURING" | "ELECTRICAL_EQUIPMENT_MANUFACTURING" | "MACHINERY_MANUFACTURING" | "MOTOR_VEHICLE_MANUFACTURING" | "OTHER_TRANSPORT_EQUIPMENT_MANUFACTURING" | "ONLINE_MARKETPLACE" | "ONLINE_SEARCH_ENGINE" | "SOCIAL_NETWORK_PLATFORM" | "RESEARCH_ORGANISATION")[];
-                /** @default false */
-                criticalEntity: boolean;
-                /** @default false */
-                significantImpact: boolean;
-                /** @default false */
-                higherEducation: boolean;
+                /** @description Types from NIS2 annexes I and II that describe the organization. Empty when none does. */
+                entityTypes?: ("ELECTRICITY_SUPPLIER" | "ELECTRICITY_DISTRIBUTION_OPERATOR" | "ELECTRICITY_TRANSMISSION_OPERATOR" | "ELECTRICITY_PRODUCER" | "ELECTRICITY_MARKET_OPERATOR" | "ELECTRICITY_MARKET_PARTICIPANT" | "CHARGING_POINT_OPERATOR" | "DISTRICT_HEATING_COOLING" | "OIL_PIPELINE_OPERATOR" | "OIL_OPERATOR" | "OIL_CENTRAL_STOCKHOLDING" | "GAS_SUPPLIER" | "GAS_DISTRIBUTION_OPERATOR" | "GAS_TRANSMISSION_OPERATOR" | "GAS_STORAGE_OPERATOR" | "LNG_OPERATOR" | "NATURAL_GAS_UNDERTAKING" | "GAS_REFINING_OPERATOR" | "HYDROGEN_OPERATOR" | "AIR_CARRIER" | "AIRPORT" | "AIR_TRAFFIC_CONTROL" | "RAIL_INFRASTRUCTURE_MANAGER" | "RAILWAY_UNDERTAKING" | "WATER_TRANSPORT_COMPANY" | "PORT_MANAGING_BODY" | "VESSEL_TRAFFIC_SERVICE" | "ROAD_TRAFFIC_AUTHORITY" | "INTELLIGENT_TRANSPORT_SYSTEMS" | "CREDIT_INSTITUTION" | "TRADING_VENUE" | "CENTRAL_COUNTERPARTY" | "HEALTHCARE_PROVIDER" | "EU_REFERENCE_LABORATORY" | "MEDICINAL_PRODUCT_RESEARCH" | "DRINKING_WATER" | "WASTE_WATER" | "INTERNET_EXCHANGE_POINT" | "DNS_SERVICE_PROVIDER" | "TLD_NAME_REGISTRY" | "CLOUD_COMPUTING_PROVIDER" | "DATA_CENTRE_PROVIDER" | "CONTENT_DELIVERY_NETWORK" | "QUALIFIED_TRUST_SERVICE_PROVIDER" | "TRUST_SERVICE_PROVIDER" | "PUBLIC_ELECTRONIC_COMMUNICATIONS_NETWORK" | "PUBLIC_ELECTRONIC_COMMUNICATIONS_SERVICE" | "MANAGED_SERVICE_PROVIDER" | "MANAGED_SECURITY_SERVICE_PROVIDER" | "SPACE_GROUND_INFRASTRUCTURE" | "POSTAL_COURIER" | "WASTE_MANAGEMENT" | "CHEMICALS" | "FOOD" | "MEDICAL_DEVICES" | "ELECTRONICS_MANUFACTURING" | "ELECTRICAL_EQUIPMENT_MANUFACTURING" | "MACHINERY_MANUFACTURING" | "MOTOR_VEHICLE_MANUFACTURING" | "OTHER_TRANSPORT_EQUIPMENT_MANUFACTURING" | "ONLINE_MARKETPLACE" | "ONLINE_SEARCH_ENGINE" | "SOCIAL_NETWORK_PLATFORM" | "RESEARCH_ORGANISATION")[];
+                criticalEntity?: boolean;
+                significantImpact?: boolean;
+                higherEducation?: boolean;
             };
             /** @description When `processesPersonalData` is false, every other field must be false (otherwise `422`). */
             gdpr: {
                 processesPersonalData: boolean;
-                /** @default false */
-                regularOrRiskyProcessing: boolean;
-                /** @default false */
-                specialOrCriminalData: boolean;
-                /** @default false */
-                largeScaleMonitoring: boolean;
-                /** @default false */
-                largeScaleSpecialData: boolean;
+                regularOrRiskyProcessing?: boolean;
+                specialOrCriminalData?: boolean;
+                largeScaleMonitoring?: boolean;
+                largeScaleSpecialData?: boolean;
             };
             /**
              * @description `highRiskArea` and `interactsOrGeneratesContent` need `usesAiSystems` or `providesAiSystems`
              *     (otherwise `422`).
              */
             aiAct: {
-                /** @default false */
-                usesAiSystems: boolean;
-                /** @default false */
-                providesAiSystems: boolean;
-                /** @default false */
-                highRiskArea: boolean;
-                /** @default false */
-                interactsOrGeneratesContent: boolean;
+                usesAiSystems?: boolean;
+                providesAiSystems?: boolean;
+                highRiskArea?: boolean;
+                interactsOrGeneratesContent?: boolean;
             };
         };
         /**
