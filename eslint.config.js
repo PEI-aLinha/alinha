@@ -19,7 +19,7 @@ export default tseslint.config(
   {
     // Build scripts, local ESLint rules and their tests run in Node.
     files: ['scripts/**/*.{js,mjs}', 'eslint-rules/**/*.js'],
-    languageOptions: { globals: { console: 'readonly', process: 'readonly' } },
+    languageOptions: { globals: { console: 'readonly', process: 'readonly', structuredClone: 'readonly' } },
   },
   {
     // Architecture rule on the frontend: a plugin may only import the SDK,

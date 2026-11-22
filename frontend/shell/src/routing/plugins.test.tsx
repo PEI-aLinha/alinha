@@ -3,7 +3,7 @@ import { isValidElement } from 'react'
 import type { RouteObject } from 'react-router'
 import { definePlugin, type FrontendPlugin } from '@alinha/plugin-sdk'
 import { makeCan } from '../session/permissions'
-import { pluginNav, pluginRoutes, RequirePermission } from './plugins'
+import { checkReservedPaths, integrationNav, pluginNav, pluginRoutes, RequirePermission } from './plugins'
 
 const Page = () => null
 
@@ -73,3 +73,49 @@ describe('pluginNav', () => {
     expect(pluginNav([a], 'client', makeCan(['risk:read', 'risk:edit'])).map((n) => n.label)).toContain('Editar riscos')
   })
 })
+
+describe('integrationNav', () => {
+  const providers = definePlugin({
+    id: 'p',
+    name: 'P',
+    routes: {},
+    nav: [
+      { label: 'Superfície externa', path: 'integrations/external-surface', area: 'client', order: 71 },
+      { label: 'Repositório de código', path: 'integrations/code-repository', area: 'client', order: 70 },
+      { label: 'Segredo', path: 'integrations/secret', area: 'client', resource: 'integration' },
+      { label: 'Integrações antigas', path: 'integrationsold', area: 'client' },
+    ],
+  })
+
+  it('takes the entries under integrations/ out of the side menu', () => {
+    expect(pluginNav([providers], 'client', makeCan([])).map((n) => n.label)).toEqual(['Integrações antigas'])
+  })
+
+  it('lists them for the Integrações page, by order and permission', () => {
+    expect(integrationNav([providers], 'client', makeCan([])).map((n) => n.label)).toEqual(['Repositório de código', 'Superfície externa'])
+    expect(integrationNav([providers], 'client', makeCan(['integration:read'])).map((n) => n.label)).toContain('Segredo')
+  })
+})
+
+describe('checkReservedPaths', () => {
+  it('accepts provider pages and menu entries under integrations/', () => {
+    const provider = definePlugin({
+      id: 'p',
+      name: 'P',
+      routes: { client: [{ path: 'integrations/code-repository', Component: Page }] },
+      nav: [{ label: 'Repositório de código', path: 'integrations/code-repository', area: 'client' }],
+    })
+    expect(() => checkReservedPaths([provider, a])).not.toThrow()
+  })
+
+  it.each([
+    ['a client route', { routes: { client: [{ path: 'integrations', Component: Page }] } }],
+    ['a consultant route with slashes', { routes: { consultant: [{ path: '/integrations/', Component: Page }] } }],
+    ['a portfolio route', { routes: { portfolio: [{ path: 'integrations', Component: Page }] } }],
+    ['a menu entry', { routes: {}, nav: [{ label: 'Integrações', path: 'integrations', area: 'client' as const }] }],
+  ])('refuses %s at exactly integrations, naming the plugin', (_what, parts) => {
+    const plugin = definePlugin({ id: 'clash', name: 'Clash', ...parts })
+    expect(() => checkReservedPaths([plugin])).toThrow(/Plugin "clash".*'integrations\/<id>'/)
+  })
+})
+

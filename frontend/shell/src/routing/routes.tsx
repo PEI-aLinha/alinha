@@ -1,20 +1,16 @@
 import { Navigate, useParams, type RouteObject } from 'react-router'
-import type { Area, FrontendPlugin, NavArea } from '@alinha/plugin-sdk'
+import type { FrontendPlugin, NavArea } from '@alinha/plugin-sdk'
 import { ClientLayout } from '../layouts/ClientLayout'
 import { ConsultantLayout, PortfolioPage } from '../layouts/ConsultantLayout'
 import { OnboardingLayout } from '../layouts/OnboardingLayout'
+import { IntegrationsPage } from '../pages/IntegrationsPage'
 import { ForbiddenPage, NotFoundPage, RouteErrorPage, StatusPage } from '../pages/StatusPages'
 import { SessionGate, useSession } from '../session/SessionGate'
 import { isClientUser, needsOnboarding } from '../session/permissions'
-import { pluginNav, pluginRoutes } from './plugins'
+import { AREA_BASE } from './areaBase'
+import { INTEGRATIONS_PATH, checkReservedPaths, integrationNav, pluginNav, pluginRoutes } from './plugins'
 
-/** Where each area is mounted. A `Record`, so TypeScript flags every place a new area is missed. */
-export const AREA_BASE: Record<Area, string> = {
-  client: '/org',
-  consultant: '/portfolio',
-  portfolio: '/portfolio',
-  onboarding: '/onboarding',
-}
+export { AREA_BASE }
 
 /**
  * Plugin pages across the whole portfolio share `/portfolio/` with one client's pages (`/portfolio/:org`), so their
@@ -87,17 +83,23 @@ export function HomeRedirect({ plugins }: { plugins: readonly FrontendPlugin[] }
   )
 }
 
-/** Landing page of an organization: the first menu entry, or a short note when there is none. */
+/**
+ * Landing page of an organization: the first menu entry, else the Integrações page when the user only sees evidence
+ * providers (they are not in pluginNav), else a short note.
+ */
 function AreaHome({ plugins, area }: { plugins: readonly FrontendPlugin[]; area: NavArea }) {
   const { can } = useSession()
   const { org = '' } = useParams()
+  const base = `${AREA_BASE[area]}/${encodeURIComponent(org)}`
   const [first] = pluginNav(plugins, area, can)
-  if (first) return <Navigate to={`${AREA_BASE[area]}/${encodeURIComponent(org)}/${first.path}`} replace />
+  if (first) return <Navigate to={`${base}/${first.path}`} replace />
+  if (integrationNav(plugins, area, can).length > 0) return <Navigate to={`${base}/${INTEGRATIONS_PATH}`} replace />
   return <StatusPage title="Ainda não há páginas disponíveis">Quando houver páginas para o seu perfil, aparecem no menu.</StatusPage>
 }
 
 const areaChildren = (plugins: readonly FrontendPlugin[], area: NavArea): RouteObject[] => [
   { index: true, element: <AreaHome plugins={plugins} area={area} /> },
+  { path: INTEGRATIONS_PATH, element: <IntegrationsPage plugins={plugins} area={area} /> },
   ...pluginRoutes(plugins, area),
   { path: '*', element: <NotFoundPage /> },
 ]
@@ -112,6 +114,7 @@ const areaChildren = (plugins: readonly FrontendPlugin[], area: NavArea): RouteO
  */
 export function createRoutes(plugins: readonly FrontendPlugin[]): RouteObject[] {
   checkPortfolioRoutes(plugins)
+  checkReservedPaths(plugins)
   return [
     {
       path: '/',

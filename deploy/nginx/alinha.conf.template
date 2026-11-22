@@ -1,0 +1,101 @@
+# Nginx of the web image (deploy/Dockerfile.web). The nginx image runs envsubst on this template at startup;
+# only variables set in the environment are replaced, so $host and friends stay as they are.
+#
+#   /          the shell (SPA)
+#   /api/ /oauth2/ /login/oauth2/ /auth/   the BFF (session cookie, OIDC login, token relay to the app)
+#   /kc/       Keycloak (login pages, OIDC endpoints); the admin console is not public
+# Keycloak's login actions (sign-in, registration, password reset, resending the verification mail) per client
+# address. Registration and reset send real mail through the SMTP relay: this caps how fast one address can make
+# it send. Keycloak's brute-force detection still applies to passwords. $binary_remote_addr is the client, after
+# real_ip below.
+limit_req_zone $binary_remote_addr zone=kc_login_actions:10m rate=10r/m;
+limit_req_status 429;
+
+server {
+    listen 80;
+    server_name _;
+    server_tokens off;
+    root /usr/share/nginx/html;
+
+    # Only the proxy in front may say who the client is. Its X-Forwarded-For becomes $remote_addr, and the
+    # upstreams get just that address, so a client cannot pick the IP the BFF's rate limiter sees.
+    set_real_ip_from ${TRUSTED_PROXY_CIDR};
+    real_ip_header X-Forwarded-For;
+
+    # Docker DNS, re-resolved: Nginx starts even when an upstream is down, and follows a recreated container.
+    resolver 127.0.0.11 valid=10s ipv6=off;
+
+    client_max_body_size 20m;
+
+    include /etc/nginx/snippets/security-headers.conf;
+
+    location = /index.html {
+        include /etc/nginx/snippets/spa-headers.conf;
+        add_header Cache-Control "no-cache" always;
+    }
+
+    location / {
+        include /etc/nginx/snippets/spa-headers.conf;
+        try_files $uri /index.html;
+    }
+
+    # Vite puts a content hash in every file name under /assets.
+    location /assets/ {
+        include /etc/nginx/snippets/spa-headers.conf;
+        add_header Cache-Control "public, max-age=31536000, immutable" always;
+        try_files $uri =404;
+    }
+
+    location ^~ /api/ {
+        set $bff http://bff:8081;
+        proxy_pass $bff;
+        include /etc/nginx/snippets/proxy-headers.conf;
+    }
+
+    location ^~ /oauth2/ {
+        set $bff http://bff:8081;
+        proxy_pass $bff;
+        include /etc/nginx/snippets/proxy-headers.conf;
+    }
+
+    location ^~ /login/oauth2/ {
+        set $bff http://bff:8081;
+        proxy_pass $bff;
+        include /etc/nginx/snippets/proxy-headers.conf;
+    }
+
+    location ^~ /auth/ {
+        set $bff http://bff:8081;
+        proxy_pass $bff;
+        include /etc/nginx/snippets/proxy-headers.conf;
+    }
+
+    # The admin console and the master realm (its login and token endpoints for the bootstrap admin) are only
+    # reachable through an SSH tunnel to Keycloak (deploy/DEPLOYMENT.md), never from the internet.
+    location ^~ /kc/admin {
+        return 404;
+    }
+
+    location ^~ /kc/realms/master {
+        return 404;
+    }
+
+    # Keycloak serves these on its management port (9000), not here, but never let them through if that changes.
+    location ^~ /kc/metrics {
+        return 404;
+    }
+
+    location ^~ /kc/health {
+        return 404;
+    }
+
+    location ^~ /kc/realms/alinha/login-actions/ {
+        # A burst covers a normal sign-in with a typo or two; a script sending mail hits 429.
+        limit_req zone=kc_login_actions burst=10 nodelay;
+        include /etc/nginx/snippets/keycloak-proxy.conf;
+    }
+
+    location ^~ /kc/ {
+        include /etc/nginx/snippets/keycloak-proxy.conf;
+    }
+}

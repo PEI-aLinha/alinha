@@ -1,0 +1,58 @@
+name: Clean from Production VM
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: "Type DESTROY-ALL-DATA to confirm (needed even when keeping the volumes)"
+        required: true
+        type: string
+      keep_volumes:
+        description: "Keep the database and Redis volumes (stops containers only)"
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+# Shared with deploy.yml and the other VM workflows: one run at a time on the VM.
+concurrency:
+  group: prod-vm
+  cancel-in-progress: false
+
+# By project name, so no compose file or secrets are needed to take the stack down.
+env:
+  PROJECT: alinha-prod
+
+jobs:
+  clean:
+    name: Down and Clean
+    # Same guard as deploy.yml and logs.yml: only main's version of this file may run on the production runner.
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, prod]
+    environment: production
+    steps:
+      - name: Verify confirmation
+        env:
+          CONFIRMATION: ${{ inputs.confirmation }}
+        run: |
+          if [ "$CONFIRMATION" != "DESTROY-ALL-DATA" ]; then
+            echo "::error::Confirmation did not match. Type DESTROY-ALL-DATA exactly to proceed."
+            exit 1
+          fi
+
+      - name: Down the application (keeping data)
+        if: ${{ inputs.keep_volumes }}
+        run: docker compose --project-name "$PROJECT" down --remove-orphans
+
+      - name: Down the application (DELETING ALL DATA)
+        if: ${{ !inputs.keep_volumes }}
+        run: docker compose --project-name "$PROJECT" down --volumes --remove-orphans
+
+      - name: Remove project images
+        run: |
+          docker images "ghcr.io/pei-alinha/alinha/*" --format "{{.Repository}}:{{.Tag}}" | while read -r image; do
+            echo "Removing image: $image"
+            docker rmi "$image" || true
+          done

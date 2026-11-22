@@ -1,8 +1,8 @@
 # Keycloak
 
 > **Local development only.** This realm has `sslRequired: none`, a committed dev client secret and
-> test passwords. Never import it into staging or production; environment realms are configured
-> separately.
+> test passwords. Never import it as is into staging or production: `deploy/Dockerfile.keycloak` turns it into the
+> production realm with `scripts/gen-prod-realm.mjs` (secrets, test passwords and URLs from the environment).
 
 The `alinha` realm is imported from `alinha-realm.json` by `start-dev --import-realm`. The import
 only runs when the realm does not exist; after editing the file, recreate the container:
@@ -52,6 +52,10 @@ Dev tenant UUIDs, reused by the persona seed data (#42):
 |---|---|
 | Componentes Águeda | `11111111-1111-4111-8111-111111111111` |
 | Metalúrgica de Aveiro | `22222222-2222-4222-8222-222222222222` |
+
+Their organization profiles (name, NIF, sector…) come from
+`backend/app/src/main/resources/db/demo/R__demo_organization_profiles.sql`, loaded only when the app runs with the
+`demo` Spring profile. Without it the menu shows the tenant UUID instead of the organization name.
 
 Marta can act on both organisations; João only on Metalúrgica de Aveiro, so "organization not
 assigned to this consultant" (403) can be exercised locally.

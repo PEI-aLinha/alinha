@@ -1,0 +1,252 @@
+# Production stack (pei-alinha.duckdns.org). Deployed by .github/workflows/deploy.yml:
+#   docker compose --project-name alinha-prod -f deploy/docker-compose.prod.yml up -d
+# Every value comes from the environment (GitHub environment "production"); a missing secret stops compose
+# before anything starts. Nothing publishes a port: the VM's reverse proxy reaches "web" over PROXY_NETWORK.
+# See deploy/DEPLOYMENT.md.
+
+# The JRE images' /bin/sh is dash, which has no /dev/tcp: their health checks run bash.
+x-jvm: &jvm
+  restart: always
+  networks: [alinha]
+
+services:
+  web:
+    image: ${IMAGE_PREFIX:-ghcr.io/pei-alinha/alinha}/web:${IMAGE_TAG:?IMAGE_TAG must be a release version}
+    restart: always
+    mem_limit: 64m
+    environment:
+      # The top proxy's network: only it may set X-Forwarded-For.
+      TRUSTED_PROXY_CIDR: ${TRUSTED_PROXY_CIDR:?}
+    networks:
+      alinha: {}
+      proxy:
+        aliases: [alinha-web]
+    # Nginx is up and its template rendered (a bad TRUSTED_PROXY_CIDR stops it), so `up --wait` cannot go green
+    # on a broken web.
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/index.html"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    depends_on: [bff, keycloak]
+
+  bff:
+    <<: *jvm
+    image: ${IMAGE_PREFIX:-ghcr.io/pei-alinha/alinha}/bff:${IMAGE_TAG:?IMAGE_TAG must be a release version}
+    mem_limit: 512m
+    networks:
+      alinha:
+        # Fixed, so the app can trust X-Forwarded-For from the BFF and nothing else (ALINHA_TRUSTED_PROXIES).
+        ipv4_address: ${BFF_IP:-172.31.0.10}
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      JAVA_TOOL_OPTIONS: -Xmx320m
+      REDIS_HOST: redis
+      ALINHA_APP_URL: http://app:8080
+      BFF_CLIENT_SECRET: ${BFF_CLIENT_SECRET:?}
+      BFF_REDIRECT_URI: ${ALINHA_PUBLIC_URL:?}/login/oauth2/code/keycloak
+      BFF_AFTER_LOGIN_URI: ${ALINHA_PUBLIC_URL:?}/
+      BFF_POST_LOGOUT_URI: ${ALINHA_PUBLIC_URL:?}/
+      # The browser goes to the public URL; the BFF itself talks to Keycloak inside the network.
+      KEYCLOAK_AUTHORIZATION_URI: ${ALINHA_PUBLIC_URL:?}/kc/realms/alinha/protocol/openid-connect/auth
+      KEYCLOAK_END_SESSION_URI: ${ALINHA_PUBLIC_URL:?}/kc/realms/alinha/protocol/openid-connect/logout
+      KEYCLOAK_TOKEN_URI: http://keycloak:8080/kc/realms/alinha/protocol/openid-connect/token
+      KEYCLOAK_JWK_SET_URI: http://keycloak:8080/kc/realms/alinha/protocol/openid-connect/certs
+      KEYCLOAK_USER_INFO_URI: http://keycloak:8080/kc/realms/alinha/protocol/openid-connect/userinfo
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8081 && printf 'GET /actuator/health/readiness HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q '^HTTP/1.1 200' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  app:
+    <<: *jvm
+    image: ${IMAGE_PREFIX:-ghcr.io/pei-alinha/alinha}/app:${IMAGE_TAG:?IMAGE_TAG must be a release version}
+    mem_limit: 768m
+    environment:
+      JAVA_TOOL_OPTIONS: -Xmx512m
+      DB_URL: jdbc:postgresql://postgres:5432/alinha
+      REDIS_HOST: redis
+      BAO_ADDR: http://openbao:8200
+      BAO_TOKEN: ${BAO_APP_TOKEN:?}
+      # The issuer is the public URL (it is what the tokens carry); the keys come from inside the network.
+      # With both set, Boot fetches keys from the JWK set URI and still checks `iss` and `aud` (see SecurityConfig).
+      KEYCLOAK_ISSUER_URI: ${ALINHA_PUBLIC_URL:?}/kc/realms/alinha
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/kc/realms/alinha/protocol/openid-connect/certs
+      KEYCLOAK_URL: http://keycloak:8080/kc
+      # The real SMTP relay (notifications plugin). The password is smtp.password in OpenBao (openbao-seed).
+      SMTP_HOST: ${SMTP_HOST:?}
+      SMTP_PORT: ${SMTP_PORT:?}
+      SMTP_USERNAME: ${SMTP_USERNAME:?}
+      SMTP_AUTH: "true"
+      SMTP_STARTTLS: "true"
+      # Regex for BFF_IP.
+      ALINHA_TRUSTED_PROXIES: ${ALINHA_TRUSTED_PROXIES:-172\.31\.0\.10}
+    volumes:
+      - ../frameworks:/frameworks:ro
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/8080 && printf 'GET /actuator/health HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q '^HTTP/1.1 200' <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 90s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      openbao-seed:
+        condition: service_completed_successfully
+      keycloak:
+        condition: service_healthy
+
+  job-consumer:
+    image: ${IMAGE_PREFIX:-ghcr.io/pei-alinha/alinha}/job-consumer:${IMAGE_TAG:?IMAGE_TAG must be a release version}
+    restart: always
+    mem_limit: 128m
+    networks: [alinha]
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  keycloak:
+    image: ${IMAGE_PREFIX:-ghcr.io/pei-alinha/alinha}/keycloak:${IMAGE_TAG:?IMAGE_TAG must be a release version}
+    restart: always
+    mem_limit: 768m
+    networks: [alinha]
+    environment:
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?}
+      KC_HOSTNAME: ${ALINHA_PUBLIC_URL:?}/kc
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:?}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?}
+      JAVA_OPTS_KC_HEAP: -Xms256m -Xmx512m
+      # Placeholders in the imported realm (scripts/gen-prod-realm.mjs). Required here: Keycloak would import an
+      # unset one as the literal text "${...}".
+      ALINHA_PUBLIC_URL: ${ALINHA_PUBLIC_URL:?}
+      BFF_CLIENT_SECRET: ${BFF_CLIENT_SECRET:?}
+      KEYCLOAK_PROVISIONER_SECRET: ${KEYCLOAK_PROVISIONER_SECRET:?}
+      # The realm's SMTP server: verification, password reset and invitations reach real users.
+      SMTP_HOST: ${SMTP_HOST:?}
+      SMTP_PORT: ${SMTP_PORT:?}
+      SMTP_FROM: ${SMTP_FROM:?}
+      SMTP_USERNAME: ${SMTP_USERNAME:?}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:?}
+    healthcheck:
+      # The image has no curl; the management port follows the /kc relative path.
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /kc/health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q ^HTTP/1.1.200 <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:17
+    restart: always
+    mem_limit: 512m
+    networks: [alinha]
+    environment:
+      POSTGRES_DB: alinha
+      POSTGRES_USER: alinha
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      ALINHA_APP_DB_PASSWORD: ${ALINHA_APP_DB_PASSWORD:?}
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/init/01-app-role.sh:/docker-entrypoint-initdb.d/01-app-role.sh:ro
+      - ./postgres/prod/02-keycloak-db.sh:/docker-entrypoint-initdb.d/02-keycloak-db.sh:ro
+
+  redis:
+    image: redis:8
+    restart: always
+    mem_limit: 128m
+    networks: [alinha]
+    volumes:
+      - redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  # A real server with persistent storage (deploy/openbao/server.hcl). It starts sealed after every restart and is
+  # healthy only once unsealed: see "OpenBao" in deploy/DEPLOYMENT.md.
+  openbao:
+    image: openbao/openbao:2.4.1
+    restart: always
+    mem_limit: 128m
+    networks: [alinha]
+    cap_add: [IPC_LOCK]
+    command: ["server"] # the image's entrypoint adds -config=/openbao/config and drops root
+    environment:
+      BAO_ADDR: http://127.0.0.1:8200 # for `docker exec ... bao operator unseal` and bootstrap.sh
+      ALINHA_BAO_APP_TOKEN: ${BAO_APP_TOKEN:?}
+      ALINHA_BAO_SEED_TOKEN: ${BAO_SEED_TOKEN:?}
+    volumes:
+      - ./openbao/server.hcl:/openbao/config/server.hcl:ro
+      - ./openbao:/init:ro # bootstrap.sh and the policies, run by hand with the root token
+      - openbao-data:/openbao/file
+    healthcheck:
+      # Healthy = initialized and unsealed. Also renews the app's and the seed job's periodic tokens (renew-self),
+      # so they never expire while the stack runs; before the bootstrap they do not exist yet, which is fine.
+      test: ["CMD-SHELL", "bao status >/dev/null && { for t in \"$$ALINHA_BAO_APP_TOKEN\" \"$$ALINHA_BAO_SEED_TOKEN\"; do BAO_TOKEN=\"$$t\" bao token renew >/dev/null 2>&1 || true; done; }"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # Writes the platform secrets into OpenBao on every deploy (deploy/openbao/secrets.sh), so a changed GitHub secret
+  # reaches OpenBao. Its token can only write secret/alinha/{app,ai-service} (alinha-seed.hcl): no root token here.
+  # Runs once and exits; the app waits for it. Keep that depends_on: `up --wait` (deploy.yml) fails on a one-shot
+  # service that nothing depends on ("exited (0)"). deploy/openbao/test-seed.sh checks this path.
+  openbao-seed:
+    image: openbao/openbao:2.4.1
+    restart: "no"
+    mem_limit: 64m
+    networks: [alinha]
+    entrypoint: ["/bin/sh", "/init/secrets.sh"]
+    environment:
+      BAO_ADDR: http://openbao:8200
+      BAO_TOKEN: ${BAO_SEED_TOKEN:?}
+      POSTGRES_USER: alinha
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      ALINHA_APP_DB_PASSWORD: ${ALINHA_APP_DB_PASSWORD:?}
+      KEYCLOAK_PROVISIONER_SECRET: ${KEYCLOAK_PROVISIONER_SECRET:?}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:?}
+      LLM_API_KEY: none # no AI Service in production yet
+      AI_SERVICE_TOKEN: none # no AI Service in production yet
+    volumes:
+      - ./openbao:/init:ro
+    depends_on:
+      openbao:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  redis:
+  openbao-data:
+
+networks:
+  alinha:
+    ipam:
+      config:
+        - subnet: ${ALINHA_SUBNET:-172.31.0.0/24}
+  proxy:
+    name: ${PROXY_NETWORK:?}
+    external: true

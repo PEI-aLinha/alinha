@@ -1,0 +1,45 @@
+# syntax=docker/dockerfile:1.7
+# Keycloak with the aLinha login theme and the production realm. Build from the repo root:
+#   docker build -f deploy/Dockerfile.keycloak -t alinha/keycloak .
+# The realm keeps ${VAR} placeholders (scripts/gen-prod-realm.mjs): secrets come from the container environment.
+
+# Keycloakify packages the theme as a jar with Maven.
+FROM node:22-bookworm-slim AS theme
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends maven openjdk-17-jdk-headless \
+ && rm -rf /var/lib/apt/lists/* \
+ && npm install -g --ignore-scripts pnpm@10.34.9
+WORKDIR /src
+# Dependencies from the lockfile alone, in their own layer (see Dockerfile.web).
+COPY pnpm-lock.yaml pnpm-workspace.yaml ./
+RUN pnpm fetch
+COPY . .
+RUN --mount=type=cache,target=/root/.m2 \
+    pnpm install --offline --frozen-lockfile --filter "@alinha/keycloak-theme..." \
+ && pnpm --filter @alinha/keycloak-theme build-keycloak-theme
+
+FROM node:22-bookworm-slim AS realm
+# true only for staging (docker-compose.staging.yml): test users and Mailpit. The published production image has
+# neither: it sends mail through the SMTP relay given in its environment.
+ARG STAGING=false
+WORKDIR /src
+COPY scripts/gen-prod-realm.mjs deploy/keycloak/alinha-realm.json ./
+RUN if [ "$STAGING" = "true" ]; then flag=--staging; else flag=; fi \
+ && node gen-prod-realm.mjs $flag alinha-realm.json /alinha-realm.json
+
+# Build-time options (database vendor, health, relative path) are fixed here so the server starts --optimized.
+FROM quay.io/keycloak/keycloak:26.4 AS builder
+ENV KC_DB=postgres \
+    KC_HEALTH_ENABLED=true \
+    KC_HTTP_RELATIVE_PATH=/kc
+COPY --from=theme /src/frontend/keycloak-theme/dist_keycloak/alinha-keycloak-theme.jar /opt/keycloak/providers/
+RUN /opt/keycloak/bin/kc.sh build
+
+FROM quay.io/keycloak/keycloak:26.4
+LABEL org.opencontainers.image.source="https://github.com/PEI-aLinha/alinha"
+COPY --from=builder /opt/keycloak/ /opt/keycloak/
+COPY --from=realm /alinha-realm.json /opt/keycloak/data/import/alinha-realm.json
+# The base image's keycloak user (uid 1000), stated so the image never falls back to root.
+USER 1000
+ENTRYPOINT ["/opt/keycloak/bin/kc.sh"]
+CMD ["start", "--optimized", "--import-realm"]

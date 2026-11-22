@@ -1,7 +1,8 @@
 import { Suspense, useState, useSyncExternalStore } from 'react'
 import { Navigate, Outlet } from 'react-router'
 import { errorMessage, useHost } from '@alinha/plugin-sdk'
-import { buttonClass } from '@alinha/ui'
+import { Avatar, buttonClass, initialsOf, Logo } from '@alinha/ui'
+import { AppearanceMenu } from '../appearance/AppearanceMenu'
 import { HostProvider } from '../host'
 import { LoadingPage, StatusPage } from '../pages/StatusPages'
 import { reauthentication } from '../session/login'
@@ -57,15 +58,19 @@ export function OnboardingLayout() {
   if (!onboarding) return <Navigate to="/" replace />
   return (
     <HostProvider organization={null}>
-      <div className="flex min-h-screen flex-col">
-        <a href="#conteudo" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:rounded-md focus:bg-paper focus:px-4 focus:py-2">
+      <div className="flex min-h-dvh flex-col bg-paper-soft">
+        <a href="#conteudo" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-[10px] focus:bg-brand focus:px-4 focus:py-2 focus:text-white">
           Saltar para o conteúdo
         </a>
-        <header className="flex items-center justify-between border-b border-line-soft px-6 py-4">
-          <span className="text-lg font-semibold">aLinha</span>
-          <span className="text-sm text-ink-soft">{me.user.name}</span>
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-line-soft bg-paper/95 px-8 backdrop-blur max-md:h-14 max-md:px-5">
+          <Logo className="h-8 max-md:h-7" />
+          <div className="flex items-center gap-3">
+            <AppearanceMenu compact />
+            <span className="text-[0.8125rem] font-bold max-sm:hidden">{me.user.name}</span>
+            <Avatar initials={initialsOf(me.user.name)} size={28} />
+          </div>
         </header>
-        <main id="conteudo" className="mx-auto w-full max-w-3xl flex-1 px-4 py-8 sm:px-6">
+        <main id="conteudo" tabIndex={-1} className="mx-auto w-full max-w-3xl flex-1 px-5 pb-16 pt-10 outline-none sm:px-8">
           {notUpdated ? <SessionNotUpdatedPage /> : <Suspense fallback={<LoadingPage />}><Outlet /></Suspense>}
         </main>
       </div>

@@ -8,6 +8,7 @@ spring-modulith = "2.0.9"
 spring-cloud = "2025.1.4"
 archunit = "1.4.1"
 json-schema-validator = "3.0.8"
+kover = "0.9.11"
 
 [libraries]
 spring-boot-bom = { module = "org.springframework.boot:spring-boot-dependencies", version.ref = "spring-boot" }
@@ -58,3 +59,4 @@ kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
 kotlin-jpa = { id = "org.jetbrains.kotlin.plugin.jpa", version.ref = "kotlin" }
 spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
+kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }

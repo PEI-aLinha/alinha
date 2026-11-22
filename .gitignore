@@ -38,3 +38,7 @@ htmlcov/
 .env
 .env.*
 !.env.example
+
+# Coverage reports (CI uploads them to SonarCloud)
+coverage/
+coverage.xml

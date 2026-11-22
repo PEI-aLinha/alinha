@@ -12,6 +12,49 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: node scripts/check-dev-env.mjs
+      # The web image's Nginx: the admin console, the master realm and Keycloak's metrics stay 404, the shell gets its CSP.
+      - run: sh deploy/nginx/test-routes.sh
+      # The production and staging compose files interpolate, and deploy.yml sets every variable they require.
+      - run: sh deploy/test-compose.sh
+      # Production's OpenBao path: a real server, bootstrap, then the seed job with the narrow alinha-seed token.
+      - run: sh deploy/openbao/test-seed.sh
+
+  images:
+    name: Image ${{ matrix.image }} (build, no push)
+    # Same runner and platform as publish.yml, so a release never meets a Dockerfile that does not build.
+    runs-on: ubuntu-24.04-arm
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: app
+            file: deploy/Dockerfile.backend
+            build-args: MODULE=app
+          - image: bff
+            file: deploy/Dockerfile.backend
+            build-args: MODULE=bff
+          - image: web
+            file: deploy/Dockerfile.web
+          - image: keycloak
+            file: deploy/Dockerfile.keycloak
+          - image: job-consumer
+            file: workers/job_consumer/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.ALINHA_READ_TOKEN || github.token }}
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f  # v3.12.0
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8  # v6.19.2
+        with:
+          context: .
+          file: ${{ matrix.file }}
+          platforms: linux/arm64
+          build-args: ${{ matrix.build-args }}
+          push: false
+          cache-from: type=gha,scope=${{ matrix.image }}
+          # Only main writes the cache, which publish.yml then reads on the release tag.
+          cache-to: ${{ github.event_name == 'push' && format('type=gha,mode=max,scope={0}', matrix.image) || '' }}
 
   secrets:
     name: Secret scanning (gitleaks)
@@ -50,8 +93,21 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-      - uses: gradle/actions/setup-gradle@v4
-      - run: ./gradlew build
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a  # v4.4.3
+      - run: ./gradlew build koverXmlReport koverVerify
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: coverage-backend
+          path: build/reports/kover/report.xml
+          retention-days: 1
+      # The Java/Kotlin analysers need the compiled classes (sonar.java.binaries); plugins are analysed in their repos.
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: classes-backend
+          path: |
+            backend/*/build/classes/
+            bff/build/classes/
+          retention-days: 1
 
   frontend:
     name: Frontend (shell + plugins)
@@ -61,9 +117,8 @@ jobs:
         with:
           submodules: recursive
           token: ${{ secrets.ALINHA_READ_TOKEN || github.token }}
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10
+      # No version: it reads packageManager in package.json, the same pnpm the Dockerfiles install.
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1  # v4.3.0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -72,6 +127,15 @@ jobs:
         run: pnpm check:api
       - run: pnpm lint
       - run: pnpm test
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: coverage-frontend
+          path: |
+            coverage/lcov.info
+            frontend/shell/coverage/lcov.info
+            frontend/packages/*/coverage/lcov.info
+            frontend/keycloak-theme/coverage/lcov.info
+          retention-days: 1
       - run: pnpm typecheck
       - run: pnpm build
 
@@ -98,9 +162,54 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -e "workers/job_consumer[test]"
-      - run: pytest --cov=alinha_job_consumer --cov-fail-under=70
+      # Locked, hashed wheels only: no setup scripts run (pytest finds the package through `pythonpath`).
+      - run: 'pip install --only-binary :all: --require-hashes -r workers/job_consumer/requirements-test.txt'
+      # coverage.xml has the absolute source dir of the runner workspace, which is the same path in the sonar job.
+      - run: pytest --cov=alinha_job_consumer --cov-fail-under=70 --cov-report=term --cov-report=xml
         working-directory: workers/job_consumer
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: coverage-workers
+          path: workers/job_consumer/coverage.xml
+          retention-days: 1
+
+  sonar:
+    name: SonarCloud (analysis + coverage)
+    needs: [backend, frontend, workers]
+    # Dependabot and fork PRs get no SONAR_TOKEN; skip instead of failing them (secrets cannot be read in `if`).
+    if: >-
+      github.event_name == 'push' ||
+      (github.event.pull_request.head.repo.full_name == github.repository &&
+       github.event.pull_request.user.login != 'dependabot[bot]')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read   # PR decoration
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # blame data for new-code detection
+      # Reports keep the paths the test jobs wrote them to (see sonar-project.properties).
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          name: coverage-backend
+          path: build/reports/kover
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          name: classes-backend
+          path: .
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          name: coverage-frontend
+          path: .
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          name: coverage-workers
+          path: workers/job_consumer
+      # v8.4.1, pinned by commit.
+      - uses: SonarSource/sonarqube-scan-action@e805d875275f728fac1885b413934be6d7c63f65
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   frameworks:
     name: Framework catalogues
