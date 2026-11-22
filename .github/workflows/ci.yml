@@ -158,6 +158,11 @@ jobs:
       # The venv synced above, not `uv run`, which would sync again and install the project. fail_under in
       # pyproject.toml (RNF19). coverage.xml has the absolute source dir, the same path in the sonar job.
       - run: .venv/bin/pytest --cov --cov-report=term-missing --cov-report=xml
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: coverage-ai-service
+          path: ai-service/coverage.xml
+          retention-days: 1
       - run: docker build -t alinha-ai-service:ci .
   workers:
     name: Workers (job consumer)
@@ -180,7 +185,7 @@ jobs:
 
   sonar:
     name: SonarCloud (analysis + coverage)
-    needs: [backend, frontend, workers]
+    needs: [backend, frontend, workers, ai-service]
     # Dependabot and fork PRs get no SONAR_TOKEN; skip instead of failing them (secrets cannot be read in `if`).
     if: >-
       github.event_name == 'push' ||
@@ -211,6 +216,10 @@ jobs:
         with:
           name: coverage-workers
           path: workers/job_consumer
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          name: coverage-ai-service
+          path: ai-service
       # v8.4.1, pinned by commit.
       - uses: SonarSource/sonarqube-scan-action@e805d875275f728fac1885b413934be6d7c63f65
         env:
