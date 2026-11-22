@@ -23,7 +23,7 @@ docker run -d --name "$NAME" --network "$NET" -p 127.0.0.1::80 -e TRUSTED_PROXY_
   -v "$PWD/security-headers.conf:/etc/nginx/snippets/security-headers.conf:ro" \
   -v "$PWD/spa-headers.conf:/etc/nginx/snippets/spa-headers.conf:ro" \
   -v "$PWD/keycloak-proxy.conf:/etc/nginx/snippets/keycloak-proxy.conf:ro" \
-  -v "$HTML:/usr/share/nginx/html:ro" nginx:1.27-alpine >/dev/null
+  -v "$HTML:/usr/share/nginx/html:ro" nginxinc/nginx-unprivileged:1.27-alpine >/dev/null
 PORT=$(docker port "$NAME" 80/tcp | head -1 | sed 's/.*://')
 BASE="http://127.0.0.1:$PORT"
 for _ in $(seq 1 30); do curl -fsS -o /dev/null "$BASE/" 2>/dev/null && break; sleep 1; done

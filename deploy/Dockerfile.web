@@ -14,7 +14,9 @@ COPY . .
 RUN pnpm install --offline --frozen-lockfile \
  && pnpm build
 
-FROM nginx:1.27-alpine
+# Unprivileged variant: Nginx runs as the nginx user (uid 101), with its pid and caches where that user can write.
+# It still listens on 80: Docker lets containers bind ports below 1024 without root (ip_unprivileged_port_start=0).
+FROM nginxinc/nginx-unprivileged:1.27-alpine
 LABEL org.opencontainers.image.source="https://github.com/PEI-aLinha/alinha"
 COPY deploy/nginx/alinha.conf.template /etc/nginx/templates/default.conf.template
 COPY deploy/nginx/proxy-headers.conf deploy/nginx/security-headers.conf deploy/nginx/spa-headers.conf \
@@ -22,3 +24,4 @@ COPY deploy/nginx/proxy-headers.conf deploy/nginx/security-headers.conf deploy/n
 COPY --from=build /src/frontend/shell/dist /usr/share/nginx/html
 # The address range of the proxy in front, whose X-Forwarded-For is trusted (overridden in compose).
 ENV TRUSTED_PROXY_CIDR=127.0.0.1/32
+USER nginx
