@@ -1,0 +1,131 @@
+name: Deploy to Production VM
+
+# Runs on the self-hosted runner on the VM (labels self-hosted, prod). Secrets come from the GitHub environment
+# "production" (required reviewers, main only). See deploy/DEPLOYMENT.md.
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to deploy (e.g. 1.2.3). Empty deploys the latest release."
+        required: false
+        default: ""
+        type: string
+
+# One run at a time on the VM, across deploy, logs and clean: never cancelled halfway through `up`.
+concurrency:
+  group: prod-vm
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  PROD_COMPOSE: docker compose --project-name alinha-prod -f deploy/docker-compose.prod.yml
+
+jobs:
+  resolve:
+    name: Resolve Image Tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      image_tag: ${{ steps.tag.outputs.image_tag }}
+    steps:
+      - id: tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED: ${{ inputs.image_tag }}
+        run: |
+          tag="$REQUESTED"
+          if [ -z "$tag" ]; then
+            tag=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)
+          fi
+          # Release tags are vX.Y.Z; publish.yml pushes images as X.Y.Z.
+          tag="${tag#v}"
+          # A moving tag would make the deploy unrepeatable. Strict: the value goes into docker pull and git checkout.
+          if ! [[ "$tag" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Resolved image tag '$tag' is not a pinned release (X.Y.Z)"
+            exit 1
+          fi
+          echo "Deploying image tag $tag"
+          echo "image_tag=$tag" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: Deploy Stack
+    runs-on: [self-hosted, prod]
+    # One job, so the production environment asks for approval once.
+    environment: production
+    if: github.ref == 'refs/heads/main'
+    needs: resolve
+    permissions:
+      packages: read
+      contents: read
+    env:
+      IMAGE_TAG: ${{ needs.resolve.outputs.image_tag }}
+    steps:
+      # The release's own compose file, scripts and frameworks/ (mounted into app), so they always match the images,
+      # including on a rollback. Full history, for the check below.
+      - name: Checkout the release
+        uses: actions/checkout@v4
+        with:
+          ref: v${{ env.IMAGE_TAG }}
+          fetch-depth: 0
+
+      # publish.yml checked this when it built the images; check again in case the tag was moved since.
+      - name: Check the release is on main
+        run: |
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "::error::Tag v$IMAGE_TAG ($(git rev-parse --short HEAD)) is not on main"
+            exit 1
+          fi
+
+      - name: Log in to GHCR
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9  # v3.7.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Our images by name: `compose config --images` would need every secret just to interpolate the file.
+      # The third-party images (postgres, redis, ...) are pulled by `up` below.
+      - name: Pull our images
+        run: |
+          for image in app bff web keycloak job-consumer; do
+            docker pull "$REGISTRY/pei-alinha/alinha/$image:$IMAGE_TAG"
+          done
+
+      # The secrets only reach this step, not the third-party actions above (checkout).
+      - name: Deploy
+        env:
+          ALINHA_PUBLIC_URL: ${{ vars.ALINHA_PUBLIC_URL }}
+          # Postgres
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          ALINHA_APP_DB_PASSWORD: ${{ secrets.ALINHA_APP_DB_PASSWORD }}
+          KEYCLOAK_DB_PASSWORD: ${{ secrets.KEYCLOAK_DB_PASSWORD }}
+          # Keycloak
+          KEYCLOAK_ADMIN: ${{ secrets.KEYCLOAK_ADMIN }}
+          KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}
+          BFF_CLIENT_SECRET: ${{ secrets.BFF_CLIENT_SECRET }}
+          KEYCLOAK_PROVISIONER_SECRET: ${{ secrets.KEYCLOAK_PROVISIONER_SECRET }}
+          # OpenBao. The root token is never here: it stays with the operator (deploy/DEPLOYMENT.md, "OpenBao").
+          BAO_SEED_TOKEN: ${{ secrets.BAO_SEED_TOKEN }}
+          BAO_APP_TOKEN: ${{ secrets.BAO_APP_TOKEN }}
+          # SMTP relay for Keycloak and the app
+          SMTP_HOST: ${{ vars.SMTP_HOST }}
+          SMTP_PORT: ${{ vars.SMTP_PORT }}
+          SMTP_FROM: ${{ vars.SMTP_FROM }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          # The VM's reverse proxy: its Docker network and the address range web trusts X-Forwarded-For from.
+          PROXY_NETWORK: ${{ vars.PROXY_NETWORK }}
+          TRUSTED_PROXY_CIDR: ${{ vars.TRUSTED_PROXY_CIDR }}
+        run: ${{ env.PROD_COMPOSE }} up -d --remove-orphans --wait --wait-timeout 600
+
+      - name: Clean old images
+        run: |
+          echo "Pruning this repository's unused images"
+          docker image prune -af \
+            --filter "label=org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}"
+
+      # Job logs are public: only each container's state goes there; the logs themselves stay on the VM.
+      - name: Save logs on failure
+        if: failure()
+        run: sh deploy/save-logs.sh 2000 "deploy-${{ github.run_id }}"

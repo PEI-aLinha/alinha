@@ -1,36 +1,26 @@
 #!/bin/sh
-# Seeds the dev OpenBao (docker-compose.dev.yml) with the secrets the app expects.
-# Dev-only values: same rule as the other credentials in docker-compose.dev.yml.
+# Dev (docker-compose.dev.yml) and staging: sets OpenBao up (root token) and seeds it, on every start.
+# Dev gets the defaults below; staging passes its own values. Production does not use this file: see bootstrap.sh
+# and secrets.sh.
 set -eu
 
 until bao status >/dev/null 2>&1; do sleep 1; done
 
-# Platform secrets read by the app at startup (spring.cloud.vault, context alinha/app).
-bao kv put secret/alinha/app \
-  db.username=alinha_app \
-  db.password="${ALINHA_APP_DB_PASSWORD:-alinha_app}" \
-  db.migration-username="${POSTGRES_USER:-alinha}" \
-  db.migration-password="${POSTGRES_PASSWORD:-alinha}" \
-  smtp.password=change-me \
-  identity.provisioner-secret="${KEYCLOAK_PROVISIONER_SECRET:-dev-provisioner-secret}"
+export ALINHA_APP_DB_PASSWORD="${ALINHA_APP_DB_PASSWORD:-alinha_app}"
+export POSTGRES_USER="${POSTGRES_USER:-alinha}"
+export POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-alinha}"
+export SMTP_PASSWORD="${SMTP_PASSWORD:-change-me}"
+export LLM_API_KEY="${LLM_API_KEY:-change-me}"
+export KEYCLOAK_PROVISIONER_SECRET="${KEYCLOAK_PROVISIONER_SECRET:-dev-provisioner-secret}"
+export ALINHA_BAO_APP_TOKEN="${ALINHA_BAO_APP_TOKEN:-dev-app-token}"
+# Staging passes an empty AI Service token (no AI Service yet); dev gets its fixed one.
+export ALINHA_BAO_AI_TOKEN="${ALINHA_BAO_AI_TOKEN-dev-ai-token}"
 
-# Secrets read by the AI Service (see ai-service/README.md).
-bao kv put secret/alinha/ai-service llm.api-key=change-me
-
-# Policies live next to this script (mounted at /init) so tests can load the same files.
-bao policy write alinha-app /init/alinha-app.hcl
-bao policy write alinha-ai-service /init/alinha-ai-service.hcl
-
-# Fixed dev token with the app policy, so the app never runs with the root token.
-# Only an existing token (re-run) is skipped; any other failure stops the script.
-create_token() {
-  if bao token lookup "$1" >/dev/null 2>&1; then
-    echo "token $1 already exists"
-  else
-    bao token create -id="$1" -policy="$2" -orphan -period=768h >/dev/null
-  fi
-}
-create_token dev-app-token alinha-app
-create_token dev-ai-token alinha-ai-service
-
-echo "OpenBao seeded: secret/alinha/app, secret/alinha/ai-service; tokens dev-app-token, dev-ai-token"
+sh /init/bootstrap.sh
+# Staging seeds like production, with the narrow alinha-seed token bootstrap.sh just created; dev has none and seeds
+# with the root token.
+if [ -n "${ALINHA_BAO_SEED_TOKEN:-}" ]; then
+  BAO_TOKEN="$ALINHA_BAO_SEED_TOKEN" sh /init/secrets.sh
+else
+  sh /init/secrets.sh
+fi

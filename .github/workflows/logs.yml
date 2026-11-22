@@ -1,0 +1,36 @@
+name: Get Production Logs
+
+# Read-only. Saves every alinha-prod container's logs on the VM (~/alinha-logs/<run id>/, read them over SSH) and
+# prints only each container's state, health and restarts: the repository and its job logs are public, and container
+# logs can hold personal data. Found by the compose project label, so it needs no secrets.
+on:
+  workflow_dispatch:
+    inputs:
+      tail:
+        description: "Lines per container saved on the VM"
+        required: false
+        default: "2000"
+        type: string
+
+permissions:
+  contents: read
+
+# Shared with deploy.yml and the other VM workflows: one run at a time on the VM.
+concurrency:
+  group: prod-vm
+  cancel-in-progress: false
+
+jobs:
+  logs:
+    name: Save Container Logs
+    runs-on: [self-hosted, prod]
+    # Same approval and branch rule as deploying.
+    environment: production
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Save logs on the VM
+        env:
+          TAIL: ${{ inputs.tail }}
+        run: sh deploy/save-logs.sh "$TAIL" "logs-${{ github.run_id }}"

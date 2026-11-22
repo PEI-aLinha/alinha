@@ -12,6 +12,49 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: node scripts/check-dev-env.mjs
+      # The web image's Nginx: the admin console, the master realm and Keycloak's metrics stay 404, the shell gets its CSP.
+      - run: sh deploy/nginx/test-routes.sh
+      # The production and staging compose files interpolate, and deploy.yml sets every variable they require.
+      - run: sh deploy/test-compose.sh
+      # Production's OpenBao path: a real server, bootstrap, then the seed job with the narrow alinha-seed token.
+      - run: sh deploy/openbao/test-seed.sh
+
+  images:
+    name: Image ${{ matrix.image }} (build, no push)
+    # Same runner and platform as publish.yml, so a release never meets a Dockerfile that does not build.
+    runs-on: ubuntu-24.04-arm
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: app
+            file: deploy/Dockerfile.backend
+            build-args: MODULE=app
+          - image: bff
+            file: deploy/Dockerfile.backend
+            build-args: MODULE=bff
+          - image: web
+            file: deploy/Dockerfile.web
+          - image: keycloak
+            file: deploy/Dockerfile.keycloak
+          - image: job-consumer
+            file: workers/job_consumer/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.ALINHA_READ_TOKEN || github.token }}
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f  # v3.12.0
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8  # v6.19.2
+        with:
+          context: .
+          file: ${{ matrix.file }}
+          platforms: linux/arm64
+          build-args: ${{ matrix.build-args }}
+          push: false
+          cache-from: type=gha,scope=${{ matrix.image }}
+          # Only main writes the cache, which publish.yml then reads on the release tag.
+          cache-to: ${{ github.event_name == 'push' && format('type=gha,mode=max,scope={0}', matrix.image) || '' }}
 
   secrets:
     name: Secret scanning (gitleaks)
@@ -74,9 +117,8 @@ jobs:
         with:
           submodules: recursive
           token: ${{ secrets.ALINHA_READ_TOKEN || github.token }}
+      # No version: it reads packageManager in package.json, the same pnpm the Dockerfiles install.
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1  # v4.3.0
-        with:
-          version: 10
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -89,6 +131,7 @@ jobs:
         with:
           name: coverage-frontend
           path: |
+            coverage/lcov.info
             frontend/shell/coverage/lcov.info
             frontend/packages/*/coverage/lcov.info
             frontend/keycloak-theme/coverage/lcov.info
@@ -143,7 +186,7 @@ jobs:
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
         with:
           name: coverage-frontend
-          path: frontend
+          path: .
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
         with:
           name: coverage-workers

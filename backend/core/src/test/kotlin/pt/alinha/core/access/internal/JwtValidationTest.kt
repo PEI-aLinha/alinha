@@ -64,14 +64,23 @@ class JwtValidationTest {
         }
     }
 
-    private fun withDecoder(audiences: String, assertions: (JwtDecoder) -> Unit) {
+    private fun withDecoder(audiences: String, assertions: (JwtDecoder) -> Unit) =
+        withDecoder(issuer, audiences, extraProperties = emptyArray(), assertions)
+
+    private fun withDecoder(
+        issuerUri: String,
+        audiences: String,
+        extraProperties: Array<String>,
+        assertions: (JwtDecoder) -> Unit,
+    ) {
         WebApplicationContextRunner()
             .withConfiguration(AutoConfigurations.of(OAuth2ResourceServerAutoConfiguration::class.java))
             // Our own filter chain is not under test; any chain stops Boot from building its default one.
             .withBean(SecurityFilterChain::class.java, { DefaultSecurityFilterChain(AnyRequestMatcher.INSTANCE) })
             .withPropertyValues(
-                "spring.security.oauth2.resourceserver.jwt.issuer-uri=$issuer",
+                "spring.security.oauth2.resourceserver.jwt.issuer-uri=$issuerUri",
                 "spring.security.oauth2.resourceserver.jwt.audiences=$audiences",
+                *extraProperties,
             )
             .run { context -> assertions(context.getBean(JwtDecoder::class.java)) }
     }
@@ -128,5 +137,38 @@ class JwtValidationTest {
     fun `refuses empty audience configuration`() {
         assertThatThrownBy { requireAudiences(OAuth2ResourceServerProperties()) }
             .isInstanceOf(IllegalArgumentException::class.java)
+    }
+
+    /**
+     * Production (docker-compose.prod.yml): the issuer is the public URL, which the container cannot reach, and the
+     * keys come from Keycloak's internal JWK set URI. Boot must still check `iss` and `aud` on that path.
+     */
+    private fun withProductionDecoder(assertions: (JwtDecoder) -> Unit) = withDecoder(
+        PUBLIC_ISSUER,
+        audience,
+        arrayOf("spring.security.oauth2.resourceserver.jwt.jwk-set-uri=$issuer/protocol/openid-connect/certs"),
+        assertions,
+    )
+
+    @Test
+    fun `with a jwk set uri, accepts a token from the unreachable public issuer`() = withProductionDecoder { decoder ->
+        assertThat(decoder.decode(token(tokenIssuer = PUBLIC_ISSUER)).subject).isEqualTo("user-1")
+    }
+
+    @Test
+    fun `with a jwk set uri, still rejects a token from another issuer`() = withProductionDecoder { decoder ->
+        assertThatThrownBy { decoder.decode(token(tokenIssuer = issuer)) }
+            .isInstanceOf(JwtValidationException::class.java)
+    }
+
+    @Test
+    fun `with a jwk set uri, still rejects a token for another audience`() = withProductionDecoder { decoder ->
+        assertThatThrownBy { decoder.decode(token(tokenIssuer = PUBLIC_ISSUER, tokenAudience = listOf("other-api"))) }
+            .isInstanceOf(JwtValidationException::class.java)
+    }
+
+    private companion object {
+        /** Nothing listens here: the decoder must never need to reach the issuer. */
+        const val PUBLIC_ISSUER = "https://alinha.invalid/kc/realms/alinha"
     }
 }

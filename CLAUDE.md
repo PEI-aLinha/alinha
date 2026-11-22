@@ -66,6 +66,10 @@ Never commit one.
 - Order is **plugin first, pointer second.** Commit and push in the plugin repo, then open the PR there. The root
   repo gets a pointer update only after that PR is merged into the plugin's `main`
   (`git submodule update --remote <path>`, then commit `plugins: update <id>`). Dependabot also opens these daily.
+- **`pnpm-lock.yaml` covers every plugin frontend**, and CI and the production images install with
+  `--frozen-lockfile`. When a pointer update changes a plugin's `package.json`, run `pnpm install` at the root and
+  commit `pnpm-lock.yaml` in the same commit as the pointer. Dependabot does not do this: when its pointer PR fails
+  on the lockfile, check out its branch, run `pnpm install` and push the lockfile there.
 - CI (`check-submodules.sh`) fails if a pointer refers to a commit that is not on the plugin's `main`. Never commit
   pointers to local or unmerged branches. The only exception is the coordinated `plugin-api` change below.
 - `git status` at the root shows a submodule as `modified (new commits)` or `(modified content)`. Do not

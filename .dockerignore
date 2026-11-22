@@ -1,0 +1,22 @@
+# Docker build context = repo root (deploy/Dockerfile.*). Keep it small and free of secrets.
+.git
+**/.git
+.github
+.claude
+.idea
+.vscode
+**/.DS_Store
+
+**/node_modules
+**/dist
+**/dist_keycloak
+**/build
+**/.gradle
+**/.kotlin
+**/__pycache__
+**/.venv
+**/.pytest_cache
+
+**/.env
+**/.env.*
+!**/.env.example

@@ -1,0 +1,131 @@
+name: Build & Publish to GHCR
+
+# A release tag (vX.Y.Z) builds every production image and pushes it as X.Y.Z. Only once all of them are pushed
+# does `promote` move X.Y, X and latest, so a failed image never leaves those tags pointing at a mixed release.
+# Only a plain vX.Y.Z tag on a commit of main whose CI passed is published (job `verify`).
+# Deploy with .github/workflows/deploy.yml. See deploy/DEPLOYMENT.md.
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+# No workflow-level permissions: each job gets only what it needs.
+permissions: {}
+
+env:
+  IMAGE_PREFIX: ghcr.io/pei-alinha/alinha
+
+jobs:
+  verify:
+    name: Verify the release commit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read # read the CI run of the tagged commit
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Plain vX.Y.Z tag on main
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          # No pre-release or other suffix: those would also move `latest`.
+          if ! [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Release tags must be vX.Y.Z, got '$TAG'."
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::$TAG points at $GITHUB_SHA, which is not on main. Tag a merged commit."
+            exit 1
+          fi
+      - name: CI passed on that commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # ci.yml runs the Gradle build (tests, ModularityTest), the frontend checks and the realm test on every push
+          # to main. Images are built without tests, so they are published only for a commit where CI went green.
+          conclusion=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --commit "$GITHUB_SHA" --event push \
+            --json conclusion --jq '[.[] | select(.conclusion == "success")] | length')
+          if [ "$conclusion" -lt 1 ]; then
+            echo "::error::No successful CI run (push to main) for $GITHUB_SHA. Wait for CI or fix it, then tag again."
+            exit 1
+          fi
+
+  build:
+    name: Build & Push ${{ matrix.image }}
+    needs: verify
+    # The production VM is aarch64: build natively on GitHub's ARM runners (no QEMU).
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: app
+            file: deploy/Dockerfile.backend
+            build-args: MODULE=app
+          - image: bff
+            file: deploy/Dockerfile.backend
+            build-args: MODULE=bff
+          - image: web
+            file: deploy/Dockerfile.web
+          - image: keycloak
+            file: deploy/Dockerfile.keycloak
+          - image: job-consumer
+            file: workers/job_consumer/Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.ALINHA_READ_TOKEN || github.token }}   # read-only PAT for the plugin repos
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f  # v3.12.0
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9  # v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051  # v5.10.0
+        with:
+          images: ${{ env.IMAGE_PREFIX }}/${{ matrix.image }}
+          tags: type=semver,pattern={{version}}
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8  # v6.19.2
+        with:
+          context: .
+          file: ${{ matrix.file }}
+          platforms: linux/arm64
+          build-args: ${{ matrix.build-args }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+  promote:
+    name: Move X.Y, X and latest
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f  # v3.12.0
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9  # v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Retag every image
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="${TAG#v}"           # X.Y.Z, checked by verify
+          minor="${version%.*}"        # X.Y
+          major="${version%%.*}"       # X
+          for image in app bff web keycloak job-consumer; do
+            ref="$IMAGE_PREFIX/$image"
+            # Copies the manifest in the registry: nothing is rebuilt or pulled.
+            docker buildx imagetools create -t "$ref:$minor" -t "$ref:$major" -t "$ref:latest" "$ref:$version"
+          done
