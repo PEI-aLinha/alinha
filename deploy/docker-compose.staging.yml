@@ -19,12 +19,6 @@ services:
       context: ..
       dockerfile: deploy/Dockerfile.backend
       args: { MODULE: app }
-    environment:
-      # Staging sends every email to Mailpit (below), not to a real relay.
-      SMTP_HOST: mailpit
-      SMTP_PORT: "1025"
-      SMTP_AUTH: "false"
-      SMTP_STARTTLS: "false"
 
   # Staging keeps OpenBao in dev mode (in memory, unsealed, root token from deploy/.env.staging): no init or unseal
   # to do. The seed job runs init.sh: bootstrap.sh with the root token (by hand in production), then secrets.sh with
@@ -48,24 +42,15 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile.keycloak
-      # Staging realm: the dev personas (deploy/keycloak/README.md) and Mailpit as SMTP server. Production has
-      # neither.
+      # Staging realm: the dev personas (deploy/keycloak/README.md). Production has none.
       args: { STAGING: "true" }
     environment:
       ALINHA_TEST_USER_PASSWORD: ${ALINHA_TEST_USER_PASSWORD:?}
-    depends_on:
-      mailpit:
-        condition: service_started
 
   job-consumer:
     build:
       context: ..
       dockerfile: workers/job_consumer/Dockerfile
 
-  # Catches every email Keycloak and the app send. UI: http://localhost:8026
-  mailpit:
-    image: axllent/mailpit:v1.33.1
-    restart: always
-    mem_limit: 64m
-    networks: [alinha]
-    ports: ["127.0.0.1:8026:8025"]
+  # Mailpit and SMTP come from docker-compose.prod.yml's defaults. UI: http://localhost:8026/mail/ (user "alinha",
+  # MAILPIT_UI_PASSWORD from deploy/.env.staging)

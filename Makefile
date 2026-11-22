@@ -29,13 +29,9 @@ staging-env:
 	  echo "BFF_IP=10.231.0.10"; \
 	  echo 'ALINHA_TRUSTED_PROXIES=10\.231\.0\.10'; \
 	  echo "KEYCLOAK_ADMIN=admin"; \
-	  echo "SMTP_HOST=mailpit"; \
-	  echo "SMTP_PORT=1025"; \
-	  echo "SMTP_FROM=no-reply@alinha.pt"; \
-	  echo "SMTP_USERNAME=staging"; \
 	  for v in POSTGRES_PASSWORD ALINHA_APP_DB_PASSWORD KEYCLOAK_DB_PASSWORD KEYCLOAK_ADMIN_PASSWORD \
 	           BFF_CLIENT_SECRET KEYCLOAK_PROVISIONER_SECRET ALINHA_TEST_USER_PASSWORD BAO_ROOT_TOKEN BAO_APP_TOKEN \
-	           BAO_SEED_TOKEN SMTP_PASSWORD; do \
+	           BAO_SEED_TOKEN MAILPIT_UI_PASSWORD; do \
 	    echo "$$v=$$(openssl rand -hex 24)"; \
 	  done; \
 	} > deploy/.env.staging && chmod 600 deploy/.env.staging && echo "Created deploy/.env.staging"
