@@ -127,13 +127,17 @@ jobs:
           PYTHONPATH=src python -m pytest -q --cov=src --cov-report=term --cov-report=xml || [ $? -eq 5 ]
 
       # Only the folders that exist: a plugin without a worker (or without tests yet) still gets analysed.
+      # An empty sonar.sources/sonar.tests fails the scan, so sources fall back to the plugin root and the
+      # tests property is left out.
       - name: SonarCloud settings
         id: sonar
         working-directory: ${{ inputs.plugin-path }}
         run: |
           existing() { local found=() d; for d in "$@"; do [ -d "$d" ] && found+=("$d"); done; local IFS=,; echo "${found[*]}"; }
-          echo "sources=$(existing backend/src/main frontend/src worker/src)" >> "$GITHUB_OUTPUT"
-          echo "tests=$(existing backend/src/test frontend/src worker/tests)" >> "$GITHUB_OUTPUT"
+          sources=$(existing backend/src/main frontend/src worker/src)
+          tests=$(existing backend/src/test frontend/src worker/tests)
+          echo "sources=${sources:-.}" >> "$GITHUB_OUTPUT"
+          echo "tests-arg=${tests:+-Dsonar.tests=$tests}" >> "$GITHUB_OUTPUT"
 
       # Dependabot and fork PRs get no SONAR_TOKEN; skip instead of failing them (secrets cannot be read in `if`).
       # v8.4.1, pinned by commit (same as the main repo's job "sonar").
@@ -151,7 +155,7 @@ jobs:
             -Dsonar.organization=pei-alinha
             -Dsonar.projectKey=${{ github.repository_owner }}_${{ github.event.repository.name }}
             -Dsonar.sources=${{ steps.sonar.outputs.sources }}
-            -Dsonar.tests=${{ steps.sonar.outputs.tests }}
+            ${{ steps.sonar.outputs.tests-arg }}
             -Dsonar.exclusions=**/node_modules/**,**/build/**,**/coverage/**,frontend/src/**/*.test.ts,frontend/src/**/*.test.tsx,frontend/src/test/**
             -Dsonar.test.inclusions=backend/src/test/**,worker/tests/**,frontend/src/**/*.test.ts,frontend/src/**/*.test.tsx,frontend/src/test/**
             -Dsonar.java.binaries=backend/build/classes/kotlin/main
