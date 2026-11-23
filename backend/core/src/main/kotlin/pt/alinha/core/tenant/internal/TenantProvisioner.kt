@@ -92,7 +92,9 @@ class TenantProvisioner(
         if (auth.token.getClaimAsBoolean(EMAIL_VERIFIED_CLAIM) != true) {
             throw AccessDeniedException("Verify the account's email before registering an organization")
         }
-        val subject = auth.token.subject
+        // Keycloak adds `sub` to the access token only through the `basic` client scope: refuse instead of a 500.
+        val subject = auth.token.subject?.takeIf { it.isNotBlank() }
+            ?: throw AccessDeniedException("The access token has no subject")
         val tenantId = TenantId(UUID.randomUUID())
         // Checked before the client limit, so a double submit gets 503 `REGISTRATION_BUSY` and costs no attempt.
         if (!inFlight.add(subject)) throw busy()

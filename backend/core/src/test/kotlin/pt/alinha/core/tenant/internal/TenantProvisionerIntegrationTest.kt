@@ -200,6 +200,18 @@ class TenantProvisionerIntegrationTest {
     }
 
     @Test
+    fun `a token without a subject is refused instead of failing`() {
+        // Keycloak only puts `sub` in the access token through the `basic` client scope: a client without it must
+        // not turn a registration into a 500.
+        val jwt = Jwt.withTokenValue("t").header("alg", "none").claim("email_verified", true).build()
+        SecurityContextHolder.getContext().authentication =
+            JwtAuthenticationToken(jwt, listOf(SimpleGrantedAuthority("ROLE_registrant")))
+
+        assertThrows<AccessDeniedException> { provisioning.provisionForCurrentUser { } }
+        assertThat(directory.assigned).isEmpty()
+    }
+
+    @Test
     fun `a failing block rolls back everything and never touches the identity provider`() {
         var tenant: TenantId? = null
 
