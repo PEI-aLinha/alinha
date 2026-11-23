@@ -77,6 +77,16 @@ class ControlRulesTest {
     }
 
     @Test
+    fun `answers outside the evaluated controls are ignored`() {
+        val extra = ALL_YES + ("H1-Q1" to NO) + ("NOT-A-QUESTION" to NO)
+
+        val result = rules.evaluate(CATALOGUE, SUBSTANTIAL, extra)
+
+        assertEquals(rules.evaluate(CATALOGUE, SUBSTANTIAL, ALL_YES - "H1-Q1"), result)
+        assertEquals(SUBSTANTIAL, result.currentLevel)
+    }
+
+    @Test
     fun `refuses to evaluate with unanswered questions and says which`() {
         val error = assertThrows<IncompleteAnswersException> { rules.evaluate(CATALOGUE, BASIC, mapOf("B1-Q1" to YES)) }
 
