@@ -26,6 +26,8 @@ tags:
     description: Plugins present in the running application.
   - name: organization
     description: The client organization's registration and data (organization plugin).
+  - name: assessment
+    description: Questionnaires adapted to the organization's regulatory scope (assessment plugin).
   - name: dashboard-reports
     description: Dashboards and reports (dashboard-reports plugin).
   - name: audit
@@ -207,6 +209,176 @@ paths:
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
 
+  /api/assessment/assessments:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+    post:
+      tags: [assessment]
+      operationId: startAssessment
+      summary: Start an assessment of one framework
+      description: |
+        Starts a `draft` assessment on the newest catalogue version of `framework` (assessment#2, FR07, US13).
+        The catalogue version and the highest compliance level asked are fixed when the assessment starts:
+        a newer catalogue never changes the questions of an existing assessment (NFR05, NFR18).
+
+        The questions are cut to the scope computed from `scope` with the core applicability rules. For
+        `nis2-qnrcs`, the NIS2 classification sets `maxLevel`; other frameworks get every level.
+        The submitted `scope` is stored with the assessment, together with `rulesVersion`, so it can be
+        checked later. The classification is indicative and self-declared: the consultant confirms it.
+
+        At most one open (not `validated`) assessment per framework: a second one is a `409`
+        (`code` = `ASSESSMENT_ALREADY_OPEN`, with `assessmentId` of the open one). Permission
+        `assessment:start` (Designated Officer).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartAssessmentRequest'
+      responses:
+        '201':
+          description: The new assessment, with its questions.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssessmentDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: |
+            An assessment of this framework is already open (`code` = `ASSESSMENT_ALREADY_OPEN`).
+            `assessmentId` is the open one: continue it.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AssessmentAlreadyOpenProblem'
+        '422':
+          description: |
+            `code` is one of:
+            - `VALIDATION_FAILED`: invalid or contradictory `scope` answers, or unknown `framework` format.
+            - `FRAMEWORK_NOT_IN_SCOPE`: by the `scope` answers, the framework does not apply.
+            - `CATALOGUE_NOT_FOUND`: there is no catalogue for this framework yet.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    get:
+      tags: [assessment]
+      operationId: listAssessments
+      summary: The current organization's assessments
+      description: |
+        Most recently worked on first (`updatedAt` descending), so the user can resume where they stopped.
+        Permission `assessment:read` (Designated Officer, analyst, consultant).
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: One page of assessments.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssessmentPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/assessment/assessments/{assessmentId}:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+      - $ref: '#/components/parameters/AssessmentId'
+    get:
+      tags: [assessment]
+      operationId: getAssessment
+      summary: One assessment with its questions and saved answers
+      description: |
+        The questions come from the catalogue version fixed at start, with the answers saved so far.
+        An id of another organization is a `404` (`code` = `ASSESSMENT_NOT_FOUND`).
+        Permission `assessment:read`.
+      responses:
+        '200':
+          description: The assessment.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssessmentDetail'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/assessment/assessments/{assessmentId}/answers/{questionId}:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+      - $ref: '#/components/parameters/AssessmentId'
+      - name: questionId
+        in: path
+        required: true
+        description: Question id from the catalogue, e.g. `GV.OC-01-Q1`.
+        schema:
+          type: string
+          maxLength: 100
+          pattern: '^[A-Z0-9]+([.-][A-Za-z0-9]+)*$'
+    put:
+      tags: [assessment]
+      operationId: saveAnswer
+      summary: Save the answer to one question
+      description: |
+        Saves one answer (autosave). Idempotent: sending the value already saved changes nothing, keeps
+        `answeredAt` and writes no audit entry. Every real change is audited with the previous and the
+        new value (NFR04).
+
+        Answers can only change while the assessment is `draft`; otherwise `409`
+        (`code` = `ASSESSMENT_NOT_EDITABLE`). A value the question does not offer is a `422`
+        (`code` = `VALIDATION_FAILED`, field `answer`). Permission `assessment:answer`
+        (Designated Officer, analyst).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveAnswerRequest'
+      responses:
+        '200':
+          description: The saved answer and the new progress.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedAnswer'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: |
+            `code` is `ASSESSMENT_NOT_FOUND` (no such assessment in this organization) or
+            `QUESTION_NOT_IN_ASSESSMENT` (the question exists but is not part of this assessment).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '409':
+          description: The assessment was already submitted (`code` = `ASSESSMENT_NOT_EDITABLE`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
   /api/dashboard-reports/portfolio:
     get:
       tags: [dashboard-reports]
@@ -379,6 +551,13 @@ components:
         minimum: 1
         maximum: 100
         default: 20
+    AssessmentId:
+      name: assessmentId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
 
   schemas:
     Problem:
@@ -746,6 +925,267 @@ components:
           type: [string, 'null']
           format: date-time
           description: When the latest assessment was evaluated; null if none.
+
+    StartAssessmentRequest:
+      type: object
+      required: [framework, scope]
+      properties:
+        framework:
+          type: string
+          pattern: '^[a-z0-9]+(-[a-z0-9]+)*$'
+          description: Framework id, as in `frameworks/<id>/`, e.g. `nis2-qnrcs`, `gdpr`, `ai-act`.
+        scope:
+          $ref: '#/components/schemas/ApplicabilityInput'
+
+    ApplicabilityInput:
+      type: object
+      description: |
+        **Temporary.** The facts the core applicability rules need (`docs/applicability.md`). Sent on start
+        until the core stores each organization's applicability (core#25); then this field is deprecated.
+        Mirrors `pt.alinha.core.compliance.ApplicabilityInput`.
+        Omitted booleans mean `false`; an omitted `entityTypes` means none.
+        Self-declared by the organization and stored as sent with the assessment (see `startAssessment`).
+      required: [size, nis2, gdpr, aiAct]
+      properties:
+        size:
+          type: object
+          required: [employees, annualTurnoverEur]
+          properties:
+            employees:
+              type: integer
+              minimum: 0
+            annualTurnoverEur:
+              type: integer
+              format: int64
+              minimum: 0
+            annualBalanceSheetEur:
+              type: [integer, 'null']
+              format: int64
+              minimum: 0
+              description: Optional. When known, a company can stay in a smaller category.
+        publicBody:
+          type: boolean
+        nis2:
+          type: object
+          properties:
+            entityTypes:
+              type: array
+              uniqueItems: true
+              description: Types from NIS2 annexes I and II that describe the organization. Empty when none does.
+              items:
+                type: string
+                enum: [ELECTRICITY_SUPPLIER, ELECTRICITY_DISTRIBUTION_OPERATOR, ELECTRICITY_TRANSMISSION_OPERATOR,
+                  ELECTRICITY_PRODUCER, ELECTRICITY_MARKET_OPERATOR, ELECTRICITY_MARKET_PARTICIPANT,
+                  CHARGING_POINT_OPERATOR, DISTRICT_HEATING_COOLING, OIL_PIPELINE_OPERATOR, OIL_OPERATOR,
+                  OIL_CENTRAL_STOCKHOLDING, GAS_SUPPLIER, GAS_DISTRIBUTION_OPERATOR, GAS_TRANSMISSION_OPERATOR,
+                  GAS_STORAGE_OPERATOR, LNG_OPERATOR, NATURAL_GAS_UNDERTAKING, GAS_REFINING_OPERATOR,
+                  HYDROGEN_OPERATOR, AIR_CARRIER, AIRPORT, AIR_TRAFFIC_CONTROL, RAIL_INFRASTRUCTURE_MANAGER,
+                  RAILWAY_UNDERTAKING, WATER_TRANSPORT_COMPANY, PORT_MANAGING_BODY, VESSEL_TRAFFIC_SERVICE,
+                  ROAD_TRAFFIC_AUTHORITY, INTELLIGENT_TRANSPORT_SYSTEMS, CREDIT_INSTITUTION, TRADING_VENUE,
+                  CENTRAL_COUNTERPARTY, HEALTHCARE_PROVIDER, EU_REFERENCE_LABORATORY, MEDICINAL_PRODUCT_RESEARCH,
+                  DRINKING_WATER, WASTE_WATER, INTERNET_EXCHANGE_POINT, DNS_SERVICE_PROVIDER, TLD_NAME_REGISTRY,
+                  CLOUD_COMPUTING_PROVIDER, DATA_CENTRE_PROVIDER, CONTENT_DELIVERY_NETWORK,
+                  QUALIFIED_TRUST_SERVICE_PROVIDER, TRUST_SERVICE_PROVIDER, PUBLIC_ELECTRONIC_COMMUNICATIONS_NETWORK,
+                  PUBLIC_ELECTRONIC_COMMUNICATIONS_SERVICE, MANAGED_SERVICE_PROVIDER,
+                  MANAGED_SECURITY_SERVICE_PROVIDER, SPACE_GROUND_INFRASTRUCTURE, POSTAL_COURIER, WASTE_MANAGEMENT,
+                  CHEMICALS, FOOD, MEDICAL_DEVICES, ELECTRONICS_MANUFACTURING, ELECTRICAL_EQUIPMENT_MANUFACTURING,
+                  MACHINERY_MANUFACTURING, MOTOR_VEHICLE_MANUFACTURING, OTHER_TRANSPORT_EQUIPMENT_MANUFACTURING,
+                  ONLINE_MARKETPLACE, ONLINE_SEARCH_ENGINE, SOCIAL_NETWORK_PLATFORM, RESEARCH_ORGANISATION]
+            criticalEntity:
+              type: boolean
+            significantImpact:
+              type: boolean
+            higherEducation:
+              type: boolean
+        gdpr:
+          type: object
+          required: [processesPersonalData]
+          description: When `processesPersonalData` is false, every other field must be false (otherwise `422`).
+          properties:
+            processesPersonalData:
+              type: boolean
+            regularOrRiskyProcessing:
+              type: boolean
+            specialOrCriminalData:
+              type: boolean
+            largeScaleMonitoring:
+              type: boolean
+            largeScaleSpecialData:
+              type: boolean
+        aiAct:
+          type: object
+          description: |
+            `highRiskArea` and `interactsOrGeneratesContent` need `usesAiSystems` or `providesAiSystems`
+            (otherwise `422`).
+          properties:
+            usesAiSystems:
+              type: boolean
+            providesAiSystems:
+              type: boolean
+            highRiskArea:
+              type: boolean
+            interactsOrGeneratesContent:
+              type: boolean
+
+    AssessmentStatus:
+      type: string
+      enum: [draft, submitted, evaluated, validated]
+      description: Lifecycle. Answers change only in `draft`.
+
+    ComplianceLevel:
+      type: string
+      enum: [basic, substantial, high]
+
+    AnswerValue:
+      type: string
+      enum: [yes, partial, no, unknown]
+
+    Progress:
+      type: object
+      required: [answered, total]
+      properties:
+        answered:
+          type: integer
+          minimum: 0
+        total:
+          type: integer
+          minimum: 0
+
+    AssessmentSummary:
+      type: object
+      required: [id, framework, catalogueVersion, status, progress, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        framework:
+          type: string
+        catalogueVersion:
+          type: integer
+          minimum: 1
+          description: Catalogue version fixed at start (`frameworks/<framework>/v<n>/`).
+        status:
+          $ref: '#/components/schemas/AssessmentStatus'
+        progress:
+          $ref: '#/components/schemas/Progress'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last real change, including the last answer saved.
+
+    AssessmentDetail:
+      allOf:
+        - $ref: '#/components/schemas/AssessmentSummary'
+        - type: object
+          required: [catalogueTitle, nis2Classification, maxLevel, rulesVersion, controls]
+          properties:
+            catalogueTitle:
+              type: string
+            nis2Classification:
+              type: string
+              enum: [essential, important, not-covered, to-be-assessed]
+              description: Indicative, from the applicability rules at start. The official one is the CNCS's.
+            maxLevel:
+              $ref: '#/components/schemas/ComplianceLevel'
+            rulesVersion:
+              type: string
+              description: Version of the applicability rules used at start (NFR05).
+            controls:
+              type: array
+              description: Controls up to `maxLevel`, in catalogue order.
+              items:
+                $ref: '#/components/schemas/QuestionnaireControl'
+
+    QuestionnaireControl:
+      type: object
+      required: [id, title, level, technical, questions]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        level:
+          $ref: '#/components/schemas/ComplianceLevel'
+        technical:
+          type: boolean
+          description: Questions an analyst usually answers.
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionnaireQuestion'
+
+    QuestionnaireQuestion:
+      type: object
+      required: [id, text, explanation, example, options, answer, answeredAt]
+      properties:
+        id:
+          type: string
+        text:
+          type: string
+        explanation:
+          type: string
+        example:
+          type: string
+        options:
+          type: array
+          minItems: 2
+          items:
+            $ref: '#/components/schemas/AnswerValue'
+        answer:
+          description: The saved answer; null while unanswered.
+          oneOf:
+            - $ref: '#/components/schemas/AnswerValue'
+            - type: 'null'
+        answeredAt:
+          type: [string, 'null']
+          format: date-time
+
+    SaveAnswerRequest:
+      type: object
+      required: [answer]
+      properties:
+        answer:
+          $ref: '#/components/schemas/AnswerValue'
+
+    SavedAnswer:
+      type: object
+      required: [questionId, answer, answeredAt, progress]
+      properties:
+        questionId:
+          type: string
+        answer:
+          $ref: '#/components/schemas/AnswerValue'
+        answeredAt:
+          type: string
+          format: date-time
+          description: Unchanged when the same value is sent again.
+        progress:
+          $ref: '#/components/schemas/Progress'
+
+    AssessmentPage:
+      allOf:
+        - $ref: '#/components/schemas/PageMeta'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/AssessmentSummary'
+
+    AssessmentAlreadyOpenProblem:
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+        - type: object
+          required: [assessmentId]
+          properties:
+            assessmentId:
+              type: string
+              format: uuid
+              description: The open assessment of this framework.
 
     AuditEvent:
       type: object
