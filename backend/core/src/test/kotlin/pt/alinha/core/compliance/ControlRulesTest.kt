@@ -84,6 +84,27 @@ class ControlRulesTest {
     }
 
     @Test
+    fun `a level without controls is never reached on its own and does not block the levels above`() {
+        val noSubstantial = CATALOGUE.copy(controls = CATALOGUE.controls.filterNot { it.level == SUBSTANTIAL })
+        val answers = ALL_YES - "S1-Q1"
+
+        assertEquals(BASIC, rules.evaluate(noSubstantial, SUBSTANTIAL, answers).currentLevel)
+        assertEquals(HIGH, rules.evaluate(noSubstantial, HIGH, answers).currentLevel)
+    }
+
+    @Test
+    fun `no controls in scope is an error, never full compliance`() {
+        val onlyHigh = CATALOGUE.copy(controls = CATALOGUE.controls.filter { it.level == HIGH })
+
+        assertThrows<IllegalArgumentException> { rules.evaluate(onlyHigh, BASIC, emptyMap()) }
+    }
+
+    @Test
+    fun `a control without answers is an error, never compliant`() {
+        assertThrows<IllegalArgumentException> { rules.status(emptyList()) }
+    }
+
+    @Test
     fun `the same answers always give the same result`() {
         val answers = ALL_YES + ("B2-Q1" to NO)
 

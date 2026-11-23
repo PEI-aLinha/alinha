@@ -237,7 +237,7 @@ export interface paths {
          *     audited (NFR04) and publish `AssessmentSubmitted` and `AssessmentEvaluated`.
          *
          *     Every question must have an answer (`unknown` counts as one); otherwise `422`
-         *     (`code` = `ASSESSMENT_INCOMPLETE`, with `unanswered`). An assessment that is not `draft` is a `409`
+         *     (`code` = `ASSESSMENT_INCOMPLETE`, with the ids in `unanswered`). An assessment that is not `draft` is a `409`
          *     (`code` = `ASSESSMENT_NOT_EDITABLE`). Permission `assessment:submit` (Designated Officer).
          *
          *     The response does not carry the results: the client sees them only after the consultant validates them
@@ -720,8 +720,8 @@ export interface components {
             assessmentId: string;
         };
         AssessmentIncompleteProblem: components["schemas"]["Problem"] & {
-            /** @description How many questions have no answer. */
-            unanswered: number;
+            /** @description Ids of the questions with no answer, in catalogue order. */
+            unanswered: string[];
         };
         /**
          * @description From the control's answers: `compliant` when every answer is `yes`; `gap` when any is `no` or `unknown`;
