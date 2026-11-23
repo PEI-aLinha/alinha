@@ -209,6 +209,126 @@ paths:
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
 
+  /api/organization/scope:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+    get:
+      tags: [organization]
+      operationId: getOrganizationScope
+      summary: Regulatory scope and NIS2 classification of the current organization
+      description: |
+        The applicability answers, the frameworks that apply (NIS2, GDPR, AI Act) with plain-language
+        explanations, the indicative NIS2 classification and the official CNCS qualification, if registered.
+        `result` is computed on every read from the current answers and organization data with the core
+        applicability rules (`docs/applicability.md`), so a later change to the number of employees or the
+        turnover shows at once; `rulesVersion` says which rules produced it (NFR05). The result is indicative:
+        once registered, the CNCS qualification is the one that counts (`nis2`). Permission `organization:read`
+        (Designated Officer, consultant, analyst). `404` (`code` = `ORGANIZATION_NOT_REGISTERED`) before the
+        organization registers.
+      responses:
+        '200':
+          description: The organization's regulatory scope.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationScope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/organization/scope/answers:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+    put:
+      tags: [organization]
+      operationId: saveApplicabilityAnswers
+      summary: Save the applicability answers
+      description: |
+        Replaces the organization's applicability answers. The first save sends no `version`; later saves send
+        the `version` that was read, otherwise the answer is `409` (`code` = `VERSION_CONFLICT`) and nothing
+        changes. Contradictory answers are a `422` with one error per field. Saving the same answers changes
+        nothing. Permission `organization:edit` (Designated Officer, consultant).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicabilityAnswersUpdate'
+      responses:
+        '200':
+          description: The regulatory scope with the new answers.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationScope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: |
+            The answers changed since they were read (`code` = `VERSION_CONFLICT`): reload and answer again.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/organization/scope/qualification:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+    put:
+      tags: [organization]
+      operationId: registerCncsQualification
+      summary: Register or correct the official CNCS qualification
+      description: |
+        Registers the classification in the CNCS Qualification Act (Ato de Qualificação), which the CNCS
+        issues after the organization registers on MyCiber. From then on it overrides the indicative
+        classification. The first registration sends no `version`; a correction sends the `version` that was
+        read, otherwise `409` (`code` = `VERSION_CONFLICT`). `actDate` cannot be in the future (Europe/Lisbon)
+        nor before 2025-12-04, when Decree-Law 125/2025 was published. Permission `organization:edit`
+        (Designated Officer, consultant).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CncsQualificationUpdate'
+      responses:
+        '200':
+          description: The regulatory scope with the official qualification.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizationScope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: |
+            The qualification changed since it was read (`code` = `VERSION_CONFLICT`): reload and try again.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
   /api/assessment/assessments:
     parameters:
       - $ref: '#/components/parameters/Tenant'
@@ -966,66 +1086,302 @@ components:
         publicBody:
           type: boolean
         nis2:
-          type: object
-          properties:
-            entityTypes:
-              type: array
-              uniqueItems: true
-              description: Types from NIS2 annexes I and II that describe the organization. Empty when none does.
-              items:
-                type: string
-                enum: [ELECTRICITY_SUPPLIER, ELECTRICITY_DISTRIBUTION_OPERATOR, ELECTRICITY_TRANSMISSION_OPERATOR,
-                  ELECTRICITY_PRODUCER, ELECTRICITY_MARKET_OPERATOR, ELECTRICITY_MARKET_PARTICIPANT,
-                  CHARGING_POINT_OPERATOR, DISTRICT_HEATING_COOLING, OIL_PIPELINE_OPERATOR, OIL_OPERATOR,
-                  OIL_CENTRAL_STOCKHOLDING, GAS_SUPPLIER, GAS_DISTRIBUTION_OPERATOR, GAS_TRANSMISSION_OPERATOR,
-                  GAS_STORAGE_OPERATOR, LNG_OPERATOR, NATURAL_GAS_UNDERTAKING, GAS_REFINING_OPERATOR,
-                  HYDROGEN_OPERATOR, AIR_CARRIER, AIRPORT, AIR_TRAFFIC_CONTROL, RAIL_INFRASTRUCTURE_MANAGER,
-                  RAILWAY_UNDERTAKING, WATER_TRANSPORT_COMPANY, PORT_MANAGING_BODY, VESSEL_TRAFFIC_SERVICE,
-                  ROAD_TRAFFIC_AUTHORITY, INTELLIGENT_TRANSPORT_SYSTEMS, CREDIT_INSTITUTION, TRADING_VENUE,
-                  CENTRAL_COUNTERPARTY, HEALTHCARE_PROVIDER, EU_REFERENCE_LABORATORY, MEDICINAL_PRODUCT_RESEARCH,
-                  DRINKING_WATER, WASTE_WATER, INTERNET_EXCHANGE_POINT, DNS_SERVICE_PROVIDER, TLD_NAME_REGISTRY,
-                  CLOUD_COMPUTING_PROVIDER, DATA_CENTRE_PROVIDER, CONTENT_DELIVERY_NETWORK,
-                  QUALIFIED_TRUST_SERVICE_PROVIDER, TRUST_SERVICE_PROVIDER, PUBLIC_ELECTRONIC_COMMUNICATIONS_NETWORK,
-                  PUBLIC_ELECTRONIC_COMMUNICATIONS_SERVICE, MANAGED_SERVICE_PROVIDER,
-                  MANAGED_SECURITY_SERVICE_PROVIDER, SPACE_GROUND_INFRASTRUCTURE, POSTAL_COURIER, WASTE_MANAGEMENT,
-                  CHEMICALS, FOOD, MEDICAL_DEVICES, ELECTRONICS_MANUFACTURING, ELECTRICAL_EQUIPMENT_MANUFACTURING,
-                  MACHINERY_MANUFACTURING, MOTOR_VEHICLE_MANUFACTURING, OTHER_TRANSPORT_EQUIPMENT_MANUFACTURING,
-                  ONLINE_MARKETPLACE, ONLINE_SEARCH_ENGINE, SOCIAL_NETWORK_PLATFORM, RESEARCH_ORGANISATION]
-            criticalEntity:
-              type: boolean
-            significantImpact:
-              type: boolean
-            higherEducation:
-              type: boolean
+          $ref: '#/components/schemas/Nis2Answers'
         gdpr:
-          type: object
-          required: [processesPersonalData]
-          description: When `processesPersonalData` is false, every other field must be false (otherwise `422`).
-          properties:
-            processesPersonalData:
-              type: boolean
-            regularOrRiskyProcessing:
-              type: boolean
-            specialOrCriminalData:
-              type: boolean
-            largeScaleMonitoring:
-              type: boolean
-            largeScaleSpecialData:
-              type: boolean
+          $ref: '#/components/schemas/GdprAnswers'
         aiAct:
-          type: object
-          description: |
-            `highRiskArea` and `interactsOrGeneratesContent` need `usesAiSystems` or `providesAiSystems`
-            (otherwise `422`).
-          properties:
-            usesAiSystems:
-              type: boolean
-            providesAiSystems:
-              type: boolean
-            highRiskArea:
-              type: boolean
-            interactsOrGeneratesContent:
-              type: boolean
+          $ref: '#/components/schemas/AiActAnswers'
+
+    Nis2EntityType:
+      type: string
+      description: Entity types of NIS2 annexes I and II (`pt.alinha.core.compliance.Nis2EntityType`).
+      enum: [ELECTRICITY_SUPPLIER, ELECTRICITY_DISTRIBUTION_OPERATOR, ELECTRICITY_TRANSMISSION_OPERATOR,
+        ELECTRICITY_PRODUCER, ELECTRICITY_MARKET_OPERATOR, ELECTRICITY_MARKET_PARTICIPANT,
+        CHARGING_POINT_OPERATOR, DISTRICT_HEATING_COOLING, OIL_PIPELINE_OPERATOR, OIL_OPERATOR,
+        OIL_CENTRAL_STOCKHOLDING, GAS_SUPPLIER, GAS_DISTRIBUTION_OPERATOR, GAS_TRANSMISSION_OPERATOR,
+        GAS_STORAGE_OPERATOR, LNG_OPERATOR, NATURAL_GAS_UNDERTAKING, GAS_REFINING_OPERATOR,
+        HYDROGEN_OPERATOR, AIR_CARRIER, AIRPORT, AIR_TRAFFIC_CONTROL, RAIL_INFRASTRUCTURE_MANAGER,
+        RAILWAY_UNDERTAKING, WATER_TRANSPORT_COMPANY, PORT_MANAGING_BODY, VESSEL_TRAFFIC_SERVICE,
+        ROAD_TRAFFIC_AUTHORITY, INTELLIGENT_TRANSPORT_SYSTEMS, CREDIT_INSTITUTION, TRADING_VENUE,
+        CENTRAL_COUNTERPARTY, HEALTHCARE_PROVIDER, EU_REFERENCE_LABORATORY, MEDICINAL_PRODUCT_RESEARCH,
+        DRINKING_WATER, WASTE_WATER, INTERNET_EXCHANGE_POINT, DNS_SERVICE_PROVIDER, TLD_NAME_REGISTRY,
+        CLOUD_COMPUTING_PROVIDER, DATA_CENTRE_PROVIDER, CONTENT_DELIVERY_NETWORK,
+        QUALIFIED_TRUST_SERVICE_PROVIDER, TRUST_SERVICE_PROVIDER, PUBLIC_ELECTRONIC_COMMUNICATIONS_NETWORK,
+        PUBLIC_ELECTRONIC_COMMUNICATIONS_SERVICE, MANAGED_SERVICE_PROVIDER,
+        MANAGED_SECURITY_SERVICE_PROVIDER, SPACE_GROUND_INFRASTRUCTURE, POSTAL_COURIER, WASTE_MANAGEMENT,
+        CHEMICALS, FOOD, MEDICAL_DEVICES, ELECTRONICS_MANUFACTURING, ELECTRICAL_EQUIPMENT_MANUFACTURING,
+        MACHINERY_MANUFACTURING, MOTOR_VEHICLE_MANUFACTURING, OTHER_TRANSPORT_EQUIPMENT_MANUFACTURING,
+        ONLINE_MARKETPLACE, ONLINE_SEARCH_ENGINE, SOCIAL_NETWORK_PLATFORM, RESEARCH_ORGANISATION]
+
+    Nis2Answers:
+      type: object
+      properties:
+        entityTypes:
+          type: array
+          uniqueItems: true
+          description: Types from NIS2 annexes I and II that describe the organization. Empty when none does.
+          items:
+            $ref: '#/components/schemas/Nis2EntityType'
+        criticalEntity:
+          type: boolean
+        significantImpact:
+          type: boolean
+        higherEducation:
+          type: boolean
+
+    GdprAnswers:
+      type: object
+      required: [processesPersonalData]
+      description: When `processesPersonalData` is false, every other field must be false (otherwise `422`).
+      properties:
+        processesPersonalData:
+          type: boolean
+        regularOrRiskyProcessing:
+          type: boolean
+        specialOrCriminalData:
+          type: boolean
+        largeScaleMonitoring:
+          type: boolean
+        largeScaleSpecialData:
+          type: boolean
+
+    AiActAnswers:
+      type: object
+      description: |
+        `highRiskArea` and `interactsOrGeneratesContent` need `usesAiSystems` or `providesAiSystems`
+        (otherwise `422`).
+      properties:
+        usesAiSystems:
+          type: boolean
+        providesAiSystems:
+          type: boolean
+        highRiskArea:
+          type: boolean
+        interactsOrGeneratesContent:
+          type: boolean
+
+    Nis2Classification:
+      type: string
+      enum: [essential, important, not-covered, to-be-assessed]
+      description: |
+        NIS2 classification (Decree-Law 125/2025). `to-be-assessed`: public bodies and higher-education
+        institutions, which a consultant confirms with the CNCS.
+
+    ApplicabilityAnswersUpdate:
+      type: object
+      required: [gdpr]
+      description: |
+        The organization's answers for the applicability rules. The size comes from the organization data
+        (employees, turnover), so it is not sent here. Omitted booleans mean `false`; an omitted
+        `entityTypes` means none.
+      properties:
+        version:
+          type: [integer, 'null']
+          format: int64
+          description: The `answers.version` that was read; null or omitted on the first save.
+        publicBody:
+          type: boolean
+        annualBalanceSheetEur:
+          type: [integer, 'null']
+          format: int64
+          minimum: 0
+          description: Optional. When known, a company can stay in a smaller category.
+        nis2:
+          $ref: '#/components/schemas/Nis2Answers'
+        gdpr:
+          $ref: '#/components/schemas/GdprAnswers'
+        aiAct:
+          $ref: '#/components/schemas/AiActAnswers'
+
+    CncsQualificationUpdate:
+      type: object
+      required: [classification, actDate]
+      properties:
+        version:
+          type: [integer, 'null']
+          format: int64
+          description: The `qualification.version` that was read; null or omitted on the first registration.
+        classification:
+          type: string
+          enum: [essential, important]
+          description: The classification in the Qualification Act. The CNCS only qualifies covered entities.
+        actDate:
+          type: string
+          format: date
+          description: Date of the Qualification Act. Not in the future, not before 2025-12-04.
+        actReference:
+          type: [string, 'null']
+          maxLength: 100
+          description: Optional reference of the Act, as printed on it.
+
+    OrganizationScope:
+      type: object
+      required: [answers, result, qualification, nis2, entityTypes]
+      properties:
+        answers:
+          description: The saved answers; null until the first save.
+          oneOf:
+            - $ref: '#/components/schemas/ApplicabilityAnswers'
+            - type: 'null'
+        result:
+          description: Computed on every read from `answers` and the organization data; null without answers.
+          oneOf:
+            - $ref: '#/components/schemas/ApplicabilityResult'
+            - type: 'null'
+        qualification:
+          description: The official CNCS qualification; null until registered.
+          oneOf:
+            - $ref: '#/components/schemas/CncsQualification'
+            - type: 'null'
+        nis2:
+          description: The NIS2 classification that counts; null with neither answers nor qualification.
+          oneOf:
+            - $ref: '#/components/schemas/Nis2Status'
+            - type: 'null'
+        entityTypes:
+          type: array
+          description: Every NIS2 entity type, in annex order, for the user to pick from.
+          items:
+            $ref: '#/components/schemas/EntityTypeOption'
+
+    ApplicabilityAnswers:
+      type: object
+      required: [version, publicBody, annualBalanceSheetEur, nis2, gdpr, aiAct, answeredAt, updatedAt]
+      properties:
+        version:
+          type: integer
+          format: int64
+        publicBody:
+          type: boolean
+        annualBalanceSheetEur:
+          type: [integer, 'null']
+          format: int64
+        nis2:
+          $ref: '#/components/schemas/Nis2Answers'
+        gdpr:
+          $ref: '#/components/schemas/GdprAnswers'
+        aiAct:
+          $ref: '#/components/schemas/AiActAnswers'
+        answeredAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ApplicabilityResult:
+      type: object
+      required: [rulesVersion, size, nis2Classification, cncsMayQualify, indicative, frameworks]
+      properties:
+        rulesVersion:
+          type: string
+          description: Version of the applicability rules that produced this result (NFR05).
+        size:
+          type: string
+          enum: [micro, small, medium, large]
+          description: Company size from the employees, turnover and, when given, the balance sheet.
+        nis2Classification:
+          $ref: '#/components/schemas/Nis2Classification'
+        cncsMayQualify:
+          type: boolean
+          description: The CNCS may still cover the organization or raise its classification.
+        indicative:
+          type: boolean
+          description: Always true; the official qualification is the CNCS's.
+        frameworks:
+          type: array
+          description: NIS2 (`nis2-qnrcs`), GDPR (`gdpr`) and the AI Act (`ai-act`), in that order.
+          items:
+            $ref: '#/components/schemas/FrameworkApplicability'
+
+    FrameworkApplicability:
+      type: object
+      required: [framework, applies, findings]
+      properties:
+        framework:
+          type: string
+          description: Framework id, as in `frameworks/<id>/`.
+        applies:
+          type: string
+          enum: [yes, no, review]
+          description: '`review`: depends on facts the rules cannot judge; a consultant (or the CNCS) decides.'
+        findings:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApplicabilityFinding'
+
+    ApplicabilityFinding:
+      type: object
+      required: [id, legalBasis, explanation, review]
+      properties:
+        id:
+          type: string
+          description: Stable id of the rule, e.g. `nis2.essential.any-size`.
+        legalBasis:
+          type: string
+          description: Article of the law, in Portuguese.
+        explanation:
+          type: string
+          description: Plain-language explanation for the user, in European Portuguese.
+        review:
+          type: boolean
+          description: A consultant must confirm this conclusion.
+
+    CncsQualification:
+      type: object
+      required: [version, classification, actDate, actReference, registeredAt, updatedAt]
+      properties:
+        version:
+          type: integer
+          format: int64
+        classification:
+          type: string
+          enum: [essential, important]
+        actDate:
+          type: string
+          format: date
+        actReference:
+          type: [string, 'null']
+        registeredAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Nis2Status:
+      type: object
+      required: [classification, official, suggested]
+      properties:
+        classification:
+          $ref: '#/components/schemas/Nis2Classification'
+        official:
+          type: boolean
+          description: True when `classification` comes from the CNCS Qualification Act.
+        suggested:
+          description: The indicative classification from the rules; null without answers.
+          oneOf:
+            - $ref: '#/components/schemas/Nis2Classification'
+            - type: 'null'
+
+    EntityTypeOption:
+      type: object
+      required: [id, annex, reference, label, suggested]
+      properties:
+        id:
+          $ref: '#/components/schemas/Nis2EntityType'
+        annex:
+          type: string
+          enum: [I, II]
+        reference:
+          type: string
+          description: Annex row, e.g. `Anexo I, 8.`.
+        label:
+          type: string
+          description: Plain-language name, in European Portuguese.
+        suggested:
+          type: boolean
+          description: Suggested by the organization's sector, subsector or CAE. Never ticked for the user.
 
     AssessmentStatus:
       type: string

@@ -100,6 +100,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organization/scope": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Regulatory scope and NIS2 classification of the current organization
+         * @description The applicability answers, the frameworks that apply (NIS2, GDPR, AI Act) with plain-language
+         *     explanations, the indicative NIS2 classification and the official CNCS qualification, if registered.
+         *     `result` is computed on every read from the current answers and organization data with the core
+         *     applicability rules (`docs/applicability.md`), so a later change to the number of employees or the
+         *     turnover shows at once; `rulesVersion` says which rules produced it (NFR05). The result is indicative:
+         *     once registered, the CNCS qualification is the one that counts (`nis2`). Permission `organization:read`
+         *     (Designated Officer, consultant, analyst). `404` (`code` = `ORGANIZATION_NOT_REGISTERED`) before the
+         *     organization registers.
+         */
+        get: operations["getOrganizationScope"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organization/scope/answers": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Save the applicability answers
+         * @description Replaces the organization's applicability answers. The first save sends no `version`; later saves send
+         *     the `version` that was read, otherwise the answer is `409` (`code` = `VERSION_CONFLICT`) and nothing
+         *     changes. Contradictory answers are a `422` with one error per field. Saving the same answers changes
+         *     nothing. Permission `organization:edit` (Designated Officer, consultant).
+         */
+        put: operations["saveApplicabilityAnswers"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organization/scope/qualification": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Register or correct the official CNCS qualification
+         * @description Registers the classification in the CNCS Qualification Act (Ato de Qualificação), which the CNCS
+         *     issues after the organization registers on MyCiber. From then on it overrides the indicative
+         *     classification. The first registration sends no `version`; a correction sends the `version` that was
+         *     read, otherwise `409` (`code` = `VERSION_CONFLICT`). `actDate` cannot be in the future (Europe/Lisbon)
+         *     nor before 2025-12-04, when Decree-Law 125/2025 was published. Permission `organization:edit`
+         *     (Designated Officer, consultant).
+         */
+        put: operations["registerCncsQualification"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/assessment/assessments": {
         parameters: {
             query?: never;
@@ -536,31 +632,178 @@ export interface components {
                 annualBalanceSheetEur?: number | null;
             };
             publicBody?: boolean;
-            nis2: {
-                /** @description Types from NIS2 annexes I and II that describe the organization. Empty when none does. */
-                entityTypes?: ("ELECTRICITY_SUPPLIER" | "ELECTRICITY_DISTRIBUTION_OPERATOR" | "ELECTRICITY_TRANSMISSION_OPERATOR" | "ELECTRICITY_PRODUCER" | "ELECTRICITY_MARKET_OPERATOR" | "ELECTRICITY_MARKET_PARTICIPANT" | "CHARGING_POINT_OPERATOR" | "DISTRICT_HEATING_COOLING" | "OIL_PIPELINE_OPERATOR" | "OIL_OPERATOR" | "OIL_CENTRAL_STOCKHOLDING" | "GAS_SUPPLIER" | "GAS_DISTRIBUTION_OPERATOR" | "GAS_TRANSMISSION_OPERATOR" | "GAS_STORAGE_OPERATOR" | "LNG_OPERATOR" | "NATURAL_GAS_UNDERTAKING" | "GAS_REFINING_OPERATOR" | "HYDROGEN_OPERATOR" | "AIR_CARRIER" | "AIRPORT" | "AIR_TRAFFIC_CONTROL" | "RAIL_INFRASTRUCTURE_MANAGER" | "RAILWAY_UNDERTAKING" | "WATER_TRANSPORT_COMPANY" | "PORT_MANAGING_BODY" | "VESSEL_TRAFFIC_SERVICE" | "ROAD_TRAFFIC_AUTHORITY" | "INTELLIGENT_TRANSPORT_SYSTEMS" | "CREDIT_INSTITUTION" | "TRADING_VENUE" | "CENTRAL_COUNTERPARTY" | "HEALTHCARE_PROVIDER" | "EU_REFERENCE_LABORATORY" | "MEDICINAL_PRODUCT_RESEARCH" | "DRINKING_WATER" | "WASTE_WATER" | "INTERNET_EXCHANGE_POINT" | "DNS_SERVICE_PROVIDER" | "TLD_NAME_REGISTRY" | "CLOUD_COMPUTING_PROVIDER" | "DATA_CENTRE_PROVIDER" | "CONTENT_DELIVERY_NETWORK" | "QUALIFIED_TRUST_SERVICE_PROVIDER" | "TRUST_SERVICE_PROVIDER" | "PUBLIC_ELECTRONIC_COMMUNICATIONS_NETWORK" | "PUBLIC_ELECTRONIC_COMMUNICATIONS_SERVICE" | "MANAGED_SERVICE_PROVIDER" | "MANAGED_SECURITY_SERVICE_PROVIDER" | "SPACE_GROUND_INFRASTRUCTURE" | "POSTAL_COURIER" | "WASTE_MANAGEMENT" | "CHEMICALS" | "FOOD" | "MEDICAL_DEVICES" | "ELECTRONICS_MANUFACTURING" | "ELECTRICAL_EQUIPMENT_MANUFACTURING" | "MACHINERY_MANUFACTURING" | "MOTOR_VEHICLE_MANUFACTURING" | "OTHER_TRANSPORT_EQUIPMENT_MANUFACTURING" | "ONLINE_MARKETPLACE" | "ONLINE_SEARCH_ENGINE" | "SOCIAL_NETWORK_PLATFORM" | "RESEARCH_ORGANISATION")[];
-                criticalEntity?: boolean;
-                significantImpact?: boolean;
-                higherEducation?: boolean;
-            };
-            /** @description When `processesPersonalData` is false, every other field must be false (otherwise `422`). */
-            gdpr: {
-                processesPersonalData: boolean;
-                regularOrRiskyProcessing?: boolean;
-                specialOrCriminalData?: boolean;
-                largeScaleMonitoring?: boolean;
-                largeScaleSpecialData?: boolean;
-            };
+            nis2: components["schemas"]["Nis2Answers"];
+            gdpr: components["schemas"]["GdprAnswers"];
+            aiAct: components["schemas"]["AiActAnswers"];
+        };
+        /**
+         * @description Entity types of NIS2 annexes I and II (`pt.alinha.core.compliance.Nis2EntityType`).
+         * @enum {string}
+         */
+        Nis2EntityType: "ELECTRICITY_SUPPLIER" | "ELECTRICITY_DISTRIBUTION_OPERATOR" | "ELECTRICITY_TRANSMISSION_OPERATOR" | "ELECTRICITY_PRODUCER" | "ELECTRICITY_MARKET_OPERATOR" | "ELECTRICITY_MARKET_PARTICIPANT" | "CHARGING_POINT_OPERATOR" | "DISTRICT_HEATING_COOLING" | "OIL_PIPELINE_OPERATOR" | "OIL_OPERATOR" | "OIL_CENTRAL_STOCKHOLDING" | "GAS_SUPPLIER" | "GAS_DISTRIBUTION_OPERATOR" | "GAS_TRANSMISSION_OPERATOR" | "GAS_STORAGE_OPERATOR" | "LNG_OPERATOR" | "NATURAL_GAS_UNDERTAKING" | "GAS_REFINING_OPERATOR" | "HYDROGEN_OPERATOR" | "AIR_CARRIER" | "AIRPORT" | "AIR_TRAFFIC_CONTROL" | "RAIL_INFRASTRUCTURE_MANAGER" | "RAILWAY_UNDERTAKING" | "WATER_TRANSPORT_COMPANY" | "PORT_MANAGING_BODY" | "VESSEL_TRAFFIC_SERVICE" | "ROAD_TRAFFIC_AUTHORITY" | "INTELLIGENT_TRANSPORT_SYSTEMS" | "CREDIT_INSTITUTION" | "TRADING_VENUE" | "CENTRAL_COUNTERPARTY" | "HEALTHCARE_PROVIDER" | "EU_REFERENCE_LABORATORY" | "MEDICINAL_PRODUCT_RESEARCH" | "DRINKING_WATER" | "WASTE_WATER" | "INTERNET_EXCHANGE_POINT" | "DNS_SERVICE_PROVIDER" | "TLD_NAME_REGISTRY" | "CLOUD_COMPUTING_PROVIDER" | "DATA_CENTRE_PROVIDER" | "CONTENT_DELIVERY_NETWORK" | "QUALIFIED_TRUST_SERVICE_PROVIDER" | "TRUST_SERVICE_PROVIDER" | "PUBLIC_ELECTRONIC_COMMUNICATIONS_NETWORK" | "PUBLIC_ELECTRONIC_COMMUNICATIONS_SERVICE" | "MANAGED_SERVICE_PROVIDER" | "MANAGED_SECURITY_SERVICE_PROVIDER" | "SPACE_GROUND_INFRASTRUCTURE" | "POSTAL_COURIER" | "WASTE_MANAGEMENT" | "CHEMICALS" | "FOOD" | "MEDICAL_DEVICES" | "ELECTRONICS_MANUFACTURING" | "ELECTRICAL_EQUIPMENT_MANUFACTURING" | "MACHINERY_MANUFACTURING" | "MOTOR_VEHICLE_MANUFACTURING" | "OTHER_TRANSPORT_EQUIPMENT_MANUFACTURING" | "ONLINE_MARKETPLACE" | "ONLINE_SEARCH_ENGINE" | "SOCIAL_NETWORK_PLATFORM" | "RESEARCH_ORGANISATION";
+        Nis2Answers: {
+            /** @description Types from NIS2 annexes I and II that describe the organization. Empty when none does. */
+            entityTypes?: components["schemas"]["Nis2EntityType"][];
+            criticalEntity?: boolean;
+            significantImpact?: boolean;
+            higherEducation?: boolean;
+        };
+        /** @description When `processesPersonalData` is false, every other field must be false (otherwise `422`). */
+        GdprAnswers: {
+            processesPersonalData: boolean;
+            regularOrRiskyProcessing?: boolean;
+            specialOrCriminalData?: boolean;
+            largeScaleMonitoring?: boolean;
+            largeScaleSpecialData?: boolean;
+        };
+        /**
+         * @description `highRiskArea` and `interactsOrGeneratesContent` need `usesAiSystems` or `providesAiSystems`
+         *     (otherwise `422`).
+         */
+        AiActAnswers: {
+            usesAiSystems?: boolean;
+            providesAiSystems?: boolean;
+            highRiskArea?: boolean;
+            interactsOrGeneratesContent?: boolean;
+        };
+        /**
+         * @description NIS2 classification (Decree-Law 125/2025). `to-be-assessed`: public bodies and higher-education
+         *     institutions, which a consultant confirms with the CNCS.
+         * @enum {string}
+         */
+        Nis2Classification: "essential" | "important" | "not-covered" | "to-be-assessed";
+        /**
+         * @description The organization's answers for the applicability rules. The size comes from the organization data
+         *     (employees, turnover), so it is not sent here. Omitted booleans mean `false`; an omitted
+         *     `entityTypes` means none.
+         */
+        ApplicabilityAnswersUpdate: {
             /**
-             * @description `highRiskArea` and `interactsOrGeneratesContent` need `usesAiSystems` or `providesAiSystems`
-             *     (otherwise `422`).
+             * Format: int64
+             * @description The `answers.version` that was read; null or omitted on the first save.
              */
-            aiAct: {
-                usesAiSystems?: boolean;
-                providesAiSystems?: boolean;
-                highRiskArea?: boolean;
-                interactsOrGeneratesContent?: boolean;
-            };
+            version?: number | null;
+            publicBody?: boolean;
+            /**
+             * Format: int64
+             * @description Optional. When known, a company can stay in a smaller category.
+             */
+            annualBalanceSheetEur?: number | null;
+            nis2?: components["schemas"]["Nis2Answers"];
+            gdpr: components["schemas"]["GdprAnswers"];
+            aiAct?: components["schemas"]["AiActAnswers"];
+        };
+        CncsQualificationUpdate: {
+            /**
+             * Format: int64
+             * @description The `qualification.version` that was read; null or omitted on the first registration.
+             */
+            version?: number | null;
+            /**
+             * @description The classification in the Qualification Act. The CNCS only qualifies covered entities.
+             * @enum {string}
+             */
+            classification: "essential" | "important";
+            /**
+             * Format: date
+             * @description Date of the Qualification Act. Not in the future, not before 2025-12-04.
+             */
+            actDate: string;
+            /** @description Optional reference of the Act, as printed on it. */
+            actReference?: string | null;
+        };
+        OrganizationScope: {
+            /** @description The saved answers; null until the first save. */
+            answers: components["schemas"]["ApplicabilityAnswers"] | null;
+            /** @description Computed on every read from `answers` and the organization data; null without answers. */
+            result: components["schemas"]["ApplicabilityResult"] | null;
+            /** @description The official CNCS qualification; null until registered. */
+            qualification: components["schemas"]["CncsQualification"] | null;
+            /** @description The NIS2 classification that counts; null with neither answers nor qualification. */
+            nis2: components["schemas"]["Nis2Status"] | null;
+            /** @description Every NIS2 entity type, in annex order, for the user to pick from. */
+            entityTypes: components["schemas"]["EntityTypeOption"][];
+        };
+        ApplicabilityAnswers: {
+            /** Format: int64 */
+            version: number;
+            publicBody: boolean;
+            /** Format: int64 */
+            annualBalanceSheetEur: number | null;
+            nis2: components["schemas"]["Nis2Answers"];
+            gdpr: components["schemas"]["GdprAnswers"];
+            aiAct: components["schemas"]["AiActAnswers"];
+            /** Format: date-time */
+            answeredAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        ApplicabilityResult: {
+            /** @description Version of the applicability rules that produced this result (NFR05). */
+            rulesVersion: string;
+            /**
+             * @description Company size from the employees, turnover and, when given, the balance sheet.
+             * @enum {string}
+             */
+            size: "micro" | "small" | "medium" | "large";
+            nis2Classification: components["schemas"]["Nis2Classification"];
+            /** @description The CNCS may still cover the organization or raise its classification. */
+            cncsMayQualify: boolean;
+            /** @description Always true; the official qualification is the CNCS's. */
+            indicative: boolean;
+            /** @description NIS2 (`nis2-qnrcs`), GDPR (`gdpr`) and the AI Act (`ai-act`), in that order. */
+            frameworks: components["schemas"]["FrameworkApplicability"][];
+        };
+        FrameworkApplicability: {
+            /** @description Framework id, as in `frameworks/<id>/`. */
+            framework: string;
+            /**
+             * @description `review`: depends on facts the rules cannot judge; a consultant (or the CNCS) decides.
+             * @enum {string}
+             */
+            applies: "yes" | "no" | "review";
+            findings: components["schemas"]["ApplicabilityFinding"][];
+        };
+        ApplicabilityFinding: {
+            /** @description Stable id of the rule, e.g. `nis2.essential.any-size`. */
+            id: string;
+            /** @description Article of the law, in Portuguese. */
+            legalBasis: string;
+            /** @description Plain-language explanation for the user, in European Portuguese. */
+            explanation: string;
+            /** @description A consultant must confirm this conclusion. */
+            review: boolean;
+        };
+        CncsQualification: {
+            /** Format: int64 */
+            version: number;
+            /** @enum {string} */
+            classification: "essential" | "important";
+            /** Format: date */
+            actDate: string;
+            actReference: string | null;
+            /** Format: date-time */
+            registeredAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        Nis2Status: {
+            classification: components["schemas"]["Nis2Classification"];
+            /** @description True when `classification` comes from the CNCS Qualification Act. */
+            official: boolean;
+            /** @description The indicative classification from the rules; null without answers. */
+            suggested: components["schemas"]["Nis2Classification"] | null;
+        };
+        EntityTypeOption: {
+            id: components["schemas"]["Nis2EntityType"];
+            /** @enum {string} */
+            annex: "I" | "II";
+            /** @description Annex row, e.g. `Anexo I, 8.`. */
+            reference: string;
+            /** @description Plain-language name, in European Portuguese. */
+            label: string;
+            /** @description Suggested by the organization's sector, subsector or CAE. Never ticked for the user. */
+            suggested: boolean;
         };
         /**
          * @description Lifecycle. Answers change only in `draft`.
@@ -946,6 +1189,127 @@ export interface operations {
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
             /** @description The data changed since it was read (`code` = `VERSION_CONFLICT`): reload and edit again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    getOrganizationScope: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The organization's regulatory scope. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationScope"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    saveApplicabilityAnswers: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApplicabilityAnswersUpdate"];
+            };
+        };
+        responses: {
+            /** @description The regulatory scope with the new answers. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationScope"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description The answers changed since they were read (`code` = `VERSION_CONFLICT`): reload and answer again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    registerCncsQualification: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CncsQualificationUpdate"];
+            };
+        };
+        responses: {
+            /** @description The regulatory scope with the official qualification. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationScope"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description The qualification changed since it was read (`code` = `VERSION_CONFLICT`): reload and try again. */
             409: {
                 headers: {
                     [name: string]: unknown;
