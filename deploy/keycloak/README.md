@@ -91,6 +91,8 @@ The `bff` client adds these to the access token. Backend contract: [`docs/tenanc
 and [`docs/rbac.md`](../../docs/rbac.md).
 
 - `aud` includes `alinha-api`
+- `sub` is the Keycloak user id (`basic` client scope). Without it the backend refuses registration (403), so an
+  existing realm imported before this scope was listed needs it added to `bff` by hand
 - `realm_access.roles` contains the realm role (`roles` client scope)
 - `tenant_id` — user attribute, string UUID, for `responsible` and `analyst`
 - `tenants` — multivalued user attribute, list of UUID strings, for `consultant`
