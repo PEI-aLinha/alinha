@@ -272,8 +272,8 @@ export interface paths {
          *     rules over the catalogue and the answers, never an LLM). Stored with the assessment, so they never change
          *     when the rules or the catalogue do.
          *
-         *     Permission `assessment:read`. Before the assessment is `validated`, only a caller with
-         *     `assessment:review` (consultant) sees them; anyone else gets `409` (`code` = `RESULTS_NOT_VALIDATED`).
+         *     Permission `assessment:review` (consultant): the consultant reviews the results before the client sees
+         *     them. Client access after validation comes with assessment#8, as an additive change.
          *     A `draft` or `submitted` assessment has no results yet: `409` (`code` = `RESULTS_NOT_AVAILABLE`).
          */
         get: operations["getAssessmentResults"];
@@ -1334,7 +1334,7 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             404: components["responses"]["NotFound"];
-            /** @description `RESULTS_NOT_AVAILABLE` (not evaluated yet) or `RESULTS_NOT_VALIDATED` (waiting for the consultant). */
+            /** @description Not evaluated yet (`code` = `RESULTS_NOT_AVAILABLE`). */
             409: {
                 headers: {
                     [name: string]: unknown;
