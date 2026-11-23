@@ -165,7 +165,8 @@
         "acr",
         "roles",
         "profile",
-        "email"
+        "email",
+        "basic"
       ],
       "optionalClientScopes": [
         "address",
