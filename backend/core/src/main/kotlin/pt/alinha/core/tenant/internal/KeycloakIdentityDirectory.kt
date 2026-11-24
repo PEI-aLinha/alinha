@@ -127,14 +127,22 @@ class KeycloakIdentityDirectory internal constructor(
     override fun assign(subject: String, tenantId: TenantId) = forgettingRejectedToken {
         val deadline = Deadline(CONSULTANT_DEADLINE, "consultant assignment")
         val token = deadline.step { token() }
-        require(consultantMembers(token, deadline).any { it.id == subject }) { "Not an enabled consultant" }
         val user = deadline.step { readUser(token, subject) }
+        // This account's groups, not the paged group listing: the caller has just listed the whole group.
+        require(user["enabled"] == true && deadline.step { inConsultantsGroup(token, subject) }) { "Not an enabled consultant" }
         val attributes = attributesOf(user)
         val current = attributes[ASSIGNED_TENANTS_CLAIM].orEmpty()
         if (current.any { it.equals(tenantId.value.toString(), ignoreCase = true) }) return@forgettingRejectedToken
         deadline.step {
             writeUser(token, subject, user, attributes + (ASSIGNED_TENANTS_CLAIM to current + tenantId.value.toString()))
         }
+    }
+
+    private fun inConsultantsGroup(token: String, subject: String): Boolean {
+        val name = properties.consultantsGroup
+        return http.get().uri("$users/{id}/groups?search={name}&briefRepresentation=true", subject, name)
+            .headers { it.setBearerAuth(token) }.retrieve().body<List<GroupRepresentation>>().orEmpty()
+            .any { it.name == name }
     }
 
     private data class Member(val id: String, val attributes: Map<String, List<String>>)

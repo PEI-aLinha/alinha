@@ -295,16 +295,22 @@ class KeycloakIdentityDirectoryTest {
         server.verify()
     }
 
+    private fun expectGroupsOf(subject: String, groupsJson: String) =
+        expectGet("http://kc/admin/realms/alinha/users/$subject/groups?search=consultants&briefRepresentation=true", groupsJson)
+
     @Test
     fun `assigning adds the organization to the consultant's tenants and keeps the other attributes`() {
         expectToken()
-        expectConsultantsGroup()
         val joaoUrl = "http://kc/admin/realms/alinha/users/$joao"
-        expectGet(joaoUrl, """{"id":"$joao","username":"joao@alinha.pt","attributes":{"locale":["pt"],"tenants":["${other.value}"]}}""")
+        expectGet(
+            joaoUrl,
+            """{"id":"$joao","username":"joao@alinha.pt","enabled":true,"attributes":{"locale":["pt"],"tenants":["${other.value}"]}}""",
+        )
+        expectGroupsOf(joao, """[{"id":"g-cons","name":"consultants"}]""")
         server.expect(requestTo(joaoUrl)).andExpect(method(HttpMethod.PUT))
             .andExpect(
                 content().json(
-                    """{"id":"$joao","username":"joao@alinha.pt","attributes":{"locale":["pt"],"tenants":["${other.value}","${tenant.value}"]}}""",
+                    """{"id":"$joao","username":"joao@alinha.pt","enabled":true,"attributes":{"locale":["pt"],"tenants":["${other.value}","${tenant.value}"]}}""",
                     JsonCompareMode.STRICT,
                 ),
             )
@@ -318,8 +324,8 @@ class KeycloakIdentityDirectoryTest {
     @Test
     fun `assigning an organization the consultant already has writes nothing`() {
         expectToken()
-        expectConsultantsGroup()
-        expectGet("http://kc/admin/realms/alinha/users/$marta", """{"id":"$marta","attributes":{"tenants":["${tenant.value}"]}}""")
+        expectGet("http://kc/admin/realms/alinha/users/$marta", """{"id":"$marta","enabled":true,"attributes":{"tenants":["${tenant.value}"]}}""")
+        expectGroupsOf(marta, """[{"id":"g-cons","name":"consultants"}]""")
 
         directory.assign(marta, tenant)
 
@@ -327,12 +333,23 @@ class KeycloakIdentityDirectoryTest {
     }
 
     @Test
-    fun `refuses to assign an account that is not an enabled consultant`() {
+    fun `refuses to assign an account that left the consultants group`() {
         expectToken()
-        expectConsultantsGroup()
+        expectGet("http://kc/admin/realms/alinha/users/$joao", """{"id":"$joao","enabled":true}""")
+        // `search` also matches groups whose subgroups match, so the name is checked again
+        expectGroupsOf(joao, """[{"id":"g-x","name":"consultants-old"}]""")
+
+        assertThrows<IllegalArgumentException> { directory.assign(joao, tenant) }
+        server.verify()
+    }
+
+    @Test
+    fun `refuses to assign a disabled account`() {
+        expectToken()
+        expectGet("http://kc/admin/realms/alinha/users/gone", """{"id":"gone","enabled":false}""")
 
         assertThrows<IllegalArgumentException> { directory.assign("gone", tenant) }
-        server.verify()
+        server.verify() // stops before reading its groups
     }
 
     @Test

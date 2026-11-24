@@ -22,6 +22,9 @@ import pt.alinha.core.tenant.TenantContext
 import pt.alinha.pluginapi.TenantId
 import java.util.Collections
 import java.util.UUID
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 /** The consultants group, in memory; can be told to fail. */
 class FakeConsultantIdentity : ConsultantIdentity {
@@ -29,13 +32,19 @@ class FakeConsultantIdentity : ConsultantIdentity {
     val assigned: MutableList<Pair<String, TenantId>> = Collections.synchronizedList(mutableListOf())
     @Volatile var failOnAssign = false
 
-    override fun consultants() = pool.map { (subject, tenants) -> Consultant(subject, tenants.toSet()) }
+    /** Time [assign] takes, to make concurrent assignments overlap. */
+    @Volatile var assignDelayMillis = 0L
+
+    override fun consultants() = synchronized(pool) { pool.map { (subject, tenants) -> Consultant(subject, tenants.toSet()) } }
 
     override fun assign(subject: String, tenantId: TenantId) {
         if (failOnAssign) error("identity provider down")
-        require(subject in pool) { "Not an enabled consultant" }
-        assigned += subject to tenantId
-        pool.getValue(subject) += tenantId
+        Thread.sleep(assignDelayMillis)
+        synchronized(pool) {
+            require(subject in pool) { "Not an enabled consultant" }
+            assigned += subject to tenantId
+            pool.getValue(subject) += tenantId
+        }
     }
 }
 
@@ -69,6 +78,7 @@ class ConsultantAssignerIntegrationTest {
         identity.pool.clear()
         identity.assigned.clear()
         identity.failOnAssign = false
+        identity.assignDelayMillis = 0
     }
 
     private fun newTenant(): TenantId {
@@ -166,6 +176,33 @@ class ConsultantAssignerIntegrationTest {
 
         assertThat(recorded(tenant)).isNull()
         assertThat(auditDetails(tenant)).isEmpty()
+    }
+
+    @Test
+    fun `concurrent assignments are serialised, so they do not both pick the least busy consultant`() {
+        consultants(marta to 0, joao to 0)
+        identity.assignDelayMillis = 300 // both list the pool before either has written to the identity provider
+        val organizations = listOf(newTenant(), newTenant())
+        val start = CountDownLatch(1)
+        val pool = Executors.newFixedThreadPool(2)
+        try {
+            val results = organizations.map { tenant -> pool.submit<AssignedConsultant?> { start.await(); assign(tenant) } }
+            start.countDown()
+
+            assertThat(results.map { it.get(10, TimeUnit.SECONDS)?.subject }).containsExactlyInAnyOrder(marta, joao)
+        } finally {
+            pool.shutdownNow()
+        }
+    }
+
+    @Test
+    fun `an assignment already recorded still counts after the identity provider was listed`() {
+        // The pool comes from a listing taken before the lock: Marta's newest organization is only in the database.
+        consultants(marta to 0, joao to 0)
+        val earlier = newTenant()
+        jdbc.update("insert into core.consultant_assignment (tenant_id, consultant_subject) values (?, ?)", earlier.value, marta)
+
+        assertThat(assign(newTenant())?.subject).isEqualTo(joao)
     }
 
     @Test

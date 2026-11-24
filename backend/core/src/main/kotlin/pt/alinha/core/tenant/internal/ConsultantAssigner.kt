@@ -11,12 +11,20 @@ import pt.alinha.core.tenant.ConsultantAssignment
 import pt.alinha.core.tenant.TenantContext
 import pt.alinha.pluginapi.TenantId
 import java.time.Instant
+import java.util.UUID
 
 /** Audit action of an assignment; details hold the consultant's `sub` only. */
 internal const val CONSULTANT_ASSIGNED = "tenant.consultant_assigned"
 
-/** Advisory lock taken for the whole transaction, so assignments never run side by side (any instance). */
+/** Advisory lock taken for the rest of the transaction, so assignments never choose side by side (any instance). */
 private const val ASSIGNMENT_LOCK = 0x616C_696E_6861_0005L
+
+/**
+ * How long an assignment waits for the lock before it fails (and is logged by the caller), so a slow identity provider
+ * cannot keep a queue of waiting transactions, each holding a pooled connection. The holder's only identity provider
+ * call is [ConsultantIdentity.assign], itself bounded by a deadline.
+ */
+private const val LOCK_TIMEOUT = "15s"
 
 /**
  * [ConsultantAssignment] over the identity provider's consultants ([ConsultantIdentity]) and
@@ -36,11 +44,21 @@ class ConsultantAssigner(
     @Transactional(propagation = Propagation.MANDATORY)
     override fun assignConsultant(): AssignedConsultant? {
         val tenant = tenants.current()
+        // Listed before the lock, so a slow identity provider does not hold it. An assignment committed after this
+        // listing is in core.consultant_assignment, which is read under the lock, so the load below stays current.
+        val pool = identity.consultants()
+        jdbc.sql("set local lock_timeout = '$LOCK_TIMEOUT'").update()
         jdbc.sql("select pg_advisory_xact_lock(?)").param(ASSIGNMENT_LOCK).query { _, _ -> }.list()
 
-        recorded(tenant)?.let { return AssignedConsultant(it, newlyAssigned = false) }
+        val assignments = assignments()
+        assignments.entries.firstOrNull { tenant in it.value.tenants }?.let { (subject, _) ->
+            if (pool.none { it.subject == subject && tenant in it.tenants }) {
+                // Removed from the group, disabled, or the organization was taken out of their tenants by hand.
+                log.warn("Organization {} is assigned to {}, who no longer has it as an enabled consultant", tenant.value, subject)
+            }
+            return AssignedConsultant(subject, newlyAssigned = false)
+        }
 
-        val pool = identity.consultants()
         // Assigned outside this flow (an admin, the demo realm): record it, so the tie-break sees it, and stop there.
         pool.firstOrNull { tenant in it.tenants }?.let { existing ->
             record(tenant, existing.subject, viaIdentityProvider = true)
@@ -51,10 +69,9 @@ class ConsultantAssigner(
             return null
         }
 
-        val lastAssigned = lastAssignments()
         val chosen = pool.minWith(
-            compareBy<Consultant> { it.tenants.size }
-                .thenBy(nullsFirst()) { lastAssigned[it.subject] }
+            compareBy<Consultant> { (it.tenants + assignments[it.subject]?.tenants.orEmpty()).size }
+                .thenBy(nullsFirst()) { assignments[it.subject]?.last }
                 .thenBy { it.subject },
         )
         record(tenant, chosen.subject, viaIdentityProvider = false)
@@ -62,21 +79,21 @@ class ConsultantAssigner(
         return AssignedConsultant(chosen.subject, newlyAssigned = true)
     }
 
-    private fun recorded(tenant: TenantId): String? =
-        jdbc.sql("select consultant_subject from core.consultant_assignment where tenant_id = ?")
-            .param(tenant.value)
-            .query(String::class.java)
-            .optional()
-            .orElse(null)
+    /** A consultant's recorded organizations and when they were last given one. */
+    private data class Assignments(val tenants: Set<TenantId>, val last: Instant)
 
-    private fun lastAssignments(): Map<String, Instant> =
-        jdbc.sql("select consultant_subject, max(assigned_at) as last from core.consultant_assignment group by consultant_subject")
-            .query { rs, _ -> rs.getString("consultant_subject") to rs.getTimestamp("last").toInstant() }
+    private fun assignments(): Map<String, Assignments> =
+        jdbc.sql("select consultant_subject, tenant_id, assigned_at from core.consultant_assignment")
+            .query { rs, _ ->
+                Triple(rs.getString("consultant_subject"), TenantId(rs.getObject("tenant_id", UUID::class.java)), rs.getTimestamp("assigned_at").toInstant())
+            }
             .list()
-            .toMap()
+            .groupBy({ it.first }) { it.second to it.third }
+            .mapValues { (_, rows) -> Assignments(rows.map { it.first }.toSet(), rows.maxOf { it.second }) }
 
     private fun record(tenant: TenantId, consultant: String, viaIdentityProvider: Boolean) {
-        jdbc.sql("insert into core.consultant_assignment (tenant_id, consultant_subject) values (?, ?)")
+        // clock_timestamp(), not now(): the time under the lock, so the tie-break order matches the commit order.
+        jdbc.sql("insert into core.consultant_assignment (tenant_id, consultant_subject, assigned_at) values (?, ?, clock_timestamp())")
             .params(tenant.value, consultant)
             .update()
         audit.record(

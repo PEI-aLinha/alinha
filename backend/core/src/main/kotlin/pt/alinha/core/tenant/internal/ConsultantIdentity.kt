@@ -13,7 +13,7 @@ interface ConsultantIdentity {
     /**
      * Adds [tenantId] to the consultant's `tenants`. Idempotent: an organization already there changes nothing.
      *
-     * @throws IllegalArgumentException when [subject] is not an enabled consultant.
+     * @throws IllegalArgumentException when [subject] is not an enabled consultant (e.g. disabled since [consultants]).
      */
     fun assign(subject: String, tenantId: TenantId)
 }
