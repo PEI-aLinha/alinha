@@ -40,7 +40,7 @@ re-imports the realm and wipes every enrolled TOTP, so each user must scan the Q
 |---|---|---|---|
 | Rui Santos | `rui.santos@compagueda.pt` | `responsible` | `tenant_id` = Componentes Águeda |
 | Pedro Almeida | `pedro.almeida@tiagueda.pt` | `analyst` | `tenant_id` = Componentes Águeda |
-| Marta Ferreira | `marta.ferreira@alinha.pt` | `consultant` | `tenants` = Componentes Águeda, Metalúrgica de Aveiro |
+| Marta Ferreira | `marta.ferreira@alinha.pt` | `consultant` | `tenants` = all twelve demo organisations (below) |
 | João Pereira | `joao.pereira@alinha.pt` | `consultant` | `tenants` = Metalúrgica de Aveiro |
 
 Pedro's `@tiagueda.pt` address is intentional: he is the external IT analyst working for
@@ -48,16 +48,25 @@ Componentes Águeda, per the prototype personas.
 
 Dev tenant UUIDs, reused by the persona seed data (#42):
 
-| Organisation | UUID |
-|---|---|
-| Componentes Águeda | `11111111-1111-4111-8111-111111111111` |
-| Metalúrgica de Aveiro | `22222222-2222-4222-8222-222222222222` |
+| Organisation | UUID | Seed data |
+|---|---|---|
+| Componentes Águeda (Rui's factory) | `11111111-1111-4111-8111-111111111111` | profile, applicability answers, CNCS qualification (important), submitted NIS2 assessment |
+| Metalúrgica de Aveiro | `22222222-2222-4222-8222-222222222222` | profile |
+| Ten more clients (Cerâmica do Vouga … Moldes Marinha) | `33333333-…` to `99999999-…`, `aaaaaaaa-…` to `cccccccc-…` (same pattern) | profile |
 
-Their organization profiles (name, NIF, sector…) come from
-`backend/app/src/main/resources/db/demo/R__demo_organization_profiles.sql`, loaded only when the app runs with the
-`demo` Spring profile. Without it the menu shows the tenant UUID instead of the organization name.
+The seed data is in `backend/app/src/main/resources/db/demo/` (Flyway repeatable scripts, a `core.tenant` row for
+each organisation), loaded only when the app runs with the `demo` Spring profile. Without it the menu shows the
+tenant UUID instead of the organization name. `DemoSeedIntegrationTest` checks that Marta's `tenants` and the seed
+stay the same list.
 
-Marta can act on both organisations; João only on Metalúrgica de Aveiro, so "organization not
+The NIS2 assessment of Componentes Águeda is already submitted, with every basic and substantial question answered,
+so the consultant part of the demo (evaluate, roadmap) can start without filling in the questionnaire. Assets and
+risks are not seeded yet: the Risk & Assets plugin has no tables so far.
+
+To put the demo organisations back to the seed state, run `./scripts/reset-demo.sh` and restart the app (add
+`--keycloak` to re-import the realm too). Organisations registered during the demo are not touched.
+
+Marta can act on all twelve organisations; João only on Metalúrgica de Aveiro, so "organization not
 assigned to this consultant" (403) can be exercised locally.
 
 ## Self-registration and the provisioner (ADR 0004)
