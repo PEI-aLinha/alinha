@@ -185,7 +185,7 @@ jobs:
 
   sonar:
     name: SonarCloud (analysis + coverage)
-    needs: [backend, frontend, workers, ai-service]
+    needs: [backend, frontend, workers, ai-service, contract-compat]
     # Dependabot and fork PRs get no SONAR_TOKEN; skip instead of failing them (secrets cannot be read in `if`).
     if: >-
       github.event_name == 'push' ||
@@ -220,6 +220,10 @@ jobs:
         with:
           name: coverage-ai-service
           path: ai-service
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          name: coverage-contract-compat
+          path: scripts
       # v8.4.1, pinned by commit.
       - uses: SonarSource/sonarqube-scan-action@e805d875275f728fac1885b413934be6d7c63f65
         env:
@@ -256,5 +260,14 @@ jobs:
           python-version: "3.12"
       - run: uv sync --locked --no-build --no-install-project --extra dev
         working-directory: ai-service
-      - run: ai-service/.venv/bin/pytest -p no:cacheprovider --rootdir scripts -o pythonpath=scripts scripts/test_check_contract_compat.py
+      # coverage.xml has the absolute repo root as source, the same path in the sonar job.
+      - run: >-
+          ai-service/.venv/bin/pytest -p no:cacheprovider --rootdir scripts -o pythonpath=scripts
+          --cov=check_contract_compat --cov-branch --cov-fail-under=70 --cov-report=term-missing
+          --cov-report=xml:scripts/coverage.xml scripts/test_check_contract_compat.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: coverage-contract-compat
+          path: scripts/coverage.xml
+          retention-days: 1
       - run: ai-service/.venv/bin/python scripts/check_contract_compat.py
