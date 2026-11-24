@@ -63,8 +63,9 @@ Generate each secret with `openssl rand -hex 24` and set it with `gh secret set 
 | `BFF_CLIENT_SECRET` | client `bff` in the realm and the BFF |
 | `KEYCLOAK_PROVISIONER_SECRET` | client `alinha-provisioner` in the realm and the app (through OpenBao) |
 | `BAO_APP_TOKEN` | the app's OpenBao token |
-| `BAO_SEED_TOKEN` | the `openbao-seed` job's token: can only write `secret/alinha/{app,ai-service}` |
-| `BAO_WORKER_TOKEN` | the job consumer's OpenBao token: can only read `secret/tenants/+/providers/+` (provider credentials) |
+| `BAO_SEED_TOKEN` | the `openbao-seed` job's token: can only write `secret/alinha/{app,ai-service}` and `secret/providers/+` |
+| `BAO_WORKER_TOKEN` | the job consumer's OpenBao token: can only read `secret/tenants/+/providers/+` (provider credentials) and `secret/providers/+` |
+| `GITHUB_APP_CLIENT_SECRET`, `GITHUB_APP_PRIVATE_KEY` | optional, the aLinha GitHub App (see "GitHub App" below) |
 | `SMTP_USERNAME`, `SMTP_PASSWORD` | the SMTP relay's login (from the mail provider, not generated) |
 
 The OpenBao **root token is not a secret here**: it stays with the operator (see OpenBao below).
@@ -75,7 +76,26 @@ Variables: `ALINHA_PUBLIC_URL=https://pei-alinha.duckdns.org`, `PROXY_NETWORK` (
 authenticate and require STARTTLS.
 
 Compose refuses to start when any of them is missing (`${VAR:?}`), so an empty secret can never become a
-placeholder in the imported realm.
+placeholder in the imported realm. The GitHub App ones are the exception: optional, see below.
+
+### GitHub App (code-repository, optional)
+
+Clients can connect their GitHub organisation by installing the aLinha GitHub App instead of pasting a token. Without
+the values below the page only offers the token. To enable it, a GitHub organisation owner of the team registers the
+App once (Settings, Developer settings, GitHub Apps, New GitHub App):
+
+- **Homepage URL**: `ALINHA_PUBLIC_URL`. **Setup URL**: `<ALINHA_PUBLIC_URL>/resume`, with **Redirect on update** on.
+- **Request user authorization (OAuth) during installation**: on (the app checks with it that the person who returns
+  can see the installation). **Expire user authorization tokens**: on. **Webhook**: off.
+- **Repository permissions**, all **Read-only**: Administration, Metadata, Dependabot alerts, Secret scanning alerts.
+  Nothing else, and no account permissions. **Where can this App be installed**: Any account.
+
+Then set the variables `GITHUB_APP_SLUG` (from the App's URL), `GITHUB_APP_CLIENT_ID` and `GITHUB_APP_ID`, and the
+secrets `GITHUB_APP_CLIENT_SECRET` (generate one on the App page) and `GITHUB_APP_PRIVATE_KEY` (generate a private
+key and paste the whole `.pem`). `openbao-seed` writes the client secret to `secret/alinha/app` (read by the app) and
+the App id and key to `secret/providers/code-repository` (read only by the job consumer, which asks GitHub for
+read-only installation tokens). After changing `alinha-seed.hcl` or `alinha-worker.hcl`, run `bootstrap.sh` once as
+described under OpenBao.
 
 ## Things to know
 

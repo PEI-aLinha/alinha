@@ -76,6 +76,10 @@ expect_denied "app token writes secret/alinha/app" app kv put secret/alinha/app 
 worker() { $COMPOSE exec -T -e BAO_TOKEN="$BAO_WORKER_TOKEN" openbao bao "$@"; }
 expect_ok "app token stores a provider credential" app kv put secret/tenants/t1/providers/code-repository token=x
 expect_ok "worker token reads a provider credential" worker kv get secret/tenants/t1/providers/code-repository
+expect_ok "seed token writes a provider's platform credential" seed kv put secret/providers/code-repository github_app_id=1
+expect_ok "worker token reads a provider's platform credential" worker kv get secret/providers/code-repository
+expect_denied "worker token writes a provider's platform credential" worker kv put secret/providers/code-repository github_app_id=2
+expect_denied "app token reads a provider's platform credential" app kv get secret/providers/code-repository
 expect_denied "worker token writes a provider credential" worker kv put secret/tenants/t1/providers/code-repository token=y
 expect_denied "worker token lists tenants" worker kv list secret/tenants
 expect_denied "worker token reads secret/alinha/app" worker kv get secret/alinha/app

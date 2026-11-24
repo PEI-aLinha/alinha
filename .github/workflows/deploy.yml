@@ -115,6 +115,12 @@ jobs:
           SMTP_FROM: ${{ vars.SMTP_FROM }}
           SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          # The aLinha GitHub App (code-repository), optional: unset hides it and clients use a token
+          GITHUB_APP_SLUG: ${{ vars.GITHUB_APP_SLUG }}
+          GITHUB_APP_CLIENT_ID: ${{ vars.GITHUB_APP_CLIENT_ID }}
+          GITHUB_APP_ID: ${{ vars.GITHUB_APP_ID }}
+          GITHUB_APP_CLIENT_SECRET: ${{ secrets.GITHUB_APP_CLIENT_SECRET }}
+          GITHUB_APP_PRIVATE_KEY: ${{ secrets.GITHUB_APP_PRIVATE_KEY }}
           # The VM's reverse proxy: its Docker network and the address range web trusts X-Forwarded-For from.
           PROXY_NETWORK: ${{ vars.PROXY_NETWORK }}
           TRUSTED_PROXY_CIDR: ${{ vars.TRUSTED_PROXY_CIDR }}

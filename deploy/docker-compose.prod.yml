@@ -85,6 +85,11 @@ services:
       SMTP_USERNAME: ${SMTP_USERNAME:?}
       SMTP_AUTH: "true"
       SMTP_STARTTLS: "true"
+      # Links in emails (e.g. the code-repository invite).
+      ALINHA_PUBLIC_URL: ${ALINHA_PUBLIC_URL:?}
+      # The aLinha GitHub App (code-repository), optional: DEPLOYMENT.md, "GitHub App". Its client secret is in OpenBao.
+      GITHUB_APP_SLUG: ${GITHUB_APP_SLUG:-}
+      GITHUB_APP_CLIENT_ID: ${GITHUB_APP_CLIENT_ID:-}
       # Regex for BFF_IP.
       ALINHA_TRUSTED_PROXIES: ${ALINHA_TRUSTED_PROXIES:-172\.31\.0\.10}
     volumes:
@@ -237,6 +242,10 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:?}
       LLM_API_KEY: none # no AI Service in production yet
       AI_SERVICE_TOKEN: none # no AI Service in production yet
+      # The aLinha GitHub App, optional (DEPLOYMENT.md, "GitHub App")
+      GITHUB_APP_CLIENT_SECRET: ${GITHUB_APP_CLIENT_SECRET:-}
+      GITHUB_APP_ID: ${GITHUB_APP_ID:-}
+      GITHUB_APP_PRIVATE_KEY: ${GITHUB_APP_PRIVATE_KEY:-}
     volumes:
       - ./openbao:/init:ro
     depends_on:
