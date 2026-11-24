@@ -48,6 +48,9 @@ tasks.processResources {
 }
 
 // OpenBaoTenantSecretStoreTest runs with the real app policy from deploy/openbao.
+// The contract tests read the shared examples in contracts/<area>/examples (the Python tests use the same files).
 tasks.test {
     systemProperty("alinha.openbao.policy-dir", rootProject.file("deploy/openbao").absolutePath)
+    systemProperty("alinha.contracts-dir", rootProject.file("contracts").absolutePath)
+    inputs.dir(rootProject.file("contracts")).withPropertyName("contracts").withPathSensitivity(PathSensitivity.RELATIVE)
 }
