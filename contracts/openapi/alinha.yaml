@@ -30,6 +30,8 @@ tags:
     description: Questionnaires adapted to the organization's regulatory scope (assessment plugin).
   - name: dashboard-reports
     description: Dashboards and reports (dashboard-reports plugin).
+  - name: code-repository
+    description: Read-only connection to the organization's code repositories and the evidence collected (code-repository provider).
   - name: audit
     description: Who did what and when in the current organization (core audit trail).
   - name: internal
@@ -524,6 +526,151 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PortfolioSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/code-repository/connection:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+    get:
+      tags: [code-repository]
+      operationId: getCodeRepositoryConnection
+      summary: The organization's connection to its repository host
+      description: |
+        `204` when nothing is connected yet. Never contains the token. Permission `code-repository:read`
+        (Designated Officer, analyst, consultant).
+      responses:
+        '200':
+          description: The connection and the state of its last collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CodeRepositoryConnection'
+        '204':
+          description: No repository is connected.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    put:
+      tags: [code-repository]
+      operationId: connectCodeRepository
+      summary: Connect (or change) the repository host and start a collection
+      description: |
+        Stores the read-only token in OpenBao (never in the database, never returned) and queues an `evidence.collect`
+        job (FR37, US37). `token` is required the first time; afterwards, leave it out to keep the stored one.
+        `repositories` empty means every repository of `account` the token can see (at most 20 per collection).
+        `409` (`code` = `COLLECTION_RUNNING`) while a collection is running (less than 15 minutes); `422` names the invalid field;
+        `503` (`code` = `SECRETS_UNAVAILABLE`) when the token cannot be stored. Permission `code-repository:connect`
+        (Designated Officer, analyst, consultant).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CodeRepositoryConnectInput'
+      responses:
+        '202':
+          description: Saved; a collection is queued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CodeRepositoryConnection'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '503':
+          description: The token could not be stored.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    delete:
+      tags: [code-repository]
+      operationId: disconnectCodeRepository
+      summary: Remove the connection and its stored token
+      description: |
+        Evidence already collected is kept. `404` (`code` = `NOT_CONNECTED`) when nothing is connected.
+        Permission `code-repository:connect`.
+      responses:
+        '204':
+          description: Disconnected.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          description: The token could not be removed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /api/code-repository/collections:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+    post:
+      tags: [code-repository]
+      operationId: collectCodeRepositoryEvidence
+      summary: Collect the evidence again now
+      description: |
+        Queues a new collection with the stored token. `404` (`code` = `NOT_CONNECTED`) when nothing is connected,
+        `409` (`code` = `COLLECTION_RUNNING`) while one is running. Permission `code-repository:connect`.
+      responses:
+        '202':
+          description: A collection is queued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CodeRepositoryConnection'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/code-repository/evidence:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+    get:
+      tags: [code-repository]
+      operationId: listCodeRepositoryEvidence
+      summary: Evidence from the last completed collection
+      description: |
+        One item per repository and check, ordered by repository then check. Empty before the first collection
+        completes. Not paginated: at most 20 repositories × 4 checks. `controlIds` come from a deterministic,
+        versioned mapping (NFR05). Permission `code-repository:read`.
+      responses:
+        '200':
+          description: The evidence.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CodeRepositoryEvidence'
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1612,6 +1759,97 @@ components:
         status:
           type: string
           enum: [ok]
+
+    CodeRepositoryConnection:
+      type: object
+      required: [host, account, repositories, status, truncated, connectedAt]
+      properties:
+        host:
+          type: string
+          enum: [github]
+        account:
+          type: string
+          description: GitHub user or organization name.
+        repositories:
+          type: array
+          description: '`owner/name`. Empty: every repository of `account` the token can see.'
+          items:
+            type: string
+        status:
+          type: string
+          enum: [PENDING, ACTIVE, FAILED]
+          description: PENDING while a collection is queued or running; FAILED says why in `lastError`.
+        lastError:
+          type: [string, 'null']
+          description: |
+            Error code of the last failed collection (`invalid_credentials`, `connection_not_found`, `invalid_result`,
+            `transient_error`, `collector_error`, ...). The page turns it into a sentence.
+        lastCollectedAt:
+          type: [string, 'null']
+          format: date-time
+        collectingSince:
+          type: [string, 'null']
+          format: date-time
+          description: When the current (or last) collection was queued. A PENDING one older than 15 minutes is
+            treated as lost, and a new collection may start.
+        truncated:
+          type: boolean
+          description: The account has more repositories than one collection inspects (20).
+        connectedAt:
+          type: string
+          format: date-time
+    CodeRepositoryConnectInput:
+      type: object
+      required: [host, account]
+      properties:
+        host:
+          type: string
+          enum: [github]
+        account:
+          type: string
+          maxLength: 39
+        repositories:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            description: '`owner/name`, with `owner` equal to `account`.'
+        token:
+          type: string
+          maxLength: 512
+          writeOnly: true
+          description: Read-only access token. Required the first time; leave out to keep the stored one.
+    CodeRepositoryEvidence:
+      type: object
+      required: [id, repository, check, outcome, details, controlIds, strength, collectedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        repository:
+          type: string
+        check:
+          type: string
+          enum: [branch_protection, required_reviews, dependency_alerts, secret_scanning]
+        outcome:
+          type: string
+          enum: [PASS, FAIL, UNKNOWN]
+          description: UNKNOWN when the token could not see it; it is not evidence for any control.
+        details:
+          type: object
+          description: Counts and flags only (e.g. `requiredApprovals`, `openCriticalOrHigh`, `enabled`).
+          additionalProperties:
+            type: [boolean, integer, string]
+        controlIds:
+          type: array
+          items:
+            type: string
+        strength:
+          type: string
+          enum: [SELF_REPORTED, DOCUMENT_VERIFIED, TECHNICALLY_VERIFIED, CONTINUOUSLY_VERIFIED]
+        collectedAt:
+          type: string
+          format: date-time
 
   headers:
     RetryAfter:
