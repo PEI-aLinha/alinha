@@ -1,0 +1,11 @@
+{
+  "text": "Rascunho do roteiro.",
+  "model": "fake/eu-model-1",
+  "promptVersion": "roadmap-v1",
+  "sources": [
+    "NIS2 art. 21"
+  ],
+  "generatedAt": "2026-11-24T10:00:00Z",
+  "aiGenerated": false,
+  "requiresHumanReview": true
+}

@@ -1,0 +1,11 @@
+{
+  "jobId": "11111111-2222-4333-8444-555555555555",
+  "type": "evidence.collect",
+  "version": 1,
+  "attempt": 1,
+  "status": "completed",
+  "result": {
+    "repositories": 2
+  },
+  "finishedAt": "2026-11-24T10:05:00Z"
+}
