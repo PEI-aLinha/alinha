@@ -1,5 +1,6 @@
-import { Navigate, useParams, type RouteObject } from 'react-router'
-import type { FrontendPlugin, NavArea } from '@alinha/plugin-sdk'
+import { useState } from 'react'
+import { Navigate, useLocation, useParams, type RouteObject } from 'react-router'
+import { takeReturnPath, type FrontendPlugin, type NavArea } from '@alinha/plugin-sdk'
 import { ClientLayout } from '../layouts/ClientLayout'
 import { ConsultantLayout, PortfolioPage } from '../layouts/ConsultantLayout'
 import { OnboardingLayout } from '../layouts/OnboardingLayout'
@@ -84,6 +85,16 @@ export function HomeRedirect({ plugins }: { plugins: readonly FrontendPlugin[] }
 }
 
 /**
+ * `/resume`: back from an outside page that can only return to one fixed address (a GitHub App's Setup URL), to the
+ * page the plugin remembered with `rememberReturnPath`, keeping the query string. Nothing remembered: home.
+ */
+export function ResumeRedirect() {
+  const { search } = useLocation()
+  const [path] = useState(() => takeReturnPath())
+  return <Navigate to={path ? `${path}${search}` : '/'} replace />
+}
+
+/**
  * Landing page of an organization: the first menu entry, else the Integrações page when the user only sees evidence
  * providers (they are not in pluginNav), else a short note.
  */
@@ -111,6 +122,7 @@ const areaChildren = (plugins: readonly FrontendPlugin[], area: NavArea): RouteO
  *   /portfolio/<path>       consultant pages across all clients (plugins' `portfolio` routes; fixed first segment)
  *   /portfolio/:org/<path>  consultant area for one client (plugins' `consultant` routes)
  *   /onboarding/<path>      new account registering its organization (plugins' `onboarding` routes)
+ *   /resume                 back from an outside page to the page a plugin remembered (ResumeRedirect)
  */
 export function createRoutes(plugins: readonly FrontendPlugin[]): RouteObject[] {
   checkPortfolioRoutes(plugins)
@@ -151,6 +163,7 @@ export function createRoutes(plugins: readonly FrontendPlugin[]): RouteObject[] 
             { path: '*', element: <NotFoundPage /> },
           ],
         },
+        { path: 'resume', element: <ResumeRedirect /> },
         { path: '*', element: <NotFoundPage /> },
       ],
     },
