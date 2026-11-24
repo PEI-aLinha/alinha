@@ -63,9 +63,15 @@ Fields are proposed: the publishing plugin's issue settles them. Every domain ev
 | `AssessmentSubmitted` | assessment | notifications (warns the consultant) | `assessmentId` | assessment #5, notifications #4 |
 | `AssessmentEvaluated` | assessment | dashboard-reports | `assessmentId`, `framework`, `catalogueVersion` | assessment #5, dashboard-reports #2 |
 | `RoadmapValidated` | assessment | dashboard-reports, notifications (warns the Designated Officer) | `assessmentId`, `roadmapId`, `validatedBy` | assessment #8, notifications #4 |
-| `EvidenceCollected` | code-repository, external-surface | assessment (verifies or pre-fills answers), dashboard-reports | `provider`, `evidenceId`, `controlIds` | code-repository #1, external-surface #1, assessment #10 |
+| `EvidenceCollected` | code-repository, external-surface | assessment (verifies or pre-fills answers), dashboard-reports | `provider`, `evidenceId`, `controlIds`, `outcome`, `strength` | code-repository #1, external-surface #1, assessment #10 |
 | `JobCompleted` / `JobFailed` | core (`core.jobs`) | the plugin that dispatched the job (filter by `requestedBy`) | `jobId`, `type`, `requestedBy`, `attempt` (+ `error` on `JobFailed`) | alinha #13 |
 | `CatalogueVersionPublished` | core (`core.compliance`) | none yet | `framework`, `version`, `title` | alinha #21 |
+
+`EvidenceCollected` and `EvidenceStrength` are defined once in `plugin-api` (`pt.alinha.pluginapi`),
+not in a provider's `events/` package: every provider publishes the same event, so a consumer depends on
+`plugin-api` only and never on a provider plugin. One event per stored piece of evidence; the evidence itself stays
+in the provider's schema until the Policy & Evidence plugin exists (post-MVP). `outcome` is
+`SATISFIED` or `NOT_SATISFIED`: a failed check is evidence of a gap, never of compliance.
 
 `RoadmapValidated` is also the consultant's approval of the AI-drafted roadmap: nothing AI-generated reaches the
 client before it (see `CLAUDE.md` > "AI drafts, humans decide").
