@@ -11,7 +11,7 @@
 
 Everything is read at the merge base of the PR and the base branch (default origin/main), so a PR cannot change a
 contract and its examples together to hide a break, and a base branch that moved on does not count against the PR.
-Run: python scripts/check_contract_compat.py [base]. Needs jsonschema[format-nongpl] and pyyaml (CI uses the AI
+Run: python scripts/check_contract_compat.py (compares with origin/main; fetch it first). Needs jsonschema[format-nongpl] and pyyaml (CI uses the AI
 Service's locked venv). Not caught: changes no example exercises; keep the examples representative.
 """
 from __future__ import annotations
@@ -33,6 +33,7 @@ AI_CONTRACT = re.compile(r"^contracts/ai/([^/]+\.v\d+)\.yaml$")
 AI_EXAMPLE = re.compile(
     r"^contracts/ai/examples/(?P<contract>[^/]+)/(?P<schema>[^/]+)/(?P<kind>valid|invalid)/[^/]+\.json$"
 )
+BASE_BRANCH = "origin/main"
 SCHEMA_REF = re.compile(r"^#/components/schemas/([^/]+)$")
 
 
@@ -131,8 +132,8 @@ def check_ai(base: str) -> list[str]:
     return errors
 
 
-def main(argv: list[str]) -> int:
-    name = argv[1] if len(argv) > 1 else "origin/main"
+def main(name: str = BASE_BRANCH) -> int:
+    """`name` is fixed in CI and set only by tests: no command-line value ever reaches a git argument."""
     try:
         base = merge_base(name)
     except subprocess.CalledProcessError:
@@ -153,4 +154,4 @@ def main(argv: list[str]) -> int:
 
 
 if __name__ == "__main__":  # pragma: no cover
-    sys.exit(main(sys.argv))
+    sys.exit(main())

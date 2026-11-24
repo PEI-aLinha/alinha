@@ -135,7 +135,7 @@ def repo(tmp_path, monkeypatch):
 
 
 def test_unchanged_contracts_pass(repo, capsys):
-    assert check_contract_compat.main(["check", "main"]) == 0
+    assert check_contract_compat.main("main") == 0
     assert "ok --" in capsys.readouterr().out
 
 
@@ -143,33 +143,33 @@ def test_a_new_job_version_and_new_examples_pass(repo):
     (repo / "contracts/jobs/evidence-collect.v2.schema.json").write_text("{}", encoding="utf-8")
     (repo / AI_VALID).with_name("other.json").write_text('{"task": "x", "context": {}}', encoding="utf-8")
     commit(repo)
-    assert check_contract_compat.main(["check", "main"]) == 0
+    assert check_contract_compat.main("main") == 0
 
 
 def test_an_edited_job_schema_fails(repo, capsys):
     edit(repo / JOB, "provider plugin id", "provider id")
     commit(repo)
-    assert check_contract_compat.main(["check", "main"]) == 1
+    assert check_contract_compat.main("main") == 1
     assert f"{JOB} is a published job contract" in capsys.readouterr().out
 
 
 def test_a_deleted_job_schema_fails(repo):
     (repo / JOB).unlink()
     commit(repo)
-    assert check_contract_compat.main(["check", "main"]) == 1
+    assert check_contract_compat.main("main") == 1
 
 
 def test_an_ai_change_that_breaks_a_base_example_fails(repo, capsys):
     edit(repo / AI, "required: [task, context]", "required: [task, context, tenant]")
     commit(repo)
-    assert check_contract_compat.main(["check", "main"]) == 1
+    assert check_contract_compat.main("main") == 1
     assert f"{AI_VALID}: /: required (a valid example no longer validates)" in capsys.readouterr().out
 
 
 def test_a_loosened_draft_fails(repo, capsys):
     edit(repo / AI, "required: [text, model, promptVersion, sources,", "required: [text, model, promptVersion,")
     commit(repo)
-    assert check_contract_compat.main(["check", "main"]) == 1
+    assert check_contract_compat.main("main") == 1
     assert f"{AI_INVALID}: now accepted" in capsys.readouterr().out
 
 
@@ -177,7 +177,7 @@ def test_examples_changed_in_the_pr_cannot_hide_a_break(repo):
     edit(repo / AI, "required: [task, context]", "required: [task, context, tenant]")
     (repo / AI_VALID).write_text('{"task": "roadmap", "context": {}, "tenant": "x"}', encoding="utf-8")
     commit(repo)
-    assert check_contract_compat.main(["check", "main"]) == 1
+    assert check_contract_compat.main("main") == 1
 
 
 def test_changes_on_the_base_after_the_pr_branched_off_do_not_count(repo):
@@ -186,17 +186,17 @@ def test_changes_on_the_base_after_the_pr_branched_off_do_not_count(repo):
     (repo / "contracts/ai/other.v1.yaml").write_text("openapi: 3.1.0\n", encoding="utf-8")
     commit(repo)
     run(repo, "switch", "-q", "pr")
-    assert check_contract_compat.main(["check", "main"]) == 0
+    assert check_contract_compat.main("main") == 0
 
 
 def test_a_deleted_ai_contract_fails(repo, capsys):
     (repo / AI).unlink()
     commit(repo)
-    assert check_contract_compat.main(["check", "main"]) == 1
+    assert check_contract_compat.main("main") == 1
     assert f"{AI} was deleted" in capsys.readouterr().out
 
 
 @pytest.mark.parametrize("base", ["no-such-branch", "--output=/tmp/x"])
 def test_a_missing_or_option_like_base_fails(repo, capsys, base):
-    assert check_contract_compat.main(["check", base]) == 1
+    assert check_contract_compat.main(base) == 1
     assert f"{base} not found" in capsys.readouterr().out
