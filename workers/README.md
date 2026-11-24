@@ -61,6 +61,7 @@ exception is a final, generic `collector_error`.
 
 A collector that needs the tenant's credential calls `alinha_job_consumer.credentials.provider_secret(envelope)`
 (reads OpenBao with `BAO_ADDR` and `BAO_TOKEN`, the `alinha-worker` policy). See docs/jobs.md, "Credentials for a
-collector".
+collector". A credential of the provider itself, the same for every tenant (a GitHub App key), comes from
+`credentials.platform_secret(provider)`.
 
 A provider that is not installed produces a non-retryable `unknown_provider` result instead of crashing the worker.

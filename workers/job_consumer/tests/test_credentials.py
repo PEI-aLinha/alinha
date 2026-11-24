@@ -4,7 +4,7 @@ import uuid
 import pytest
 
 from alinha_job_consumer.collectors import CollectorError, TransientError
-from alinha_job_consumer.credentials import _fetch, connection_ref, provider_secret
+from alinha_job_consumer.credentials import _fetch, connection_ref, platform_secret, provider_secret
 
 TENANT = str(uuid.uuid4())
 
@@ -125,3 +125,23 @@ def test_unexpected_bodies_are_final_and_never_echoed(body):
 def test_unreachable_openbao_is_retryable():
     with pytest.raises(TransientError):
         _fetch("http://127.0.0.1:9/v1/secret/data/x", "token")
+
+
+def test_reads_the_providers_platform_credential():
+    fetch = answering(200, {"github_app_id": "1"})
+
+    assert platform_secret("code-repository", fetch) == {"github_app_id": "1"}
+    assert fetch.calls == [("http://openbao:8200/v1/secret/data/providers/code-repository", "worker-token")]
+
+
+def test_missing_platform_credential_is_a_final_error():
+    with pytest.raises(CollectorError) as error:
+        platform_secret("code-repository", answering(404))
+    assert error.value.code == "provider_not_configured"
+
+
+@pytest.mark.parametrize("provider", ["", "../tenants", "Code", None])
+def test_platform_credential_refuses_an_invalid_provider(provider):
+    with pytest.raises(CollectorError) as error:
+        platform_secret(provider, answering(200, {}))
+    assert error.value.code == "invalid_connection_ref"

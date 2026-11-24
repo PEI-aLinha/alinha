@@ -53,8 +53,11 @@ A provider plugin stores the tenant's credential with `TenantSecretStore.put("<p
   path **itself** from the envelope's `tenantId` (stamped by the core) and `provider`, and only uses `connectionRef`
   to check that it matches. Any other value is refused (`invalid_connection_ref`, not retryable), so a payload
   cannot point a collector at another tenant's or another provider's secret.
-- The worker's OpenBao token (`alinha-worker` policy) can only **read** `secret/data/tenants/+/providers/+`. It
-  cannot write, list or read anything else.
+- The worker's OpenBao token (`alinha-worker` policy) can only **read** `secret/data/tenants/+/providers/+` and
+  `secret/data/providers/+`. It cannot write, list or read anything else.
+- A credential that is the same for every tenant and belongs to the platform, such as a GitHub App's id and private
+  key, is read with `credentials.platform_secret(provider)` from `secret/providers/<provider id>` (written by the
+  deploy's `openbao-seed`, never by the app). Missing: `provider_not_configured`, not retryable.
 - The credential never goes into the payload, the result, the logs or an error message.
 - A provider without credentials (external-surface) still sends `providers/<provider id>` (the contract requires the
   field) and simply does not call `provider_secret`.

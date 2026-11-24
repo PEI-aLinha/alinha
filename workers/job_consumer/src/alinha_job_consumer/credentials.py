@@ -2,7 +2,8 @@
 
 The path is built from the envelope's `tenantId` (stamped by the core) and `provider`, never from `connectionRef`,
 so a payload cannot point a collector at another tenant's or another provider's secret. The worker's token can only
-read `secret/data/tenants/+/providers/+` (deploy/openbao/alinha-worker.hcl).
+read `secret/data/tenants/+/providers/+` and, for a provider's own platform credential (e.g. a GitHub App's private
+key, set by the operators), `secret/data/providers/+` (deploy/openbao/alinha-worker.hcl).
 """
 from __future__ import annotations
 
@@ -42,15 +43,28 @@ def provider_secret(envelope: dict[str, Any], fetch: Fetch | None = None) -> dic
     if envelope.get("connectionRef") != connection_ref(provider):
         raise CollectorError("invalid_connection_ref", f"connectionRef must be {connection_ref(provider)}")
 
+    return _read(f"tenants/{tenant_id}/providers/{provider}", "connection_not_found", fetch)
+
+
+def platform_secret(provider: str, fetch: Fetch | None = None) -> dict[str, str]:
+    """The provider's own credential, the same for every tenant (`secret/providers/<provider>`, set by operators).
+
+    Raises `CollectorError("provider_not_configured")` when nothing is stored there.
+    """
+    if not (isinstance(provider, str) and _PROVIDER_ID.fullmatch(provider)):
+        raise CollectorError("invalid_connection_ref", "invalid provider id")
+    return _read(f"providers/{provider}", "provider_not_configured", fetch)
+
+
+def _read(path: str, missing: str, fetch: Fetch | None) -> dict[str, str]:
     address = os.environ.get("BAO_ADDR", "").rstrip("/")
     token = os.environ.get("BAO_TOKEN", "")
     if not (address and token):
         raise CollectorError("secrets_unavailable", "the worker has no OpenBao address or token")
 
-    url = f"{address}/v1/secret/data/tenants/{tenant_id}/providers/{provider}"
-    status, body = (fetch or _fetch)(url, token)
+    status, body = (fetch or _fetch)(f"{address}/v1/secret/data/{path}", token)
     if status == 404:
-        raise CollectorError("connection_not_found", "no credential is stored for this provider")
+        raise CollectorError(missing, "no credential is stored there")
     if status in (401, 403):
         raise CollectorError("secrets_unavailable", "the worker's OpenBao token was refused")
     if status >= 500 or status == 429:

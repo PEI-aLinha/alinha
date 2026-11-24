@@ -4,3 +4,7 @@
 # Trust decision: every collector runs in this one process, so a compromised provider package could read any
 # provider's credentials for any tenant. Only install reviewed provider packages in the job consumer image.
 path "secret/data/tenants/+/providers/+" { capabilities = ["read"] }
+
+# A provider's platform credential, the same for every tenant (e.g. the GitHub App id and private key of
+# code-repository), written by operators: secret/providers/<id>. Read only.
+path "secret/data/providers/+" { capabilities = ["read"] }
