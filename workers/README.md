@@ -30,6 +30,7 @@ the consumer.
 | `WORKER_COLLECTOR_TIMEOUT_S` | `50` | Deadline for one collector run; a run past it publishes a retryable `transient_error`. Must be below `WORKER_CLAIM_IDLE_MS` (checked at startup) |
 | `WORKER_DEDUPE_TTL_S` | `86400` | TTL of the `(jobId, attempt)` dedupe key |
 | `WORKER_MAX_DELIVERIES` | `3` | Deliveries of one entry that may fail unexpectedly; the next one publishes a non-retryable `too_many_deliveries` result |
+| `BAO_ADDR`, `BAO_TOKEN` | unset | OpenBao address and the worker's read-only token, for collectors that need credentials |
 | `CONTRACTS_DIR` | repo `contracts/jobs`, else `/app/contracts/jobs` | Where the JSON Schemas live |
 
 `XAUTOCLAIM` cannot tell a crashed worker from a slow one: an entry still running after `WORKER_CLAIM_IDLE_MS` is
@@ -49,10 +50,17 @@ provider id:
 
 ```toml
 [project.entry-points."alinha.collectors"]
-code-repository = "alinha_coderepository.worker:collect"
+code-repository = "alinha_coderepository.collector:collect"
 ```
 
 `collect(envelope) -> dict` receives the validated job envelope and returns the type-specific `result` object.
 Raise `alinha_job_consumer.collectors.TransientError` for a failure worth retrying (timeout, 5xx, connection
-reset); any other exception is a final failure. A provider that is not installed produces a non-retryable
-`unknown_provider` result instead of crashing the worker.
+reset), and `CollectorError(code, message)` for an expected final failure the core may show (`invalid_credentials`);
+its code and message go into the result as they are, so never put a credential or provider text in them. Any other
+exception is a final, generic `collector_error`.
+
+A collector that needs the tenant's credential calls `alinha_job_consumer.credentials.provider_secret(envelope)`
+(reads OpenBao with `BAO_ADDR` and `BAO_TOKEN`, the `alinha-worker` policy). See docs/jobs.md, "Credentials for a
+collector".
+
+A provider that is not installed produces a non-retryable `unknown_provider` result instead of crashing the worker.

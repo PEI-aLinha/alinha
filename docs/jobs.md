@@ -18,7 +18,7 @@ fun startCollection(...) {
     jobs.dispatch(
         JobRequest(
             type = "evidence.collect",
-            payload = mapOf("provider" to "code-repository", "connectionRef" to ref, "scope" to scope),
+            payload = mapOf("provider" to "code-repository", "connectionRef" to "providers/code-repository", "scope" to scope),
             requestedBy = "code-repository",         // your plugin id
             idempotencyKey = "collect:$assessmentId", // optional
         ),
@@ -42,6 +42,22 @@ fun startCollection(...) {
   something in the key that changes when you really want a new job (e.g. `collect:<assessmentId>:<runId>`).
 - Every new job is audited (`job.dispatched`) in the same transaction.
 - Never put credentials in the payload: use `connectionRef` (OpenBao, `TenantSecretStore`).
+
+## Credentials for a collector (`connectionRef`)
+
+A provider plugin stores the tenant's credential with `TenantSecretStore.put("<provider id>", ...)`, which writes
+`secret/tenants/<tenantId>/providers/<provider id>` in OpenBao. The job only names it:
+
+- `connectionRef` is exactly `providers/<provider id>`, the same id as the envelope's `provider`.
+- The worker reads the secret with `alinha_job_consumer.credentials.provider_secret(envelope)`. It builds the OpenBao
+  path **itself** from the envelope's `tenantId` (stamped by the core) and `provider`, and only uses `connectionRef`
+  to check that it matches. Any other value is refused (`invalid_connection_ref`, not retryable), so a payload
+  cannot point a collector at another tenant's or another provider's secret.
+- The worker's OpenBao token (`alinha-worker` policy) can only **read** `secret/data/tenants/+/providers/+`. It
+  cannot write, list or read anything else.
+- The credential never goes into the payload, the result, the logs or an error message.
+- A provider without credentials (external-surface) still sends `providers/<provider id>` (the contract requires the
+  field) and simply does not call `provider_secret`.
 
 ## Job states (`core.job_outbox.status`)
 
