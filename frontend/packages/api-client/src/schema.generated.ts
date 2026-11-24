@@ -732,7 +732,7 @@ export interface paths {
             };
             path: {
                 /** @description Plugin id exactly as declared in `plugin.yaml`. */
-                plugin: "assessment" | "dashboard-reports" | "notifications" | "organization" | "risk-assets" | "code-repository" | "external-surface";
+                plugin: "assessment" | "dashboard-reports" | "notifications" | "organization" | "risk-assets" | "code-repository";
             };
             cookie?: never;
         };
@@ -2685,7 +2685,7 @@ export interface operations {
             };
             path: {
                 /** @description Plugin id exactly as declared in `plugin.yaml`. */
-                plugin: "assessment" | "dashboard-reports" | "notifications" | "organization" | "risk-assets" | "code-repository" | "external-surface";
+                plugin: "assessment" | "dashboard-reports" | "notifications" | "organization" | "risk-assets" | "code-repository";
             };
             cookie?: never;
         };

@@ -1081,7 +1081,6 @@ paths:
             - organization
             - risk-assets
             - code-repository
-            - external-surface
       - $ref: '#/components/parameters/Tenant'
     get:
       tags: [internal]
