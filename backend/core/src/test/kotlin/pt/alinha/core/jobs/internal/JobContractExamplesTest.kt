@@ -7,6 +7,7 @@ import org.junit.jupiter.api.TestFactory
 import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.assertThrows
 import pt.alinha.core.contracts.ContractExamples
+import pt.alinha.core.contracts.violations
 import tools.jackson.databind.json.JsonMapper
 import kotlin.io.path.listDirectoryEntries
 import kotlin.io.path.name
@@ -24,7 +25,9 @@ class JobContractExamplesTest {
             if (example.valid) {
                 assertDoesNotThrow { validator.validate(example.contract, document) }
             } else {
-                assertThrows<IllegalArgumentException> { validator.validate(example.contract, document) }
+                val e = assertThrows<IllegalArgumentException> { validator.validate(example.contract, document) }
+                // Refused for the reason the example exists, not by accident.
+                assertThat(violations(example.contract, e.message)).isEqualTo(example.expectedErrors)
             }
         }
     }

@@ -1,0 +1,14 @@
+{
+  "generated-at-not-date-time.json": [
+    "/generatedAt: format"
+  ],
+  "missing-sources.json": [
+    "/: required sources"
+  ],
+  "no-human-review.json": [
+    "/requiresHumanReview: const"
+  ],
+  "not-labelled-ai-generated.json": [
+    "/aiGenerated: const"
+  ]
+}

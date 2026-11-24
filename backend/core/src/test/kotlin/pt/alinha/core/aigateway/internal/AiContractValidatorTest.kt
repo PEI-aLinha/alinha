@@ -7,6 +7,7 @@ import org.junit.jupiter.api.TestFactory
 import org.junit.jupiter.api.assertDoesNotThrow
 import org.junit.jupiter.api.assertThrows
 import pt.alinha.core.contracts.ContractExamples
+import pt.alinha.core.contracts.violations
 import tools.jackson.databind.json.JsonMapper
 
 /** The core's side of contracts/ai, checked against the examples the AI Service tests also use. */
@@ -25,7 +26,9 @@ class AiContractValidatorTest {
             if (example.valid) {
                 assertDoesNotThrow { validator.validate(example.contract.schemaName, body) }
             } else {
-                assertThrows<IllegalArgumentException> { validator.validate(example.contract.schemaName, body) }
+                val e = assertThrows<IllegalArgumentException> { validator.validate(example.contract.schemaName, body) }
+                // Refused for the reason the example exists, not by accident.
+                assertThat(violations(example.contract.schemaName, e.message)).isEqualTo(example.expectedErrors)
             }
         }
     }
