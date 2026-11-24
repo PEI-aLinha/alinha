@@ -3,4 +3,6 @@
 !workers/job_consumer/pyproject.toml
 !workers/job_consumer/src
 !contracts/jobs
+!plugins/provider/*/worker/pyproject.toml
+!plugins/provider/*/worker/src
 **/__pycache__
