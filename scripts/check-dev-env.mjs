@@ -78,7 +78,7 @@ for (const [username, { role, claim }] of Object.entries(expected)) {
   const other = claim === "tenant_id" ? "tenants" : "tenant_id";
   assert.equal(user.attributes?.[other], undefined, `${username} must not have ${other}`);
 }
-assert.equal(users.get("marta.ferreira@alinha.pt").attributes.tenants.length, 2);
+assert.equal(users.get("marta.ferreira@alinha.pt").attributes.tenants.length, 12);
 assert.equal(users.get("joao.pereira@alinha.pt").attributes.tenants.length, 1);
 
 assert.equal(realm.smtpServer.host, "mailpit");
