@@ -39,6 +39,11 @@ describe('toProdRealm', () => {
     }
   })
 
+  it('keeps the consultants group, which grants the consultant role and is the assignment pool (FR04)', () => {
+    const consultants = prod.groups.find((g) => g.name === 'consultants')
+    assert.deepEqual(consultants?.realmRoles, ['consultant'])
+  })
+
   it('drops the test users but keeps service accounts', () => {
     assert.deepEqual(prod.users.map((u) => u.username), ['service-account-alinha-provisioner'])
     assert.ok(!JSON.stringify(prod).includes('ALINHA_TEST_USER_PASSWORD'))

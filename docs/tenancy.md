@@ -23,6 +23,10 @@ Never read the tenant from the body or the query string.
 
 - User attribute `tenant_id` → access token claim `tenant_id` (UUID as a string), for client users.
 - Multivalued user attribute `tenants` → access token claim `tenants` (list of UUIDs), for consultants.
+  A new organization is added to one consultant's `tenants` automatically (organization#5) through
+  `core.tenant.ConsultantAssignment`: the members of the `consultants` group are the pool, the one with the fewest
+  organizations is chosen, and `core.consultant_assignment` records it. It takes effect on the consultant's next token
+  refresh (ADR 0002).
 
 The BFF forwards `X-Alinha-Tenant` to the app unchanged.
 

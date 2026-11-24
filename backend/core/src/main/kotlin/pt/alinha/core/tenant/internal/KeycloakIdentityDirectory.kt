@@ -17,6 +17,7 @@ import pt.alinha.pluginapi.TenantId
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
+import java.util.UUID
 
 private const val DEFAULT_ROLES = "default-roles-"
 private const val RESPONSIBLE_ROLE = "responsible"
@@ -33,6 +34,13 @@ private val ASSIGN_DEADLINE: Duration = Duration.ofSeconds(10)
  * connection and provisioning slot, so it is kept short: at most this plus one call, about 10 s.
  */
 private val REVOKE_DEADLINE: Duration = Duration.ofSeconds(5)
+/**
+ * Upper bound for listing the consultants or assigning one an organization (FR04). These run in an event listener's
+ * transaction, not in a user's request, so the bound only keeps a stuck identity provider from holding the connection.
+ */
+private val CONSULTANT_DEADLINE: Duration = Duration.ofSeconds(10)
+/** Page size when reading the consultants group; the Admin API returns at most this many members per call. */
+private const val MEMBERS_PAGE = 100
 /** Renew the service-account token this long before it expires. */
 private val TOKEN_MARGIN: Duration = Duration.ofSeconds(10)
 
@@ -46,14 +54,20 @@ private data class AccessToken(
 
 private data class CachedToken(val value: String, val renewAt: Instant)
 
+private data class GroupRepresentation(val id: String, val name: String)
+
 /**
- * [IdentityDirectory] on the Keycloak Admin REST API, with the `alinha-provisioner` service account
+ * [IdentityDirectory] and [ConsultantIdentity] on the Keycloak Admin REST API, with the `alinha-provisioner` service account
  * (client credentials). The Keycloak user id is the token's `sub`.
  *
  * A self-registered account gets `registrant` through the realm's default composite role. Assigning a tenant removes
  * that composite mapping, after mapping its other roles (`offline_access`, `uma_authorization`) directly, so only
  * `registrant` goes away and offline sessions keep working. The whole user representation is read and written back, because a partial
  * `PUT` would fail the realm's user profile validation.
+ *
+ * Consultants are the members of the [IdentityProperties.consultantsGroup] group, which grants the `consultant` role.
+ * A group, not the role itself, because listing a role's users needs `view-realm`, which the service account does not
+ * have; reading a group's members only needs the `view-users` it already has.
  *
  * Provisioning calls this inside its database transaction, so the calls are kept short: the service-account
  * token is cached until shortly before it expires, and every call has a connect and read timeout.
@@ -64,7 +78,7 @@ class KeycloakIdentityDirectory internal constructor(
     private val properties: IdentityProperties,
     restClientBuilder: RestClient.Builder,
     private val clock: Clock = Clock.systemUTC(),
-) : IdentityDirectory {
+) : IdentityDirectory, ConsultantIdentity {
 
     @Volatile private var cached: CachedToken? = null
 
@@ -103,6 +117,55 @@ class KeycloakIdentityDirectory internal constructor(
         step { mapRoles(token, subject, toMap) }
         step { unmapRoles(token, subject, mapped.filter { it.name == defaultRoles() }) }
     }
+
+    override fun consultants(): List<Consultant> = forgettingRejectedToken {
+        val deadline = Deadline(CONSULTANT_DEADLINE, "consultant listing")
+        val token = deadline.step { token() }
+        consultantMembers(token, deadline).map { Consultant(it.id, tenantsOf(it.attributes)) }
+    }
+
+    override fun assign(subject: String, tenantId: TenantId) = forgettingRejectedToken {
+        val deadline = Deadline(CONSULTANT_DEADLINE, "consultant assignment")
+        val token = deadline.step { token() }
+        require(consultantMembers(token, deadline).any { it.id == subject }) { "Not an enabled consultant" }
+        val user = deadline.step { readUser(token, subject) }
+        val attributes = attributesOf(user)
+        val current = attributes[ASSIGNED_TENANTS_CLAIM].orEmpty()
+        if (current.any { it.equals(tenantId.value.toString(), ignoreCase = true) }) return@forgettingRejectedToken
+        deadline.step {
+            writeUser(token, subject, user, attributes + (ASSIGNED_TENANTS_CLAIM to current + tenantId.value.toString()))
+        }
+    }
+
+    private data class Member(val id: String, val attributes: Map<String, List<String>>)
+
+    /** Enabled members of the consultants group, every page. The group must exist (deploy/keycloak/alinha-realm.json). */
+    private fun consultantMembers(token: String, deadline: Deadline): List<Member> {
+        val name = properties.consultantsGroup
+        val group = deadline.step {
+            http.get().uri("/admin/realms/{realm}/groups?search={name}&exact=true", properties.realm, name)
+                .headers { it.setBearerAuth(token) }.retrieve().body<List<GroupRepresentation>>().orEmpty()
+        }.firstOrNull { it.name == name } ?: error("Group '$name' is missing in the identity provider")
+        val members = mutableListOf<Map<String, Any?>>()
+        do {
+            val page = deadline.step {
+                http.get()
+                    .uri(
+                        "/admin/realms/{realm}/groups/{id}/members?first={first}&max={max}&briefRepresentation=false",
+                        properties.realm, group.id, members.size, MEMBERS_PAGE,
+                    )
+                    .headers { it.setBearerAuth(token) }.retrieve().body<List<Map<String, Any?>>>().orEmpty()
+            }
+            members += page
+        } while (page.size == MEMBERS_PAGE)
+        return members.filter { it["enabled"] == true }.map { Member(it["id"] as String, attributesOf(it)) }
+    }
+
+    /** The `tenants` attribute as tenant ids. A value that is not a UUID is skipped, as token resolution does. */
+    private fun tenantsOf(attributes: Map<String, List<String>>): Set<TenantId> =
+        attributes[ASSIGNED_TENANTS_CLAIM].orEmpty()
+            .mapNotNull { runCatching { TenantId(UUID.fromString(it)) }.getOrNull() }
+            .toSet()
 
     /** The roles the account gets through the default composite, except `registrant`, that are not mapped directly. */
     private fun rolesKeptFromDefault(token: String, subject: String, mapped: List<RoleRepresentation>) =
@@ -143,8 +206,8 @@ class KeycloakIdentityDirectory internal constructor(
     }
 
     /** A 401 means the cached token was revoked or the secret rotated: fetch a new one on the next call. */
-    private fun forgettingRejectedToken(block: () -> Unit) {
-        try {
+    private fun <T> forgettingRejectedToken(block: () -> T): T {
+        return try {
             block()
         } catch (e: HttpClientErrorException.Unauthorized) {
             cached = null

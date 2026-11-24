@@ -258,4 +258,90 @@ class KeycloakIdentityDirectoryTest {
 
         server.verify()
     }
+
+    // --- Consultants (FR04) -------------------------------------------------------------------------------------
+
+    private val groups = "http://kc/admin/realms/alinha/groups?search=consultants&exact=true"
+    private val members = "http://kc/admin/realms/alinha/groups/g-cons/members?first=0&max=100&briefRepresentation=false"
+    private val marta = "8d0c1f4e-0000-4000-8000-0000000000aa"
+    private val joao = "8d0c1f4e-0000-4000-8000-0000000000bb"
+    private val other = TenantId(UUID.fromString("44444444-4444-4444-8444-444444444444"))
+
+    private fun expectConsultantsGroup() {
+        // `exact` search still returns groups whose subgroups match, so the name is checked again
+        expectGet(groups, """[{"id":"g-cons","name":"consultants"}]""")
+        expectGet(
+            members,
+            """[
+              {"id":"$marta","username":"marta@alinha.pt","enabled":true,
+               "attributes":{"tenants":["${tenant.value}","${other.value}","not-a-uuid"]}},
+              {"id":"$joao","username":"joao@alinha.pt","enabled":true},
+              {"id":"gone","username":"ex@alinha.pt","enabled":false,"attributes":{"tenants":["${tenant.value}"]}}
+            ]""",
+        )
+    }
+
+    @Test
+    fun `lists the enabled members of the consultants group with their organizations`() {
+        expectToken()
+        expectConsultantsGroup()
+
+        val consultants = directory.consultants()
+
+        assertThat(consultants).containsExactly(
+            Consultant(marta, setOf(tenant, other)),
+            Consultant(joao, emptySet()),
+        )
+        server.verify()
+    }
+
+    @Test
+    fun `assigning adds the organization to the consultant's tenants and keeps the other attributes`() {
+        expectToken()
+        expectConsultantsGroup()
+        val joaoUrl = "http://kc/admin/realms/alinha/users/$joao"
+        expectGet(joaoUrl, """{"id":"$joao","username":"joao@alinha.pt","attributes":{"locale":["pt"],"tenants":["${other.value}"]}}""")
+        server.expect(requestTo(joaoUrl)).andExpect(method(HttpMethod.PUT))
+            .andExpect(
+                content().json(
+                    """{"id":"$joao","username":"joao@alinha.pt","attributes":{"locale":["pt"],"tenants":["${other.value}","${tenant.value}"]}}""",
+                    JsonCompareMode.STRICT,
+                ),
+            )
+            .andRespond(withNoContent())
+
+        directory.assign(joao, tenant)
+
+        server.verify()
+    }
+
+    @Test
+    fun `assigning an organization the consultant already has writes nothing`() {
+        expectToken()
+        expectConsultantsGroup()
+        expectGet("http://kc/admin/realms/alinha/users/$marta", """{"id":"$marta","attributes":{"tenants":["${tenant.value}"]}}""")
+
+        directory.assign(marta, tenant)
+
+        server.verify() // no PUT expected
+    }
+
+    @Test
+    fun `refuses to assign an account that is not an enabled consultant`() {
+        expectToken()
+        expectConsultantsGroup()
+
+        assertThrows<IllegalArgumentException> { directory.assign("gone", tenant) }
+        server.verify()
+    }
+
+    @Test
+    fun `fails clearly when the consultants group is missing`() {
+        expectToken()
+        expectGet(groups, """[{"id":"g-x","name":"consultants-old"}]""")
+
+        val error = assertThrows<IllegalStateException> { directory.consultants() }
+        assertThat(error.message).contains("consultants")
+        server.verify()
+    }
 }

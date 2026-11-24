@@ -40,8 +40,8 @@ re-imports the realm and wipes every enrolled TOTP, so each user must scan the Q
 |---|---|---|---|
 | Rui Santos | `rui.santos@compagueda.pt` | `responsible` | `tenant_id` = Componentes Águeda |
 | Pedro Almeida | `pedro.almeida@tiagueda.pt` | `analyst` | `tenant_id` = Componentes Águeda |
-| Marta Ferreira | `marta.ferreira@alinha.pt` | `consultant` | `tenants` = Componentes Águeda, Metalúrgica de Aveiro |
-| João Pereira | `joao.pereira@alinha.pt` | `consultant` | `tenants` = Metalúrgica de Aveiro |
+| Marta Ferreira | `marta.ferreira@alinha.pt` | `consultant` (group `consultants`) | `tenants` = Componentes Águeda, Metalúrgica de Aveiro |
+| João Pereira | `joao.pereira@alinha.pt` | `consultant` (group `consultants`) | `tenants` = Metalúrgica de Aveiro |
 
 Pedro's `@tiagueda.pt` address is intentional: he is the external IT analyst working for
 Componentes Águeda, per the prototype personas.
@@ -60,6 +60,18 @@ Their organization profiles (name, NIF, sector…) come from
 Marta can act on both organisations; João only on Metalúrgica de Aveiro, so "organization not
 assigned to this consultant" (403) can be exercised locally.
 
+## Consultants
+
+A consultant is a member of the `consultants` group, which grants the `consultant` realm role. To add one, create
+the account, remove `default-roles-alinha` from it (see below) and add it to the group; do not map the role directly.
+The group is also the pool for automatic assignment (organization#5): when an organization registers, the app
+reads the group's members through `alinha-provisioner` and adds the organization to one consultant's `tenants`. A
+group and not the role, because listing a role's users needs `view-realm`, which the provisioner does not have.
+Remove a consultant from the group, or disable the account, to stop new assignments; the organizations already in
+their `tenants` stay until an admin removes them.
+An existing dev realm has no `consultants` group: recreate it (command at the top), or the assignment fails and the new
+organization stays without a consultant (logged as an error; nothing retries it yet, see docs/events.md).
+
 ## Self-registration and the provisioner (ADR 0004)
 
 - The login page has **Registar** (email as username, verified email through Mailpit, TOTP on first login).
@@ -76,7 +88,8 @@ assigned to this consultant" (403) can be exercised locally.
   `view-users`). When an organization is registered, the app sets `tenant_id`, maps `responsible`, maps the other
   roles of `default-roles-alinha` (`offline_access`, `uma_authorization`) directly and then removes the composite, so
   only `registrant` goes away. It cannot create roles or read clients, but `manage-users`
-  can map **any** realm role (`consultant` included) to any user: treat its secret like an admin credential.
+  can map **any** realm role (`consultant` included) to any user, and add any user to `consultants`: treat its secret
+  like an admin credential.
 - `tenant_id` and `tenants` are admin-only in the user profile (view and edit `admin`), and unmanaged attributes are
   off, so a user cannot set them in the registration form (or an account console, if one is ever enabled). Keep it that way: a user who could
   write `tenant_id` could enter another organization.

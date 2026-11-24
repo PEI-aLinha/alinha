@@ -12,4 +12,6 @@ data class IdentityProperties(
     val realm: String = "alinha",
     val clientId: String = "alinha-provisioner",
     val clientSecret: String = "",
+    /** The group whose members are the consultants (FR04); it grants them the `consultant` role. */
+    val consultantsGroup: String = "consultants",
 )
