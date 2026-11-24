@@ -32,6 +32,8 @@ tags:
     description: Dashboards and reports (dashboard-reports plugin).
   - name: code-repository
     description: Read-only connection to the organization's code repositories and the evidence collected (code-repository provider).
+  - name: external-surface
+    description: Daily outside checks of the organization's public domain (TLS, web headers, email DNS) and their evidence (external-surface provider).
   - name: audit
     description: Who did what and when in the current organization (core audit trail).
   - name: internal
@@ -821,6 +823,187 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
 
+  /api/external-surface/monitoring:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+    get:
+      tags: [external-surface]
+      operationId: getExternalSurfaceMonitoring
+      summary: The domain checked, the extra hosts and the state of the checks
+      description: |
+        Always `200`: `active` is false until the Designated Officer activates the checks. `domain` comes from the
+        organization profile; null when the profile has none, and nothing can be checked. Permission
+        `external-surface:read` (Designated Officer, analyst, consultant).
+      responses:
+        '200':
+          description: The monitoring state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalSurfaceMonitoring'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    put:
+      tags: [external-surface]
+      operationId: activateExternalSurface
+      summary: Activate the daily checks and run the first one
+      description: |
+        The Designated Officer confirms that the organization owns the domain and authorizes the checks
+        (`authorized` must be true; it is recorded in the audit trail). Queues an `evidence.collect` job (FR37) and
+        checks again every day. Already active: `200`, nothing new is queued. `422` with `code` =
+        `AUTHORIZATION_REQUIRED` or `DOMAIN_MISSING` (the organization profile has no domain). Permission
+        `external-surface:activate` (Designated Officer only).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExternalSurfaceActivationInput'
+      responses:
+        '200':
+          description: Already active.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalSurfaceMonitoring'
+        '202':
+          description: Activated; the first check is queued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalSurfaceMonitoring'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+    delete:
+      tags: [external-surface]
+      operationId: deactivateExternalSurface
+      summary: Stop the daily checks
+      description: |
+        Results already collected and the extra hosts are kept. `404` (`code` = `NOT_ACTIVE`) when not active.
+        Permission `external-surface:manage` (Designated Officer, consultant).
+      responses:
+        '204':
+          description: Deactivated.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/external-surface/hosts:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+    put:
+      tags: [external-surface]
+      operationId: setExternalSurfaceHosts
+      summary: Replace the extra hosts checked besides the domain and www
+      description: |
+        At most 10 host names, each a subdomain of the profile's domain (e.g. `loja.empresa.pt`), without scheme,
+        port or path. Takes effect on the next check. `422` names the invalid entry (`hosts[i]`); `422` with `code` =
+        `DOMAIN_MISSING` when the profile has no domain. Permission `external-surface:manage`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExternalSurfaceHostsInput'
+      responses:
+        '200':
+          description: Saved.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalSurfaceMonitoring'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/external-surface/collections:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+    post:
+      tags: [external-surface]
+      operationId: collectExternalSurfaceEvidence
+      summary: Check again now
+      description: |
+        `404` (`code` = `NOT_ACTIVE`) when not active, `409` (`code` = `COLLECTION_RUNNING`) while a check is running
+        (less than 15 minutes), `422` (`code` = `DOMAIN_MISSING`), `429` (`code` = `TOO_SOON`) within 10 minutes of the
+        last check. Permission `external-surface:manage`.
+      responses:
+        '202':
+          description: A check is queued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExternalSurfaceMonitoring'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          description: The last check was less than 10 minutes ago (`code` = `TOO_SOON`).
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /api/external-surface/evidence:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+    get:
+      tags: [external-surface]
+      operationId: listExternalSurfaceEvidence
+      summary: Results of the last completed check
+      description: |
+        One item per host and check, ordered by host then check; the domain-wide checks (email, DNS) carry the
+        domain as `host`. Empty before the first check completes. Not paginated: at most 12 hosts. `controlIds` come
+        from a deterministic, versioned mapping (NFR05); informational checks have none. Permission
+        `external-surface:read`.
+      responses:
+        '200':
+          description: The results.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExternalSurfaceEvidence'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
   /api/audit/events:
     parameters:
       - $ref: '#/components/parameters/Tenant'
@@ -1238,6 +1421,13 @@ components:
           $ref: '#/components/schemas/OrganizationContacts'
         permanentContact:
           $ref: '#/components/schemas/PermanentContact'
+        domain:
+          type: [string, 'null']
+          maxLength: 253
+          description: |
+            The organization's own internet domain, used for its website and email (e.g. `empresa.pt`). Optional. A
+            web address is accepted and reduced to the domain (`https://www.empresa.pt/` → `empresa.pt`); IP
+            addresses and shared domains (`gmail.com`) are refused.
 
     OrganizationProfileUpdate:
       allOf:
@@ -1253,7 +1443,7 @@ components:
     OrganizationProfile:
       type: object
       required: [id, version, name, nif, cae, sector, subsector, sectorAnnex, services, employees, turnover,
-        address, contacts, permanentContact, registeredAt, updatedAt]
+        address, contacts, permanentContact, domain, registeredAt, updatedAt]
       properties:
         id:
           type: string
@@ -1290,6 +1480,9 @@ components:
           $ref: '#/components/schemas/OrganizationContacts'
         permanentContact:
           $ref: '#/components/schemas/PermanentContact'
+        domain:
+          type: [string, 'null']
+          description: Registrable domain in lower case, internationalized names in ASCII form (`xn--...`).
         registeredAt:
           type: string
           format: date-time
@@ -2060,6 +2253,107 @@ components:
         code:
           type: string
           writeOnly: true
+
+    ExternalSurfaceMonitoring:
+      type: object
+      required: [domain, active, hosts]
+      properties:
+        domain:
+          type: [string, 'null']
+          description: From the organization profile; null when the profile has none.
+        active:
+          type: boolean
+          description: The daily checks are on.
+        activatedAt:
+          type: [string, 'null']
+          format: date-time
+        status:
+          type: [string, 'null']
+          enum: [PENDING, ACTIVE, FAILED, null]
+          description: |
+            State of the last check; null before the first. PENDING while queued or running; FAILED says why in
+            `lastError`.
+        lastError:
+          type: [string, 'null']
+          description: |
+            Error code of the last failed check (`domain_not_found`, `invalid_scope`, `invalid_result`,
+            `transient_error`, `collector_error`, ...). The page turns it into a sentence.
+        lastCollectedAt:
+          type: [string, 'null']
+          format: date-time
+        collectingSince:
+          type: [string, 'null']
+          format: date-time
+          description: When the current (or last) check was queued. A PENDING one older than 15 minutes is treated as
+            lost.
+        hosts:
+          type: array
+          description: Extra hosts, in the order saved.
+          items:
+            $ref: '#/components/schemas/ExternalSurfaceHost'
+    ExternalSurfaceHost:
+      type: object
+      required: [hostname, inScope]
+      properties:
+        hostname:
+          type: string
+        inScope:
+          type: boolean
+          description: Still a subdomain of the profile's domain. Hosts out of scope are kept but not checked.
+    ExternalSurfaceHostsInput:
+      type: object
+      required: [hosts]
+      properties:
+        hosts:
+          type: array
+          maxItems: 10
+          items:
+            type: string
+            maxLength: 253
+    ExternalSurfaceActivationInput:
+      type: object
+      required: [authorized]
+      properties:
+        authorized:
+          type: boolean
+          description: The organization owns the domain and authorizes the checks. Must be true.
+    ExternalSurfaceEvidence:
+      type: object
+      required: [id, host, check, outcome, details, controlIds, informational, strength, collectedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        host:
+          type: string
+          description: The host checked; the domain itself for the domain-wide checks.
+        check:
+          type: string
+          enum: [tls_version, tls_legacy, tls_certificate, https_redirect, hsts, csp, content_type_options,
+            frame_protection, referrer_policy, security_txt, spf, dkim, dmarc, mta_sts, caa, dnssec]
+        outcome:
+          type: string
+          enum: [PASS, FAIL, UNKNOWN]
+          description: UNKNOWN when it could not be checked (timeout, no answer); it is not evidence for any control.
+        details:
+          type: object
+          description: Counts, flags and short codes only (e.g. `daysLeft`, `expiresSoon`, `policy`, `reason`).
+          additionalProperties:
+            type: [boolean, integer, string]
+        controlIds:
+          type: array
+          items:
+            type: string
+        informational:
+          type: boolean
+          description: A recommendation that is not evidence for any control (`caa`, `dnssec`).
+        strength:
+          type: string
+          enum: [SELF_REPORTED, DOCUMENT_VERIFIED, TECHNICALLY_VERIFIED, CONTINUOUSLY_VERIFIED]
+          description: CONTINUOUSLY_VERIFIED when the daily check found it and the previous one succeeded within a day.
+        collectedAt:
+          type: string
+          format: date-time
 
   headers:
     RetryAfter:
