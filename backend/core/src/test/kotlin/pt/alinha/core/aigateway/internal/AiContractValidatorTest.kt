@@ -50,8 +50,20 @@ class AiContractValidatorTest {
     }
 
     @Test
+    fun `a body Jackson cannot turn into JSON is refused without echoing it`() {
+        val e = assertThrows<IllegalArgumentException> { validator.validate("DraftRequest", mapOf("context" to Unserializable())) }
+        assertThat(e.message).startsWith("DraftRequest: body is not JSON (").doesNotContain("s3cr3t")
+    }
+
+    @Test
     fun `an unknown schema name is refused`() {
         val e = assertThrows<IllegalArgumentException> { validator.validate("NoSuchSchema", emptyMap()) }
         assertThat(e.message).contains("No schema NoSuchSchema")
     }
+}
+
+/** Jackson calls the getter while building the tree, and wraps what it throws in a JacksonException. */
+private class Unserializable {
+    @Suppress("unused")
+    val value: String get() = error("s3cr3t")
 }
