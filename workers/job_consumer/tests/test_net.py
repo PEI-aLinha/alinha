@@ -149,6 +149,12 @@ def test_https_get_does_not_follow_redirects(https_server, certificate):
     assert answer.headers["location"] == "https://localhost/"
 
 
+def test_https_get_can_skip_the_body(https_server, certificate):
+    answer = net.pinned_https_get("localhost", "127.0.0.1", "/big", {}, port=https_server, max_bytes=0,
+                                  context=trusting(certificate))
+    assert (answer.status, answer.body) == (200, b"")
+
+
 def test_https_get_refuses_a_large_body(https_server, certificate):
     with pytest.raises(TransientError):
         net.pinned_https_get("localhost", "127.0.0.1", "/big", {}, port=https_server, max_bytes=10,

@@ -115,14 +115,15 @@ def _headers(items: Any) -> dict[str, str]:
 def pinned_https_get(host: str, address: str, path: str, headers: Mapping[str, str], *, port: int = 443,
                      timeout: float = TIMEOUT_S, max_bytes: int = MAX_BODY_BYTES,
                      context: ssl.SSLContext | None = None) -> Response:
-    """One GET over https to [address], never redirected. The body is read only for a 200 answer."""
+    """One GET over https to [address], never redirected. The body is read only for a 200 answer, and never with
+    `max_bytes=0` (only the status and headers matter)."""
     if not path.startswith("/"):
         raise ValueError("path must start with /")
     connection = PinnedHTTPSConnection(host, port, address, timeout, context)
     try:
         connection.request("GET", path, headers=dict(headers))
         answer = connection.getresponse()  # http.client never follows redirects
-        body = read_capped(answer, max_bytes) if answer.status == 200 else b""
+        body = read_capped(answer, max_bytes) if answer.status == 200 and max_bytes > 0 else b""
         return Response(answer.status, _headers(answer.getheaders()), body)
     except ssl.SSLError:
         raise  # the caller decides what an invalid certificate means
