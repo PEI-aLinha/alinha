@@ -353,6 +353,24 @@ class KeycloakIdentityDirectoryTest {
     }
 
     @Test
+    fun `reads every page of the consultants group`() {
+        expectToken()
+        expectGet(groups, """[{"id":"g-cons","name":"consultants"}]""")
+        val firstPage = (1..100).joinToString(",", "[", "]") { """{"id":"c-$it","enabled":true}""" }
+        expectGet(members, firstPage)
+        expectGet(
+            "http://kc/admin/realms/alinha/groups/g-cons/members?first=100&max=100&briefRepresentation=false",
+            """[{"id":"c-101","enabled":true,"attributes":{"tenants":["${tenant.value}"]}}]""",
+        )
+
+        val consultants = directory.consultants()
+
+        assertThat(consultants).hasSize(101)
+        assertThat(consultants.last()).isEqualTo(Consultant("c-101", setOf(tenant)))
+        server.verify() // and no third page: the second was not full
+    }
+
+    @Test
     fun `fails clearly when the consultants group is missing`() {
         expectToken()
         expectGet(groups, """[{"id":"g-x","name":"consultants-old"}]""")

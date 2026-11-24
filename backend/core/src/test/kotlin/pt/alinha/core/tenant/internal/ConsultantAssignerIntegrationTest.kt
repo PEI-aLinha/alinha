@@ -144,6 +144,20 @@ class ConsultantAssignerIntegrationTest {
     }
 
     @Test
+    fun `a recorded consultant who left the group keeps the organization, it is not reassigned automatically`() {
+        consultants(marta to 0, joao to 0)
+        val tenant = newTenant()
+        assertThat(assign(tenant)?.subject).isEqualTo(joao)
+        identity.pool.remove(joao) // removed from the consultants group by an admin
+
+        val again = assign(tenant)
+
+        assertThat(again).isEqualTo(AssignedConsultant(joao, newlyAssigned = false)) // logged as a warning
+        assertThat(identity.assigned).hasSize(1)
+        assertThat(recorded(tenant)).isEqualTo(joao)
+    }
+
+    @Test
     fun `an organization already in a consultant's tenants is recorded, not assigned again`() {
         val tenant = newTenant()
         consultants(marta to 0, joao to 5)

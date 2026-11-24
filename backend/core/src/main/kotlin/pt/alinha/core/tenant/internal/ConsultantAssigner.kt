@@ -75,7 +75,9 @@ class ConsultantAssigner(
                 .thenBy { it.subject },
         )
         record(tenant, chosen.subject, viaIdentityProvider = false)
-        identity.assign(chosen.subject, tenant) // last: the rows above still roll back if it fails
+        // Last: the rows above still roll back if it fails. If the commit fails after it, the organization stays in
+        // the consultant's tenants; a retry then takes the "already in the identity provider" branch and records it.
+        identity.assign(chosen.subject, tenant)
         return AssignedConsultant(chosen.subject, newlyAssigned = true)
     }
 
