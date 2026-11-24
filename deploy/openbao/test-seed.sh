@@ -39,7 +39,7 @@ key=$(echo "$init" | jq -r '.unseal_keys_b64[0]')
 root=$(echo "$init" | jq -r '.root_token')
 $COMPOSE exec -T openbao bao operator unseal "$key" >/dev/null
 $COMPOSE exec -T -e BAO_TOKEN="$root" -e ALINHA_BAO_APP_TOKEN="$BAO_APP_TOKEN" \
-  -e ALINHA_BAO_SEED_TOKEN="$BAO_SEED_TOKEN" openbao sh /init/bootstrap.sh
+  -e ALINHA_BAO_SEED_TOKEN="$BAO_SEED_TOKEN" -e ALINHA_BAO_WORKER_TOKEN="$BAO_WORKER_TOKEN" openbao sh /init/bootstrap.sh
 
 # What deploy.yml does, limited to the seed job: it must exit 0 and `--wait` must accept it.
 for run in first second; do
@@ -71,6 +71,16 @@ got=$(app kv get -field=db.password secret/alinha/app)
 if [ "$got" = "$ALINHA_APP_DB_PASSWORD" ]; then echo "ok   app token reads the seeded db.password"
 else echo "FAIL app token: db.password is not the seeded value"; failures=$((failures + 1)); fi
 expect_denied "app token writes secret/alinha/app" app kv put secret/alinha/app a=b
+
+# The worker reads a provider credential the app stored, and nothing else (docs/jobs.md, "Credentials for a collector").
+worker() { $COMPOSE exec -T -e BAO_TOKEN="$BAO_WORKER_TOKEN" openbao bao "$@"; }
+expect_ok "app token stores a provider credential" app kv put secret/tenants/t1/providers/code-repository token=x
+expect_ok "worker token reads a provider credential" worker kv get secret/tenants/t1/providers/code-repository
+expect_denied "worker token writes a provider credential" worker kv put secret/tenants/t1/providers/code-repository token=y
+expect_denied "worker token lists tenants" worker kv list secret/tenants
+expect_denied "worker token reads secret/alinha/app" worker kv get secret/alinha/app
+expect_denied "worker token reads outside providers/" worker kv get secret/tenants/t1/other
+expect_ok "worker token renews itself (healthcheck)" worker token renew
 
 if [ "$failures" -gt 0 ]; then echo "$failures check(s) failed"; exit 1; fi
 echo "All OpenBao seed checks passed"

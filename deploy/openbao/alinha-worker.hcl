@@ -1,0 +1,6 @@
+# The job consumer (workers/job_consumer) reads one provider credential per job: secret/tenants/<tenant>/providers/<id>,
+# written by the app through TenantSecretStore. Read only, one level per `+`: no list, no metadata, nothing else.
+# The worker builds the path from the job envelope's tenantId and provider (docs/jobs.md, "Credentials for a collector").
+# Trust decision: every collector runs in this one process, so a compromised provider package could read any
+# provider's credentials for any tenant. Only install reviewed provider packages in the job consumer image.
+path "secret/data/tenants/+/providers/+" { capabilities = ["read"] }

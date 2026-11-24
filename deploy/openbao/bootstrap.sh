@@ -5,8 +5,10 @@
 #   ALINHA_BAO_APP_TOKEN   the app's token (required)
 #   ALINHA_BAO_AI_TOKEN    the AI Service's token (empty: none)
 #   ALINHA_BAO_SEED_TOKEN  production's seed job token (empty: none; dev seeds with the root token)
+#   ALINHA_BAO_WORKER_TOKEN the job consumer's token (required): reads provider credentials only
 set -eu
 : "${ALINHA_BAO_APP_TOKEN:?}"
+: "${ALINHA_BAO_WORKER_TOKEN:?}"
 
 # Dev mode mounts kv-v2 at secret/ by itself; a production server starts with no secrets engine.
 if ! bao secrets list -format=json | grep -q '"secret/"'; then
@@ -17,6 +19,7 @@ fi
 bao policy write alinha-app /init/alinha-app.hcl
 bao policy write alinha-ai-service /init/alinha-ai-service.hcl
 bao policy write alinha-seed /init/alinha-seed.hcl
+bao policy write alinha-worker /init/alinha-worker.hcl
 
 # Fixed tokens, so nothing at runtime uses the root token. Periodic: the OpenBao healthcheck and every seed renew
 # them. An existing token (re-run) is renewed instead; any other failure stops the script.
@@ -30,5 +33,6 @@ create_token() {
   fi
 }
 create_token "$ALINHA_BAO_APP_TOKEN" alinha-app
+create_token "$ALINHA_BAO_WORKER_TOKEN" alinha-worker
 if [ -n "${ALINHA_BAO_AI_TOKEN:-}" ]; then create_token "$ALINHA_BAO_AI_TOKEN" alinha-ai-service; fi
 if [ -n "${ALINHA_BAO_SEED_TOKEN:-}" ]; then create_token "$ALINHA_BAO_SEED_TOKEN" alinha-seed; fi

@@ -108,6 +108,7 @@ jobs:
           # OpenBao. The root token is never here: it stays with the operator (deploy/DEPLOYMENT.md, "OpenBao").
           BAO_SEED_TOKEN: ${{ secrets.BAO_SEED_TOKEN }}
           BAO_APP_TOKEN: ${{ secrets.BAO_APP_TOKEN }}
+          BAO_WORKER_TOKEN: ${{ secrets.BAO_WORKER_TOKEN }}
           # SMTP relay for Keycloak and the app
           SMTP_HOST: ${{ vars.SMTP_HOST }}
           SMTP_PORT: ${{ vars.SMTP_PORT }}

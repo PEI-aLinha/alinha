@@ -110,8 +110,13 @@ services:
     networks: [alinha]
     environment:
       REDIS_URL: redis://redis:6379/0
+      # Reads provider credentials only (deploy/openbao/alinha-worker.hcl).
+      BAO_ADDR: http://openbao:8200
+      BAO_TOKEN: ${BAO_WORKER_TOKEN:?}
     depends_on:
       redis:
+        condition: service_healthy
+      openbao:
         condition: service_healthy
 
   keycloak:
@@ -198,14 +203,15 @@ services:
       BAO_ADDR: http://127.0.0.1:8200 # for `docker exec ... bao operator unseal` and bootstrap.sh
       ALINHA_BAO_APP_TOKEN: ${BAO_APP_TOKEN:?}
       ALINHA_BAO_SEED_TOKEN: ${BAO_SEED_TOKEN:?}
+      ALINHA_BAO_WORKER_TOKEN: ${BAO_WORKER_TOKEN:?}
     volumes:
       - ./openbao/server.hcl:/openbao/config/server.hcl:ro
       - ./openbao:/init:ro # bootstrap.sh and the policies, run by hand with the root token
       - openbao-data:/openbao/file
     healthcheck:
-      # Healthy = initialized and unsealed. Also renews the app's and the seed job's periodic tokens (renew-self),
+      # Healthy = initialized and unsealed. Also renews the app's, the seed job's and the worker's periodic tokens (renew-self),
       # so they never expire while the stack runs; before the bootstrap they do not exist yet, which is fine.
-      test: ["CMD-SHELL", "bao status >/dev/null && { for t in \"$$ALINHA_BAO_APP_TOKEN\" \"$$ALINHA_BAO_SEED_TOKEN\"; do BAO_TOKEN=\"$$t\" bao token renew >/dev/null 2>&1 || true; done; }"]
+      test: ["CMD-SHELL", "bao status >/dev/null && { for t in \"$$ALINHA_BAO_APP_TOKEN\" \"$$ALINHA_BAO_SEED_TOKEN\" \"$$ALINHA_BAO_WORKER_TOKEN\"; do BAO_TOKEN=\"$$t\" bao token renew >/dev/null 2>&1 || true; done; }"]
       interval: 30s
       timeout: 5s
       retries: 3

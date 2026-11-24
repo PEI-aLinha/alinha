@@ -64,6 +64,7 @@ Generate each secret with `openssl rand -hex 24` and set it with `gh secret set 
 | `KEYCLOAK_PROVISIONER_SECRET` | client `alinha-provisioner` in the realm and the app (through OpenBao) |
 | `BAO_APP_TOKEN` | the app's OpenBao token |
 | `BAO_SEED_TOKEN` | the `openbao-seed` job's token: can only write `secret/alinha/{app,ai-service}` |
+| `BAO_WORKER_TOKEN` | the job consumer's OpenBao token: can only read `secret/tenants/+/providers/+` (provider credentials) |
 | `SMTP_USERNAME`, `SMTP_PASSWORD` | the SMTP relay's login (from the mail provider, not generated) |
 
 The OpenBao **root token is not a secret here**: it stays with the operator (see OpenBao below).
@@ -150,15 +151,15 @@ docker exec alinha-prod-openbao-1 bao operator init -key-shares=3 -key-threshold
 
 It prints 3 unseal keys and the root token, once. Give one unseal key to each of three team members and keep them
 out of the VM and out of the repo. Then unseal and set OpenBao up. `read -s` keeps the tokens out of the shell
-history: paste the root token, then the values of the `BAO_APP_TOKEN` and `BAO_SEED_TOKEN` secrets.
+history: paste the root token, then the values of the `BAO_APP_TOKEN`, `BAO_SEED_TOKEN` and `BAO_WORKER_TOKEN` secrets.
 
 ```sh
 docker exec -it alinha-prod-openbao-1 bao operator unseal   # asks for a key; repeat with a second key
-read -rs ROOT; read -rs APP; read -rs SEED
+read -rs ROOT; read -rs APP; read -rs SEED; read -rs WORKER
 docker exec -e BAO_TOKEN="$ROOT" -e ALINHA_BAO_APP_TOKEN="$APP" -e ALINHA_BAO_SEED_TOKEN="$SEED" \
-  alinha-prod-openbao-1 sh /init/bootstrap.sh
+  -e ALINHA_BAO_WORKER_TOKEN="$WORKER" alinha-prod-openbao-1 sh /init/bootstrap.sh
 docker exec -e BAO_TOKEN="$ROOT" alinha-prod-openbao-1 bao token revoke -self   # the root token is no longer needed
-unset ROOT APP SEED
+unset ROOT APP SEED WORKER
 ```
 
 Run **Deploy to Production VM** again. `openbao-seed` writes the secrets.
@@ -171,7 +172,7 @@ cannot read its secrets: `restart: always` keeps restarting it, and it comes up 
 A deploy before the unseal fails waiting for `openbao`: if a deploy times out, check
 `docker exec alinha-prod-openbao-1 bao status` (`Sealed true`) first.
 
-**Token expiry:** `BAO_APP_TOKEN` and `BAO_SEED_TOKEN` are periodic tokens (768h, 32 days), renewed by the OpenBao
+**Token expiry:** `BAO_APP_TOKEN`, `BAO_SEED_TOKEN` and `BAO_WORKER_TOKEN` are periodic tokens (768h, 32 days), renewed by the OpenBao
 healthcheck and by every seed while the stack runs. If the stack is down for more than 32 days they expire: run
 `bootstrap.sh` again as above (it recreates them with the same values).
 
@@ -196,6 +197,6 @@ first, then the GitHub secret, then deploy**:
 | `SMTP_*` | Keycloak, realm `alinha` → Realm settings → Email (the app reads the new values on deploy) |
 | `KEYCLOAK_ADMIN_PASSWORD` | Keycloak, realm `master` → the admin user (the env value is only used on the very first start) |
 | `POSTGRES_PASSWORD`, `ALINHA_APP_DB_PASSWORD`, `KEYCLOAK_DB_PASSWORD` | `docker exec -it alinha-prod-postgres-1 psql -U alinha -c '\password <role>'` with role `alinha`, `alinha_app` or `keycloak` |
-| `BAO_APP_TOKEN`, `BAO_SEED_TOKEN` | OpenBao: revoke the old token and run `bootstrap.sh` with the new one (see OpenBao) |
+| `BAO_APP_TOKEN`, `BAO_SEED_TOKEN`, `BAO_WORKER_TOKEN` | OpenBao: revoke the old token and run `bootstrap.sh` with the new one (see OpenBao) |
 
 `\password` asks for the new value, so it never appears in the shell history or the process list.
