@@ -54,3 +54,16 @@ def test_a_duplicate_provider_id_is_logged_and_the_first_wins(monkeypatch, caplo
     with caplog.at_level(logging.ERROR):
         assert collectors.get_collector("code-repository") is first
     assert "two packages register collector 'code-repository'" in caplog.text
+
+
+@pytest.mark.parametrize("code", ["", "Invalid", "has space", "1st", "x" * 101])
+def test_collector_error_refuses_codes_the_contract_or_the_core_would_not_take(code):
+    with pytest.raises(ValueError):
+        collectors.CollectorError(code, "message")
+
+
+def test_collector_error_caps_the_message():
+    error = collectors.CollectorError("invalid_credentials", "x" * 2000)
+
+    assert error.code == "invalid_credentials"
+    assert len(error.message) == 500

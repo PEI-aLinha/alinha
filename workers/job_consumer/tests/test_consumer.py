@@ -116,6 +116,20 @@ def test_other_collector_errors_are_not_retryable(redis):
     assert "bad credentials" not in result["error"]["message"]
 
 
+def test_collector_error_keeps_its_code_and_message_and_is_final(redis):
+    def collect(_):
+        raise collectors.CollectorError("invalid_credentials", "the token was refused")
+
+    add_job(redis, envelope())
+    run_once(consumer(redis, collect))
+
+    [result] = published(redis)
+    assert result["status"] == "failed"
+    assert result["retryable"] is False
+    assert result["error"] == {"code": "invalid_credentials", "message": "the token was refused"}
+    assert pending(redis) == 0
+
+
 def test_a_broken_provider_package_does_not_crash_the_worker(redis):
     def broken_lookup(_):
         raise ImportError("half-installed provider at https://user:token@example.org")

@@ -238,7 +238,10 @@ class Consumer:
             return results.failed(
                 envelope, type_, version, attempt, "transient_error", SAFE_COLLECTOR_MESSAGE, retryable=True
             )
-        except Exception:  # collector bugs and bad credentials are not retryable
+        except collectors.CollectorError as error:
+            log.warning("collector for %s failed: %s", envelope["provider"], error.code)
+            return results.failed(envelope, type_, version, attempt, error.code, error.message)
+        except Exception:  # collector bugs are not retryable
             log.exception("collector for %s failed", envelope["provider"])
             return results.failed(envelope, type_, version, attempt, "collector_error", SAFE_COLLECTOR_MESSAGE)
         return results.completed(envelope, type_, version, attempt, output)
