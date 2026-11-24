@@ -10,6 +10,8 @@
 # so the audit history of the demo tenants stays.
 #
 # COMPOSE_FILE (default deploy/docker-compose.dev.yml) and POSTGRES_SERVICE (default postgres) select the database.
+# Any other compose file (the demo server) also needs ALINHA_DEMO_RESET=yes, so it is never pointed at a real
+# deployment by accident: the delete below skips foreign-key checks.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -23,6 +25,12 @@ for arg in "$@"; do
     *) echo "Unknown option: $arg (see --help)" >&2; exit 2 ;;
   esac
 done
+
+if [ "$compose_file" != "deploy/docker-compose.dev.yml" ] && [ "${ALINHA_DEMO_RESET:-}" != "yes" ]; then
+  echo "Refusing to reset $compose_file: set ALINHA_DEMO_RESET=yes if it is a demo environment." >&2
+  exit 1
+fi
+echo "Resetting the demo organizations in $compose_file (service $service)."
 
 # Same ids as deploy/keycloak/alinha-realm.json and backend/app/src/main/resources/db/demo/R__demo_core_tenants.sql.
 demo_tenants="'11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-222222222222',
@@ -57,8 +65,13 @@ begin
         if n > 0 then raise notice '%.%: % rows deleted', t.table_schema, t.table_name, n; end if;
     end loop;
     delete from core.tenant where id = any(demo);
-    -- Repeatable scripts run again only when Flyway has no record of them.
-    delete from flyway_schema_history where script like 'R\_\_demo\_%';
+    -- Repeatable scripts run again only when Flyway has no record of them. The history table is found by name, so a
+    -- spring.flyway.schemas setting would not leave the old records behind.
+    for t in
+        select table_schema from information_schema.tables where table_name = 'flyway_schema_history'
+    loop
+        execute format('delete from %I.flyway_schema_history where script like %L', t.table_schema, 'R\_\_demo\_%');
+    end loop;
 end
 \$\$;
 commit;

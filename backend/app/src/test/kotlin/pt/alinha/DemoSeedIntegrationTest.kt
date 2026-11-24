@@ -75,10 +75,19 @@ class DemoSeedIntegrationTest {
         val portfolio = realmUser("marta.ferreira@alinha.pt")["attributes"]["tenants"].strings()
         assertThat(portfolio).hasSize(12).doesNotHaveDuplicates()
 
-        val tenants = jdbc.queryForList("select id::text from core.tenant", String::class.java)
+        // Only the seed's tenants (owner `demo-seed:<id>`), so another tenant in the database does not matter.
+        val seeded = jdbc.queryForList("select id::text from core.tenant where owner_subject like 'demo-seed:%'", String::class.java)
         val profiles = jdbc.queryForList("select tenant_id::text from organization.organization_profile", String::class.java)
-        assertThat(tenants).containsExactlyInAnyOrderElementsOf(portfolio)
-        assertThat(profiles).containsExactlyInAnyOrderElementsOf(portfolio)
+        assertThat(seeded).containsExactlyInAnyOrderElementsOf(portfolio)
+        assertThat(profiles).containsAll(portfolio)
+    }
+
+    @Test
+    fun `the reset script deletes exactly the tenants in Marta's portfolio`() {
+        val portfolio = realmUser("marta.ferreira@alinha.pt")["attributes"]["tenants"].strings()
+        val script = Files.readString(repoRoot().resolve("scripts/reset-demo.sh"))
+        val ids = Regex("'([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})'").findAll(script).map { it.groupValues[1] }
+        assertThat(ids.toList()).containsExactlyInAnyOrderElementsOf(portfolio)
     }
 
     @Test

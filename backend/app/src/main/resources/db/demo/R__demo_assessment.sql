@@ -8,7 +8,9 @@
 -- DemoSeedIntegrationTest checks that they are exactly the questions of that questionnaire.
 --
 -- ON CONFLICT: if the tenant already has an open nis2-qnrcs assessment (assessment_open_uq), nothing is inserted;
--- the answers are only inserted for the seed assessment.
+-- the answers are only inserted for the seed assessment, once each (answer_question_uq on assessment and question).
+-- Flyway runs this file again when it changes, but an edited answer does not replace the stored one: run
+-- scripts/reset-demo.sh to load the new values.
 insert into assessment.assessment (
     id, tenant_id, framework, catalogue_version, max_level, nis2_classification, rules_version, scope_input, status,
     created_at, updated_at
