@@ -65,3 +65,17 @@ collector". A credential of the provider itself, the same for every tenant (a Gi
 `credentials.platform_secret(provider)`.
 
 A provider that is not installed produces a non-retryable `unknown_provider` result instead of crashing the worker.
+
+## Network access from a collector
+
+A collector that connects to an address the tenant chose (a self-managed server, the organisation's own domain)
+uses `alinha_job_consumer.net`, never urllib or http.client directly:
+
+- `public_address(host, port)` resolves the host once and raises `CollectorError("host_not_allowed")` unless every
+  address is a public internet address, so a tenant cannot point the platform at its own network (SSRF);
+- `pinned_https_get`, `pinned_http_location` and `tls_handshake` connect to that checked address, with TLS verified
+  against the host name (no second DNS lookup, so no DNS rebinding), never follow redirects and cap the body;
+- network failures raise `TransientError`. A refused TLS handshake or an invalid certificate is raised as
+  `ssl.SSLError`: for a collector that checks a host, it is a finding, not a failure.
+
+Send `user_agent(provider)` as the `User-Agent`, so the host's owner can tell who is asking.

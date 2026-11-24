@@ -114,6 +114,8 @@ A provider plugin stores the tenant's credential with `TenantSecretStore.put("<p
   `contracts/jobs/job-result.v1.schema.json`. Set `retryable: true` only for transient failures. At most one result
   is *applied* per attempt: a crash between publish and `XACK` can send a second one, which the core ignores.
 - The worker's message is untrusted: the core takes the tenant from the outbox row and rejects a mismatch.
+- A collector that connects to a host the tenant chose goes through `alinha_job_consumer.net` (public addresses
+  only, pinned, no redirects; `workers/README.md`, "Network access from a collector").
 
 ## Getting the outcome
 
