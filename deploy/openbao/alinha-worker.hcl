@@ -7,4 +7,6 @@ path "secret/data/tenants/+/providers/+" { capabilities = ["read"] }
 
 # A provider's platform credential, the same for every tenant (e.g. the GitHub App id and private key of
 # code-repository), written by operators: secret/providers/<id>. Read only.
+# Wider blast radius than one tenant's token: the GitHub App key mints tokens for every client's installation. Keep
+# the App's registered permissions read-only, and rotate the key after any doubt about the job consumer image.
 path "secret/data/providers/+" { capabilities = ["read"] }
