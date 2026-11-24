@@ -58,7 +58,7 @@ begin
     end loop;
     delete from core.tenant where id = any(demo);
     -- Repeatable scripts run again only when Flyway has no record of them.
-    delete from flyway_schema_history where script like 'R__demo_%';
+    delete from flyway_schema_history where script like 'R\_\_demo\_%';
 end
 \$\$;
 commit;
