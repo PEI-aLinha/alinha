@@ -32,7 +32,7 @@ class ComplianceRulesGoldenTest {
     private val catalogues = CatalogueLoader(Path.of("../../frameworks")).loadAll()
 
     @ParameterizedTest
-    @CsvSource("nis2-qnrcs, 1, nis2-qnrcs-v1-rui", "soc-cmm, 1, soc-cmm-v1-rui")
+    @CsvSource("nis2-qnrcs, 1, nis2-qnrcs-v1-rui", "nis2-qnrcs, 1, nis2-qnrcs-v1-essential", "soc-cmm, 1, soc-cmm-v1-rui")
     fun `evaluation matches the stored result`(framework: String, version: Int, name: String) {
         val catalogue = catalogues.single { it.framework == framework && it.version == version }
         val fixture: Fixture = mapper.readValue(resource("$name.answers.json"))

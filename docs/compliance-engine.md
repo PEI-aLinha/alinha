@@ -46,7 +46,9 @@ answers) when there is none. Applied after the answer rule:
 
 Evidence for controls that are not evaluated is ignored.
 **MVP consequence:** there is no document upload yet, so an essential entity (target high) sees its high
-controls as partial (weak evidence) until evidence of that strength exists.
+controls as partial (weak evidence) until evidence of that strength exists. Golden test `nis2-qnrcs-v1-essential`: every question
+answered yes, verified evidence only for RC.CO-2-E: RC reaches high, the other five domains stop at substantial
+(50 high controls partial, `WEAK_EVIDENCE`), overall substantial, coverage 67%.
 
 ## Current level
 
