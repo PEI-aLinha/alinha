@@ -25,6 +25,27 @@ stores, audits and checks permissions. Words: see `GLOSSARY.md` and ADR 0007.
 
 "Unknown" and "not answered" are the same. A **gap** is any control that is not met.
 
+## Evidence strength (#26)
+
+`EvaluationInput.evidence` lists evidence per control (the caller maps actions to controls): its strength
+(`SELF_REPORTED < DOCUMENT_VERIFIED < TECHNICALLY_VERIFIED < CONTINUOUSLY_VERIFIED`), whether it shows the control in
+place, and a `ref`. Each `ControlResult` carries `strength`: the strongest passing evidence, `SELF_REPORTED` (the
+answers) when there is none. Applied after the answer rule:
+
+1. Failing evidence of strength `TECHNICALLY_VERIFIED` or more turns any status into not met (`EVIDENCE_FAILED`).
+   Weaker failing evidence changes nothing.
+2. Passing evidence only raises the strength: it never upgrades a `no` or `partial` answer.
+3. A would-be met control whose strength is below the bar for its level is partial (`WEAK_EVIDENCE`):
+
+| Framework | Levels that accept the answers | Levels that need `DOCUMENT_VERIFIED` | Technical control at those levels |
+|---|---|---|---|
+| QNRCS | basic, substantial | high | `TECHNICALLY_VERIFIED` |
+| SOC-CMM | 1 to 3 | 4, 5 | `TECHNICALLY_VERIFIED` |
+
+Evidence for controls that are not evaluated is ignored. `ComplianceRules.requiredStrength(control, catalogue)` gives
+the bar. **MVP consequence:** there is no document upload yet, so an essential entity (target high) sees its high
+controls as partial (weak evidence) until evidence of that strength exists.
+
 ## Current level
 
 Per domain: the highest level L, up to the target, such that every evaluated control of the domain at level L or
@@ -46,9 +67,9 @@ Componentes Águeda, 120 employees, CAE 29320: important entity, target substant
 | Domain | Gaps | Current level |
 |---|---|---|
 | GR, ID, RS, RC | none | substantial |
-| PR | PR.GA-2-S partial, PR.SD-1-S not met, PR.SP-4-S partial, PR.RI-2-S not met | basic |
+| PR | PR.GA-2-S partial, PR.SD-1-S not met, PR.SP-4-S partial, PR.RI-2-S not met, PR.GA-3-S not met (answered yes, failing technical evidence) | basic |
 | DE | DE.MC-6-S, DE.MC-7-S, DE.AE-4-S unknown | basic |
-| **Overall** | 7 of 102 evaluated controls | **basic**, coverage 93% |
+| **Overall** | 8 of 102 evaluated controls | **basic**, coverage 92% |
 
 ## SOC-CMM (maturity, #23)
 

@@ -1,5 +1,5 @@
 {
-  "description": "Illustrative fixture: Rui, Componentes Águeda (120 employees, CAE 29320), important entity, target substantial. All basic met, most substantial met, a mix of partial and no in PR, DE partly unanswered.",
+  "description": "Illustrative fixture: Rui, Componentes Águeda (120 employees, CAE 29320), important entity, target substantial. All basic met, most substantial met, a mix of partial and no in PR, DE partly unanswered. Evidence: a technical check of PR.GA-3-S (answered yes) failed.",
   "targetLevel": "substantial",
   "answers": {
     "GR.CO-1-S-Q1": "yes",
@@ -134,5 +134,13 @@
     "RC.PR-6-S-Q1": "yes",
     "RC.CO-1-S-Q1": "yes",
     "RC.CO-2-S-Q1": "yes"
-  }
+  },
+  "evidence": [
+    {
+      "controlId": "PR.GA-3-S",
+      "strength": "TECHNICALLY_VERIFIED",
+      "satisfied": false,
+      "ref": "collector:external-surface/illustrative"
+    }
+  ]
 }

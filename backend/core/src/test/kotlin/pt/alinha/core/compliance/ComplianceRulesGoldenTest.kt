@@ -22,6 +22,7 @@ class ComplianceRulesGoldenTest {
         val description: String,
         val targetLevel: String,
         val answers: Map<String, Answer>,
+        val evidence: List<Evidence> = emptyList(),
     )
 
     private val mapper =
@@ -37,7 +38,7 @@ class ComplianceRulesGoldenTest {
         val fixture: Fixture = mapper.readValue(resource("$name.answers.json"))
 
         val actual = mapper.writeValueAsString(
-            ComplianceRules().evaluate(EvaluationInput(catalogue, fixture.targetLevel, fixture.answers)),
+            ComplianceRules().evaluate(EvaluationInput(catalogue, fixture.targetLevel, fixture.answers, fixture.evidence)),
         )
 
         val expected = javaClass.getResource("/compliance/golden/$name.result.json")?.readText()
