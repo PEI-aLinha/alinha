@@ -223,10 +223,12 @@ export interface paths {
          *     The catalogue version and the highest compliance level asked are fixed when the assessment starts:
          *     a newer catalogue never changes the questions of an existing assessment (NFR05, NFR18).
          *
-         *     The questions are cut to the scope computed from `scope` with the core applicability rules. For
-         *     `nis2-qnrcs`, the NIS2 classification sets `maxLevel`; other frameworks get every level.
-         *     The submitted `scope` is stored with the assessment, together with `rulesVersion`, so it can be
-         *     checked later. The classification is indicative and self-declared: the consultant confirms it.
+         *     The questions are cut to the organization's regulatory scope, answered in the organization plugin
+         *     (`PUT /api/organization/scope/answers`) and read through the core `ApplicabilityQuery` (core#25). For
+         *     `nis2-qnrcs`, the NIS2 classification sets `maxLevel`: the official CNCS qualification when registered,
+         *     otherwise the indicative one. Other frameworks get every level. The applicability result is stored with
+         *     the assessment, together with `rulesVersion`, so it can be checked later. A `scope` in the body is
+         *     deprecated and ignored.
          *
          *     At most one open (not `validated`) assessment per framework: a second one is a `409`
          *     (`code` = `ASSESSMENT_ALREADY_OPEN`, with `assessmentId` of the open one). Permission
@@ -611,14 +613,17 @@ export interface components {
         StartAssessmentRequest: {
             /** @description Framework id, as in `frameworks/<id>/`, e.g. `nis2-qnrcs`, `gdpr`, `ai-act`. */
             framework: string;
-            scope: components["schemas"]["ApplicabilityInput"];
+            /**
+             * @deprecated
+             * @description Ignored since core#25 (the scope comes from the organization plugin). Kept until clients stop sending it.
+             */
+            scope?: components["schemas"]["ApplicabilityInput"];
         };
         /**
-         * @description **Temporary.** The facts the core applicability rules need (`docs/applicability.md`). Sent on start
-         *     until the core stores each organization's applicability (core#25); then this field is deprecated.
+         * @description **Deprecated** (core#25): the facts the core applicability rules need (`docs/applicability.md`), once sent
+         *     on start. The server now ignores it and reads the organization's stored scope instead.
          *     Mirrors `pt.alinha.core.compliance.ApplicabilityInput`.
          *     Omitted booleans mean `false`; an omitted `entityTypes` means none.
-         *     Self-declared by the organization and stored as sent with the assessment (see `startAssessment`).
          */
         ApplicabilityInput: {
             size: {
@@ -1389,21 +1394,23 @@ export interface operations {
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             /**
-             * @description An assessment of this framework is already open (`code` = `ASSESSMENT_ALREADY_OPEN`).
-             *     `assessmentId` is the open one: continue it.
+             * @description `code` is one of:
+             *     - `ASSESSMENT_ALREADY_OPEN`: an assessment of this framework is already open. `assessmentId` is the
+             *       open one: continue it.
+             *     - `SCOPE_NOT_ANSWERED`: the organization has not answered the scope questions yet.
              */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/problem+json": components["schemas"]["AssessmentAlreadyOpenProblem"];
+                    "application/problem+json": components["schemas"]["AssessmentAlreadyOpenProblem"] | components["schemas"]["Problem"];
                 };
             };
             /**
              * @description `code` is one of:
-             *     - `VALIDATION_FAILED`: invalid or contradictory `scope` answers, or unknown `framework` format.
-             *     - `FRAMEWORK_NOT_IN_SCOPE`: by the `scope` answers, the framework does not apply.
+             *     - `VALIDATION_FAILED`: unknown `framework` format, or an unreadable body.
+             *     - `FRAMEWORK_NOT_IN_SCOPE`: by the organization's scope answers, the framework does not apply.
              *     - `CATALOGUE_NOT_FOUND`: there is no catalogue for this framework yet.
              */
             422: {

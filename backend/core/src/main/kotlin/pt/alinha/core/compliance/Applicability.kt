@@ -120,7 +120,15 @@ data class ApplicabilityResult(
     /** The CNCS may still qualify the organization, or qualify it higher (RJC art. 3.º n.º 2 b) to e), art. 6.º). */
     val cncsMayQualify: Boolean,
     val frameworks: List<FrameworkApplicability>,
+    /**
+     * The official classification from the CNCS Qualification Act, when registered (set by [ApplicabilityQuery], never
+     * by the rules). It overrides [nis2Classification], which stays the indicative one.
+     */
+    val officialNis2Classification: Nis2Classification? = null,
 ) {
+    /** The official classification when there is one, else the indicative one. */
+    val effectiveNis2Classification: Nis2Classification get() = officialNis2Classification ?: nis2Classification
+
     /** Always true: these are suggestions, not the official qualification (shown to the user). */
     val indicative: Boolean = true
 }
