@@ -70,6 +70,9 @@ whoever runs the company's security operations: its own staff, an outside compan
 | important | 3 Definido |
 | essential, to be assessed | 4 Medido |
 
+The target is also the **questionnaire ceiling**: the assessment asks only up to it, so an important organization
+is never asked levels 4–5 and its maturity can never show above 3.
+
 Where each domain touches the QNRCS functions (read only, indicative, pending advisor review; no shared controls):
 
 | SOC-CMM domain | QNRCS functions |
