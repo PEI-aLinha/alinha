@@ -20,11 +20,13 @@ class ComplianceRules : ComplianceEngine {
             val requirementIds = input.catalogue.requirements.filter { result.controlId in it.controls }.map { it.id }
             Gap(result.controlId, requirementIds, result.level, result.status, result.reason!!)
         }
+        // A numbered scale starting above 0 (SOC-CMM 1 to 5) has an implicit level 0 with no controls (ADR 0007).
+        val belowFirst = catalogue.levels.first().id.toIntOrNull()?.takeIf { it > 0 }?.let { "0" }
         val domains = controls.map { it.domain }.distinct().map { domain ->
             val level = currentLevel(controls.filter { it.domain == domain }, catalogue.levels.take(target + 1))
-            DomainResult(domain, level, input.targetLevel)
+            DomainResult(domain, level ?: belowFirst, input.targetLevel)
         }
-        // Lowest domain level; null (not met) beats any level. No domain evaluated gives null too.
+        // Lowest domain level ("0" sorts first, at index -1); null (not met) beats any level. No domain gives null.
         val currentLevel = if (domains.any { it.currentLevel == null }) {
             null
         } else {

@@ -39,7 +39,10 @@ data class Gap(
 
 data class DomainResult(
     val domain: String,
-    /** Highest level fully met, or null when not even the lowest level is met. */
+    /**
+     * Highest level fully met. When not even the lowest level is met: "0" on a numbered scale starting above 0
+     * (SOC-CMM), else null (QNRCS).
+     */
     val currentLevel: String?,
     val targetLevel: String,
 )

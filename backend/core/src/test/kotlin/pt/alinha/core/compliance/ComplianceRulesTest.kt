@@ -218,4 +218,15 @@ class ComplianceRulesTest {
             .isInstanceOf(IllegalArgumentException::class.java)
             .hasMessageContaining("'3'")
     }
+
+    @Test
+    fun `a numbered scale starting above 0 reports 0 when its first level is not met`() {
+        val maturity = listOf(Level("1", "Inicial"), Level("2", "Gerido"))
+        val cat = catalogue(control("BUS.1", "1"), control("BUS.2", "2"), control("PEO.1", "1"), levels = maturity)
+
+        val result = evaluate(cat, answerAll(cat, YES) + ("PEO.1-Q1" to PARTIAL), target = "2")
+
+        assertThat(result.domains).containsExactly(DomainResult("BUS", "2", "2"), DomainResult("PEO", "0", "2"))
+        assertThat(result.currentLevel).isEqualTo("0")
+    }
 }
