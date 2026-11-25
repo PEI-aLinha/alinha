@@ -1,0 +1,378 @@
+# SOC-CMM catalogue v1 (alinha#23, ADR 0007). Field names and values in English; user-facing text in Portuguese.
+#
+# Based on SOC-CMM v3 (SOC Capability Maturity Model, soc-cmm.com): its five domains Business, People, Process,
+# Technology and Services, and its maturity levels. The controls, titles, questions and evidence are OUR OWN short,
+# plain-language wording for small companies, not the SOC-CMM text. UNREVIEWED: pending review by the advisors, so
+# not listed in frameworks/RELEASES and still free to change.
+#
+# "The SOC" here is whoever runs the company's security operations day to day: its own staff, an outside company,
+# or aLinha.
+#
+# Maturity levels 1 to 5 (one control per domain and level, cumulative). Level 0 (Inexistente) has no controls: a
+# domain is at 0 when any of its level-1 controls is not met. Maturity is not compliance: these levels are never
+# compared with the QNRCS compliance levels, and the target is a recommendation, never a legal requirement.
+framework: soc-cmm
+version: 1
+title: "SOC-CMM — Maturidade das operações de segurança"
+sources:
+  - "SOC-CMM v3 (SOC Capability Maturity Model)"
+
+levels:
+  - { id: "1", label: "Inicial" }
+  - { id: "2", label: "Gerido" }
+  - { id: "3", label: "Definido" }
+  - { id: "4", label: "Medido" }
+  - { id: "5", label: "Otimizado" }
+
+requirements:
+  - id: SOCCMM-BUS
+    reference: "SOC-CMM v3, domínio Business"
+    text: "As operações de segurança servem o negócio: têm responsável, acordo, prioridades e prestam contas à gestão."
+    controls: [BUS.1, BUS.2, BUS.3, BUS.4, BUS.5]
+  - id: SOCCMM-PEO
+    reference: "SOC-CMM v3, domínio People"
+    text: "As pessoas que fazem as operações de segurança têm funções, formação e tempo para as fazer."
+    controls: [PEO.1, PEO.2, PEO.3, PEO.4, PEO.5]
+  - id: SOCCMM-PRO
+    reference: "SOC-CMM v3, domínio Process"
+    text: "Os incidentes são tratados com processos combinados, escritos, testados, medidos e melhorados."
+    controls: [PRO.1, PRO.2, PRO.3, PRO.4, PRO.5]
+  - id: SOCCMM-TEC
+    reference: "SOC-CMM v3, domínio Technology"
+    text: "As ferramentas protegem, guardam registos, dão alertas e cobrem os sistemas que importam."
+    controls: [TEC.1, TEC.2, TEC.3, TEC.4, TEC.5]
+  - id: SOCCMM-SVC
+    reference: "SOC-CMM v3, domínio Services"
+    text: "Os serviços de segurança (monitorização, vulnerabilidades, deteção) são prestados e afinados com regularidade."
+    controls: [SVC.1, SVC.2, SVC.3, SVC.4, SVC.5]
+
+controls:
+  # --- BUS: Negócio ---
+  - id: BUS.1
+    title: "Alguém responsável pela segurança"
+    level: "1"
+    technical: false
+    evidence:
+      - "Nome de quem trata da segurança informática no dia a dia (pessoa da empresa, empresa externa ou aLinha)."
+    questions:
+      - id: BUS.1-Q1
+        text: "Está definido quem trata da segurança informática da empresa no dia a dia, seja uma pessoa da casa, uma empresa externa ou a aLinha?"
+        explanation: "Sem um responsável, os alertas e os problemas de segurança ficam à espera de que alguém repare neles."
+        example: "A gerência decidiu que a empresa de informática que já faz a manutenção também trata da segurança."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: BUS.2
+    title: "Serviço de segurança combinado por escrito"
+    level: "2"
+    technical: false
+    evidence:
+      - "Contrato, acordo ou documento interno que diz o que é feito, para que sistemas e em que horário."
+    questions:
+      - id: BUS.2-Q1
+        text: "Está combinado por escrito o que quem trata da segurança deve fazer, para que sistemas e em que horário?"
+        explanation: "Ter tudo por escrito evita surpresas sobre o que está ou não incluído quando algo corre mal."
+        example: "O contrato com a empresa externa diz que vigia o email e os servidores nos dias úteis, das 8h às 20h."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: BUS.3
+    title: "Prioridades do negócio conhecidas"
+    level: "3"
+    technical: false
+    evidence:
+      - "Lista dos sistemas e dados mais importantes para o negócio, usada para decidir o que proteger primeiro."
+    questions:
+      - id: BUS.3-Q1
+        text: "Quem trata da segurança sabe quais são os sistemas e dados mais importantes para o negócio e usa essa lista para decidir o que proteger primeiro?"
+        explanation: "Não é possível proteger tudo da mesma maneira: o que pára a empresa deve vir primeiro."
+        example: "A faturação e o servidor da produção estão no topo da lista e os seus alertas são vistos antes dos outros."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: BUS.4
+    title: "Resultados reportados à gerência"
+    level: "4"
+    technical: false
+    evidence:
+      - "Relatórios periódicos à gerência com números sobre a segurança."
+    questions:
+      - id: BUS.4-Q1
+        text: "A gerência recebe, com regularidade, um relatório com números sobre a segurança, como incidentes, tempo de resposta e problemas resolvidos?"
+        explanation: "Com números, a gerência vê se a segurança está a melhorar e onde vale a pena investir."
+        example: "Todos os meses chega à gerência uma página com os incidentes do mês e quanto tempo levou a resolvê-los."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: BUS.5
+    title: "Melhoria revista com a gerência"
+    level: "5"
+    technical: false
+    evidence:
+      - "Ata ou plano anual com objetivos de melhoria das operações de segurança, aprovado pela gerência."
+    questions:
+      - id: BUS.5-Q1
+        text: "Pelo menos uma vez por ano, a gerência e quem trata da segurança reveem os resultados e decidem o que melhorar, com objetivos para o ano seguinte?"
+        explanation: "Rever os resultados com a gestão mantém a segurança alinhada com o que a empresa precisa."
+        example: "Em janeiro, a gerência e a empresa externa definiram como objetivo reduzir para metade o tempo de resposta."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  # --- PEO: Pessoas ---
+  - id: PEO.1
+    title: "Toda a gente sabe a quem avisar"
+    level: "1"
+    technical: false
+    evidence:
+      - "Contacto para problemas de segurança divulgado aos trabalhadores."
+    questions:
+      - id: PEO.1-Q1
+        text: "Os trabalhadores sabem a quem comunicar um problema de segurança, como um email suspeito ou um computador com comportamento estranho?"
+        explanation: "Muitos ataques são detetados primeiro por quem está a trabalhar, se souber a quem avisar."
+        example: "Há um email e um telefone para problemas de segurança, afixados na sala e lembrados na formação anual."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PEO.2
+    title: "Tarefas e substitutos definidos"
+    level: "2"
+    technical: false
+    evidence:
+      - "Descrição das tarefas de segurança e de quem substitui cada pessoa nas ausências."
+    questions:
+      - id: PEO.2-Q1
+        text: "Estão definidas as tarefas de quem trata da segurança e quem o substitui em férias ou ausências?"
+        explanation: "Os ataques não esperam pelo regresso de férias: alguém tem de estar a acompanhar."
+        example: "Em agosto, quando o técnico está de férias, a empresa externa fica com os alertas."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PEO.3
+    title: "Formação regular de quem trata da segurança"
+    level: "3"
+    technical: false
+    evidence:
+      - "Plano de formação e registo das formações feitas por quem trata da segurança."
+    questions:
+      - id: PEO.3-Q1
+        text: "Quem trata da segurança tem formação regular e planeada sobre ameaças e ferramentas atuais?"
+        explanation: "As ameaças mudam depressa: quem as vigia precisa de se manter atualizado."
+        example: "O técnico faz duas formações por ano, escolhidas no início do ano, e o registo fica guardado."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PEO.4
+    title: "Carga de trabalho acompanhada"
+    level: "4"
+    technical: false
+    evidence:
+      - "Números da carga de trabalho de segurança (alertas por pessoa, tarefas em atraso), revistos com regularidade."
+    questions:
+      - id: PEO.4-Q1
+        text: "Mede-se se quem trata da segurança tem tempo suficiente para os alertas e tarefas, por exemplo alertas por pessoa e tarefas em atraso?"
+        explanation: "Quem tem alertas a mais acaba por deixar passar o que importa."
+        example: "Todos os meses vê-se quantos alertas ficaram por ver e, se forem muitos, ajusta-se o trabalho."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PEO.5
+    title: "Competências planeadas para o futuro"
+    level: "5"
+    technical: false
+    evidence:
+      - "Plano das competências de segurança necessárias nos próximos anos, revisto pelo menos uma vez por ano."
+    questions:
+      - id: PEO.5-Q1
+        text: "Existe um plano para as competências de segurança que vão ser precisas nos próximos anos, revisto pelo menos uma vez por ano?"
+        explanation: "Planear com tempo evita ficar sem quem saiba lidar com novas tecnologias ou ameaças."
+        example: "Como a empresa vai passar para a nuvem, o plano prevê formar alguém em segurança na nuvem no próximo ano."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  # --- PRO: Processos ---
+  - id: PRO.1
+    title: "Forma de agir num incidente combinada"
+    level: "1"
+    technical: false
+    evidence:
+      - "Indicação, mesmo que simples, de quem faz o quê quando acontece um incidente."
+    questions:
+      - id: PRO.1-Q1
+        text: "Há uma forma combinada, mesmo que simples, de agir quando acontece um incidente de segurança?"
+        explanation: "Num incidente, saber logo quem decide e quem faz o quê poupa tempo e prejuízos."
+        example: "Combinou-se que quem detetar avisa o técnico, que desliga o equipamento da rede e informa a gerência."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PRO.2
+    title: "Passos escritos para os incidentes mais comuns"
+    level: "2"
+    technical: false
+    evidence:
+      - "Procedimentos escritos para os incidentes mais comuns, acessíveis a quem os tem de seguir."
+    questions:
+      - id: PRO.2-Q1
+        text: "Os passos para tratar os incidentes mais comuns, como vírus, conta roubada ou email falso, estão escritos e acessíveis?"
+        explanation: "Com os passos escritos, qualquer pessoa da equipa consegue agir bem, mesmo sob pressão."
+        example: "Há uma página para \"conta de email roubada\": mudar a palavra-passe, terminar sessões e avisar os contactos."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PRO.3
+    title: "Procedimentos testados e revistos"
+    level: "3"
+    technical: false
+    evidence:
+      - "Registo de exercícios ou testes dos procedimentos e das alterações feitas depois deles."
+    questions:
+      - id: PRO.3-Q1
+        text: "Os procedimentos de resposta são testados pelo menos uma vez por ano, por exemplo com um exercício, e atualizados com o que se aprende?"
+        explanation: "Um procedimento nunca testado costuma falhar no dia em que é preciso."
+        example: "Uma vez por ano simula-se um ataque de ransomware numa reunião e corrige-se o que não correu bem."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PRO.4
+    title: "Tempos de resposta medidos"
+    level: "4"
+    technical: false
+    evidence:
+      - "Registo do tempo de deteção e de resolução de cada incidente, comparado com metas definidas."
+    questions:
+      - id: PRO.4-Q1
+        text: "Mede-se quanto tempo se demora a detetar e a resolver cada incidente, e compara-se com metas definidas?"
+        explanation: "Medir os tempos mostra se a resposta é rápida o suficiente e onde se perde tempo."
+        example: "A meta é resolver um email falso em 4 horas; o relatório mensal mostra quantas vezes se cumpriu."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: PRO.5
+    title: "Lições aprendidas aplicadas"
+    level: "5"
+    technical: false
+    evidence:
+      - "Análises de incidentes com a causa encontrada e as alterações feitas para evitar que se repitam."
+    questions:
+      - id: PRO.5-Q1
+        text: "Depois de cada incidente relevante, analisa-se a causa e muda-se o processo ou a proteção para evitar que se repita, com registo dessas mudanças?"
+        explanation: "Aprender com cada incidente é o que torna a segurança cada vez melhor."
+        example: "Depois de uma fatura falsa paga, passou a ser obrigatório confirmar por telefone qualquer mudança de IBAN."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  # --- TEC: Tecnologia ---
+  - id: TEC.1
+    title: "Proteção básica nos equipamentos"
+    level: "1"
+    technical: true
+    evidence:
+      - "Antivírus ativo e atualizado em todos os computadores e servidores."
+    questions:
+      - id: TEC.1-Q1
+        text: "Todos os computadores e servidores têm antivírus ativo e atualizado?"
+        explanation: "É a primeira barreira contra programas maliciosos e a primeira fonte de alertas."
+        example: "A consola do antivírus mostra os 35 computadores e os 2 servidores protegidos e atualizados."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: TEC.2
+    title: "Registos guardados num só sítio"
+    level: "2"
+    technical: true
+    evidence:
+      - "Registos (logs) dos sistemas importantes reunidos num só sítio e guardados durante um prazo definido."
+    questions:
+      - id: TEC.2-Q1
+        text: "Os registos (logs) dos sistemas importantes são guardados num só sítio durante um prazo definido?"
+        explanation: "Sem registos não é possível perceber o que aconteceu num incidente."
+        example: "Os registos da firewall, do email e dos servidores vão para um servidor próprio e ficam guardados um ano."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: TEC.3
+    title: "Alertas automáticos"
+    level: "3"
+    technical: true
+    evidence:
+      - "Ferramenta que analisa os registos e gera alertas automáticos, com regras definidas."
+    questions:
+      - id: TEC.3-Q1
+        text: "Existe uma ferramenta que analisa os registos e dá alertas automáticos quando algo parece suspeito?"
+        explanation: "Ninguém consegue ler todos os registos à mão: uma ferramenta chama a atenção para o que é estranho."
+        example: "A ferramenta avisa quando alguém entra numa conta a partir de outro país ou falha a palavra-passe muitas vezes."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: TEC.4
+    title: "Cobertura das ferramentas medida"
+    level: "4"
+    technical: true
+    evidence:
+      - "Lista dos sistemas cobertos pelas ferramentas de deteção e percentagem acompanhada ao longo do tempo."
+    questions:
+      - id: TEC.4-Q1
+        text: "Sabe-se que parte dos sistemas está coberta pelas ferramentas de deteção e acompanha-se esse número?"
+        explanation: "Um sistema que as ferramentas não veem é um ponto cego onde um ataque passa despercebido."
+        example: "O relatório mostra que 95% dos sistemas enviam registos e lista os que ainda faltam ligar."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: TEC.5
+    title: "Resposta automática"
+    level: "5"
+    technical: true
+    evidence:
+      - "Regras de resposta automática configuradas e revistas (isolar equipamentos, bloquear contas)."
+    questions:
+      - id: TEC.5-Q1
+        text: "Algumas respostas a alertas são feitas de forma automática, como isolar um computador infetado ou bloquear uma conta?"
+        explanation: "Responder em segundos, sem esperar por uma pessoa, trava ataques que se espalham depressa."
+        example: "Quando o antivírus deteta ransomware, o computador é desligado da rede de forma automática."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  # --- SVC: Serviços ---
+  - id: SVC.1
+    title: "Alertas vistos por alguém"
+    level: "1"
+    technical: true
+    evidence:
+      - "Indicação de quem vê os alertas das ferramentas de segurança e com que frequência."
+    questions:
+      - id: SVC.1-Q1
+        text: "Os alertas das ferramentas de segurança, como antivírus, firewall ou email, são vistos por alguém?"
+        explanation: "Um alerta que ninguém vê não protege a empresa."
+        example: "O técnico recebe os alertas do antivírus por email e vê-os todas as manhãs."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: SVC.2
+    title: "Horário de acompanhamento definido"
+    level: "2"
+    technical: false
+    evidence:
+      - "Horário de acompanhamento dos alertas e o que acontece fora dele."
+    questions:
+      - id: SVC.2-Q1
+        text: "Está definido em que horário os alertas são acompanhados e o que acontece fora desse horário?"
+        explanation: "Muitos ataques acontecem à noite ou ao fim de semana; é preciso saber se alguém está atento."
+        example: "Nos dias úteis o técnico vê os alertas; à noite, os alertas graves ligam para o telemóvel de serviço."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: SVC.3
+    title: "Falhas de segurança procuradas e corrigidas"
+    level: "3"
+    technical: true
+    evidence:
+      - "Relatórios de procura regular de vulnerabilidades e registo das correções, por ordem de gravidade."
+    questions:
+      - id: SVC.3-Q1
+        text: "Procuram-se com regularidade falhas de segurança conhecidas nos sistemas e corrigem-se por ordem de gravidade?"
+        explanation: "Os atacantes usam falhas conhecidas; corrigir as mais graves primeiro fecha as portas mais abertas."
+        example: "Todos os meses uma ferramenta analisa os servidores e as falhas críticas são corrigidas numa semana."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: SVC.4
+    title: "Qualidade da deteção medida"
+    level: "4"
+    technical: true
+    evidence:
+      - "Números de alertas falsos e de incidentes detetados a tempo, usados para afinar as regras de deteção."
+    questions:
+      - id: SVC.4-Q1
+        text: "Mede-se quantos alertas eram falsos e quantos incidentes foram detetados a tempo, para afinar a deteção?"
+        explanation: "Alertas falsos a mais cansam quem os vê; deteções tardias custam caro. Medir ajuda a afinar."
+        example: "Este trimestre 60% dos alertas eram falsos; mudaram-se duas regras e no seguinte desceram para 30%."
+        answers: ["yes", "partial", "no", "unknown"]
+
+  - id: SVC.5
+    title: "Procura ativa de ameaças"
+    level: "5"
+    technical: true
+    evidence:
+      - "Registo de pesquisas ativas por sinais de ataque, baseadas em informação atual sobre ameaças."
+    questions:
+      - id: SVC.5-Q1
+        text: "Procuram-se ativamente sinais de ataques que as ferramentas não detetaram, com base em informação sobre ameaças atuais?"
+        explanation: "Alguns atacantes conseguem esconder-se das ferramentas; procurá-los ativamente encontra-os mais cedo."
+        example: "Depois de um aviso do CNCS sobre um novo ataque, procurou-se nos registos se havia sinais dele na empresa."
+        answers: ["yes", "partial", "no", "unknown"]
