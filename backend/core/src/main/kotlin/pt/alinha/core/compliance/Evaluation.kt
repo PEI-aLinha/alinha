@@ -13,7 +13,7 @@ data class EvaluationInput(
     val evidence: List<Evidence> = emptyList(),
 )
 
-/** How far evidence can be trusted, weakest first (GLOSSARY: evidence strength). */
+/** How far evidence can be trusted, weakest first. */
 enum class EvidenceStrength { SELF_REPORTED, DOCUMENT_VERIFIED, TECHNICALLY_VERIFIED, CONTINUOUSLY_VERIFIED }
 
 /** One piece of evidence for a control: whether it shows the control in place, and how far it can be trusted. */
