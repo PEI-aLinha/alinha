@@ -1,5 +1,7 @@
 package pt.alinha.core.compliance
 
+import com.fasterxml.jackson.annotation.JsonIgnore
+
 /**
  * What the organization tells us for the applicability check (FR02, FR03). Rules: [ApplicabilityRules],
  * explained in docs/applicability.md. Assumes the organization is established in Portugal.
@@ -127,8 +129,10 @@ data class ApplicabilityResult(
     val officialNis2Classification: Nis2Classification? = null,
 ) {
     /** The official classification when there is one, else the indicative one. */
+    @get:JsonIgnore
     val effectiveNis2Classification: Nis2Classification get() = officialNis2Classification ?: nis2Classification
 
     /** Always true: these are suggestions, not the official qualification (shown to the user). */
+    @get:JsonIgnore
     val indicative: Boolean = true
 }

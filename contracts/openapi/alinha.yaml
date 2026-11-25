@@ -1463,14 +1463,19 @@ components:
       allOf:
         - $ref: '#/components/schemas/AssessmentSummary'
         - type: object
-          required: [catalogueTitle, nis2Classification, maxLevel, maxScaleLevel, rulesVersion, controls]
+          required: [catalogueTitle, nis2Classification, nis2ClassificationOfficial, maxLevel, maxScaleLevel, rulesVersion, controls]
           properties:
             catalogueTitle:
               type: string
             nis2Classification:
               type: string
               enum: [essential, important, not-covered, to-be-assessed]
-              description: Indicative, from the applicability rules at start. The official one is the CNCS's.
+              description: |
+                Fixed at start: the official CNCS qualification when the organization had registered it
+                (`nis2ClassificationOfficial` true), otherwise the indicative one from the applicability rules.
+            nis2ClassificationOfficial:
+              type: boolean
+              description: True when `nis2Classification` is the official CNCS qualification, not the indicative one.
             maxLevel:
               $ref: '#/components/schemas/ComplianceLevel'
             maxScaleLevel:
