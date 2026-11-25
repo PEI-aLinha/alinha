@@ -75,7 +75,11 @@ uses `alinha_job_consumer.net`, never urllib or http.client directly:
   address is a public internet address, so a tenant cannot point the platform at its own network (SSRF);
 - `pinned_https_get`, `pinned_http_location` and `tls_handshake` connect to that checked address, with TLS verified
   against the host name (no second DNS lookup, so no DNS rebinding), never follow redirects and cap the body;
-- network failures raise `TransientError`. A refused TLS handshake or an invalid certificate is raised as
+- connecting takes at most `min(timeout, deadline)`; once connected, the handshake, request and answer together take
+  at most `deadline` (default twice `timeout`), so a host that trickles its answer cannot hold the worker. The DNS
+  lookup uses the system resolver's timeouts: put your own budget around the whole run;
+- an answer that would be the same on a retry raises `CollectorError`: `host_not_allowed`, `host_not_found`,
+  `response_too_large`. Other network failures raise `TransientError`. A refused TLS handshake or an invalid certificate is raised as
   `ssl.SSLError`: for a collector that checks a host, it is a finding, not a failure.
 
 Send `user_agent(provider)` as the `User-Agent`, so the host's owner can tell who is asking.

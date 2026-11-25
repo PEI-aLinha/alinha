@@ -336,3 +336,18 @@ def test_tls_handshake_gives_up_on_a_host_that_trickles(trickling_server, certif
 def test_the_deadline_defaults_to_twice_the_timeout():
     assert net._deadline(5, None) == 10
     assert net._deadline(5, 1.5) == 1.5
+
+
+def test_connecting_never_takes_longer_than_the_deadline(monkeypatch):
+    used = []
+
+    def record(address, timeout):
+        used.append(timeout)
+        raise TimeoutError()
+
+    monkeypatch.setattr(socket, "create_connection", record)
+    with pytest.raises(TransientError):
+        net.pinned_https_get("localhost", "127.0.0.1", "/", {}, timeout=10, deadline=2)
+    with pytest.raises(TransientError):
+        net.tls_handshake("localhost", "127.0.0.1", ssl.create_default_context(), timeout=10, deadline=2)
+    assert used == [2, 2]

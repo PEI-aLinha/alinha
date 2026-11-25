@@ -10,6 +10,10 @@ must go through this module, never through urllib or http.client directly:
 - redirects are never followed, bodies are capped and every exchange has a total deadline (a host that trickles
   its answer cannot hold a worker): what comes back is untrusted data.
 
+Time limits: connecting takes at most min(timeout, deadline); from the moment the connection is open, the TLS
+handshake, request and answer together take at most `deadline`. The DNS lookup in [public_address] uses the system
+resolver's own timeouts: a collector that must finish in a fixed time puts its own budget around the whole run.
+
 Network failures raise [TransientError] (the core retries the job). Answers that would be the same on a retry raise
 [CollectorError]: `host_not_allowed` (not a public address), `host_not_found` (the name does not exist) and
 `response_too_large`.
@@ -27,7 +31,7 @@ from typing import Any, Callable, Mapping
 from alinha_job_consumer.collectors import CollectorError, TransientError
 
 TIMEOUT_S = 10.0  # each socket operation
-# The whole exchange (connect, TLS, request, answer) by default: twice the per-operation timeout.
+# Once connected, the TLS handshake, request and answer together: by default twice the per-operation timeout.
 DEADLINE_FACTOR = 2
 # Larger answers are refused: collected data is untrusted and the job result is capped at 1 MiB.
 MAX_BODY_BYTES = 2 * 1024 * 1024
@@ -81,7 +85,7 @@ def is_public(address: str) -> bool:
 
 def public_address(host: str, port: int, resolve: Resolve = socket.getaddrinfo) -> str:
     """Resolves [host] once and refuses it unless EVERY address is public. Prefers an IPv4 address: containers
-    often have no IPv6 route."""
+    often have no IPv6 route. The lookup uses the system resolver's timeouts, not [TIMEOUT_S]."""
     try:
         infos = resolve(host, port, type=socket.SOCK_STREAM)
     except socket.gaierror as error:
@@ -146,7 +150,7 @@ class _PinnedConnectionMixin:
     _watchdog: _Watchdog | None = None
 
     def _open(self, port: int, timeout: float) -> socket.socket:
-        sock = socket.create_connection((self._address, port), timeout)
+        sock = socket.create_connection((self._address, port), min(timeout, self._deadline_s))
         self._watchdog = _Watchdog(sock, self._deadline_s)
         return sock
 
@@ -206,8 +210,8 @@ def pinned_https_get(host: str, address: str, path: str, headers: Mapping[str, s
                      timeout: float = TIMEOUT_S, max_bytes: int = MAX_BODY_BYTES,
                      context: ssl.SSLContext | None = None, deadline: float | None = None) -> Response:
     """One GET over https to [address], never redirected. The body is read only for a 200 answer, and never with
-    `max_bytes=0` (only the status and headers matter). [deadline] bounds the whole exchange (default: twice
-    [timeout]); past it the call raises TransientError."""
+    `max_bytes=0` (only the status and headers matter). [deadline] bounds the TLS handshake, request and answer
+    once connected (default: twice [timeout]); past it the call raises TransientError."""
     if not path.startswith("/"):
         raise ValueError("path must start with /")
     connection = PinnedHTTPSConnection(host, port, address, timeout, context, deadline)
@@ -260,8 +264,9 @@ def tls_handshake(host: str, address: str, context: ssl.SSLContext, *, port: int
     an invalid certificate is a finding, not a network failure. Other network errors raise TransientError."""
     watchdog: _Watchdog | None = None
     try:
-        sock = socket.create_connection((address, port), timeout)
-        watchdog = _Watchdog(sock, _deadline(timeout, deadline))
+        limit = _deadline(timeout, deadline)
+        sock = socket.create_connection((address, port), min(timeout, limit))
+        watchdog = _Watchdog(sock, limit)
         try:
             tls = context.wrap_socket(sock, server_hostname=host)
             try:
