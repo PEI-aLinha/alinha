@@ -3,7 +3,7 @@
 - **Status:** accepted
 - **Date:** 2026-11-25
 - **Issues:** #23 (SOC-CMM), #25 (Compliance Engine), #26 (evidence strength)
-- **Refs:** `GLOSSARY.md`, `contracts/frameworks/`, technical report RF07, RF10, RF38, §4
+- **Refs:** `contracts/frameworks/`, technical report RF07, RF10, RF38, §4
 
 ## Context
 #23 asks for a "SOC-CMM tier model" whose target comes from the NIS2 classification. The catalogue schema and the

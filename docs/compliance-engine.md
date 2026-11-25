@@ -4,7 +4,7 @@
 into control statuses, coverage, gaps and a current level per domain. Deterministic and versioned (RNF05): never an
 LLM, no clock or randomness, output in catalogue order. Every result carries `rulesVersion`, `framework` and
 `catalogueVersion`; callers store it with them and do not recompute on read. The engine writes nothing: the caller
-stores, audits and checks permissions. Words: see `GLOSSARY.md` and ADR 0007.
+stores, audits and checks permissions. Words and scales: ADR 0007.
 
 - **Input:** the catalogue, the **target level** (chosen by the caller, e.g. from the NIS2 classification in the
   assessment plugin) and the answers (question id → yes, partial, no, unknown). Controls above the target are not

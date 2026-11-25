@@ -8,7 +8,7 @@ data class EvaluationInput(
     val answers: Map<String, Answer>,
 )
 
-/** Framework-neutral outcome for one control (GLOSSARY: control status). */
+/** Framework-neutral outcome for one control. */
 enum class ControlStatus { MET, PARTIAL, NOT_MET, UNKNOWN }
 
 /** Why a control is a gap. */
