@@ -117,8 +117,9 @@ export interface paths {
         /**
          * The caller's tasks in the current organization
          * @description Work other plugins gave to the caller (organization#7): only the caller's own tasks, never another member's.
-         *     Open tasks first, by due date (none last), then the done ones, most recent first. Permission `task:read`
-         *     (Designated Officer, analyst).
+         *     Open tasks first, by due date (none last), then the done ones, most recent first. Not paginated: a member
+         *     has one task per piece of work given to them (tens, not thousands). Permission `task:read` (Designated
+         *     Officer, analyst); a consultant gets `403`, whatever organization `X-Alinha-Tenant` names.
          */
         get: operations["listMyTasks"];
         put?: never;
@@ -590,11 +591,14 @@ export interface components {
             type: string;
             /** @description The work's id in the owning plugin. */
             reference: string;
-            /** @description What to do, in European Portuguese. */
+            /** @description What to do, in European Portuguese. Free text from the plugin that owns the work: render it as plain text. */
             title: string;
-            /** @description Where the work is done, relative to the client area (e.g. `assessment/<id>`). */
+            /**
+             * @description Where the work is done, as a path relative to the client area (e.g. `assessment/<id>`): no scheme, host,
+             *     leading slash, dots or query. The server refuses anything else when the task is created.
+             */
             link: string | null;
-            /** @description The assignee's token `sub`. */
+            /** @description The assignee's token `sub`, as given to the task (no name or e-mail, RNF15). */
             assignee: string;
             /** Format: date */
             dueDate: string | null;
