@@ -857,10 +857,13 @@ export interface components {
         AssessmentDetail: components["schemas"]["AssessmentSummary"] & {
             catalogueTitle: string;
             /**
-             * @description Indicative, from the applicability rules at start. The official one is the CNCS's.
+             * @description Fixed at start: the official CNCS qualification when the organization had registered it
+             *     (`nis2ClassificationOfficial` true), otherwise the indicative one from the applicability rules.
              * @enum {string}
              */
             nis2Classification: "essential" | "important" | "not-covered" | "to-be-assessed";
+            /** @description True when `nis2Classification` is the official CNCS qualification, not the indicative one. */
+            nis2ClassificationOfficial: boolean;
             maxLevel: components["schemas"]["ComplianceLevel"];
             maxScaleLevel: components["schemas"]["Level"];
             /** @description Version of the applicability rules used at start (NFR05). */
