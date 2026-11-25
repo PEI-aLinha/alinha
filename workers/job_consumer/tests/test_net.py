@@ -39,6 +39,16 @@ def test_prefers_an_ipv4_address():
     assert net.public_address("www.acme.pt", 443, resolving("2606:4700::1")) == "2606:4700::1"
 
 
+@pytest.mark.parametrize("address", [
+    "2002:0a00:0001::",                          # 6to4 of 10.0.0.1
+    "2002:7f00:0001::1",                         # 6to4 of 127.0.0.1
+    "2001:0:4136:e378:8000:63bf:f5ff:fffe",      # Teredo, client 10.0.0.1 (stored inverted)
+    "2001:0:0a00:0001:8000:63bf:3fff:fdd2",      # Teredo, server 10.0.0.1
+])
+def test_6to4_and_teredo_with_a_private_ipv4_are_refused(address):
+    assert not net.is_public(address)
+
+
 def test_public_ipv4_mapped_address_is_allowed():
     assert net.is_public("::ffff:8.8.8.8")
 
