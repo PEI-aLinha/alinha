@@ -95,3 +95,4 @@ Add a row with each new endpoint.
 | `POST /api/organization/registration` | `organization:register` | no | no | no | yes |
 | `GET /api/organization/profile` | `organization:read` | yes | yes | yes | no |
 | `PUT /api/organization/profile` | `organization:edit` | yes | yes | no | no |
+| `GET /api/organization/tasks/mine` | `task:read` (own tasks only) | no | yes | yes | no |

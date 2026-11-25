@@ -100,6 +100,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organization/tasks/mine": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The caller's tasks in the current organization
+         * @description Work other plugins gave to the caller (organization#7): only the caller's own tasks, never another member's.
+         *     Open tasks first, by due date (none last), then the done ones, most recent first. Permission `task:read`
+         *     (Designated Officer, analyst).
+         */
+        get: operations["listMyTasks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organization/scope": {
         parameters: {
             query?: never;
@@ -552,6 +581,29 @@ export interface components {
         OrganizationProfileUpdate: components["schemas"]["OrganizationProfileInput"] & {
             /** @description The `version` that was read. */
             version: number;
+        };
+        /** @description A piece of another plugin's work given to a member (organization#7). */
+        Task: {
+            /** Format: uuid */
+            id: string;
+            /** @description Kind of work, named by the plugin that owns it, e.g. `assessment-question`. */
+            type: string;
+            /** @description The work's id in the owning plugin. */
+            reference: string;
+            /** @description What to do, in European Portuguese. */
+            title: string;
+            /** @description Where the work is done, relative to the client area (e.g. `assessment/<id>`). */
+            link: string | null;
+            /** @description The assignee's token `sub`. */
+            assignee: string;
+            /** Format: date */
+            dueDate: string | null;
+            /** @enum {string} */
+            status: "OPEN" | "DONE";
+            /** Format: date-time */
+            assignedAt: string;
+            /** Format: date-time */
+            completedAt: string | null;
         };
         OrganizationProfile: {
             /** Format: uuid */
@@ -1198,6 +1250,36 @@ export interface operations {
                 };
             };
             422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    listMyTasks: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The caller's tasks. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Task"][];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
         };
     };
     getOrganizationScope: {

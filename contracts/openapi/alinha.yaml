@@ -209,6 +209,33 @@ paths:
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
 
+  /api/organization/tasks/mine:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+    get:
+      tags: [organization]
+      operationId: listMyTasks
+      summary: The caller's tasks in the current organization
+      description: |
+        Work other plugins gave to the caller (organization#7): only the caller's own tasks, never another member's.
+        Open tasks first, by due date (none last), then the done ones, most recent first. Permission `task:read`
+        (Designated Officer, analyst).
+      responses:
+        '200':
+          description: The caller's tasks.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
   /api/organization/scope:
     parameters:
       - $ref: '#/components/parameters/Tenant'
@@ -957,6 +984,46 @@ components:
               type: integer
               minimum: 0
               description: The `version` that was read.
+
+    Task:
+      type: object
+      description: A piece of another plugin's work given to a member (organization#7).
+      required: [id, type, reference, title, link, assignee, dueDate, status, assignedAt, completedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          description: Kind of work, named by the plugin that owns it, e.g. `assessment-question`.
+          pattern: '^[a-z][a-z0-9-]{0,49}$'
+        reference:
+          type: string
+          description: The work's id in the owning plugin.
+          maxLength: 200
+        title:
+          type: string
+          description: What to do, in European Portuguese.
+          maxLength: 200
+        link:
+          type: [string, 'null']
+          description: Where the work is done, relative to the client area (e.g. `assessment/<id>`).
+          maxLength: 300
+        assignee:
+          type: string
+          description: The assignee's token `sub`.
+        dueDate:
+          type: [string, 'null']
+          format: date
+        status:
+          type: string
+          enum: [OPEN, DONE]
+        assignedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: [string, 'null']
+          format: date-time
 
     OrganizationProfile:
       type: object

@@ -58,6 +58,8 @@ Fields are proposed: the publishing plugin's issue settles them. Every domain ev
 |---|---|---|---|---|
 | `OrganizationRegistered` | organization | organization (automatic consultant assignment) | `organizationId` | organization #2, #5 |
 | `ConsultantAssigned` | organization | dashboard-reports, notifications ("new client assigned") | `organizationId`, `consultantId` | organization #5, notifications #3 |
+| `TaskAssigned` | organization | notifications (assignment e-mail) | `taskId`, `type`, `reference`, `assigneeId`, `dueDate` | organization #7, notifications #3 |
+| `TaskCompleted` | organization | none yet | `taskId`, `type`, `reference`, `assigneeId` | organization #7 |
 | `AssetRegistered` | risk-assets | none yet | `assetId` | risk-assets #2 |
 | `RiskRegistered` | risk-assets | dashboard-reports | `riskId` | risk-assets #4, dashboard-reports #2 |
 | `AssessmentSubmitted` | assessment | notifications (warns the consultant) | `assessmentId` | assessment #5, notifications #4 |
