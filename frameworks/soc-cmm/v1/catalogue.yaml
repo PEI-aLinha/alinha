@@ -11,6 +11,8 @@
 # Maturity levels 1 to 5 (one control per domain and level, cumulative). Level 0 (Inexistente) has no controls: a
 # domain is at 0 when any of its level-1 controls is not met. Maturity is not compliance: these levels are never
 # compared with the QNRCS compliance levels, and the target is a recommendation, never a legal requirement.
+# Evidence (#26): levels 1 to 3 accept the answers; 4 and 5 need a verified document, or a technical check for a
+# technical control.
 framework: soc-cmm
 version: 1
 title: "SOC-CMM — Maturidade das operações de segurança"
@@ -21,8 +23,8 @@ levels:
   - { id: "1", label: "Inicial" }
   - { id: "2", label: "Gerido" }
   - { id: "3", label: "Definido" }
-  - { id: "4", label: "Medido" }
-  - { id: "5", label: "Otimizado" }
+  - { id: "4", label: "Medido", requiredStrength: DOCUMENT_VERIFIED, requiredStrengthTechnical: TECHNICALLY_VERIFIED }
+  - { id: "5", label: "Otimizado", requiredStrength: DOCUMENT_VERIFIED, requiredStrengthTechnical: TECHNICALLY_VERIFIED }
 
 requirements:
   - id: SOCCMM-BUS

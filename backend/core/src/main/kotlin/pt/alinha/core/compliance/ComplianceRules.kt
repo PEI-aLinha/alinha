@@ -57,21 +57,10 @@ class ComplianceRules : ComplianceEngine {
         return ControlResult(control.id, control.id.substringBefore('.'), control.level, status, reason, strength)
     }
 
-    /**
-     * The weakest evidence that lets a control be met (#26). QNRCS high and SOC-CMM 4-5 need a verified document, or
-     * technical verification for a technical control; every other level accepts the answers (self-reported).
-     */
-    fun requiredStrength(control: Control, catalogue: Catalogue): EvidenceStrength {
-        val verified = when (catalogue.framework) {
-            "nis2-qnrcs" -> control.level == "high"
-            "soc-cmm" -> (control.level.toIntOrNull() ?: 0) >= 4
-            else -> false
-        }
-        return when {
-            !verified -> EvidenceStrength.SELF_REPORTED
-            control.technical -> EvidenceStrength.TECHNICALLY_VERIFIED
-            else -> EvidenceStrength.DOCUMENT_VERIFIED
-        }
+    /** The weakest evidence that lets [control] be met: declared by its level in the catalogue's scale (#26). */
+    private fun requiredStrength(control: Control, catalogue: Catalogue): EvidenceStrength {
+        val level = catalogue.levels[catalogue.levelIndex(control.level)]
+        return if (control.technical) level.requiredStrengthTechnical else level.requiredStrength
     }
 
     /** Highest of [levels] (the scale up to the target) whose controls, and those of every level below, are all met. */

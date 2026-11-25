@@ -206,6 +206,24 @@
           "type": "string",
           "minLength": 1,
           "description": "Name shown to the user, in Portuguese, e.g. Substancial or Definido"
+        },
+        "requiredStrength": {
+          "enum": [
+            "SELF_REPORTED",
+            "DOCUMENT_VERIFIED",
+            "TECHNICALLY_VERIFIED",
+            "CONTINUOUSLY_VERIFIED"
+          ],
+          "description": "Optional. The weakest evidence that lets a control of this level be met (#26). Default SELF_REPORTED (the answers)."
+        },
+        "requiredStrengthTechnical": {
+          "enum": [
+            "SELF_REPORTED",
+            "DOCUMENT_VERIFIED",
+            "TECHNICALLY_VERIFIED",
+            "CONTINUOUSLY_VERIFIED"
+          ],
+          "description": "Optional. The same for a technical control; never weaker than requiredStrength. Default: requiredStrength."
         }
       }
     }

@@ -35,15 +35,17 @@ answers) when there is none. Applied after the answer rule:
 1. Failing evidence of strength `TECHNICALLY_VERIFIED` or more turns any status into not met (`EVIDENCE_FAILED`).
    Weaker failing evidence changes nothing.
 2. Passing evidence only raises the strength: it never upgrades a `no` or `partial` answer.
-3. A would-be met control whose strength is below the bar for its level is partial (`WEAK_EVIDENCE`):
+3. A would-be met control whose strength is below the bar for its level is partial (`WEAK_EVIDENCE`). Each level of
+   the catalogue's scale declares its bar (`levels[].requiredStrength`, and `requiredStrengthTechnical` for technical
+   controls; default `SELF_REPORTED`, catalogue schema v2). The implicit QNRCS scale of v1 catalogues has it in code:
 
 | Framework | Levels that accept the answers | Levels that need `DOCUMENT_VERIFIED` | Technical control at those levels |
 |---|---|---|---|
-| QNRCS | basic, substantial | high | `TECHNICALLY_VERIFIED` |
-| SOC-CMM | 1 to 3 | 4, 5 | `TECHNICALLY_VERIFIED` |
+| QNRCS (in code, `QNRCS_LEVELS`) | basic, substantial | high | `TECHNICALLY_VERIFIED` |
+| SOC-CMM (`soc-cmm/v1` YAML) | 1 to 3 | 4, 5 | `TECHNICALLY_VERIFIED` |
 
-Evidence for controls that are not evaluated is ignored. `ComplianceRules.requiredStrength(control, catalogue)` gives
-the bar. **MVP consequence:** there is no document upload yet, so an essential entity (target high) sees its high
+Evidence for controls that are not evaluated is ignored.
+**MVP consequence:** there is no document upload yet, so an essential entity (target high) sees its high
 controls as partial (weak evidence) until evidence of that strength exists.
 
 ## Current level

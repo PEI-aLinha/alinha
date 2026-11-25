@@ -20,14 +20,17 @@ class EvidenceStrengthTest {
 
     private val engine = ComplianceRules()
 
+    // The bar comes from the catalogue's scale (here the implicit QNRCS one), never from the framework id.
     private val qnrcs = catalogue(
         control("PR.1-B", BASIC), control("PR.1-E", HIGH), control("PR.2-E", HIGH, technical = true),
-    ).copy(framework = "nis2-qnrcs")
+        levels = QNRCS_LEVELS,
+    )
 
     private val socCmm = catalogue(
         control("TEC.3", "3", technical = true), control("BUS.4", "4"), control("TEC.4", "4", technical = true),
-        levels = (1..5).map { Level("$it", "L$it") },
-    ).copy(framework = "soc-cmm")
+        levels = (1..3).map { Level("$it", "L$it") } +
+            (4..5).map { Level("$it", "L$it", DOCUMENT_VERIFIED, TECHNICALLY_VERIFIED) },
+    )
 
     private fun evaluate(
         catalogue: Catalogue,
@@ -127,5 +130,12 @@ class EvidenceStrengthTest {
         val result = evaluate(qnrcs, failing, target = BASIC)
 
         assertThat(result.controls.map { it.controlId to it.status }).containsExactly("PR.1-B" to ControlStatus.MET)
+    }
+
+    @Test
+    fun `a scale that declares no bar accepts self-reported answers at every level`() {
+        val plain = catalogue(control("BUS.5", "5", technical = true), levels = (1..5).map { Level("$it", "L$it") })
+
+        assertThat(evaluate(plain).of("BUS.5").status).isEqualTo(ControlStatus.MET)
     }
 }
