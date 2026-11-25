@@ -595,7 +595,7 @@ export interface components {
             title: string;
             /**
              * @description Where the work is done, as a path relative to the client area (e.g. `assessment/<id>`): no scheme, host,
-             *     leading slash, dots or query. The server refuses anything else when the task is created.
+             *     leading, trailing or double slash, dots or query. The server refuses anything else when the task is created.
              */
             link: string | null;
             /** @description The assignee's token `sub`, as given to the task (no name or e-mail, RNF15). */
