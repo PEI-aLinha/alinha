@@ -1,14 +1,15 @@
 package pt.alinha.core.compliance
 
 import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import pt.alinha.core.compliance.Answer.NO
 import pt.alinha.core.compliance.Answer.PARTIAL
 import pt.alinha.core.compliance.Answer.UNKNOWN
 import pt.alinha.core.compliance.Answer.YES
-import pt.alinha.core.compliance.ComplianceLevel.BASIC
-import pt.alinha.core.compliance.ComplianceLevel.HIGH
-import pt.alinha.core.compliance.ComplianceLevel.SUBSTANTIAL
+import pt.alinha.core.compliance.TestCatalogues.BASIC
+import pt.alinha.core.compliance.TestCatalogues.HIGH
+import pt.alinha.core.compliance.TestCatalogues.SUBSTANTIAL
 import pt.alinha.core.compliance.TestCatalogues.answerAll
 import pt.alinha.core.compliance.TestCatalogues.catalogue
 import pt.alinha.core.compliance.TestCatalogues.control
@@ -17,7 +18,7 @@ class ComplianceRulesTest {
 
     private val engine = ComplianceRules()
 
-    private fun evaluate(catalogue: Catalogue, answers: Map<String, Answer>, target: ComplianceLevel = HIGH) =
+    private fun evaluate(catalogue: Catalogue, answers: Map<String, Answer>, target: String = HIGH) =
         engine.evaluate(EvaluationInput(catalogue, target, answers))
 
     private fun EvaluationResult.status(controlId: String) = controls.single { it.controlId == controlId }
@@ -191,5 +192,30 @@ class ComplianceRulesTest {
         val shuffled = answers.entries.shuffled(java.util.Random(42)).associate { it.key to it.value }
 
         assertThat(evaluate(cat, java.util.HashMap(shuffled))).isEqualTo(evaluate(cat, answers))
+    }
+
+    @Test
+    fun `levels follow the catalogue's own scale, by position`() {
+        val scale = listOf(Level("1", "Inicial"), Level("2", "Gerido"), Level("3", "Definido"))
+        val cat = catalogue(
+            control("BUS.1", "1"), control("BUS.2", "2"), control("BUS.3", "3"),
+            control("PEO.1", "1"), control("PEO.2", "2"),
+            levels = scale,
+        )
+
+        val result = evaluate(cat, answerAll(cat, YES) + ("PEO.2-Q1" to NO), target = "2")
+
+        assertThat(result.controls.map { it.controlId }).containsExactly("BUS.1", "BUS.2", "PEO.1", "PEO.2")
+        assertThat(result.domains).containsExactly(DomainResult("BUS", "2", "2"), DomainResult("PEO", "1", "2"))
+        assertThat(result.currentLevel).isEqualTo("1")
+    }
+
+    @Test
+    fun `a target level outside the catalogue's scale is refused`() {
+        val cat = catalogue(control("GR.1-B", BASIC))
+
+        assertThatThrownBy { evaluate(cat, emptyMap(), target = "3") }
+            .isInstanceOf(IllegalArgumentException::class.java)
+            .hasMessageContaining("'3'")
     }
 }

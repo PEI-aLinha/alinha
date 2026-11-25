@@ -20,7 +20,7 @@ class ComplianceRulesGoldenTest {
 
     private data class Fixture(
         val description: String,
-        val targetLevel: ComplianceLevel,
+        val targetLevel: String,
         val answers: Map<String, Answer>,
     )
 

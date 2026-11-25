@@ -2,8 +2,11 @@ package pt.alinha.core.compliance
 
 /** Small in-test catalogues: a control "<DOMAIN>.<n>-<L>" with one question per entry in [questions]. */
 object TestCatalogues {
+    const val BASIC = "basic"
+    const val SUBSTANTIAL = "substantial"
+    const val HIGH = "high"
 
-    fun control(id: String, level: ComplianceLevel, questions: Int = 1, technical: Boolean = false) = Control(
+    fun control(id: String, level: String, questions: Int = 1, technical: Boolean = false) = Control(
         id = id,
         title = id,
         level = level,
@@ -14,13 +17,18 @@ object TestCatalogues {
         },
     )
 
-    fun catalogue(vararg controls: Control, requirements: List<Requirement> = emptyList()) = Catalogue(
+    fun catalogue(
+        vararg controls: Control,
+        requirements: List<Requirement> = emptyList(),
+        levels: List<Level> = QNRCS_LEVELS,
+    ) = Catalogue(
         framework = "test-fw",
         version = 3,
         title = "Test",
         sources = emptyList(),
         requirements = requirements,
         controls = controls.toList(),
+        levels = levels,
     )
 
     /** Every question of [controls] answered with [answer]. */

@@ -2,8 +2,11 @@ package pt.alinha.core.compliance
 
 data class EvaluationInput(
     val catalogue: Catalogue,
-    /** Controls above this level are not evaluated. Set by the caller (e.g. from the NIS2 classification). */
-    val targetLevel: ComplianceLevel,
+    /**
+     * Id of a level of the catalogue's scale: controls above it are not evaluated. Set by the caller (e.g. from the
+     * NIS2 classification).
+     */
+    val targetLevel: String,
     /** Question id -> answer. Answers to questions outside the evaluated controls are ignored. */
     val answers: Map<String, Answer>,
 )
@@ -14,10 +17,11 @@ enum class ControlStatus { MET, PARTIAL, NOT_MET, UNKNOWN }
 /** Why a control is a gap. */
 enum class GapReason { ANSWERED_NO, ANSWERED_PARTIAL, NOT_ANSWERED }
 
+/** Levels are ids of the catalogue's level scale (ADR 0007). */
 data class ControlResult(
     val controlId: String,
     val domain: String,
-    val level: ComplianceLevel,
+    val level: String,
     val status: ControlStatus,
     /** Null only when [status] is MET. */
     val reason: GapReason?,
@@ -28,7 +32,7 @@ data class Gap(
     val controlId: String,
     /** Requirements of the catalogue that point to this control, in catalogue order. */
     val requirementIds: List<String>,
-    val level: ComplianceLevel,
+    val level: String,
     val status: ControlStatus,
     val reason: GapReason,
 )
@@ -36,17 +40,17 @@ data class Gap(
 data class DomainResult(
     val domain: String,
     /** Highest level fully met, or null when not even the lowest level is met. */
-    val currentLevel: ComplianceLevel?,
-    val targetLevel: ComplianceLevel,
+    val currentLevel: String?,
+    val targetLevel: String,
 )
 
 data class EvaluationResult(
     val rulesVersion: String,
     val framework: String,
     val catalogueVersion: Int,
-    val targetLevel: ComplianceLevel,
+    val targetLevel: String,
     /** Lowest current level of all domains. */
-    val currentLevel: ComplianceLevel?,
+    val currentLevel: String?,
     /** Met controls / evaluated controls: progress, never a verdict of compliance. 0.0 when nothing is evaluated. */
     val coverage: Double,
     /** In catalogue order of first appearance. */

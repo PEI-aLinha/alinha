@@ -343,7 +343,7 @@ paths:
 
         The questions are cut to the organization's regulatory scope, answered in the organization plugin
         (`PUT /api/organization/scope/answers`) and read through the core `ApplicabilityQuery` (core#25). For
-        `nis2-qnrcs`, the NIS2 classification sets `maxLevel`: the official CNCS qualification when registered,
+        `nis2-qnrcs`, the NIS2 classification sets `maxScaleLevel`: the official CNCS qualification when registered,
         otherwise the indicative one. Other frameworks get every level. The applicability result is stored with
         the assessment, together with `rulesVersion`, so it can be checked later. A `scope` in the body is
         deprecated and ignored.
@@ -1398,7 +1398,26 @@ components:
 
     ComplianceLevel:
       type: string
-      enum: [basic, substantial, high]
+      deprecated: true
+      description: |
+        **Deprecated** (ADR 0007): the id of a level of the catalogue's own scale, e.g. `basic`, `substantial`,
+        `high` for `nis2-qnrcs` (unchanged) or `1` to `5` for `soc-cmm`. Use the `Level` fields
+        (`maxScaleLevel`, `scaleLevel`), which carry the label too. Kept until every client has moved.
+
+    Level:
+      type: object
+      description: |
+        One level of a catalogue's level scale (ADR 0007), e.g. `{id: substantial, label: Substancial}` (QNRCS
+        compliance level) or `{id: "3", label: Definido}` (SOC-CMM maturity level). Levels of different
+        frameworks are never compared.
+      required: [id, label]
+      properties:
+        id:
+          type: string
+          pattern: '^[a-z0-9]+(-[a-z0-9]+)*$'
+        label:
+          type: string
+          description: Name shown to the user, in Portuguese.
 
     AnswerValue:
       type: string
@@ -1444,7 +1463,7 @@ components:
       allOf:
         - $ref: '#/components/schemas/AssessmentSummary'
         - type: object
-          required: [catalogueTitle, nis2Classification, maxLevel, rulesVersion, controls]
+          required: [catalogueTitle, nis2Classification, maxLevel, maxScaleLevel, rulesVersion, controls]
           properties:
             catalogueTitle:
               type: string
@@ -1454,18 +1473,20 @@ components:
               description: Indicative, from the applicability rules at start. The official one is the CNCS's.
             maxLevel:
               $ref: '#/components/schemas/ComplianceLevel'
+            maxScaleLevel:
+              $ref: '#/components/schemas/Level'
             rulesVersion:
               type: string
               description: Version of the applicability rules used at start (NFR05).
             controls:
               type: array
-              description: Controls up to `maxLevel`, in catalogue order.
+              description: Controls up to `maxScaleLevel`, in catalogue order.
               items:
                 $ref: '#/components/schemas/QuestionnaireControl'
 
     QuestionnaireControl:
       type: object
-      required: [id, title, level, technical, questions]
+      required: [id, title, level, scaleLevel, technical, questions]
       properties:
         id:
           type: string
@@ -1473,6 +1494,8 @@ components:
           type: string
         level:
           $ref: '#/components/schemas/ComplianceLevel'
+        scaleLevel:
+          $ref: '#/components/schemas/Level'
         technical:
           type: boolean
           description: Questions an analyst usually answers.

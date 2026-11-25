@@ -10,7 +10,10 @@ import org.springframework.stereotype.Component
 class ComplianceRules : ComplianceEngine {
 
     override fun evaluate(input: EvaluationInput): EvaluationResult {
-        val controls = input.catalogue.controls.filter { it.level <= input.targetLevel }
+        val catalogue = input.catalogue
+        val target = catalogue.levelIndex(input.targetLevel)
+        require(target >= 0) { "Target level '${input.targetLevel}' is not in the scale of ${catalogue.framework}" }
+        val controls = catalogue.controls.filter { catalogue.levelIndex(it.level) <= target }
             .map { control(it, input.answers) }
         val met = controls.count { it.status == ControlStatus.MET }
         val gaps = controls.filter { it.status != ControlStatus.MET }.map { result ->
@@ -18,12 +21,15 @@ class ComplianceRules : ComplianceEngine {
             Gap(result.controlId, requirementIds, result.level, result.status, result.reason!!)
         }
         val domains = controls.map { it.domain }.distinct().map { domain ->
-            val level = currentLevel(controls.filter { it.domain == domain }, input.targetLevel)
+            val level = currentLevel(controls.filter { it.domain == domain }, catalogue.levels.take(target + 1))
             DomainResult(domain, level, input.targetLevel)
         }
         // Lowest domain level; null (not met) beats any level. No domain evaluated gives null too.
-        val currentLevel =
-            if (domains.any { it.currentLevel == null }) null else domains.minOfOrNull { it.currentLevel!! }
+        val currentLevel = if (domains.any { it.currentLevel == null }) {
+            null
+        } else {
+            domains.map { it.currentLevel!! }.minByOrNull(catalogue::levelIndex)
+        }
         return EvaluationResult(VERSION, input.catalogue.framework, input.catalogue.version, input.targetLevel,
             currentLevel, if (controls.isEmpty()) 0.0 else met.toDouble() / controls.size, domains, controls, gaps)
     }
@@ -39,11 +45,10 @@ class ComplianceRules : ComplianceEngine {
         return ControlResult(control.id, control.id.substringBefore('.'), control.level, status, reason)
     }
 
-    /** Highest level up to [target] whose controls, and those of every level below, are all met. */
-    private fun currentLevel(controls: List<ControlResult>, target: ComplianceLevel): ComplianceLevel? =
-        ComplianceLevel.entries.filter { it <= target }
-            .takeWhile { level -> controls.filter { it.level == level }.all { it.status == ControlStatus.MET } }
-            .lastOrNull()
+    /** Highest of [levels] (the scale up to the target) whose controls, and those of every level below, are all met. */
+    private fun currentLevel(controls: List<ControlResult>, levels: List<Level>): String? =
+        levels.takeWhile { level -> controls.filter { it.level == level.id }.all { it.status == ControlStatus.MET } }
+            .lastOrNull()?.id
 
     companion object {
         const val VERSION = "compliance-rules/1"

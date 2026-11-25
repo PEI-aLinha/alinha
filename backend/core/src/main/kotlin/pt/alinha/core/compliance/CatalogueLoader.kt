@@ -71,8 +71,9 @@ internal class CatalogueLoader(private val frameworksDir: Path) {
     /** The schema rules, enforced again at runtime, plus the rules the JSON Schema cannot express. */
     private fun checkConsistency(catalogue: Catalogue, file: Path): List<String> =
         checkHeader(catalogue, file) +
+            checkLevels(catalogue) +
             catalogue.requirements.flatMap(::checkRequirement) +
-            catalogue.controls.flatMap(::checkControl) +
+            catalogue.controls.flatMap { checkControl(it, catalogue) } +
             checkCrossReferences(catalogue)
 
     private fun checkHeader(catalogue: Catalogue, file: Path): List<String> {
@@ -99,6 +100,17 @@ internal class CatalogueLoader(private val frameworksDir: Path) {
         return problems
     }
 
+    private fun checkLevels(catalogue: Catalogue): List<String> {
+        val problems = mutableListOf<String>()
+        if (catalogue.levels.isEmpty()) problems += "levels must not be empty"
+        catalogue.levels.forEach { level ->
+            if (!LEVEL_ID_PATTERN.matches(level.id)) problems += "level id '${level.id}' does not match level id pattern"
+            if (level.label.isBlank()) problems += "level '${level.id}' label must not be blank"
+        }
+        duplicates(catalogue.levels.map { it.id }).forEach { problems += "duplicate level '$it'" }
+        return problems
+    }
+
     private fun checkRequirement(requirement: Requirement): List<String> {
         val problems = mutableListOf<String>()
         val id = requirement.id
@@ -112,10 +124,13 @@ internal class CatalogueLoader(private val frameworksDir: Path) {
         return problems
     }
 
-    private fun checkControl(control: Control): List<String> {
+    private fun checkControl(control: Control, catalogue: Catalogue): List<String> {
         val problems = mutableListOf<String>()
         val id = control.id
         if (!ID_PATTERN.matches(id)) problems += "control id '$id' does not match id pattern"
+        if (catalogue.levelIndex(control.level) < 0) {
+            problems += "control '$id' level '${control.level}' is not in the catalogue's levels"
+        }
         if (control.title.isBlank()) problems += "control '$id' title must not be blank"
         if (control.evidence.isEmpty()) problems += "control '$id' evidence must not be empty"
         control.evidence.forEachIndexed { i, evidence ->
@@ -163,6 +178,7 @@ internal class CatalogueLoader(private val frameworksDir: Path) {
         private val VERSION_DIR_PATTERN = Regex("v[1-9]\\d{0,8}")
         private val FRAMEWORK_PATTERN = Regex("^[a-z0-9]+(-[a-z0-9]+)*$")
         private val ID_PATTERN = Regex("^[A-Z0-9]+([.-][A-Za-z0-9]+)*$")
+        private val LEVEL_ID_PATTERN = Regex("^[a-z0-9]+(-[a-z0-9]+)*$")
     }
 }
 
