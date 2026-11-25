@@ -49,3 +49,36 @@ Componentes Águeda, 120 employees, CAE 29320: important entity, target substant
 | PR | PR.GA-2-S partial, PR.SD-1-S not met, PR.SP-4-S partial, PR.RI-2-S not met | basic |
 | DE | DE.MC-6-S, DE.MC-7-S, DE.AE-4-S unknown | basic |
 | **Overall** | 7 of 102 evaluated controls | **basic**, coverage 93% |
+
+## SOC-CMM (maturity, #23)
+
+`frameworks/soc-cmm/v1/catalogue.yaml`: our own plain wording based on SOC-CMM v3, **unreviewed** (not in
+`frameworks/RELEASES`). Its own framework and its own assessment, never compared with QNRCS (ADR 0007). "The SOC" is
+whoever runs the company's security operations: its own staff, an outside company or aLinha.
+
+- **Maturity levels:** 0 Inexistente, 1 Inicial, 2 Gerido, 3 Definido, 4 Medido, 5 Otimizado. The catalogue declares
+  1 to 5; level 0 has no controls. A domain is at **0** (not `null`) when any of its level-1 controls is not met: the
+  engine reports `"0"` for any numbered scale whose first level is above 0.
+- **Domains:** five, one control per level each (25 controls): `BUS` Negócio, `PEO` Pessoas, `PRO` Processos,
+  `TEC` Tecnologia, `SVC` Serviços.
+- **Target:** *recomendado*, never "exigido por lei". Set by the assessment plugin (`ScopeRules.recommendedMaturity`)
+  from the NIS2 classification (official when registered):
+
+| NIS2 classification | Recommended maturity |
+|---|---|
+| not covered | 2 Gerido |
+| important | 3 Definido |
+| essential, to be assessed | 4 Medido |
+
+Where each domain touches the QNRCS functions (read only, indicative, pending advisor review; no shared controls):
+
+| SOC-CMM domain | QNRCS functions |
+|---|---|
+| BUS Negócio | GR Governação |
+| PEO Pessoas | GR Governação, PR Proteger (awareness and training) |
+| PRO Processos | RS Responder, RC Recuperar |
+| TEC Tecnologia | PR Proteger, DE Detetar |
+| SVC Serviços | DE Detetar, ID Identificar (vulnerabilities) |
+
+Example (golden test `soc-cmm-v1-rui`, illustrative): Rui, important, target 3. BUS 2, PEO 1, PRO 3, TEC 2 (TEC.3
+unanswered), SVC 0 (nobody looks at the alerts): overall maturity **0**, coverage 11 of 15 (73%).
