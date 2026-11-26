@@ -237,6 +237,16 @@ class ControlRulesTest {
     }
 
     @Test
+    fun `a target below the first level with controls, like SOC-CMM 0 Inexistente, is refused`() {
+        val maturity = listOf(Level("0", "Inexistente"), Level("1", "Inicial"), Level("2", "Gerido"))
+        val catalogue = domains(control("BUS.1", "1"), control("BUS.2", "2")).copy(levels = maturity)
+
+        val error = assertThrows<IllegalArgumentException> { rules.evaluate(catalogue, "0", yes(catalogue)) }
+
+        assertEquals(true, error.message?.contains("'0'"))
+    }
+
+    @Test
     fun `a lowest level with no controls is reported when the first level with controls is not met`() {
         val maturity = listOf(Level("0", "Inexistente"), Level("1", "Inicial"), Level("2", "Gerido"))
         val catalogue = domains(control("BUS.1", "1"), control("BUS.2", "2"), control("PEO.1", "1"))
