@@ -39,9 +39,12 @@ browser ─► reverse proxy (TLS, PROXY_NETWORK) ─► web (alias alinha-web)
 
 1. Merge to `main` with CI green.
 2. `gh release create vX.Y.Z --generate-notes` (the tag triggers `publish.yml`; wait for the 5 images).
-3. Actions → **Deploy to Production VM** → Run workflow on `main`. Empty `image_tag` = latest release. A reviewer approves
+3. If the release changes a policy (`deploy/openbao/*.hcl`) or adds an OpenBao token (e.g. `BAO_WORKER_TOKEN`),
+   run `bootstrap.sh` on the VM first (**OpenBao**, "Changing a policy file"). Until then `openbao-seed` is refused
+   (403) and the deploy fails, and the job consumer's collectors fail with `secrets_unavailable`.
+4. Actions → **Deploy to Production VM** → Run workflow on `main`. Empty `image_tag` = latest release. A reviewer approves
    the `production` environment, then the runner pulls the images and runs `up -d --wait`.
-4. If it fails, the job prints the last logs. **Get Production Logs** dumps the logs of every container at any time.
+5. If it fails, the job prints the last logs. **Get Production Logs** dumps the logs of every container at any time.
 
 Only one of **Deploy**, **Get Production Logs** and **Clean** runs on the VM at a time (`concurrency: prod-vm`);
 a second run waits for the first instead of starting halfway through its `up`.
@@ -84,9 +87,11 @@ Clients can connect their GitHub organisation by installing the aLinha GitHub Ap
 the values below the page only offers the token. To enable it, a GitHub organisation owner of the team registers the
 App once (Settings, Developer settings, GitHub Apps, New GitHub App):
 
-- **Homepage URL**: `ALINHA_PUBLIC_URL`. **Setup URL**: `<ALINHA_PUBLIC_URL>/resume`, with **Redirect on update** on.
+- **Homepage URL**: `ALINHA_PUBLIC_URL`. **Callback URL**: `<ALINHA_PUBLIC_URL>/resume`.
 - **Request user authorization (OAuth) during installation**: on (the app checks with it that the person who returns
-  can see the installation). **Expire user authorization tokens**: on. **Webhook**: off.
+  can see the installation). With it on, GitHub greys out the **Setup URL** and sends the person back to the
+  Callback URL instead, with `installation_id`, `setup_action`, `state` and `code`: leave the Setup URL empty.
+  **Expire user authorization tokens**: on. **Webhook**: off.
 - **Repository permissions**, all **Read-only**: Administration, Metadata, Dependabot alerts, Secret scanning alerts.
   Nothing else, and no account permissions. **Where can this App be installed**: Any account.
 
@@ -185,7 +190,8 @@ unset ROOT APP SEED WORKER
 Run **Deploy to Production VM** again. `openbao-seed` writes the secrets.
 
 **Changing a policy file** (`deploy/openbao/*.hcl`) or a token: create a root token for the occasion with
-`bao operator generate-root` (two key holders), run `bootstrap.sh` as above, then revoke it.
+`bao operator generate-root` (two key holders), run `bootstrap.sh` as above, then revoke it. Do it **before** the
+deploy that ships the change (Release and deploy, step 3).
 
 **After a VM reboot or an OpenBao restart:** run `bao operator unseal` twice (two key holders). Until then the app
 cannot read its secrets: `restart: always` keeps restarting it, and it comes up by itself once OpenBao is unsealed.

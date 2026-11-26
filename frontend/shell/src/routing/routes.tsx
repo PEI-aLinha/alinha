@@ -85,7 +85,7 @@ export function HomeRedirect({ plugins }: { plugins: readonly FrontendPlugin[] }
 }
 
 /**
- * `/resume`: back from an outside page that can only return to one fixed address (a GitHub App's Setup URL), to the
+ * `/resume`: back from an outside page that can only return to one fixed address (a GitHub App's Callback URL), to the
  * page the plugin remembered with `rememberReturnPath`, keeping the query string. Nothing remembered: home.
  */
 export function ResumeRedirect() {
