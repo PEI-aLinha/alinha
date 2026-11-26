@@ -63,8 +63,7 @@ export function AppFrame({ sections, subtitle, tools, children }: AppFrameProps)
       <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-line-soft bg-paper/95 px-5 backdrop-blur md:hidden">
         <Link to="/" aria-label="aLinha, página inicial"><Logo className="h-7" /></Link>
         <div className="flex items-center gap-1">
-          <AppearanceMenu compact />
-          <Avatar initials={initials} size={28} label={me.user.name} />
+          <AppearanceMenu account={{ initials, name: me.user.name, subtitle }} />
         </div>
       </header>
 
