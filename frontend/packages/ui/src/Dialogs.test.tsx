@@ -49,3 +49,22 @@ it('a modal without description has no description, so the title is not read twi
   expect(dialog).not.toHaveAttribute('aria-describedby')
   expect(dialog).toHaveAccessibleDescription('')
 })
+
+it('a modal can send the focus somewhere else when it closes', async () => {
+  function Question() {
+    const [open, setOpen] = useState(false)
+    return (
+      <main>
+        <input aria-label="Sim" />
+        <button onClick={() => setOpen(true)}>Seguinte</button>
+        <Modal open={open} onOpenChange={setOpen} title="Avançar sem guardar?" focusOnClose={() => screen.getByLabelText('Sim')} />
+      </main>
+    )
+  }
+  render(<Question />)
+  const opener = screen.getByRole('button', { name: 'Seguinte' })
+  opener.focus()
+  fireEvent.click(opener)
+  fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' })
+  await waitFor(() => expect(screen.getByLabelText('Sim')).toHaveFocus())
+})
