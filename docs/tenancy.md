@@ -45,7 +45,23 @@ organization through `core.tenant.TenantProvisioning.provisionForCurrentUser { t
   renders them, so the calling plugin returns `e.body` with `e.headers` from its `@ExceptionHandler` (see
   `TenantProvisioning`).
 
-## How it is enforced
+## Analysts joining by invitation (ADR 0007)
+
+The organization plugin invites analysts through `core.tenant.TenantMembership`. The core owns the invitation
+secrets (`core.invitation`, SHA-256 hash only) and the one step a plugin cannot take: giving an account a tenant.
+
+- `invite(email)` (current tenant): single use, valid for `alinha.invitations.ttl` (7 days). Inviting the same email
+  again revokes the pending invitation, so it is also how an invitation is sent again.
+- `acceptForCurrentUser(token)` from a `@TenantAgnostic` endpoint: the invitee first creates an account through the
+  normal Keycloak registration (verified email, TOTP), so it is a `registrant` with no tenant. The invitation's email
+  must equal the token's verified `email`. Like provisioning, it runs as the invitation's tenant in one transaction
+  with the `tenant.invitation-accepted` audit entry, takes the same account lock, and sets `tenant_id` and `analyst`
+  in Keycloak last. A Keycloak failure rolls back and leaves the invitation usable.
+- An account that joined by invitation cannot register an organization, and an account that registered one cannot
+  accept an invitation, even with a stale `registrant` token: both check the database.
+- `members()` lists the accounts whose `tenant_id` is the current tenant. `removeAnalyst(subject)` removes an analyst
+  (never the Designated Officer), gives the account `registrant` back and ends its sessions.
+
 
 1. `TenantResolutionInterceptor` resolves the tenant for every endpoint, after the RBAC check.
    An endpoint with no tenant data (e.g. `/api/plugins`) opts out with `@TenantAgnostic`.
