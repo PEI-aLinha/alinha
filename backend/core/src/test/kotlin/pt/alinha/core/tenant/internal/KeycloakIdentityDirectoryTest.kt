@@ -15,6 +15,7 @@ import org.springframework.test.web.client.match.MockRestRequestMatchers.header
 import org.springframework.test.web.client.match.MockRestRequestMatchers.method
 import org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo
 import org.springframework.test.web.client.response.MockRestResponseCreators.withNoContent
+import org.springframework.test.web.client.response.MockRestResponseCreators.withResourceNotFound
 import org.springframework.test.web.client.response.MockRestResponseCreators.withServerError
 import org.springframework.test.web.client.response.MockRestResponseCreators.withUnauthorizedRequest
 import org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess
@@ -408,6 +409,16 @@ class KeycloakIdentityDirectoryTest {
 
         assertThrows<IllegalArgumentException> { directory.assign("gone", tenant) }
         server.verify() // stops before reading its groups
+    }
+
+    @Test
+    fun `refuses to assign an account deleted since the listing, as not a consultant`() {
+        expectToken()
+        server.expect(requestTo("http://kc/admin/realms/alinha/users/gone")).andExpect(method(HttpMethod.GET))
+            .andRespond(withResourceNotFound())
+
+        assertThrows<IllegalArgumentException> { directory.assign("gone", tenant) }
+        server.verify()
     }
 
     @Test

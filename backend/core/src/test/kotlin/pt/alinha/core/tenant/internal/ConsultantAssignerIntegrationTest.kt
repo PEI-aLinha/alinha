@@ -35,7 +35,14 @@ class FakeConsultantIdentity : ConsultantIdentity {
     /** Time [assign] takes, to make concurrent assignments overlap. */
     @Volatile var assignDelayMillis = 0L
 
-    override fun consultants() = synchronized(pool) { pool.map { (subject, tenants) -> Consultant(subject, tenants.toSet()) } }
+    /** Runs right after [consultants] took its snapshot: what changes between the listing and the lock. */
+    @Volatile var afterListing: () -> Unit = {}
+
+    override fun consultants(): List<Consultant> {
+        val listed = synchronized(pool) { pool.map { (subject, tenants) -> Consultant(subject, tenants.toSet()) } }
+        afterListing()
+        return listed
+    }
 
     override fun assign(subject: String, tenantId: TenantId) {
         if (failOnAssign) error("identity provider down")
@@ -79,6 +86,7 @@ class ConsultantAssignerIntegrationTest {
         identity.assigned.clear()
         identity.failOnAssign = false
         identity.assignDelayMillis = 0
+        identity.afterListing = {}
     }
 
     private fun newTenant(): TenantId {
@@ -188,6 +196,31 @@ class ConsultantAssignerIntegrationTest {
 
         assertThrows<IllegalStateException> { assign(tenant) }
 
+        assertThat(recorded(tenant)).isNull()
+        assertThat(auditDetails(tenant)).isEmpty()
+    }
+
+    @Test
+    fun `a consultant who left the group since the listing is skipped, and the next one gets the organization`() {
+        consultants(marta to 0, joao to 1)
+        identity.afterListing = { identity.pool.remove(marta) } // disabled or removed from the group meanwhile
+        val tenant = newTenant()
+
+        val result = assign(tenant)
+
+        assertThat(result).isEqualTo(AssignedConsultant(joao, newlyAssigned = true))
+        assertThat(identity.assigned).containsExactly(joao to tenant)
+        assertThat(recorded(tenant)).isEqualTo(joao)
+        assertThat(auditDetails(tenant)).singleElement().asString().contains(joao)
+    }
+
+    @Test
+    fun `when every listed consultant left the group, nothing is assigned`() {
+        consultants(marta to 0)
+        identity.afterListing = { identity.pool.clear() }
+        val tenant = newTenant()
+
+        assertThat(assign(tenant)).isNull()
         assertThat(recorded(tenant)).isNull()
         assertThat(auditDetails(tenant)).isEmpty()
     }

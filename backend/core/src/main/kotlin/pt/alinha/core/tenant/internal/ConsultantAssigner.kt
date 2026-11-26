@@ -66,21 +66,37 @@ class ConsultantAssigner(
             record(tenant, existing.subject, viaIdentityProvider = true)
             return AssignedConsultant(existing.subject, newlyAssigned = false)
         }
-        if (pool.isEmpty()) {
-            log.warn("No consultant to assign to organization {}: add one to the consultants group", tenant.value)
-            return null
-        }
+        return assignLeastBusy(tenant, pool, assignments)
+    }
 
-        val chosen = pool.minWith(
-            compareBy<Consultant> { (it.tenants + assignments[it.subject]?.tenants.orEmpty()).size }
-                .thenBy(nullsFirst()) { assignments[it.subject]?.last }
-                .thenBy { it.subject },
-        )
-        record(tenant, chosen.subject, viaIdentityProvider = false)
-        // Last: the rows above still roll back if it fails. If the commit fails after it, the organization stays in
-        // the consultant's tenants; a retry then takes the "already in the identity provider" branch and records it.
-        identity.assign(chosen.subject, tenant)
-        return AssignedConsultant(chosen.subject, newlyAssigned = true)
+    /**
+     * Gives [tenant] to the least busy consultant of [pool]. One who is no longer an enabled consultant (disabled or
+     * removed from the group since the listing) is dropped and the next one is tried, so the organization is not left
+     * without a consultant while others are free.
+     */
+    private fun assignLeastBusy(tenant: TenantId, pool: List<Consultant>, assignments: Map<String, Assignments>): AssignedConsultant? {
+        var candidates = pool
+        while (candidates.isNotEmpty()) {
+            val chosen = candidates.minWith(
+                compareBy<Consultant> { (it.tenants + assignments[it.subject]?.tenants.orEmpty()).size }
+                    .thenBy(nullsFirst()) { assignments[it.subject]?.last }
+                    .thenBy { it.subject },
+            )
+            try {
+                identity.assign(chosen.subject, tenant)
+            } catch (e: IllegalArgumentException) {
+                log.warn("Consultant {} cannot take organization {} ({}), trying the next one", chosen.subject, tenant.value, e.message)
+                candidates = candidates - chosen
+                continue
+            }
+            // After the identity provider write, so a refused consultant leaves no row. If this or the commit fails,
+            // the organization stays in the consultant's tenants; a retry then takes the "already in the identity
+            // provider" branch and records it.
+            record(tenant, chosen.subject, viaIdentityProvider = false)
+            return AssignedConsultant(chosen.subject, newlyAssigned = true)
+        }
+        log.warn("No consultant to assign to organization {}: add one to the consultants group", tenant.value)
+        return null
     }
 
     /** A consultant's recorded organizations and when they were last given one. */

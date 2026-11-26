@@ -174,7 +174,12 @@ class KeycloakIdentityDirectory internal constructor(
     override fun assign(subject: String, tenantId: TenantId) = forgettingRejectedToken {
         val deadline = Deadline(CONSULTANT_DEADLINE, "consultant assignment")
         val token = deadline.step { token() }
-        val user = deadline.step { readUser(token, subject) }
+        val user = try {
+            deadline.step { readUser(token, subject) }
+        } catch (_: HttpClientErrorException.NotFound) {
+            // Deleted since the listing: the caller then tries another consultant.
+            throw IllegalArgumentException("Not an enabled consultant")
+        }
         // This account's groups, not the paged group listing: the caller has just listed the whole group.
         require(user["enabled"] == true && deadline.step { inConsultantsGroup(token, subject) }) { "Not an enabled consultant" }
         val attributes = attributesOf(user)
