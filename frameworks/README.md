@@ -6,7 +6,7 @@ and announces with `CatalogueVersionPublished`.
 | Framework | Phase (technical report, 4.1) |
 |---|---|
 | `nis2-qnrcs/` (NIS2 · RJC / QNRCS) | MVP |
-| `soc-cmm/` | MVP |
+| `soc-cmm/` (SOC-CMM v3, our wording, unreviewed: not in `RELEASES`) | MVP |
 | `gdpr/` | post-MVP |
 | `ai-act/` | post-MVP |
 

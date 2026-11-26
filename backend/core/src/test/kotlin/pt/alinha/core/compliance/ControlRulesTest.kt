@@ -246,6 +246,47 @@ class ControlRulesTest {
         assertTrue("BUS.2" in error.message.orEmpty(), error.message)
     }
 
+    @Test
+    fun `a target below the first level with controls, like SOC-CMM 0 Inexistente, is refused`() {
+        val maturity = listOf(Level("0", "Inexistente"), Level("1", "Inicial"), Level("2", "Gerido"))
+        val catalogue = domains(control("BUS.1", "1"), control("BUS.2", "2")).copy(levels = maturity)
+
+        val error = assertThrows<IllegalArgumentException> { rules.evaluate(catalogue, "0", yes(catalogue)) }
+
+        assertEquals(true, error.message?.contains("'0'"))
+    }
+
+    @Test
+    fun `a lowest level with no controls is reported when the first level with controls is not met`() {
+        val maturity = listOf(Level("0", "Inexistente"), Level("1", "Inicial"), Level("2", "Gerido"))
+        val catalogue = domains(control("BUS.1", "1"), control("BUS.2", "2"), control("PEO.1", "1"))
+            .copy(levels = maturity)
+
+        val result = rules.evaluate(catalogue, "2", yes(catalogue) + ("PEO.1-Q1" to PARTIAL))
+
+        assertEquals(listOf(DomainEvaluation("BUS", "2", "2"), DomainEvaluation("PEO", "0", "2")), result.domains)
+        assertEquals("0", result.currentLevel)
+    }
+
+    @Test
+    fun `an unknown level-1 control puts its domain at 0, and the control says why`() {
+        val maturity = listOf(Level("0", "Inexistente"), Level("1", "Inicial"))
+        val catalogue = domains(control("BUS.1", "1"), control("PEO.1", "1")).copy(levels = maturity)
+
+        val result = rules.evaluate(catalogue, "1", yes(catalogue) + ("PEO.1-Q1" to UNKNOWN))
+
+        assertEquals(listOf("1", "0"), result.domains.map { it.currentLevel })
+        assertEquals(GapReason.ANSWERED_UNKNOWN, result.controls.single { it.controlId == "PEO.1" }.reason)
+    }
+
+    @Test
+    fun `a scale whose lowest level has controls never reports a floor`() {
+        val numbered = listOf(Level("1", "Inicial"), Level("2", "Gerido"))
+        val catalogue = domains(control("BUS.1", "1"), control("BUS.2", "2")).copy(levels = numbered)
+
+        assertNull(rules.evaluate(catalogue, "2", yes(catalogue) + ("BUS.1-Q1" to NO)).currentLevel)
+    }
+
     private fun domains(vararg controls: Control) = CATALOGUE.copy(controls = controls.toList())
 
     private fun yes(catalogue: Catalogue) = catalogue.controls.flatMap { it.questions }.associate { it.id to YES }

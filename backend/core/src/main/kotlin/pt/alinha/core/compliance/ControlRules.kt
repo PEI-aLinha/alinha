@@ -24,6 +24,11 @@ class ControlRules : ComplianceEngine {
         require(target >= 0) { "Target level '$maxLevel' is not in the scale of ${catalogue.framework}" }
         val offScale = catalogue.controls.filter { catalogue.levelIndex(it.level) < 0 }.map { it.id }
         require(offScale.isEmpty()) { "Controls $offScale have a level outside the scale of ${catalogue.framework}" }
+        // A level below the first with controls (SOC-CMM "0" Inexistente) cannot be a target.
+        val firstWithControls = catalogue.levels.indexOfFirst { level -> catalogue.controls.any { it.level == level.id } }
+        require(target >= firstWithControls) {
+            "Target level '$maxLevel' has no controls to assess in ${catalogue.framework}"
+        }
         val controls = catalogue.controls.filter { catalogue.levelIndex(it.level) <= target }
         require(controls.isNotEmpty()) {
             "${catalogue.framework} v${catalogue.version} has no controls up to $maxLevel"
@@ -35,21 +40,25 @@ class ControlRules : ComplianceEngine {
             val (status, reason) = judge(control.questions.map { answers.getValue(it.id) })
             ControlEvaluation(control.id, control.level, status, control.id.substringBefore('.'), reason)
         }
-        val levels = catalogue.levels.take(target + 1).map { it.id }.filter { level -> results.any { it.level == level } }
+        val levels = catalogue.levels.take(target + 1).map { it.id }
+            .filter { level -> results.any { it.level == level } }
         val gaps = results.filter { it.reason != null }.map { result ->
             val requirementIds = catalogue.requirements.filter { result.controlId in it.controls }.map { it.id }
             Gap(result.controlId, requirementIds, result.level, result.status, result.reason!!)
         }
+        // A scale whose lowest level has no controls (SOC-CMM 0 Inexistente) reports it when nothing is reached.
+        val floor = catalogue.levels.first().id.takeIf { first -> catalogue.controls.none { it.level == first } }
         return Evaluation(
             engineVersion = VERSION,
-            currentLevel = currentLevel(results, levels),
+            currentLevel = currentLevel(results, levels) ?: floor,
             targetLevel = maxLevel,
             coverage = results.count { it.status == ControlStatus.COMPLIANT }.toDouble() / results.size,
             controls = results,
             framework = catalogue.framework,
             catalogueVersion = catalogue.version,
             domains = results.map { it.domain }.distinct().map { domain ->
-                DomainEvaluation(domain, currentLevel(results.filter { it.domain == domain }, levels), maxLevel)
+                val level = currentLevel(results.filter { it.domain == domain }, levels) ?: floor
+                DomainEvaluation(domain, level, maxLevel)
             },
             gaps = gaps,
         )

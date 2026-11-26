@@ -1,0 +1,145 @@
+{
+  "engineVersion" : "controls-2026.11-v1",
+  "currentLevel" : "0",
+  "targetLevel" : "3",
+  "coverage" : 0.7333333333333333,
+  "controls" : [ {
+    "controlId" : "BUS.1",
+    "level" : "1",
+    "status" : "compliant",
+    "domain" : "BUS",
+    "reason" : null
+  }, {
+    "controlId" : "BUS.2",
+    "level" : "2",
+    "status" : "compliant",
+    "domain" : "BUS",
+    "reason" : null
+  }, {
+    "controlId" : "BUS.3",
+    "level" : "3",
+    "status" : "partial",
+    "domain" : "BUS",
+    "reason" : "ANSWERED_PARTIAL"
+  }, {
+    "controlId" : "PEO.1",
+    "level" : "1",
+    "status" : "compliant",
+    "domain" : "PEO",
+    "reason" : null
+  }, {
+    "controlId" : "PEO.2",
+    "level" : "2",
+    "status" : "gap",
+    "domain" : "PEO",
+    "reason" : "ANSWERED_NO"
+  }, {
+    "controlId" : "PEO.3",
+    "level" : "3",
+    "status" : "compliant",
+    "domain" : "PEO",
+    "reason" : null
+  }, {
+    "controlId" : "PRO.1",
+    "level" : "1",
+    "status" : "compliant",
+    "domain" : "PRO",
+    "reason" : null
+  }, {
+    "controlId" : "PRO.2",
+    "level" : "2",
+    "status" : "compliant",
+    "domain" : "PRO",
+    "reason" : null
+  }, {
+    "controlId" : "PRO.3",
+    "level" : "3",
+    "status" : "compliant",
+    "domain" : "PRO",
+    "reason" : null
+  }, {
+    "controlId" : "TEC.1",
+    "level" : "1",
+    "status" : "compliant",
+    "domain" : "TEC",
+    "reason" : null
+  }, {
+    "controlId" : "TEC.2",
+    "level" : "2",
+    "status" : "compliant",
+    "domain" : "TEC",
+    "reason" : null
+  }, {
+    "controlId" : "TEC.3",
+    "level" : "3",
+    "status" : "gap",
+    "domain" : "TEC",
+    "reason" : "ANSWERED_UNKNOWN"
+  }, {
+    "controlId" : "SVC.1",
+    "level" : "1",
+    "status" : "gap",
+    "domain" : "SVC",
+    "reason" : "ANSWERED_NO"
+  }, {
+    "controlId" : "SVC.2",
+    "level" : "2",
+    "status" : "compliant",
+    "domain" : "SVC",
+    "reason" : null
+  }, {
+    "controlId" : "SVC.3",
+    "level" : "3",
+    "status" : "compliant",
+    "domain" : "SVC",
+    "reason" : null
+  } ],
+  "framework" : "soc-cmm",
+  "catalogueVersion" : 1,
+  "domains" : [ {
+    "domain" : "BUS",
+    "currentLevel" : "2",
+    "targetLevel" : "3"
+  }, {
+    "domain" : "PEO",
+    "currentLevel" : "1",
+    "targetLevel" : "3"
+  }, {
+    "domain" : "PRO",
+    "currentLevel" : "3",
+    "targetLevel" : "3"
+  }, {
+    "domain" : "TEC",
+    "currentLevel" : "2",
+    "targetLevel" : "3"
+  }, {
+    "domain" : "SVC",
+    "currentLevel" : "0",
+    "targetLevel" : "3"
+  } ],
+  "gaps" : [ {
+    "controlId" : "BUS.3",
+    "requirementIds" : [ "SOCCMM-BUS" ],
+    "level" : "3",
+    "status" : "partial",
+    "reason" : "ANSWERED_PARTIAL"
+  }, {
+    "controlId" : "PEO.2",
+    "requirementIds" : [ "SOCCMM-PEO" ],
+    "level" : "2",
+    "status" : "gap",
+    "reason" : "ANSWERED_NO"
+  }, {
+    "controlId" : "TEC.3",
+    "requirementIds" : [ "SOCCMM-TEC" ],
+    "level" : "3",
+    "status" : "gap",
+    "reason" : "ANSWERED_UNKNOWN"
+  }, {
+    "controlId" : "SVC.1",
+    "requirementIds" : [ "SOCCMM-SVC" ],
+    "level" : "1",
+    "status" : "gap",
+    "reason" : "ANSWERED_NO"
+  } ]
+}

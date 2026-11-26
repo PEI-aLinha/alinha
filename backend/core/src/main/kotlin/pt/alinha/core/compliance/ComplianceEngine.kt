@@ -61,7 +61,11 @@ data class ControlEvaluation(
 
 data class DomainEvaluation(
     val domain: String,
-    /** Highest level fully compliant in this domain, or null when not even the lowest level is. */
+    /**
+     * Highest level fully compliant in this domain. When not even the first level with controls is: the scale's lowest
+     * level if it has no controls (SOC-CMM "0"), else null (QNRCS). Which controls fall short (not compliant,
+     * unknown or partial) is in [Evaluation.controls]: the screen uses it to show "por avaliar".
+     */
     val currentLevel: String?,
     val targetLevel: String,
 )
