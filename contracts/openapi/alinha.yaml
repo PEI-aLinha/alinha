@@ -505,6 +505,92 @@ paths:
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
 
+  /api/assessment/assessments/{assessmentId}/submit:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+      - $ref: '#/components/parameters/AssessmentId'
+    post:
+      tags: [assessment]
+      operationId: submitAssessment
+      summary: Submit the assessment and compute its results
+      description: |
+        Freezes the answers and has the Compliance Engine compute the results, in one transaction
+        (assessment#5, FR10, US15): the assessment goes `draft` -> `submitted` -> `evaluated`, both steps are
+        audited (NFR04) and publish `AssessmentSubmitted` and `AssessmentEvaluated`.
+
+        Every question must have an answer (`unknown` counts as one); otherwise `422`
+        (`code` = `ASSESSMENT_INCOMPLETE`, with the ids in `unanswered`). An assessment that is not `draft` is a `409`
+        (`code` = `ASSESSMENT_NOT_EDITABLE`). Permission `assessment:submit` (Designated Officer).
+
+        The response does not carry the results: the client sees them only after the consultant validates them
+        (`getAssessmentResults`).
+      responses:
+        '200':
+          description: The assessment, now `evaluated`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssessmentSummary'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: The assessment was already submitted (`code` = `ASSESSMENT_NOT_EDITABLE`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Some questions have no answer (`code` = `ASSESSMENT_INCOMPLETE`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/AssessmentIncompleteProblem'
+
+  /api/assessment/assessments/{assessmentId}/results:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+      - $ref: '#/components/parameters/AssessmentId'
+    get:
+      tags: [assessment]
+      operationId: getAssessmentResults
+      summary: The results the Compliance Engine computed for one assessment
+      description: |
+        Current and target level, and the status of every control, as computed on submit (NFR05: deterministic
+        rules over the catalogue and the answers, never an LLM). Stored with the assessment, so they never change
+        when the rules or the catalogue do.
+
+        Permission `assessment:review` (consultant): the consultant reviews the results before the client sees
+        them. Client access after validation comes with assessment#8, as an additive change.
+        A `draft` or `submitted` assessment has no results yet: `409` (`code` = `RESULTS_NOT_AVAILABLE`).
+      responses:
+        '200':
+          description: The results.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssessmentResults'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: |
+            Not evaluated yet (`code` = `RESULTS_NOT_AVAILABLE`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
   /api/dashboard-reports/portfolio:
     get:
       tags: [dashboard-reports]
@@ -1578,6 +1664,72 @@ components:
               type: string
               format: uuid
               description: The open assessment of this framework.
+
+    AssessmentIncompleteProblem:
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+        - type: object
+          required: [unanswered]
+          properties:
+            unanswered:
+              type: array
+              minItems: 1
+              items:
+                type: string
+              description: Ids of the questions with no answer, in catalogue order.
+
+    ControlStatus:
+      type: string
+      enum: [compliant, partial, gap]
+      description: |
+        From the control's answers: `compliant` when every answer is `yes`; `gap` when any is `no` or `unknown`;
+        `partial` otherwise (some `partial`). `partial` and `gap` both count as gaps for the roadmap.
+
+    ControlResult:
+      type: object
+      required: [controlId, title, level, status]
+      properties:
+        controlId:
+          type: string
+        title:
+          type: string
+        level:
+          $ref: '#/components/schemas/ComplianceLevel'
+        status:
+          $ref: '#/components/schemas/ControlStatus'
+
+    AssessmentResults:
+      type: object
+      required: [assessmentId, evaluatedAt, engineVersion, currentLevel, targetLevel, coverage, controls]
+      properties:
+        assessmentId:
+          type: string
+          format: uuid
+        evaluatedAt:
+          type: string
+          format: date-time
+        engineVersion:
+          type: string
+          description: Version of the Compliance Engine rules that computed these results (NFR05).
+        currentLevel:
+          description: |
+            Highest level whose controls, and those of every level below, are all `compliant`. Null when a
+            `basic` control is not.
+          oneOf:
+            - $ref: '#/components/schemas/ComplianceLevel'
+            - type: 'null'
+        targetLevel:
+          $ref: '#/components/schemas/ComplianceLevel'
+        coverage:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Share of the assessment's controls that are `compliant`.
+        controls:
+          type: array
+          description: Every control of the assessment, in catalogue order.
+          items:
+            $ref: '#/components/schemas/ControlResult'
 
     AuditEvent:
       type: object

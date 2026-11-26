@@ -1,10 +1,101 @@
 {
-  "rulesVersion" : "compliance-rules/1",
+  "engineVersion" : "controls-2026.11-v1",
+  "currentLevel" : "0",
+  "targetLevel" : "3",
+  "coverage" : 0.7333333333333333,
+  "controls" : [ {
+    "controlId" : "BUS.1",
+    "level" : "1",
+    "status" : "compliant",
+    "domain" : "BUS",
+    "reason" : null
+  }, {
+    "controlId" : "BUS.2",
+    "level" : "2",
+    "status" : "compliant",
+    "domain" : "BUS",
+    "reason" : null
+  }, {
+    "controlId" : "BUS.3",
+    "level" : "3",
+    "status" : "partial",
+    "domain" : "BUS",
+    "reason" : "ANSWERED_PARTIAL"
+  }, {
+    "controlId" : "PEO.1",
+    "level" : "1",
+    "status" : "compliant",
+    "domain" : "PEO",
+    "reason" : null
+  }, {
+    "controlId" : "PEO.2",
+    "level" : "2",
+    "status" : "gap",
+    "domain" : "PEO",
+    "reason" : "ANSWERED_NO"
+  }, {
+    "controlId" : "PEO.3",
+    "level" : "3",
+    "status" : "compliant",
+    "domain" : "PEO",
+    "reason" : null
+  }, {
+    "controlId" : "PRO.1",
+    "level" : "1",
+    "status" : "compliant",
+    "domain" : "PRO",
+    "reason" : null
+  }, {
+    "controlId" : "PRO.2",
+    "level" : "2",
+    "status" : "compliant",
+    "domain" : "PRO",
+    "reason" : null
+  }, {
+    "controlId" : "PRO.3",
+    "level" : "3",
+    "status" : "compliant",
+    "domain" : "PRO",
+    "reason" : null
+  }, {
+    "controlId" : "TEC.1",
+    "level" : "1",
+    "status" : "compliant",
+    "domain" : "TEC",
+    "reason" : null
+  }, {
+    "controlId" : "TEC.2",
+    "level" : "2",
+    "status" : "compliant",
+    "domain" : "TEC",
+    "reason" : null
+  }, {
+    "controlId" : "TEC.3",
+    "level" : "3",
+    "status" : "gap",
+    "domain" : "TEC",
+    "reason" : "ANSWERED_UNKNOWN"
+  }, {
+    "controlId" : "SVC.1",
+    "level" : "1",
+    "status" : "gap",
+    "domain" : "SVC",
+    "reason" : "ANSWERED_NO"
+  }, {
+    "controlId" : "SVC.2",
+    "level" : "2",
+    "status" : "compliant",
+    "domain" : "SVC",
+    "reason" : null
+  }, {
+    "controlId" : "SVC.3",
+    "level" : "3",
+    "status" : "compliant",
+    "domain" : "SVC",
+    "reason" : null
+  } ],
   "framework" : "soc-cmm",
   "catalogueVersion" : 1,
-  "targetLevel" : "3",
-  "currentLevel" : "0",
-  "coverage" : 0.7333333333333333,
   "domains" : [ {
     "domain" : "BUS",
     "currentLevel" : "2",
@@ -26,120 +117,29 @@
     "currentLevel" : "0",
     "targetLevel" : "3"
   } ],
-  "controls" : [ {
-    "controlId" : "BUS.1",
-    "domain" : "BUS",
-    "level" : "1",
-    "status" : "MET",
-    "reason" : null
-  }, {
-    "controlId" : "BUS.2",
-    "domain" : "BUS",
-    "level" : "2",
-    "status" : "MET",
-    "reason" : null
-  }, {
-    "controlId" : "BUS.3",
-    "domain" : "BUS",
-    "level" : "3",
-    "status" : "PARTIAL",
-    "reason" : "ANSWERED_PARTIAL"
-  }, {
-    "controlId" : "PEO.1",
-    "domain" : "PEO",
-    "level" : "1",
-    "status" : "MET",
-    "reason" : null
-  }, {
-    "controlId" : "PEO.2",
-    "domain" : "PEO",
-    "level" : "2",
-    "status" : "NOT_MET",
-    "reason" : "ANSWERED_NO"
-  }, {
-    "controlId" : "PEO.3",
-    "domain" : "PEO",
-    "level" : "3",
-    "status" : "MET",
-    "reason" : null
-  }, {
-    "controlId" : "PRO.1",
-    "domain" : "PRO",
-    "level" : "1",
-    "status" : "MET",
-    "reason" : null
-  }, {
-    "controlId" : "PRO.2",
-    "domain" : "PRO",
-    "level" : "2",
-    "status" : "MET",
-    "reason" : null
-  }, {
-    "controlId" : "PRO.3",
-    "domain" : "PRO",
-    "level" : "3",
-    "status" : "MET",
-    "reason" : null
-  }, {
-    "controlId" : "TEC.1",
-    "domain" : "TEC",
-    "level" : "1",
-    "status" : "MET",
-    "reason" : null
-  }, {
-    "controlId" : "TEC.2",
-    "domain" : "TEC",
-    "level" : "2",
-    "status" : "MET",
-    "reason" : null
-  }, {
-    "controlId" : "TEC.3",
-    "domain" : "TEC",
-    "level" : "3",
-    "status" : "UNKNOWN",
-    "reason" : "NOT_ANSWERED"
-  }, {
-    "controlId" : "SVC.1",
-    "domain" : "SVC",
-    "level" : "1",
-    "status" : "NOT_MET",
-    "reason" : "ANSWERED_NO"
-  }, {
-    "controlId" : "SVC.2",
-    "domain" : "SVC",
-    "level" : "2",
-    "status" : "MET",
-    "reason" : null
-  }, {
-    "controlId" : "SVC.3",
-    "domain" : "SVC",
-    "level" : "3",
-    "status" : "MET",
-    "reason" : null
-  } ],
   "gaps" : [ {
     "controlId" : "BUS.3",
     "requirementIds" : [ "SOCCMM-BUS" ],
     "level" : "3",
-    "status" : "PARTIAL",
+    "status" : "partial",
     "reason" : "ANSWERED_PARTIAL"
   }, {
     "controlId" : "PEO.2",
     "requirementIds" : [ "SOCCMM-PEO" ],
     "level" : "2",
-    "status" : "NOT_MET",
+    "status" : "gap",
     "reason" : "ANSWERED_NO"
   }, {
     "controlId" : "TEC.3",
     "requirementIds" : [ "SOCCMM-TEC" ],
     "level" : "3",
-    "status" : "UNKNOWN",
-    "reason" : "NOT_ANSWERED"
+    "status" : "gap",
+    "reason" : "ANSWERED_UNKNOWN"
   }, {
     "controlId" : "SVC.1",
     "requirementIds" : [ "SOCCMM-SVC" ],
     "level" : "1",
-    "status" : "NOT_MET",
+    "status" : "gap",
     "reason" : "ANSWERED_NO"
   } ]
 }
