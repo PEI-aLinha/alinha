@@ -20,7 +20,9 @@ class ControlRules : ComplianceEngine {
 
     override fun evaluate(catalogue: Catalogue, maxLevel: ComplianceLevel, answers: Map<String, Answer>): Evaluation {
         val controls = catalogue.controls.filter { it.level <= maxLevel }
-        require(controls.isNotEmpty()) { "${catalogue.framework} v${catalogue.version} has no controls up to $maxLevel" }
+        require(controls.isNotEmpty()) {
+            "${catalogue.framework} v${catalogue.version} has no controls up to $maxLevel"
+        }
         val unanswered = controls.flatMap { it.questions }.map { it.id }.filterNot { it in answers }
         if (unanswered.isNotEmpty()) throw IncompleteAnswersException(unanswered)
 
