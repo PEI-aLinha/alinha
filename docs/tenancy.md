@@ -62,6 +62,10 @@ secrets (`core.invitation`, SHA-256 hash only) and the one step a plugin cannot 
 - `members()` lists the accounts whose `tenant_id` is the current tenant. `removeAnalyst(subject)` removes an analyst
   (never the Designated Officer), gives the account `registrant` back and ends its sessions. The invitation it joined
   with is marked as left, so the account may later accept another invitation or register an organization.
+- The core checks the tenant, not the role: the organization plugin's `@RequiresPermission` decides who may invite
+  and remove (the Designated Officer).
+
+## How it is enforced
 
 
 1. `TenantResolutionInterceptor` resolves the tenant for every endpoint, after the RBAC check.

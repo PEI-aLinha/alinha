@@ -18,6 +18,9 @@ data class TenantMember(val subject: String, val email: String?, val name: Strin
  * plugin owns the endpoints and their permissions; the core owns the invitation secrets and the one step a plugin
  * cannot take: giving an account a tenant.
  *
+ * **The core checks the tenant, not the caller's role.** Only the Designated Officer may invite, revoke and remove:
+ * the calling plugin's endpoints must enforce it with `@RequiresPermission`, and test that an analyst is refused.
+ *
  * Refusals are [org.springframework.web.ErrorResponseException]s whose Problem Details body has a `code`, as in
  * [TenantProvisioning]: the calling plugin must render `e.body` with `e.headers` and `e.statusCode`.
  */

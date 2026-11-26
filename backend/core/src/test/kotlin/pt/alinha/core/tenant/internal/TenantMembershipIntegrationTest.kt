@@ -77,7 +77,8 @@ class MembershipTestConfig {
     @Bean fun identityMembership() = FakeIdentityMembership()
     @Bean fun identityDirectory() = FakeIdentityDirectory()
     @Bean fun meterRegistry() = SimpleMeterRegistry()
-    @Bean fun registrationRateLimiter() = RegistrationRateLimiter(ProvisioningProperties())
+    // Every test runs from the same mock address: the allowance itself is RegistrationRateLimiterTest's job.
+    @Bean fun registrationRateLimiter() = RegistrationRateLimiter(ProvisioningProperties(maxPerClientPerHour = 10_000))
 }
 
 @SpringBootTest(classes = [AuditTestApplication::class], webEnvironment = SpringBootTest.WebEnvironment.NONE)
@@ -212,6 +213,16 @@ class TenantMembershipIntegrationTest {
 
         assertThat(code(error)).isEqualTo(INVITATION_FOR_ANOTHER_EMAIL)
         assertThat(audit(INVITATION_ACCEPTED)).isZero()
+    }
+
+    @Test
+    fun `another email learns nothing about a used or expired invitation`() {
+        val invitation = asOfficer { membership.invite("ana@empresa.pt") }
+        jdbc.update("update core.invitation set expires_at = now() - interval '1 minute' where id = ?", invitation.id)
+
+        asNewAccount("intruso@outra.pt")
+        assertThat(code(assertThrows<ResponseStatusException> { membership.acceptForCurrentUser(invitation.token) }))
+            .isEqualTo(INVITATION_FOR_ANOTHER_EMAIL)
     }
 
     @Test

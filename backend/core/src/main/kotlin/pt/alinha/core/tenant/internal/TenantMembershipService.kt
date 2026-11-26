@@ -58,6 +58,7 @@ class TenantMembershipService(
     private val audit: AuditTrail,
     private val directory: IdentityMembership,
     private val properties: InvitationProperties,
+    private val clients: RegistrationRateLimiter,
 ) : TenantMembership {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -142,19 +143,24 @@ class TenantMembershipService(
 
         if (!inFlight.add(subject)) throw busy()
         try {
-            if (!slots.tryAcquire()) throw busy()
-            try {
-                val invitation = jdbc.sql("select tenant_id from core.invitation where token_hash = ?")
-                    .param(tokenHash).query(UUID::class.java).optional().orElseThrow { notFound() }
-                val tenantId = TenantId(invitation)
-                return tenants.runAsInvitedTenant(tenantId) {
-                    tx.execute { accept(subject, email, tokenHash, tenantId) }!!
-                }
-            } finally {
-                slots.release()
-            }
+            // The same per-client allowance as registering: one place cannot keep the slots busy with attempts.
+            return clients.limit { acceptWithinSlots(subject, email, tokenHash) }
         } finally {
             inFlight.remove(subject)
+        }
+    }
+
+    private fun acceptWithinSlots(subject: String, email: String, tokenHash: ByteArray): TenantId {
+        if (!slots.tryAcquire()) throw busy()
+        try {
+            val invitation = jdbc.sql("select tenant_id from core.invitation where token_hash = ?")
+                .param(tokenHash).query(UUID::class.java).optional().orElseThrow { notFound() }
+            val tenantId = TenantId(invitation)
+            return tenants.runAsInvitedTenant(tenantId) {
+                tx.execute { accept(subject, email, tokenHash, tenantId) }!!
+            }
+        } finally {
+            slots.release()
         }
     }
 
@@ -176,13 +182,14 @@ class TenantMembershipService(
             )
         }.optional().orElseThrow { notFound() }
         val now = Instant.now()
+        // The email first: whoever holds a forwarded link learns nothing about the invitation's state.
         when {
             row.revoked -> throw notFound()
-            row.accepted -> throw RegistrationProblem(HttpStatus.CONFLICT, "Invitation already used", INVITATION_ALREADY_USED)
-            !row.expiresAt.isAfter(now) -> throw RegistrationProblem(HttpStatus.GONE, "Invitation expired", INVITATION_EXPIRED)
             row.email != email -> throw RegistrationProblem(
                 HttpStatus.FORBIDDEN, "Invitation for another email", INVITATION_FOR_ANOTHER_EMAIL,
             )
+            row.accepted -> throw RegistrationProblem(HttpStatus.CONFLICT, "Invitation already used", INVITATION_ALREADY_USED)
+            !row.expiresAt.isAfter(now) -> throw RegistrationProblem(HttpStatus.GONE, "Invitation expired", INVITATION_EXPIRED)
         }
         jdbc.sql("update core.invitation set accepted_at = ?, accepted_by = ? where id = ?")
             .params(Timestamp.from(now), subject, row.id).update()

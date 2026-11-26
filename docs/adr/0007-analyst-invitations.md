@@ -52,7 +52,13 @@ unauthenticated writes: that would be the public registration endpoint ADR 0004 
 - (−) Same distributed write as ADR 0004: a crash between the Keycloak call and the commit can leave an account in a
   tenant without an accepted invitation. It is logged as ERROR.
 - (−) Until the access token expires (minutes), a removed analyst's current token still names the tenant. Ending
-  the sessions stops refreshes, not tokens already issued.
+  the sessions stops refreshes, not tokens already issued. The BFF's own session (Redis) is dropped only if Keycloak
+  back-channel logout reaches it; otherwise it ends at the next failed refresh.
+- (−) `TenantMembership` checks the tenant, not the caller's role: who may invite and remove (the Designated
+  Officer) is the organization plugin's `@RequiresPermission`, which its tests must cover.
+- (−) Follow-ups from review: one shared bound for every identity write (provisioning, accepting, removing),
+  a retention limit for the emails in invitation rows, and checking one account instead of listing all members on
+  removal (#176).
 - (−) The member list is one admin API call plus one per member. Fine for an SME's team (at most 200 members are
   read).
 
