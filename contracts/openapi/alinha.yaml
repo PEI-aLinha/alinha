@@ -1970,9 +1970,10 @@ components:
         serviceIds:
           type: array
           maxItems: 100
-          uniqueItems: true
-          default: []
-          description: Critical services of this organization that the asset supports.
+          description: |
+            Critical services of this organization that the asset supports. Omitted or empty means none;
+            repeated ids count once. An id that is not a service of this organization is a `422`
+            (field `serviceIds`).
           items:
             type: string
             format: uuid

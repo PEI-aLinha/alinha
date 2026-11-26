@@ -1093,10 +1093,11 @@ export interface components {
             owner: string;
             criticality: components["schemas"]["Criticality"];
             /**
-             * @description Critical services of this organization that the asset supports.
-             * @default []
+             * @description Critical services of this organization that the asset supports. Omitted or empty means none;
+             *     repeated ids count once. An id that is not a service of this organization is a `422`
+             *     (field `serviceIds`).
              */
-            serviceIds: string[];
+            serviceIds?: string[];
         };
         AssetUpdate: components["schemas"]["AssetInput"] & {
             /**
