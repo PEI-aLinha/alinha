@@ -1905,21 +1905,12 @@ components:
       allOf:
         - $ref: '#/components/schemas/CriticalServiceInput'
         - type: object
-          required: [version, serviceIds]
+          required: [version]
           properties:
             version:
               type: integer
               format: int64
               description: The `version` that was read. A different value is `409` (`VERSION_CONFLICT`).
-            serviceIds:
-              type: array
-              maxItems: 100
-              description: |
-                Required here, so that a client that forgets it does not unlink every service: the full set of
-                services the asset supports, `[]` to remove every link. Omitted is `422` (field `serviceIds`).
-              items:
-                type: string
-                format: uuid
 
     CriticalService:
       allOf:

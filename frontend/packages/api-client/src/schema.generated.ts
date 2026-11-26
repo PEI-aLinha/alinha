@@ -1070,11 +1070,6 @@ export interface components {
              * @description The `version` that was read. A different value is `409` (`VERSION_CONFLICT`).
              */
             version: number;
-            /**
-             * @description Required here, so that a client that forgets it does not unlink every service: the full set of
-             *     services the asset supports, `[]` to remove every link. Omitted is `422` (field `serviceIds`).
-             */
-            serviceIds: string[];
         };
         CriticalService: components["schemas"]["CriticalServiceInput"] & {
             /** Format: uuid */
