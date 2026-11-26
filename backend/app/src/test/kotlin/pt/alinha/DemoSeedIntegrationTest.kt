@@ -50,9 +50,6 @@ class DemoSeedIntegrationTest {
         const val COMPONENTES_AGUEDA = "11111111-1111-4111-8111-111111111111"
         const val METALURGICA_AVEIRO = "22222222-2222-4222-8222-222222222222"
         const val DEMO_ASSESSMENT = "de330000-0000-4000-8000-000000000001"
-
-        /** Compliance levels of nis2-qnrcs v1, lowest first. */
-        val QNRCS_LEVEL_IDS = listOf("basic", "substantial", "high")
     }
 
     @Autowired
@@ -105,22 +102,21 @@ class DemoSeedIntegrationTest {
     @Test
     fun `the factory has a submitted NIS2 assessment answering exactly its questionnaire`() {
         val assessment = jdbc.queryForMap(
-            "select tenant_id::text as tenant, framework, catalogue_version, max_level, status " +
+            "select tenant_id::text as tenant, framework, catalogue_version, max_level, nis2_classification_official, " +
+                "status " +
                 "from assessment.assessment where id = ?::uuid",
             DEMO_ASSESSMENT,
         )
         assertThat(assessment["tenant"]).isEqualTo(COMPONENTES_AGUEDA)
         assertThat(assessment["status"]).isEqualTo("SUBMITTED")
+        assertThat(assessment["nis2_classification_official"]).isEqualTo(true)
 
         val catalogue = catalogues.get(assessment["framework"] as String, assessment["catalogue_version"] as Int)!!
-        // Level ids compared by position on the QNRCS scale. Written to compile both before #179 (Control.level is the
-        // ComplianceLevel enum, max_level its name) and after it (level ids): once #179 is merged, use
-        // catalogue.levelIndex instead.
-        val position = { level: Any -> QNRCS_LEVEL_IDS.indexOf(level.toString().lowercase()) }
-        val maxLevel = position(assessment["max_level"] as String)
+        // Levels are compared by position on the catalogue's own scale (ADR 0007).
+        val maxLevel = catalogue.levelIndex(assessment["max_level"] as String)
         assertThat(maxLevel).describedAs("max_level").isNotNegative()
         val expected = catalogue.controls
-            .filter { position(it.level) <= maxLevel }
+            .filter { catalogue.levelIndex(it.level) <= maxLevel }
             .flatMap { c -> c.questions.map { it.id } }
 
         val answered = jdbc.queryForList(
