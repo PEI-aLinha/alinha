@@ -209,6 +209,233 @@ paths:
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
 
+  /api/organization/members:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+    get:
+      tags: [organization]
+      operationId: listMembers
+      summary: Everyone with an account in the current organization
+      description: |
+        The Designated Officer first, then the analysts by name (organization#6, ADR 0007). Consultants are not
+        members: they are assigned. Not paginated: an SME's team is a handful of people. Permission `member:read`
+        (Designated Officer).
+      responses:
+        '200':
+          description: The members.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Member'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          description: The identity provider did not answer (`code` = `IDENTITY_UNAVAILABLE`), with `Retry-After`.
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /api/organization/members/{memberId}:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+      - name: memberId
+        in: path
+        required: true
+        description: The member's `id` from `listMembers`.
+        schema:
+          type: string
+          maxLength: 255
+    delete:
+      tags: [organization]
+      operationId: removeMember
+      summary: Remove an analyst from the organization
+      description: |
+        The analyst loses access to the organization and their sessions end; what they recorded stays. Their account
+        stays too, as a new account that may be invited again. The Designated Officer cannot be removed, and an id
+        that is not an analyst of this organization is a `404` (`code` = `MEMBER_NOT_FOUND`). Audited. Permission
+        `member:manage` (Designated Officer).
+      responses:
+        '204':
+          description: The analyst was removed.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          description: The identity provider did not answer (`code` = `IDENTITY_UNAVAILABLE`); nothing changed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /api/organization/invitations:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+    get:
+      tags: [organization]
+      operationId: listInvitations
+      summary: The current organization's pending invitations
+      description: |
+        Not accepted and not cancelled, newest first. Expired ones stay listed (`expired`), so they can be sent
+        again. The secret is never listed. Permission `member:read` (Designated Officer).
+      responses:
+        '200':
+          description: The pending invitations.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Invitation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [organization]
+      operationId: inviteAnalyst
+      summary: Invite an analyst by email
+      description: |
+        Creates a single-use invitation, valid for 7 days and bound to `email` (ADR 0007). Inviting the same email
+        again cancels the pending invitation, so this is also how an invitation is sent again. The response carries
+        `token` **once**: the link is `/onboarding/invitation#<token>` (in the fragment, so it never reaches a server
+        log). Until the invitation email exists (notifications#3) the page shows the link to copy.
+
+        An email that already has an account in this organization is a `409` (`code` = `ALREADY_MEMBER`); an invalid
+        one is a `422` (`code` = `INVALID_EMAIL`, field `email`). Audited. Permission `member:manage` (Designated
+        Officer).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvitationRequest'
+      responses:
+        '201':
+          description: The invitation, with its secret.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssuedInvitation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: This email already has an account in the organization (`code` = `ALREADY_MEMBER`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/organization/invitations/{invitationId}:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+      - name: invitationId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    delete:
+      tags: [organization]
+      operationId: cancelInvitation
+      summary: Cancel a pending invitation
+      description: |
+        The link stops working. An id that is not a pending invitation of this organization is a `404`
+        (`code` = `INVITATION_NOT_FOUND`). Audited. Permission `member:manage` (Designated Officer).
+      responses:
+        '204':
+          description: The invitation was cancelled.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/organization/invitations/accept:
+    post:
+      tags: [organization]
+      operationId: acceptInvitation
+      summary: Join the organization that invited the signed-in account
+      description: |
+        Called from the onboarding by a new account (`registrant`, no organization) whose verified email is the
+        invited one (ADR 0007). No `X-Alinha-Tenant`: the organization comes from the invitation. The account joins
+        as an analyst; the session is stale until the client calls `reauthenticate()`. Audited.
+
+        `code` on failure: `INVITATION_NOT_FOUND` (404: unknown or cancelled), `INVITATION_FOR_ANOTHER_EMAIL` (403),
+        `INVITATION_ALREADY_USED` (409), `INVITATION_EXPIRED` (410), `ORGANIZATION_ALREADY_EXISTS` (409: the account
+        already has an organization), `TOO_MANY_REGISTRATIONS` (429), `REGISTRATION_BUSY` or `IDENTITY_UNAVAILABLE`
+        (503); 429 and 503 carry `Retry-After`. Permission `invitation:accept` (registrant).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptInvitationRequest'
+      responses:
+        '204':
+          description: The account joined the organization.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Not a new account, or the invitation is for another email (`INVITATION_FOR_ANOTHER_EMAIL`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '410':
+          description: The invitation expired (`code` = `INVITATION_EXPIRED`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '429':
+          description: Too many attempts from this client (`code` = `TOO_MANY_REGISTRATIONS`).
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Try again later (`REGISTRATION_BUSY`, `IDENTITY_UNAVAILABLE`).
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
   /api/organization/scope:
     parameters:
       - $ref: '#/components/parameters/Tenant'
@@ -1213,6 +1440,81 @@ components:
           type: [string, 'null']
           maxLength: 100
           description: Optional reference of the Act, as printed on it.
+
+    MemberRole:
+      type: string
+      enum: [responsible, analyst]
+
+    Member:
+      type: object
+      required: [id, name, email, role]
+      properties:
+        id:
+          type: string
+          description: The account's id in the identity provider (the token's `sub`).
+        name:
+          type: [string, 'null']
+          description: First and last name from the account; null when it has none.
+        email:
+          type: [string, 'null']
+        role:
+          $ref: '#/components/schemas/MemberRole'
+
+    Invitation:
+      type: object
+      required: [id, email, createdAt, expiresAt, expired]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          description: In lower case, as invited.
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        expired:
+          type: boolean
+          description: Past `expiresAt`; inviting the same email again sends a new one.
+
+    InvitationRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          maxLength: 254
+
+    IssuedInvitation:
+      type: object
+      required: [id, email, expiresAt, token]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        token:
+          type: string
+          description: |
+            The invitation's secret, returned only here and never stored in clear. The link is
+            `/onboarding/invitation#<token>`.
+
+    AcceptInvitationRequest:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: The secret from the invitation link's fragment.
 
     OrganizationScope:
       type: object
