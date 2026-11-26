@@ -14,7 +14,8 @@ Time limits: connecting takes at most min(timeout, deadline); from the moment th
 handshake, request and answer together take at most `deadline`. The DNS lookup in [public_address] uses the system
 resolver's own timeouts: a collector that must finish in a fixed time puts its own budget around the whole run.
 
-Network failures raise [TransientError] (the core retries the job). Answers that would be the same on a retry raise
+Network failures raise [TransientError] (the core retries the job), and so do TLS errors after the handshake (a
+connection reset is not an invalid certificate). Answers that would be the same on a retry raise
 [CollectorError]: `host_not_allowed` (not a public address), `host_not_found` (the name does not exist) and
 `response_too_large`.
 """
@@ -33,7 +34,8 @@ from alinha_job_consumer.collectors import CollectorError, TransientError
 TIMEOUT_S = 10.0  # each socket operation
 # Once connected, the TLS handshake, request and answer together: by default twice the per-operation timeout.
 DEADLINE_FACTOR = 2
-# Larger answers are refused: collected data is untrusted and the job result is capped at 1 MiB.
+# Larger answers are refused: collected data is untrusted. Collectors keep only what they need from a body, so
+# their job result stays under its own 1 MiB cap (docs/jobs.md).
 MAX_BODY_BYTES = 2 * 1024 * 1024
 
 Resolve = Callable[..., Any]
@@ -103,47 +105,69 @@ def public_address(host: str, port: int, resolve: Resolve = socket.getaddrinfo) 
 # -- connections --------------------------------------------------------------------------------------------------
 
 class _Watchdog:
-    """Shuts [sock] down once [seconds] have passed, which ends any read or handshake still waiting on it.
+    """Shuts the connection down once [seconds] have passed, which ends any read or handshake still waiting on it.
 
     The socket timeout only bounds each operation: a host sending one byte at a time would otherwise keep the
-    exchange going for as long as it likes."""
+    exchange going for as long as it likes.
+
+    It keeps its own duplicate of the descriptor until [cancel]: whoever closes the original (wrap_socket after a
+    failed handshake, http.client after an answer with `Connection: close`), the number cannot be reused by another
+    socket while the watchdog may still shut it down. Always call [cancel] when the exchange is over."""
 
     def __init__(self, sock: socket.socket, seconds: float) -> None:
-        # The descriptor, not the object: wrap_socket detaches [sock] and goes on with the same descriptor.
-        self._fd = sock.fileno()
-        self._family, self._type = sock.family, sock.type
+        self._duplicate: socket.socket | None = sock.dup()
         self.fired = False
-        self._done = False
         self._lock = threading.Lock()
         self._timer = threading.Timer(seconds, self._fire)
         self._timer.daemon = True
         self._timer.start()
 
     def _fire(self) -> None:
-        with self._lock:  # never after cancel(), which runs before the descriptor is closed and maybe reused
-            if self._done:
+        with self._lock:
+            if self._duplicate is None:
                 return
             self.fired = True
             try:
-                # shutdown acts on the connection, so a duplicate of the descriptor ends reads on the original too
-                with socket.fromfd(self._fd, self._family, self._type) as duplicate:
-                    duplicate.shutdown(socket.SHUT_RDWR)
+                # shutdown acts on the connection, so the duplicate ends reads on the original too
+                self._duplicate.shutdown(socket.SHUT_RDWR)
             except OSError:
                 pass  # already gone
+            self._release()
 
     def cancel(self) -> None:
-        """Call before the socket is closed."""
-        with self._lock:
-            self._done = True
         self._timer.cancel()
+        with self._lock:
+            self._release()
+
+    def _release(self) -> None:
+        if self._duplicate is not None:
+            self._duplicate.close()
+            self._duplicate = None
 
 
 def _deadline(timeout: float, deadline: float | None) -> float:
     return deadline if deadline is not None else timeout * DEADLINE_FACTOR
 
 
+def _handshake(context: ssl.SSLContext, sock: socket.socket, host: str) -> ssl.SSLSocket:
+    """TLS over [sock]. A failed handshake raises [_HandshakeError] wrapping the ssl.SSLError, so callers can tell it
+    apart from TLS errors later in the exchange (a reset, an unexpected end of the stream)."""
+    try:
+        return context.wrap_socket(sock, server_hostname=host)
+    except ssl.SSLError as error:
+        raise _HandshakeError(error) from error
+
+
+class _HandshakeError(Exception):
+    def __init__(self, error: ssl.SSLError) -> None:
+        super().__init__(str(error))
+        self.error = error
+
+
 class _PinnedConnectionMixin:
-    """Connects to an address already checked by [public_address] and arms the total deadline on that socket."""
+    """Connects to an address already checked by [public_address] and arms the total deadline on that socket.
+    The deadline lasts until [disarm], not until close(): http.client closes the connection before the body of a
+    `Connection: close` answer is read."""
 
     _address: str
     _deadline_s: float
@@ -158,7 +182,7 @@ class _PinnedConnectionMixin:
     def expired(self) -> bool:
         return self._watchdog is not None and self._watchdog.fired
 
-    def _disarm(self) -> None:
+    def disarm(self) -> None:
         if self._watchdog is not None:
             self._watchdog.cancel()
 
@@ -173,11 +197,7 @@ class PinnedHTTPSConnection(_PinnedConnectionMixin, http.client.HTTPSConnection)
         self._deadline_s = _deadline(timeout, deadline)
 
     def connect(self) -> None:
-        self.sock = self._context.wrap_socket(self._open(self.port, self.timeout), server_hostname=self.host)
-
-    def close(self) -> None:
-        self._disarm()
-        super().close()
+        self.sock = _handshake(self._context, self._open(self.port, self.timeout), self.host)
 
 
 class _PinnedHTTPConnection(_PinnedConnectionMixin, http.client.HTTPConnection):
@@ -188,10 +208,6 @@ class _PinnedHTTPConnection(_PinnedConnectionMixin, http.client.HTTPConnection):
 
     def connect(self) -> None:
         self.sock = self._open(self.port, self.timeout)
-
-    def close(self) -> None:
-        self._disarm()
-        super().close()
 
 
 def read_capped(answer: Any, limit: int = MAX_BODY_BYTES) -> bytes:
@@ -215,6 +231,7 @@ def pinned_https_get(host: str, address: str, path: str, headers: Mapping[str, s
     if not path.startswith("/"):
         raise ValueError("path must start with /")
     connection = PinnedHTTPSConnection(host, port, address, timeout, context, deadline)
+    answer: http.client.HTTPResponse | None = None
     try:
         connection.request("GET", path, headers=dict(headers))
         answer = connection.getresponse()  # http.client never follows redirects
@@ -222,13 +239,16 @@ def pinned_https_get(host: str, address: str, path: str, headers: Mapping[str, s
         if connection.expired:  # a read cut short by the deadline can look complete
             raise TransientError("answer too slow")
         return Response(answer.status, _headers(answer.getheaders()), body)
-    except ssl.SSLError as error:
+    except _HandshakeError as error:
         if connection.expired:
-            raise TransientError("answer too slow") from error
-        raise  # the caller decides what an invalid certificate means
-    except (OSError, http.client.HTTPException) as error:
+            raise TransientError("answer too slow") from error.error
+        raise error.error from None  # the caller decides what an invalid certificate means
+    except (OSError, http.client.HTTPException) as error:  # includes TLS errors after the handshake
         raise TransientError("answer too slow" if connection.expired else "host unreachable") from error
     finally:
+        connection.disarm()
+        if answer is not None:
+            answer.close()
         connection.close()
 
 
@@ -245,14 +265,18 @@ def pinned_http_location(host: str, address: str, path: str = "/", *, port: int 
     try:
         connection.request("GET", path, headers=dict(headers or {}))
         answer = connection.getresponse()
-        if connection.expired:
-            raise TransientError("answer too slow")
-        return answer.status, answer.getheader("Location")
+        try:
+            if connection.expired:
+                raise TransientError("answer too slow")
+            return answer.status, answer.getheader("Location")
+        finally:
+            answer.close()
     except ConnectionRefusedError:
         raise
     except (OSError, http.client.HTTPException) as error:
         raise TransientError("answer too slow" if connection.expired else "host unreachable") from error
     finally:
+        connection.disarm()
         connection.close()
 
 
@@ -260,26 +284,22 @@ def tls_handshake(host: str, address: str, context: ssl.SSLContext, *, port: int
                   timeout: float = TIMEOUT_S, deadline: float | None = None) -> TlsInfo:
     """Opens a TLS session to [address] with SNI [host], sends nothing and closes it.
 
-    ssl.SSLError (including SSLCertVerificationError) is raised as it is: for a collector a refused handshake or
-    an invalid certificate is a finding, not a network failure. Other network errors raise TransientError."""
+    A failed handshake raises its ssl.SSLError (including SSLCertVerificationError) as it is: for a collector a
+    refused handshake or an invalid certificate is a finding, not a network failure. Other network errors raise
+    TransientError."""
     watchdog: _Watchdog | None = None
     try:
         limit = _deadline(timeout, deadline)
-        sock = socket.create_connection((address, port), min(timeout, limit))
-        watchdog = _Watchdog(sock, limit)
-        try:
-            tls = context.wrap_socket(sock, server_hostname=host)
-            try:
+        with socket.create_connection((address, port), min(timeout, limit)) as sock:
+            watchdog = _Watchdog(sock, limit)
+            with _handshake(context, sock, host) as tls:
                 return TlsInfo(tls.version() or "", tls.getpeercert() or {})
-            finally:
-                watchdog.cancel()
-                tls.close()
-        finally:
-            watchdog.cancel()  # before closing the descriptor (a no-op when already cancelled)
-            sock.close()
-    except ssl.SSLError as error:
+    except _HandshakeError as error:
         if watchdog is not None and watchdog.fired:
-            raise TransientError("handshake too slow") from error
-        raise
+            raise TransientError("handshake too slow") from error.error
+        raise error.error from None
     except OSError as error:
         raise TransientError("handshake too slow" if watchdog and watchdog.fired else "host unreachable") from error
+    finally:
+        if watchdog is not None:
+            watchdog.cancel()

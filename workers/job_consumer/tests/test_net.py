@@ -1,4 +1,5 @@
 import http.server
+import os
 import shutil
 import socket
 import ssl
@@ -153,7 +154,9 @@ def trusting(certificate):
 def trickling_server(certificate):
     """Accepts connections and sends one byte every 0.1 s, forever: each read succeeds, the answer never ends.
 
-    `tls=True` completes the TLS handshake first; `tls="handshake"` trickles before any handshake."""
+    `tls=True` completes the TLS handshake first; `tls="handshake"` trickles before any handshake; `tls="body"`
+    sends whole headers with `Connection: close` and trickles the body; `tls="corrupt"` answers with a TLS record
+    that fails its integrity check."""
     servers = []
 
     def start(tls=False):
@@ -164,10 +167,17 @@ def trickling_server(certificate):
 
         def trickle(conn):
             try:
-                if tls is True:
+                if tls in (True, "body", "corrupt"):
                     conn = context.wrap_socket(conn, server_side=True)
                     conn.recv(4096)  # the request
-                data = b"\x16" if tls == "handshake" else b"HTTP/1.1 200 OK\r\nX-Slow: "
+                if tls == "corrupt":
+                    # a TLS record that fails its integrity check: the client's read raises ssl.SSLError
+                    with socket.socket(fileno=os.dup(conn.fileno())) as raw:
+                        raw.sendall(b"\x17\x03\x03\x00\x20" + b"\x00" * 32)
+                    return
+                data = {"handshake": b"\x16",
+                        "body": b"HTTP/1.1 200 OK\r\nConnection: close\r\nContent-Length: 100000\r\n\r\n"}.get(
+                    tls, b"HTTP/1.1 200 OK\r\nX-Slow: ")
                 conn.sendall(data)
                 while not stop.wait(0.1):
                     conn.sendall(b"\x03" if tls == "handshake" else b"a")
@@ -334,6 +344,38 @@ def test_https_get_gives_up_on_a_host_that_trickles(trickling_server, certificat
     port = trickling_server(tls=True)
     _within(3, lambda: net.pinned_https_get("localhost", "127.0.0.1", "/", {}, port=port, timeout=1, deadline=0.5,
                                             context=trusting(certificate)))
+
+
+def test_https_get_gives_up_on_a_body_that_trickles_after_connection_close(trickling_server, certificate):
+    # http.client closes the connection before the body of a `Connection: close` answer: the deadline must hold.
+    port = trickling_server(tls="body")
+    _within(3, lambda: net.pinned_https_get("localhost", "127.0.0.1", "/", {}, port=port, timeout=1, deadline=0.5,
+                                            context=trusting(certificate)))
+
+
+def test_a_tls_error_after_the_handshake_is_retryable_not_a_certificate_problem(trickling_server, certificate):
+    port = trickling_server(tls="corrupt")
+    with pytest.raises(TransientError) as error:
+        net.pinned_https_get("localhost", "127.0.0.1", "/", {}, port=port, timeout=2, context=trusting(certificate))
+    assert not isinstance(error.value, ssl.SSLError)
+
+
+def test_the_watchdog_never_shuts_down_a_socket_that_reused_the_descriptor():
+    first, peer = socket.socketpair()
+    watchdog = net._Watchdog(first, 0.2)
+    first.close()  # as wrap_socket does after a failed handshake, before the watchdog is cancelled
+    reused, other = socket.socketpair()
+    try:
+        time.sleep(0.4)  # the watchdog fires on its own duplicate, not on whatever has the old number now
+        assert watchdog.fired
+        reused.sendall(b"ok")
+        assert other.recv(2) == b"ok"
+        peer.settimeout(1)
+        assert peer.recv(1) == b""  # the original connection was the one shut down
+    finally:
+        watchdog.cancel()
+        for sock in (peer, reused, other):
+            sock.close()
 
 
 def test_tls_handshake_gives_up_on_a_host_that_trickles(trickling_server, certificate):
