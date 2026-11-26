@@ -22,9 +22,10 @@ export function PageHeader({ title, subtitle, actions, help }: PageHeaderProps) 
         {subtitle && <p className="text-[1rem] text-ink-soft max-md:text-[0.9375rem]">{subtitle}</p>}
       </div>
       {(help || actions) && (
-        <div className="flex flex-wrap items-center gap-3 max-md:w-full max-md:[&>*]:flex-1">
+        <div className="flex flex-wrap items-center gap-3 max-md:w-full">
           {help}
-          {actions}
+          {/* On mobile the actions share the row's width; help keeps its own size. */}
+          {actions && <div className="flex flex-wrap items-center gap-3 max-md:flex-1 max-md:[&>*]:flex-1">{actions}</div>}
         </div>
       )}
     </div>
