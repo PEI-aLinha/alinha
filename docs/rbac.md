@@ -78,6 +78,25 @@ PluginManifest(
 
 Analysts follow least privilege: never grant them global results or roadmap permissions.
 
+## Permission catalogue
+
+The permissions the endpoints below use, and the roles granted each one. The source of truth is the code
+(`CorePermissions` for the core, each plugin's `PluginManifest`, checked against its `plugin.yaml`): update this table
+when a grant changes there.
+
+| Permission | Owner | Consultant | Designated Officer | Analyst | Registrant |
+|---|---|---|---|---|---|
+| `plugins:read` | core | yes | yes | yes | yes |
+| `session:read` | core | yes | yes | yes | yes |
+| `audit:read` | core | yes | yes | no | no |
+| `organization:register` | organization | no | no | no | yes |
+| `organization:read` | organization | yes | yes | yes | no |
+| `organization:edit` | organization | yes | yes | no | no |
+| `task:read` | organization | no | yes | yes | no |
+
+`task:read` gives access to the caller's own tasks only (organization#7). A consultant does not have it, so
+`GET /api/organization/tasks/mine` answers 403 even with `X-Alinha-Tenant` set to one of their organizations.
+
 ## Endpoint x role matrix
 
 Add a row with each new endpoint.
