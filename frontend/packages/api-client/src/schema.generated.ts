@@ -394,7 +394,8 @@ export interface paths {
          * Register a risk
          * @description Adds a risk to the register (ISO/IEC 27005). `level` and `score` are computed by the server from
          *     `likelihood` and `impact` with the risk matrix; they are never sent. `likelihood` and `impact` must be
-         *     values of the matrix's scales; otherwise `422` (`code` = `VALIDATION_FAILED`). Audited and published as
+         *     values of the matrix's scales; otherwise `422` (`code` = `VALIDATION_FAILED`, with one entry per field in
+         *     `errors`: `threat`, `vulnerability`, `likelihood`, `impact` or `treatment`). Audited and published as
          *     `RiskRegistered`. Permission `risk:edit` (consultant).
          */
         post: operations["registerRisk"];
@@ -428,8 +429,12 @@ export interface paths {
         /**
          * Update a risk
          * @description Replaces the risk's data, for example to reassess it or to choose its treatment. `version` must be the
-         *     one that was read; otherwise `409` (`code` = `VERSION_CONFLICT`) and nothing changes. Sending the data
-         *     already saved changes nothing and writes no audit entry. Permission `risk:edit` (consultant).
+         *     one that was read; otherwise `409` (`code` = `VERSION_CONFLICT`) and nothing changes, checked before the
+         *     data, so a stale form is a `409` even with invalid fields. A missing `version` is a `422` with `errors`
+         *     field `version`; invalid data a `422` with one entry per field, as in `registerRisk`. A `likelihood` or
+         *     `impact` the current scale no longer has (the matrix was made smaller) may be sent back unchanged; a new
+         *     value must be on the scale. Sending the data already saved changes nothing (`version` and `updatedAt`
+         *     stay) and writes no audit entry. Permission `risk:edit` (consultant).
          */
         put: operations["updateRisk"];
         post?: never;
@@ -1051,7 +1056,7 @@ export interface components {
         Risk: {
             /** Format: uuid */
             id: string;
-            /** @description Changes on every update; send it back in `RiskUpdate`. */
+            /** @description Changes whenever the risk's data changes; send it back in `RiskUpdate`. */
             version: number;
             /** Format: uuid */
             assetId: string | null;
