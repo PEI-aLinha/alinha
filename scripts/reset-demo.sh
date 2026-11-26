@@ -21,7 +21,8 @@ keycloak=false
 for arg in "$@"; do
   case "$arg" in
     --keycloak) keycloak=true ;;
-    -h|--help) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    # The header comment, up to the first line that is not a comment.
+    -h|--help) awk 'NR > 1 && !/^#/ { exit } NR > 1 { sub(/^# ?/, ""); print }' "$0"; exit 0 ;;
     *) echo "Unknown option: $arg (see --help)" >&2; exit 2 ;;
   esac
 done
@@ -42,7 +43,8 @@ demo_tenants="'11111111-1111-4111-8111-111111111111', '22222222-2222-4222-8222-2
 
 # Runs as the database owner (POSTGRES_USER), a superuser in the dev compose: session_replication_role = replica
 # skips foreign-key checks, so the tables can be emptied in any order. Every table with a tenant_id column is
-# included, so a plugin that adds one is reset too.
+# included, so a plugin that adds one is reset too. A table that references one of them (or core.tenant) but has no
+# tenant_id of its own would keep orphan rows, so the script stops before deleting anything when there is one.
 docker compose -f "$compose_file" exec -T "$service" sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<SQL
 begin;
 set local session_replication_role = replica;
@@ -52,6 +54,21 @@ declare
     t record;
     n bigint;
 begin
+    for t in
+        select con.conrelid::regclass as child, con.confrelid::regclass as parent
+        from pg_constraint con
+        join pg_class parent on parent.oid = con.confrelid
+        where con.contype = 'f'
+          and parent.relnamespace::regnamespace::text not in ('audit', 'pg_catalog', 'information_schema')
+          and (con.confrelid = 'core.tenant'::regclass
+               or exists (select 1 from pg_attribute a
+                          where a.attrelid = con.confrelid and a.attname = 'tenant_id' and not a.attisdropped))
+          and not exists (select 1 from pg_attribute a
+                          where a.attrelid = con.conrelid and a.attname = 'tenant_id' and not a.attisdropped)
+    loop
+        raise exception '% references % but has no tenant_id: its rows would be left behind. Give it a tenant_id or delete it in scripts/reset-demo.sh.', t.child, t.parent;
+    end loop;
+
     for t in
         select c.table_schema, c.table_name
         from information_schema.columns c
