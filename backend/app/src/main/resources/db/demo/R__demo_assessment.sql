@@ -7,8 +7,10 @@
 -- governance and incident response weaker than the technical controls, as in a typical medium-sized factory.
 -- DemoSeedIntegrationTest checks that they are exactly the questions of that questionnaire.
 --
--- ON CONFLICT: if the tenant already has an open nis2-qnrcs assessment (assessment_open_uq), nothing is inserted;
--- the answers are only inserted for the seed assessment, once each (answer_question_uq on assessment and question).
+-- ON CONFLICT only on the seed's own ids: a re-run inserts nothing twice (the assessment by id, each answer by
+-- answer_question_uq on assessment and question). Any other clash fails the start instead of skipping the seed:
+-- e.g. an open nis2-qnrcs assessment of the factory (assessment_open_uq) would otherwise leave it without the
+-- submitted one the demo expects.
 -- Flyway runs this file again when it changes, but an edited answer does not replace the stored one: run
 -- scripts/reset-demo.sh to load the new values.
 insert into assessment.assessment (
@@ -27,7 +29,7 @@ insert into assessment.assessment (
                 "interactsOrGeneratesContent": false}}'::jsonb,
     'SUBMITTED', now() - interval '10 days', now() - interval '2 days'
 )
-on conflict do nothing;
+on conflict (id) do nothing;
 
 insert into assessment.answer (id, tenant_id, assessment_id, question_id, value, answered_at)
 select gen_random_uuid(), a.tenant_id, a.id, q.question_id, q.value, a.updated_at - interval '1 day'
@@ -171,4 +173,4 @@ cross join (values
     ('RC.CO-2-S-Q1', 'PARTIAL')
 ) as q (question_id, value)
 where a.id = 'de330000-0000-4000-8000-000000000001'
-on conflict do nothing;
+on conflict (assessment_id, question_id) do nothing;

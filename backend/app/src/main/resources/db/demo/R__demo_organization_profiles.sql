@@ -1,7 +1,8 @@
 -- Demo organization profiles for the tenants in deploy/keycloak/alinha-realm.json (see deploy/keycloak/README.md):
 -- the two persona organizations and ten more clients, so Marta's portfolio has twelve (#42).
 -- Without them /api/me falls back to the tenant id as the organization name. Loaded only with the `demo` profile.
--- ON CONFLICT: a profile registered through the wizard (same tenant or NIF) is never overwritten.
+-- ON CONFLICT only on the seed's own ids, so a re-run inserts nothing twice. A NIF already taken by another organization
+-- fails the start (organization_profile_nif_uq) instead of leaving a demo tenant without its profile.
 --
 -- Exception to RNF04 (every write recorded in the Audit Trail): this is fixture data written by Flyway, not a
 -- business write by a user, so it has no actor to record and no audit.audit_event row. Only db/demo may do this,
@@ -72,4 +73,4 @@ insert into organization.organization_profile (
      'Fabrico de moldes metálicos para a indústria de plásticos.', 70, 8900000,
      'Rua dos Moldes, 15', '2430-091', 'Marinha Grande', '244560300', 'geral@moldesmarinha.pt',
      'Nuno Ferreira', '964567890', now(), now())
-on conflict do nothing;
+on conflict (id) do nothing;
