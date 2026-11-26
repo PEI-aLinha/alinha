@@ -13,7 +13,6 @@ import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.postgresql.PostgreSQLContainer
 import pt.alinha.core.compliance.CatalogueRegistry
-import pt.alinha.core.compliance.ComplianceLevel
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.json.JsonMapper
 import java.nio.file.Files
@@ -51,6 +50,9 @@ class DemoSeedIntegrationTest {
         const val COMPONENTES_AGUEDA = "11111111-1111-4111-8111-111111111111"
         const val METALURGICA_AVEIRO = "22222222-2222-4222-8222-222222222222"
         const val DEMO_ASSESSMENT = "de330000-0000-4000-8000-000000000001"
+
+        /** Compliance levels of nis2-qnrcs v1, lowest first. */
+        val QNRCS_LEVEL_IDS = listOf("basic", "substantial", "high")
     }
 
     @Autowired
@@ -111,8 +113,15 @@ class DemoSeedIntegrationTest {
         assertThat(assessment["status"]).isEqualTo("SUBMITTED")
 
         val catalogue = catalogues.get(assessment["framework"] as String, assessment["catalogue_version"] as Int)!!
-        val maxLevel = ComplianceLevel.valueOf(assessment["max_level"] as String)
-        val expected = catalogue.controls.filter { it.level <= maxLevel }.flatMap { c -> c.questions.map { it.id } }
+        // Level ids compared by position on the QNRCS scale. Written to compile both before #179 (Control.level is the
+        // ComplianceLevel enum, max_level its name) and after it (level ids): once #179 is merged, use
+        // catalogue.levelIndex instead.
+        val position = { level: Any -> QNRCS_LEVEL_IDS.indexOf(level.toString().lowercase()) }
+        val maxLevel = position(assessment["max_level"] as String)
+        assertThat(maxLevel).describedAs("max_level").isNotNegative()
+        val expected = catalogue.controls
+            .filter { position(it.level) <= maxLevel }
+            .flatMap { c -> c.questions.map { it.id } }
 
         val answered = jdbc.queryForList(
             "select question_id from assessment.answer where assessment_id = ?::uuid and tenant_id = ?::uuid",
