@@ -225,6 +225,19 @@ class ConsultantAssignerIntegrationTest {
     }
 
     @Test
+    fun `an organization already in several consultants' tenants records the lowest subject, whatever the listing order`() {
+        val tenant = newTenant()
+        consultants(marta to 0, joao to 0) // Marta listed first; João's subject sorts first
+        identity.pool.getValue(marta) += tenant
+        identity.pool.getValue(joao) += tenant
+
+        val result = assign(tenant)
+
+        assertThat(result).isEqualTo(AssignedConsultant(joao, newlyAssigned = false))
+        assertThat(recorded(tenant)).isEqualTo(joao)
+    }
+
+    @Test
     fun `with no consultant, nothing is assigned`() {
         val tenant = newTenant()
 

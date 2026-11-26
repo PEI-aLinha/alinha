@@ -61,7 +61,12 @@ class ConsultantAssigner(
         }
 
         // Assigned outside this flow (an admin, the demo realm): record it, so the tie-break sees it, and stop there.
-        pool.firstOrNull { tenant in it.tenants }?.let { existing ->
+        val holders = pool.filter { tenant in it.tenants }
+        holders.minByOrNull { it.subject }?.let { existing ->
+            if (holders.size > 1) {
+                // Only one row per organization: record the same one whatever order the identity provider lists them in.
+                log.warn("Organization {} is in the tenants of {} consultants; recording {}", tenant.value, holders.size, existing.subject)
+            }
             record(tenant, existing.subject, viaIdentityProvider = true)
             return AssignedConsultant(existing.subject, newlyAssigned = false)
         }
