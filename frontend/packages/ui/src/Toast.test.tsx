@@ -70,12 +70,68 @@ describe('Toast', () => {
     expect(screen.queryByText('Ativo guardado')).not.toBeInTheDocument()
   })
 
-  it('waits while the focus is inside the toast', () => {
+  it('gives every toast a close button the keyboard can reach', () => {
     renderToast('Ativo guardado')
-    fireEvent.focus(screen.getByText('Ativo guardado'))
+    const close = screen.getByRole('button', { name: 'Fechar aviso' })
+    expect(close.tabIndex).toBe(0)
+    fireEvent.click(close)
+    expect(screen.queryByText('Ativo guardado')).not.toBeInTheDocument()
+  })
+
+  it('waits while the keyboard focus is in the toasts and resumes with the time left when it leaves', () => {
+    renderToast('Ativo guardado')
+    act(() => { vi.advanceTimersByTime(3000) })
+    act(() => { screen.getByRole('button', { name: 'Fechar aviso' }).focus() })
     act(() => { vi.advanceTimersByTime(60_000) })
     expect(screen.getByText('Ativo guardado')).toBeInTheDocument()
-    fireEvent.blur(screen.getByText('Ativo guardado'))
+
+    act(() => { screen.getByText('show').focus() })
+    act(() => { vi.advanceTimersByTime(1000) })
+    expect(screen.getByText('Ativo guardado')).toBeInTheDocument()
+    act(() => { vi.advanceTimersByTime(300) })
+    expect(screen.queryByText('Ativo guardado')).not.toBeInTheDocument()
+  })
+
+  it('holds every toast while the focus is in one of them, and moving between them restarts nothing', () => {
+    render(<ToastProvider><Trigger message="Ativo guardado" /><Trigger message="Pergunta deixada por responder" tone="info" /></ToastProvider>)
+    for (const show of screen.getAllByText('show')) fireEvent.click(show)
+    const [first, second] = screen.getAllByRole('button', { name: 'Fechar aviso' })
+    act(() => { first.focus() })
+    act(() => { vi.advanceTimersByTime(30_000) })
+    act(() => { second.focus() })
+    act(() => { vi.advanceTimersByTime(30_000) })
+
+    expect(screen.getByText('Ativo guardado')).toBeInTheDocument()
+    expect(screen.getByText('Pergunta deixada por responder')).toBeInTheDocument()
+  })
+
+  it('gives the focus back when a toast is closed with the keyboard, and the others go on', () => {
+    render(<ToastProvider><Trigger message="Ativo guardado" /></ToastProvider>)
+    const trigger = screen.getByText('show')
+    fireEvent.click(trigger)
+    fireEvent.click(trigger)
+    trigger.focus()
+    const [first] = screen.getAllByRole('button', { name: 'Fechar aviso' })
+    act(() => { first.focus() })
+
+    fireEvent.click(first)
+
+    expect(screen.getAllByText('Ativo guardado')).toHaveLength(1)
+    expect(trigger).toHaveFocus()
+    act(() => { vi.advanceTimersByTime(5000) })
+    expect(screen.queryByText('Ativo guardado')).not.toBeInTheDocument()
+  })
+
+  it('is not held for ever when the focused toast goes away without a blur', () => {
+    render(<ToastProvider><Trigger message="Ativo guardado" /></ToastProvider>)
+    const trigger = screen.getByText('show')
+    fireEvent.click(trigger)
+    fireEvent.click(trigger)
+    const [first] = screen.getAllByRole('button', { name: 'Fechar aviso' })
+    act(() => { first.focus() })
+    // No previous focus to give back to: the focus falls to the page with the toast.
+    act(() => { fireEvent.click(first) })
+
     act(() => { vi.advanceTimersByTime(5000) })
     expect(screen.queryByText('Ativo guardado')).not.toBeInTheDocument()
   })

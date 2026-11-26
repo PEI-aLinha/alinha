@@ -15,8 +15,9 @@ interface ToastApi {
 
 const ToastContext = createContext<ToastApi | null>(null)
 /**
- * Success and info toasts go away on their own, and wait while the pointer or the focus is on them; errors stay
- * until closed, so nobody misses them (WCAG 2.2.1).
+ * Success and info toasts go away on their own, and wait while the pointer is on them or the focus is anywhere in
+ * the toasts; errors stay until closed, so nobody misses them (WCAG 2.2.1). Every toast has a close button, so the
+ * keyboard can reach it (which pauses them all) and close it.
  */
 const DURATION_MS = 4200
 /** At most this many success and info toasts at once. Errors are never dropped to make room. */
@@ -42,6 +43,20 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const seq = useRef(0)
 
   const dismiss = useCallback((id: number) => setItems((prev) => prev.filter((t) => t.id !== id)), [])
+  // Focus anywhere in the toasts holds every success and info one, so tabbing from one to the next restarts nothing.
+  const region = useRef<HTMLDivElement>(null)
+  const [focusInside, setFocusInside] = useState(false)
+  // Where the focus came from, to give it back when a toast closed with the keyboard takes the focus with it.
+  const cameFrom = useRef<HTMLElement | null>(null)
+  const close = useCallback((id: number) => {
+    const back = region.current?.contains(document.activeElement) ? cameFrom.current : null
+    dismiss(id)
+    if (back?.isConnected) back.focus()
+  }, [dismiss])
+  // A focused toast that disappears takes the focus out without a blur event: do not stay held for ever.
+  useEffect(() => {
+    if (focusInside && !region.current?.contains(document.activeElement)) setFocusInside(false)
+  }, [items, focusInside])
 
   const show = useCallback((message: string, tone: ToastItem['tone'] = 'success') => {
     seq.current += 1
@@ -59,12 +74,20 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           mounted, start empty and are never hidden (display:none would take them out of the accessibility tree):
           screen readers often miss a region that appears already filled. Errors are alerts (assertive), the rest
           are status messages (polite) — WCAG 4.1.3. */}
-      <div className="pointer-events-none fixed left-1/2 top-5 z-[90] flex w-[min(400px,calc(100vw-40px))] -translate-x-1/2 flex-col gap-2 max-md:top-[72px]">
+      <div
+        ref={region}
+        onFocus={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) cameFrom.current = e.relatedTarget as HTMLElement | null
+          setFocusInside(true)
+        }}
+        onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocusInside(false) }}
+        className="pointer-events-none fixed left-1/2 top-5 z-[90] flex w-[min(400px,calc(100vw-40px))] -translate-x-1/2 flex-col gap-2 max-md:top-[72px]"
+      >
         <div role="alert" className="flex flex-col gap-2">
-          {errors.map((t) => <Toast key={t.id} item={t} onDismiss={dismiss} />)}
+          {errors.map((t) => <Toast key={t.id} item={t} held={focusInside} onDismiss={dismiss} onClose={close} />)}
         </div>
         <div role="status" className="flex flex-col gap-2">
-          {quiet.map((t) => <Toast key={t.id} item={t} onDismiss={dismiss} />)}
+          {quiet.map((t) => <Toast key={t.id} item={t} held={focusInside} onDismiss={dismiss} onClose={close} />)}
         </div>
       </div>
     </ToastContext.Provider>
@@ -73,11 +96,21 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
 const ICON: Record<ToastItem['tone'], string> = { success: '✓', info: 'i', error: '!' }
 
-function Toast({ item, onDismiss }: { item: ToastItem; onDismiss: (id: number) => void }) {
+/**
+ * [held]: the focus is somewhere in the toasts. [onDismiss] is the timer running out; [onClose] is the close button,
+ * which also gives the focus back.
+ */
+function Toast({ item, held, onDismiss, onClose }: {
+  item: ToastItem
+  held: boolean
+  onDismiss: (id: number) => void
+  onClose: (id: number) => void
+}) {
   const error = item.tone === 'error'
-  const [paused, setPaused] = useState(false)
+  const [hovered, setHovered] = useState(false)
+  const paused = hovered || held
   const remaining = useRef(DURATION_MS)
-  // The timer stops while the toast is pointed at or focused, and resumes with the time that was left.
+  // The timer stops while the toast is pointed at or the focus is in the toasts, and resumes with the time left.
   useEffect(() => {
     if (error || paused) return undefined
     const started = Date.now()
@@ -89,17 +122,14 @@ function Toast({ item, onDismiss }: { item: ToastItem; onDismiss: (id: number) =
   }, [error, paused, item.id, onDismiss])
   return (
     <div
-      onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}
-      onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}
-      className={cn('pointer-events-auto flex items-center gap-2.5 rounded-[12px] px-4 py-3 text-[0.875rem] font-bold text-white shadow-[0_12px_32px_rgb(var(--shadow-rgb)/0.25)] animate-pop-in', error ? 'bg-risk-high-ink pr-2' : 'bg-brand-deep')}
+      onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
+      className={cn('pointer-events-auto flex items-center gap-2.5 rounded-[12px] py-3 pl-4 pr-2 text-[0.875rem] font-bold text-white shadow-[0_12px_32px_rgb(var(--shadow-rgb)/0.25)] animate-pop-in', error ? 'bg-risk-high-ink' : 'bg-brand-deep')}
     >
       <span aria-hidden className={cn('font-extrabold text-signal-soft', item.tone === 'info' && 'grid size-[18px] shrink-0 place-items-center rounded-full border border-signal-soft/70 font-serif text-[0.75rem] italic')}>{ICON[item.tone]}</span>
       <span className="min-w-0 flex-1">{item.message}</span>
-      {error && (
-        <button type="button" onClick={() => onDismiss(item.id)} aria-label="Fechar aviso" className="-my-1 grid size-8 shrink-0 place-items-center rounded-full text-white/90 hover:bg-white/15 hover:text-white focus-visible:outline-white">
-          <X className="size-4" aria-hidden />
-        </button>
-      )}
+      <button type="button" onClick={() => onClose(item.id)} aria-label="Fechar aviso" className="-my-1 grid size-8 shrink-0 place-items-center rounded-full text-white/90 hover:bg-white/15 hover:text-white focus-visible:outline-white">
+        <X className="size-4" aria-hidden />
+      </button>
     </div>
   )
 }
