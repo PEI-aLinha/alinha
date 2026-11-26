@@ -3,15 +3,17 @@
 A collector that connects to an address the tenant typed (a self-managed server, the organisation's own domain)
 must go through this module, never through urllib or http.client directly:
 
-- [public_address] resolves the host once and refuses it unless every address is a public internet address, so a
+- [public_addresses] resolves the host once and refuses it unless every address is a public internet address, so a
   tenant cannot point the platform at its own network (SSRF);
-- the connection functions take that checked address and connect to it directly, with TLS verified against the
-  host name, so a second DNS answer cannot move the request somewhere else (DNS rebinding);
+- the connection functions take those checked addresses and connect to them directly, one after the other until one
+  answers, with TLS verified against the host name, so a second DNS answer cannot move the request somewhere else
+  (DNS rebinding);
 - redirects are never followed, bodies are capped and every exchange has a total deadline (a host that trickles
   its answer cannot hold a worker): what comes back is untrusted data.
 
-Time limits: connecting takes at most min(timeout, deadline); from the moment the connection is open, the TLS
-handshake, request and answer together take at most `deadline`. The DNS lookup in [public_address] uses the system
+Time limits: each connection attempt takes at most min(timeout, time left), and the attempts on every address
+together at most `deadline`; from the moment the connection is open, the TLS handshake, request and answer together
+take at most `deadline`. The DNS lookup in [public_addresses] uses the system
 resolver's own timeouts: a collector that must finish in a fixed time puts its own budget around the whole run.
 
 Network failures raise [TransientError] (the core retries the job), and so do TLS errors after the handshake (a
@@ -26,8 +28,9 @@ import ipaddress
 import socket
 import ssl
 import threading
+import time
 from dataclasses import dataclass, field
-from typing import Any, Callable, Mapping
+from typing import Any, Callable, Mapping, Sequence
 
 from alinha_job_consumer.collectors import CollectorError, TransientError
 
@@ -39,6 +42,8 @@ DEADLINE_FACTOR = 2
 MAX_BODY_BYTES = 2 * 1024 * 1024
 
 Resolve = Callable[..., Any]
+# One address checked by [public_addresses], or all of them in the order to try.
+Address = str | Sequence[str]
 
 
 @dataclass(frozen=True)
@@ -85,9 +90,10 @@ def is_public(address: str) -> bool:
     return ip.is_global
 
 
-def public_address(host: str, port: int, resolve: Resolve = socket.getaddrinfo) -> str:
-    """Resolves [host] once and refuses it unless EVERY address is public. Prefers an IPv4 address: containers
-    often have no IPv6 route. The lookup uses the system resolver's timeouts, not [TIMEOUT_S]."""
+def public_addresses(host: str, port: int, resolve: Resolve = socket.getaddrinfo) -> tuple[str, ...]:
+    """Resolves [host] once and refuses it unless EVERY address is public. Returns them all, without repeats and
+    IPv4 first (containers often have no IPv6 route), so a connection can fall back to the next one when an address
+    does not answer. The lookup uses the system resolver's timeouts, not [TIMEOUT_S]."""
     try:
         infos = resolve(host, port, type=socket.SOCK_STREAM)
     except socket.gaierror as error:
@@ -99,7 +105,13 @@ def public_address(host: str, port: int, resolve: Resolve = socket.getaddrinfo) 
     addresses = [info[4][0] for info in infos]
     if not addresses or not all(is_public(a) for a in addresses):
         raise CollectorError("host_not_allowed", "the address is not a public internet address")
-    return next((a for a in addresses if ":" not in a), addresses[0])
+    unique = list(dict.fromkeys(addresses))
+    return tuple(sorted(unique, key=lambda a: ":" in a))  # stable: keeps the resolver's order within a family
+
+
+def public_address(host: str, port: int, resolve: Resolve = socket.getaddrinfo) -> str:
+    """The first of [public_addresses]: for a caller that connects once and does not need a fallback."""
+    return public_addresses(host, port, resolve)[0]
 
 
 # -- connections --------------------------------------------------------------------------------------------------
@@ -149,6 +161,32 @@ def _deadline(timeout: float, deadline: float | None) -> float:
     return deadline if deadline is not None else timeout * DEADLINE_FACTOR
 
 
+def _connect(address: Address, port: int, timeout: float, limit: float) -> socket.socket:
+    """Connects to the first of [address] that answers, in order. Each attempt takes at most min(timeout, time left),
+    all of them together at most [limit]. Only addresses already checked by [public_addresses] may be passed: no
+    name is resolved here.
+
+    When every attempt fails, raises the last error, and ConnectionRefusedError only when every address refused (a
+    closed port, not a host that is down)."""
+    candidates = (address,) if isinstance(address, str) else tuple(address)
+    if not candidates:
+        raise ValueError("no address to connect to")
+    ends = time.monotonic() + limit
+    errors: list[OSError] = []
+    for candidate in candidates:
+        left = ends - time.monotonic()
+        if left <= 0:
+            break
+        try:
+            return socket.create_connection((candidate, port), min(timeout, left))
+        except OSError as error:
+            errors.append(error)
+    if not errors:
+        raise TimeoutError("no time left to connect")
+    other = [error for error in errors if not isinstance(error, ConnectionRefusedError)]
+    raise (other or errors)[-1]
+
+
 def _handshake(context: ssl.SSLContext, sock: socket.socket, host: str) -> ssl.SSLSocket:
     """TLS over [sock]. A failed handshake raises [_HandshakeError] wrapping the ssl.SSLError, so callers can tell it
     apart from TLS errors later in the exchange (a reset, an unexpected end of the stream)."""
@@ -165,16 +203,16 @@ class _HandshakeError(Exception):
 
 
 class _PinnedConnectionMixin:
-    """Connects to an address already checked by [public_address] and arms the total deadline on that socket.
+    """Connects to addresses already checked by [public_addresses] and arms the total deadline on that socket.
     The deadline lasts until [disarm], not until close(): http.client closes the connection before the body of a
     `Connection: close` answer is read."""
 
-    _address: str
+    _address: Address
     _deadline_s: float
     _watchdog: _Watchdog | None = None
 
     def _open(self, port: int, timeout: float) -> socket.socket:
-        sock = socket.create_connection((self._address, port), min(timeout, self._deadline_s))
+        sock = _connect(self._address, port, timeout, self._deadline_s)
         self._watchdog = _Watchdog(sock, self._deadline_s)
         return sock
 
@@ -190,7 +228,7 @@ class _PinnedConnectionMixin:
 class PinnedHTTPSConnection(_PinnedConnectionMixin, http.client.HTTPSConnection):
     """https to a checked address, with TLS verified against the host name and a total deadline."""
 
-    def __init__(self, host: str, port: int, address: str, timeout: float,
+    def __init__(self, host: str, port: int, address: Address, timeout: float,
                  context: ssl.SSLContext | None = None, deadline: float | None = None) -> None:
         super().__init__(host, port, timeout=timeout, context=context)
         self._address = address
@@ -201,7 +239,7 @@ class PinnedHTTPSConnection(_PinnedConnectionMixin, http.client.HTTPSConnection)
 
 
 class _PinnedHTTPConnection(_PinnedConnectionMixin, http.client.HTTPConnection):
-    def __init__(self, host: str, port: int, address: str, timeout: float, deadline: float | None = None) -> None:
+    def __init__(self, host: str, port: int, address: Address, timeout: float, deadline: float | None = None) -> None:
         super().__init__(host, port, timeout=timeout)
         self._address = address
         self._deadline_s = _deadline(timeout, deadline)
@@ -222,7 +260,7 @@ def _headers(items: Any) -> dict[str, str]:
     return {key.lower(): value for key, value in items}
 
 
-def pinned_https_get(host: str, address: str, path: str, headers: Mapping[str, str], *, port: int = 443,
+def pinned_https_get(host: str, address: Address, path: str, headers: Mapping[str, str], *, port: int = 443,
                      timeout: float = TIMEOUT_S, max_bytes: int = MAX_BODY_BYTES,
                      context: ssl.SSLContext | None = None, deadline: float | None = None) -> Response:
     """One GET over https to [address], never redirected. The body is read only for a 200 answer, and never with
@@ -252,7 +290,7 @@ def pinned_https_get(host: str, address: str, path: str, headers: Mapping[str, s
         connection.close()
 
 
-def pinned_http_location(host: str, address: str, path: str = "/", *, port: int = 80,
+def pinned_http_location(host: str, address: Address, path: str = "/", *, port: int = 80,
                          timeout: float = TIMEOUT_S, headers: Mapping[str, str] | None = None,
                          deadline: float | None = None) -> tuple[int, str | None]:
     """One GET over plain http, to see where it sends visitors: returns (status, Location). The body is never read.
@@ -280,7 +318,7 @@ def pinned_http_location(host: str, address: str, path: str = "/", *, port: int 
         connection.close()
 
 
-def tls_handshake(host: str, address: str, context: ssl.SSLContext, *, port: int = 443,
+def tls_handshake(host: str, address: Address, context: ssl.SSLContext, *, port: int = 443,
                   timeout: float = TIMEOUT_S, deadline: float | None = None) -> TlsInfo:
     """Opens a TLS session to [address] with SNI [host], sends nothing and closes it.
 
@@ -290,7 +328,7 @@ def tls_handshake(host: str, address: str, context: ssl.SSLContext, *, port: int
     watchdog: _Watchdog | None = None
     try:
         limit = _deadline(timeout, deadline)
-        with socket.create_connection((address, port), min(timeout, limit)) as sock:
+        with _connect(address, port, timeout, limit) as sock:
             watchdog = _Watchdog(sock, limit)
             with _handshake(context, sock, host) as tls:
                 return TlsInfo(tls.version() or "", tls.getpeercert() or {})

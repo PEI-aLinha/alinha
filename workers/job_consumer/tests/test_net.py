@@ -40,6 +40,17 @@ def test_prefers_an_ipv4_address():
     assert net.public_address("www.acme.pt", 443, resolving("2606:4700::1")) == "2606:4700::1"
 
 
+def test_public_addresses_returns_every_address_once_ipv4_first():
+    answer = resolving("2606:4700::1", "8.8.8.8", "2606:4700::2", "1.1.1.1", "8.8.8.8")
+    assert net.public_addresses("www.acme.pt", 443, answer) == ("8.8.8.8", "1.1.1.1", "2606:4700::1", "2606:4700::2")
+
+
+def test_public_addresses_refuses_the_host_when_any_address_is_private():
+    with pytest.raises(CollectorError) as error:
+        net.public_addresses("www.acme.pt", 443, resolving("8.8.8.8", "2606:4700::1", "fd00::1"))
+    assert error.value.code == "host_not_allowed"
+
+
 @pytest.mark.parametrize("address", [
     "2002:0a00:0001::",                          # 6to4 of 10.0.0.1
     "2002:7f00:0001::1",                         # 6to4 of 127.0.0.1
@@ -401,4 +412,90 @@ def test_connecting_never_takes_longer_than_the_deadline(monkeypatch):
         net.pinned_https_get("localhost", "127.0.0.1", "/", {}, timeout=10, deadline=2)
     with pytest.raises(TransientError):
         net.tls_handshake("localhost", "127.0.0.1", ssl.create_default_context(), timeout=10, deadline=2)
-    assert used == [2, 2]
+    assert used == [pytest.approx(2, abs=0.1)] * 2
+
+
+# -- several addresses --------------------------------------------------------------------------------------------
+
+DOWN = "192.0.2.1"  # TEST-NET-1: stands for an address of the host that does not answer
+
+
+def failing_for(monkeypatch, failures):
+    """Makes the connection to each address in [failures] raise that error; the others really connect."""
+    real = socket.create_connection
+    tried = []
+
+    def connect(address, timeout):
+        tried.append(address[0])
+        if address[0] in failures:
+            raise failures[address[0]]
+        return real(address, timeout)
+
+    monkeypatch.setattr(socket, "create_connection", connect)
+    return tried
+
+
+def test_https_get_falls_back_to_the_next_address(monkeypatch, https_server, certificate):
+    tried = failing_for(monkeypatch, {DOWN: TimeoutError()})
+    answer = net.pinned_https_get("localhost", (DOWN, "127.0.0.1"), "/", {}, port=https_server,
+                                  context=trusting(certificate))
+    assert answer.status == 200
+    assert tried == [DOWN, "127.0.0.1"]
+
+
+def test_http_location_falls_back_to_the_next_address(monkeypatch, http_server):
+    failing_for(monkeypatch, {DOWN: OSError("network unreachable")})
+    assert net.pinned_http_location("localhost", [DOWN, "127.0.0.1"], port=http_server) == (200, None)
+
+
+def test_tls_handshake_falls_back_to_the_next_address(monkeypatch, https_server, certificate):
+    failing_for(monkeypatch, {DOWN: ConnectionRefusedError()})
+    info = net.tls_handshake("localhost", (DOWN, "127.0.0.1"), trusting(certificate), port=https_server)
+    assert info.version in ("TLSv1.2", "TLSv1.3")
+
+
+def test_the_first_address_that_answers_is_used_and_the_rest_are_not_tried(monkeypatch, http_server):
+    tried = failing_for(monkeypatch, {})
+    net.pinned_http_location("localhost", ("127.0.0.1", DOWN), port=http_server)
+    assert tried == ["127.0.0.1"]
+
+
+def test_a_closed_port_is_reported_only_when_every_address_refuses(monkeypatch):
+    other = "192.0.2.2"
+    failing_for(monkeypatch, {DOWN: ConnectionRefusedError(), other: ConnectionRefusedError()})
+    with pytest.raises(ConnectionRefusedError):
+        net.pinned_http_location("localhost", (DOWN, other))
+    failing_for(monkeypatch, {DOWN: ConnectionRefusedError(), other: TimeoutError()})
+    with pytest.raises(TransientError):
+        net.pinned_http_location("localhost", (DOWN, other))
+
+
+def test_every_address_failing_is_retryable(monkeypatch):
+    failing_for(monkeypatch, {DOWN: TimeoutError(), "192.0.2.2": OSError("no route")})
+    with pytest.raises(TransientError):
+        net.pinned_https_get("localhost", (DOWN, "192.0.2.2"), "/", {})
+    with pytest.raises(TransientError):
+        net.tls_handshake("localhost", (DOWN, "192.0.2.2"), ssl.create_default_context())
+
+
+def test_the_attempts_together_never_take_longer_than_the_deadline(monkeypatch):
+    used = []
+
+    def slow(address, timeout):
+        used.append(timeout)
+        time.sleep(0.3)
+        raise TimeoutError()
+
+    monkeypatch.setattr(socket, "create_connection", slow)
+    started = time.monotonic()
+    with pytest.raises(TransientError):
+        net.pinned_https_get("localhost", ("192.0.2.1", "192.0.2.2", "192.0.2.3"), "/", {}, timeout=10,
+                             deadline=0.5)
+    assert time.monotonic() - started < 0.9
+    assert len(used) == 2  # the third address had no time left
+    assert used[0] == pytest.approx(0.5, abs=0.05) and used[1] < 0.25
+
+
+def test_no_address_is_a_programming_error():
+    with pytest.raises(ValueError):
+        net.tls_handshake("localhost", (), ssl.create_default_context())
