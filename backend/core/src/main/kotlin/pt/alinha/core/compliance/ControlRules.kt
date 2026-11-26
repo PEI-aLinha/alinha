@@ -23,7 +23,9 @@ class ControlRules : ComplianceEngine {
         val target = catalogue.levelIndex(maxLevel)
         require(target >= 0) { "Target level '$maxLevel' is not in the scale of ${catalogue.framework}" }
         val controls = catalogue.controls.filter { catalogue.levelIndex(it.level) <= target }
-        require(controls.isNotEmpty()) { "${catalogue.framework} v${catalogue.version} has no controls up to $maxLevel" }
+        require(controls.isNotEmpty()) {
+            "${catalogue.framework} v${catalogue.version} has no controls up to $maxLevel"
+        }
         val unanswered = controls.flatMap { it.questions }.map { it.id }.filterNot { it in answers }
         if (unanswered.isNotEmpty()) throw IncompleteAnswersException(unanswered)
 

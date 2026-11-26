@@ -1,0 +1,695 @@
+{
+  "engineVersion" : "controls-2026.11-v1",
+  "currentLevel" : null,
+  "targetLevel" : "substantial",
+  "coverage" : 0.9215686274509803,
+  "controls" : [ {
+    "controlId" : "GR.CO-1-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null
+  }, {
+    "controlId" : "GR.CO-3-B",
+    "level" : "basic",
+    "status" : "gap",
+    "domain" : "GR",
+    "reason" : "ANSWERED_NO"
+  }, {
+    "controlId" : "GR.CO-4-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null
+  }, {
+    "controlId" : "GR.CO-4-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null
+  }, {
+    "controlId" : "GR.CO-5-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null
+  }, {
+    "controlId" : "GR.CO-5-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null
+  }, {
+    "controlId" : "GR.CO-6-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null
+  }, {
+    "controlId" : "GR.GR-1-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null
+  }, {
+    "controlId" : "GR.GR-2-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null
+  }, {
+    "controlId" : "GR.GR-2-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null
+  }, {
+    "controlId" : "GR.GR-3-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null
+  }, {
+    "controlId" : "GR.GR-4-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null
+  }, {
+    "controlId" : "GR.GR-5-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null
+  }, {
+    "controlId" : "GR.FR-1-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null
+  }, {
+    "controlId" : "GR.FR-2-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null
+  }, {
+    "controlId" : "GR.FR-3-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null
+  }, {
+    "controlId" : "GR.FR-4-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null
+  }, {
+    "controlId" : "GR.FR-4-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null
+  }, {
+    "controlId" : "GR.PP-1-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null
+  }, {
+    "controlId" : "GR.PP-1-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null
+  }, {
+    "controlId" : "GR.PP-2-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null
+  }, {
+    "controlId" : "GR.PP-3-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null
+  }, {
+    "controlId" : "GR.CA-3-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null
+  }, {
+    "controlId" : "GR.CA-5-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null
+  }, {
+    "controlId" : "GR.CA-7-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null
+  }, {
+    "controlId" : "GR.CA-7-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null
+  }, {
+    "controlId" : "GR.CA-8-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null
+  }, {
+    "controlId" : "ID.GA-1-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null
+  }, {
+    "controlId" : "ID.GA-2-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null
+  }, {
+    "controlId" : "ID.GA-3-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null
+  }, {
+    "controlId" : "ID.GA-4-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null
+  }, {
+    "controlId" : "ID.GA-5-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null
+  }, {
+    "controlId" : "ID.GA-7-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null
+  }, {
+    "controlId" : "ID.GA-7-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null
+  }, {
+    "controlId" : "ID.GA-8-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null
+  }, {
+    "controlId" : "ID.AR-1-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null
+  }, {
+    "controlId" : "ID.AR-1-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null
+  }, {
+    "controlId" : "ID.AR-4-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null
+  }, {
+    "controlId" : "ID.AR-5-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null
+  }, {
+    "controlId" : "ID.AR-5-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null
+  }, {
+    "controlId" : "ID.AR-6-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null
+  }, {
+    "controlId" : "ID.AR-6-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null
+  }, {
+    "controlId" : "ID.AR-7-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null
+  }, {
+    "controlId" : "ID.AR-7-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null
+  }, {
+    "controlId" : "ID.MC-3-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null
+  }, {
+    "controlId" : "ID.MC-3-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null
+  }, {
+    "controlId" : "PR.GA-1-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null
+  }, {
+    "controlId" : "PR.GA-1-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null
+  }, {
+    "controlId" : "PR.GA-2-S",
+    "level" : "substantial",
+    "status" : "partial",
+    "domain" : "PR",
+    "reason" : "ANSWERED_PARTIAL"
+  }, {
+    "controlId" : "PR.GA-3-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null
+  }, {
+    "controlId" : "PR.GA-3-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null
+  }, {
+    "controlId" : "PR.GA-5-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null
+  }, {
+    "controlId" : "PR.GA-5-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null
+  }, {
+    "controlId" : "PR.GA-6-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null
+  }, {
+    "controlId" : "PR.GA-6-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null
+  }, {
+    "controlId" : "PR.GA-7-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null
+  }, {
+    "controlId" : "PR.GA-7-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null
+  }, {
+    "controlId" : "PR.FC-1-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null
+  }, {
+    "controlId" : "PR.FC-1-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null
+  }, {
+    "controlId" : "PR.FC-2-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null
+  }, {
+    "controlId" : "PR.FC-2-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null
+  }, {
+    "controlId" : "PR.SD-1-S",
+    "level" : "substantial",
+    "status" : "gap",
+    "domain" : "PR",
+    "reason" : "ANSWERED_NO"
+  }, {
+    "controlId" : "PR.SD-2-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null
+  }, {
+    "controlId" : "PR.SD-5-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null
+  }, {
+    "controlId" : "PR.SD-5-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null
+  }, {
+    "controlId" : "PR.SP-1-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null
+  }, {
+    "controlId" : "PR.SP-1-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null
+  }, {
+    "controlId" : "PR.SP-2-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null
+  }, {
+    "controlId" : "PR.SP-2-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null
+  }, {
+    "controlId" : "PR.SP-3-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null
+  }, {
+    "controlId" : "PR.SP-4-S",
+    "level" : "substantial",
+    "status" : "partial",
+    "domain" : "PR",
+    "reason" : "ANSWERED_PARTIAL"
+  }, {
+    "controlId" : "PR.RI-1-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null
+  }, {
+    "controlId" : "PR.RI-1-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null
+  }, {
+    "controlId" : "PR.RI-2-S",
+    "level" : "substantial",
+    "status" : "gap",
+    "domain" : "PR",
+    "reason" : "ANSWERED_NO"
+  }, {
+    "controlId" : "PR.RI-4-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null
+  }, {
+    "controlId" : "PR.RI-5-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null
+  }, {
+    "controlId" : "DE.MC-1-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "DE",
+    "reason" : null
+  }, {
+    "controlId" : "DE.MC-1-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "DE",
+    "reason" : null
+  }, {
+    "controlId" : "DE.MC-2-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "DE",
+    "reason" : null
+  }, {
+    "controlId" : "DE.MC-4-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "DE",
+    "reason" : null
+  }, {
+    "controlId" : "DE.MC-5-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "DE",
+    "reason" : null
+  }, {
+    "controlId" : "DE.MC-5-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "DE",
+    "reason" : null
+  }, {
+    "controlId" : "DE.MC-6-S",
+    "level" : "substantial",
+    "status" : "gap",
+    "domain" : "DE",
+    "reason" : "ANSWERED_UNKNOWN"
+  }, {
+    "controlId" : "DE.MC-7-S",
+    "level" : "substantial",
+    "status" : "gap",
+    "domain" : "DE",
+    "reason" : "ANSWERED_UNKNOWN"
+  }, {
+    "controlId" : "DE.AE-1-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "DE",
+    "reason" : null
+  }, {
+    "controlId" : "DE.AE-2-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "DE",
+    "reason" : null
+  }, {
+    "controlId" : "DE.AE-4-S",
+    "level" : "substantial",
+    "status" : "gap",
+    "domain" : "DE",
+    "reason" : "ANSWERED_UNKNOWN"
+  }, {
+    "controlId" : "DE.AE-6-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "DE",
+    "reason" : null
+  }, {
+    "controlId" : "RS.GI-1-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "RS",
+    "reason" : null
+  }, {
+    "controlId" : "RS.GI-1-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "RS",
+    "reason" : null
+  }, {
+    "controlId" : "RS.GI-2-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "RS",
+    "reason" : null
+  }, {
+    "controlId" : "RS.GI-3-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "RS",
+    "reason" : null
+  }, {
+    "controlId" : "RS.GI-5-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "RS",
+    "reason" : null
+  }, {
+    "controlId" : "RS.NC-1-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "RS",
+    "reason" : null
+  }, {
+    "controlId" : "RS.NC-1-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "RS",
+    "reason" : null
+  }, {
+    "controlId" : "RS.MI-1-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "RS",
+    "reason" : null
+  }, {
+    "controlId" : "RC.PR-1-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "RC",
+    "reason" : null
+  }, {
+    "controlId" : "RC.PR-3-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "RC",
+    "reason" : null
+  }, {
+    "controlId" : "RC.PR-5-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "RC",
+    "reason" : null
+  }, {
+    "controlId" : "RC.PR-6-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "RC",
+    "reason" : null
+  }, {
+    "controlId" : "RC.CO-1-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "RC",
+    "reason" : null
+  }, {
+    "controlId" : "RC.CO-2-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "RC",
+    "reason" : null
+  } ],
+  "framework" : "nis2-qnrcs",
+  "catalogueVersion" : 1,
+  "domains" : [ {
+    "domain" : "GR",
+    "currentLevel" : null,
+    "targetLevel" : "substantial"
+  }, {
+    "domain" : "ID",
+    "currentLevel" : "substantial",
+    "targetLevel" : "substantial"
+  }, {
+    "domain" : "PR",
+    "currentLevel" : "basic",
+    "targetLevel" : "substantial"
+  }, {
+    "domain" : "DE",
+    "currentLevel" : "basic",
+    "targetLevel" : "substantial"
+  }, {
+    "domain" : "RS",
+    "currentLevel" : "substantial",
+    "targetLevel" : "substantial"
+  }, {
+    "domain" : "RC",
+    "currentLevel" : "substantial",
+    "targetLevel" : "substantial"
+  } ],
+  "gaps" : [ {
+    "controlId" : "GR.CO-3-B",
+    "requirementIds" : [ "QNRCS-GR.CO-3" ],
+    "level" : "basic",
+    "status" : "gap",
+    "reason" : "ANSWERED_NO"
+  }, {
+    "controlId" : "PR.GA-2-S",
+    "requirementIds" : [ "QNRCS-PR.GA-2", "RJC-27-1-h" ],
+    "level" : "substantial",
+    "status" : "partial",
+    "reason" : "ANSWERED_PARTIAL"
+  }, {
+    "controlId" : "PR.SD-1-S",
+    "requirementIds" : [ "QNRCS-PR.SD-1", "RJC-27-1-g" ],
+    "level" : "substantial",
+    "status" : "gap",
+    "reason" : "ANSWERED_NO"
+  }, {
+    "controlId" : "PR.SP-4-S",
+    "requirementIds" : [ "QNRCS-PR.SP-4", "RJC-27-1-d" ],
+    "level" : "substantial",
+    "status" : "partial",
+    "reason" : "ANSWERED_PARTIAL"
+  }, {
+    "controlId" : "PR.RI-2-S",
+    "requirementIds" : [ "QNRCS-PR.RI-2", "RJC-27-1-d" ],
+    "level" : "substantial",
+    "status" : "gap",
+    "reason" : "ANSWERED_NO"
+  }, {
+    "controlId" : "DE.MC-6-S",
+    "requirementIds" : [ "QNRCS-DE.MC-6", "RJC-27-1-c" ],
+    "level" : "substantial",
+    "status" : "gap",
+    "reason" : "ANSWERED_UNKNOWN"
+  }, {
+    "controlId" : "DE.MC-7-S",
+    "requirementIds" : [ "QNRCS-DE.MC-7" ],
+    "level" : "substantial",
+    "status" : "gap",
+    "reason" : "ANSWERED_UNKNOWN"
+  }, {
+    "controlId" : "DE.AE-4-S",
+    "requirementIds" : [ "QNRCS-DE.AE-4", "RJC-27-1-a" ],
+    "level" : "substantial",
+    "status" : "gap",
+    "reason" : "ANSWERED_UNKNOWN"
+  } ]
+}
