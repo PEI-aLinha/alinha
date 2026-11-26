@@ -11,6 +11,16 @@ describe('rememberReturnPath / takeReturnPath', () => {
     expect(takeReturnPath(2000)).toBeNull()
   })
 
+  it('accepts a page with an encoded character that stays inside the organization', () => {
+    rememberReturnPath('/org/acme/caf%C3%A9.v1', 0)
+    expect(takeReturnPath(1)).toBe('/org/acme/caf%C3%A9.v1')
+  })
+
+  it('ignores a stored encoded parent segment', () => {
+    sessionStorage.setItem('alinha:resume', JSON.stringify({ path: '/org/acme/%2e%2e/%2e%2e/x', at: 0 }))
+    expect(takeReturnPath(1)).toBeNull()
+  })
+
   it('accepts a consultant page', () => {
     rememberReturnPath('/portfolio/acme/integrations/code-repository', 0)
     expect(takeReturnPath(1)).toBe('/portfolio/acme/integrations/code-repository')
@@ -21,7 +31,8 @@ describe('rememberReturnPath / takeReturnPath', () => {
     expect(takeReturnPath(RESUME_MAX_AGE_MS + 1)).toBeNull()
   })
 
-  it.each(['https://evil.example/', '//evil.example', '/login', '/org/acme/../../x', '/org/acme?x=1', '/org/'])(
+  it.each(['https://evil.example/', '//evil.example', '/login', '/org/acme/../../x', '/org/acme?x=1', '/org/',
+    '/org/acme/%2e%2e/%2E%2E/x', '/org/acme/%2e/x', '/org/acme/.%2E/x', '/org/acme%2F..%2F..%2Fx', '/org/acme/%5C..', '/org/acme/%E0%A4%A'])(
     'refuses %s',
     (path) => {
       expect(() => rememberReturnPath(path)).toThrow()
