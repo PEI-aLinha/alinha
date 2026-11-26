@@ -53,7 +53,8 @@ interface TenantMembership {
     fun members(): List<TenantMember>
 
     /**
-     * Removes an analyst from the current tenant and ends their sessions. The account itself stays, as a new account.
+     * Removes an analyst from the current tenant and ends their sessions. The account itself stays, as a new account
+     * that may accept another invitation or register an organization of its own.
      *
      * @throws org.springframework.web.ErrorResponseException 404 `MEMBER_NOT_FOUND` (not an analyst of this tenant),
      *   503 `IDENTITY_UNAVAILABLE`.

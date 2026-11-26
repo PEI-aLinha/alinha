@@ -12,15 +12,19 @@ create table core.invitation (
     accepted_at timestamptz,
     accepted_by text,
     revoked_at  timestamptz,
+    -- When the analyst who accepted it was removed: the account is free to join or register again.
+    left_at     timestamptz,
     check ((accepted_at is null) = (accepted_by is null)),
-    check (accepted_at is null or revoked_at is null)
+    check (accepted_at is null or revoked_at is null),
+    check (left_at is null or accepted_at is not null)
 );
 
 -- One pending invitation per email in an organization: inviting again revokes the previous one first.
 create unique index invitation_pending_email_uq on core.invitation (tenant_id, email)
     where accepted_at is null and revoked_at is null;
--- An account joins through at most one invitation (and provisioning refuses accounts that did).
-create unique index invitation_accepted_by_uq on core.invitation (accepted_by) where accepted_by is not null;
+-- An account is in at most one organization by invitation at a time (and provisioning refuses it meanwhile).
+create unique index invitation_accepted_by_uq on core.invitation (accepted_by)
+    where accepted_by is not null and left_at is null;
 
 grant usage on schema core to alinha_app;
 revoke all on core.invitation from public, alinha_app;

@@ -36,7 +36,8 @@ unauthenticated writes: that would be the public registration endpoint ADR 0004 
   `registrant`) until it is refreshed: provisioning refuses an account that accepted an invitation, and accepting
   refuses an account that owns a tenant or already accepted one.
 - **Members come from the identity provider**: the accounts whose `tenant_id` is the tenant, with their realm role.
-  Removing an analyst undoes the join (the account gets `registrant` back, as a new account of its own) and ends the
+  Removing an analyst undoes the join (the account gets `registrant` back, as a new account of its own), marks the
+  invitation it joined with as left (`left_at`), so the one-organization check no longer counts it, and ends the
   account's sessions, so a refresh token cannot keep the old tenant. The Designated Officer cannot be removed this
   way. Consultants are not members: they are assigned (organization#5).
 - The identity calls are in `IdentityMembership`, internal and implemented by `KeycloakIdentityDirectory` next to

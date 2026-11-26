@@ -60,7 +60,8 @@ secrets (`core.invitation`, SHA-256 hash only) and the one step a plugin cannot 
 - An account that joined by invitation cannot register an organization, and an account that registered one cannot
   accept an invitation, even with a stale `registrant` token: both check the database.
 - `members()` lists the accounts whose `tenant_id` is the current tenant. `removeAnalyst(subject)` removes an analyst
-  (never the Designated Officer), gives the account `registrant` back and ends its sessions.
+  (never the Designated Officer), gives the account `registrant` back and ends its sessions. The invitation it joined
+  with is marked as left, so the account may later accept another invitation or register an organization.
 
 
 1. `TenantResolutionInterceptor` resolves the tenant for every endpoint, after the RBAC check.

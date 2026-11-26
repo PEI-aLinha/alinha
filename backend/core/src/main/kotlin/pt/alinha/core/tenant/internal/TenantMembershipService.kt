@@ -215,6 +215,9 @@ class TenantMembershipService(
             throw RegistrationProblem(HttpStatus.NOT_FOUND, "No such analyst", MEMBER_NOT_FOUND)
         }
         tx.executeWithoutResult {
+            // Frees the account: it may accept another invitation or register an organization of its own later.
+            jdbc.sql("update core.invitation set left_at = ? where tenant_id = ? and accepted_by = ? and left_at is null")
+                .params(Timestamp.from(Instant.now()), tenant.value, subject).update()
             audit.record(MEMBER_REMOVED, MEMBER_ENTITY, subject, mapOf("role" to ANALYST_ROLE))
             // Last, so a failure rolls the audit entry back. A failed commit after this leaves the removal unaudited:
             // logged, and visible in the identity provider's own admin events.
@@ -305,7 +308,10 @@ class TenantMembershipService(
     )
 }
 
-/** An account that joined an organization by invitation: it must not register one of its own (ADR 0007). */
+/**
+ * An account that is in an organization by invitation and was not removed from it: it must not register one of its
+ * own nor accept another invitation (ADR 0007).
+ */
 internal fun hasAcceptedInvitation(jdbc: JdbcClient, subject: String): Boolean =
-    jdbc.sql("select exists (select 1 from core.invitation where accepted_by = ?)").param(subject)
+    jdbc.sql("select exists (select 1 from core.invitation where accepted_by = ? and left_at is null)").param(subject)
         .query(Boolean::class.java).single()

@@ -333,6 +333,25 @@ class TenantMembershipIntegrationTest {
     }
 
     @Test
+    fun `a removed analyst can be invited again, and can register an organization of their own`() {
+        val first = asOfficer { membership.invite("ana@empresa.pt") }
+        val sub = asNewAccount("ana@empresa.pt")
+        membership.acceptForCurrentUser(first.token)
+        asOfficer { membership.removeAnalyst(sub) }
+
+        val again = asOfficer { membership.invite("ana@empresa.pt") }
+        asNewAccount("ana@empresa.pt", sub = sub)
+        assertThat(membership.acceptForCurrentUser(again.token)).isEqualTo(tenant)
+
+        asOfficer { membership.removeAnalyst(sub) }
+        asNewAccount("ana@empresa.pt", sub = sub)
+        RequestContextHolder.resetRequestAttributes()
+        val own = provisioning.provisionForCurrentUser { it }
+        assertThat(jdbc.queryForObject("select owner_subject from core.tenant where id = ?", String::class.java, own.value))
+            .isEqualTo(sub)
+    }
+
+    @Test
     fun `the Designated Officer and members of other organizations cannot be removed`() {
         val elsewhere = UUID.randomUUID().toString()
         directory.add(elsewhere, TenantId(UUID.randomUUID()), "analyst")
