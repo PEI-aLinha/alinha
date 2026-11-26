@@ -1,4 +1,4 @@
-# ADR 0007 — External Surface checks a domain on the officer's declaration (MVP)
+# ADR 0009 — External Surface checks a domain on the officer's declaration (MVP)
 
 - **Status:** accepted
 - **Date:** 2026-11-26
