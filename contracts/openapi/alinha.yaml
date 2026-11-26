@@ -277,6 +277,9 @@ paths:
           $ref: '#/components/responses/NotFound'
         '503':
           description: The identity provider did not answer (`code` = `IDENTITY_UNAVAILABLE`); nothing changed.
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
           content:
             application/problem+json:
               schema:
@@ -347,6 +350,17 @@ paths:
                 $ref: '#/components/schemas/Problem'
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
+        '503':
+          description: |
+            The identity provider did not answer while checking the team (`code` = `IDENTITY_UNAVAILABLE`); no
+            invitation was created.
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
 
   /api/organization/invitations/{invitationId}:
     parameters:
@@ -399,10 +413,16 @@ paths:
       responses:
         '204':
           description: The account joined the organization.
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
-          description: Not a new account, or the invitation is for another email (`INVITATION_FOR_ANOTHER_EMAIL`).
+          description: |
+            With `code` = `INVITATION_FOR_ANOTHER_EMAIL`: the invitation is for another email. Without a `code`: the
+            account cannot accept at all, because it is not a new account (`registrant`), its email is not verified
+            yet, or its token has no email or subject. The page then tells the person to verify their email and sign
+            in again.
           content:
             application/problem+json:
               schema:
@@ -417,6 +437,8 @@ paths:
             application/problem+json:
               schema:
                 $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
         '429':
           description: Too many attempts from this client (`code` = `TOO_MANY_REGISTRATIONS`).
           headers:
@@ -1490,13 +1512,16 @@ components:
 
     IssuedInvitation:
       type: object
-      required: [id, email, expiresAt, token]
+      required: [id, email, createdAt, expiresAt, token]
       properties:
         id:
           type: string
           format: uuid
         email:
           type: string
+        createdAt:
+          type: string
+          format: date-time
         expiresAt:
           type: string
           format: date-time

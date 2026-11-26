@@ -900,6 +900,8 @@ export interface components {
             id: string;
             email: string;
             /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
             expiresAt: string;
             /**
              * @description The invitation's secret, returned only here and never stored in clear. The link is
@@ -1472,6 +1474,7 @@ export interface operations {
             /** @description The identity provider did not answer (`code` = `IDENTITY_UNAVAILABLE`); nothing changed. */
             503: {
                 headers: {
+                    "Retry-After": components["headers"]["RetryAfter"];
                     [name: string]: unknown;
                 };
                 content: {
@@ -1552,6 +1555,19 @@ export interface operations {
                 };
             };
             422: components["responses"]["UnprocessableEntity"];
+            /**
+             * @description The identity provider did not answer while checking the team (`code` = `IDENTITY_UNAVAILABLE`); no
+             *     invitation was created.
+             */
+            503: {
+                headers: {
+                    "Retry-After": components["headers"]["RetryAfter"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     cancelInvitation: {
@@ -1605,8 +1621,14 @@ export interface operations {
                 };
                 content?: never;
             };
+            400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
-            /** @description Not a new account, or the invitation is for another email (`INVITATION_FOR_ANOTHER_EMAIL`). */
+            /**
+             * @description With `code` = `INVITATION_FOR_ANOTHER_EMAIL`: the invitation is for another email. Without a `code`: the
+             *     account cannot accept at all, because it is not a new account (`registrant`), its email is not verified
+             *     yet, or its token has no email or subject. The page then tells the person to verify their email and sign
+             *     in again.
+             */
             403: {
                 headers: {
                     [name: string]: unknown;
@@ -1626,6 +1648,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            422: components["responses"]["UnprocessableEntity"];
             /** @description Too many attempts from this client (`code` = `TOO_MANY_REGISTRATIONS`). */
             429: {
                 headers: {

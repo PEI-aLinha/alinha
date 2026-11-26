@@ -93,7 +93,7 @@ class TenantMembershipService(
             // No email in the audit trail: personal data stays in the invitation row (docs/audit.md).
             audit.record(INVITATION_CREATED, INVITATION_ENTITY, id.toString(), mapOf("role" to ANALYST_ROLE))
         }
-        return IssuedInvitation(id, normalized, token, expiresAt)
+        return IssuedInvitation(id, normalized, token, now, expiresAt)
     }
 
     override fun pendingInvitations(): List<PendingInvitation> {
