@@ -589,6 +589,11 @@ export interface components {
             id: string;
             /** @description Kind of work, named by the plugin that owns it, e.g. `assessment-question`. */
             type: string;
+            /**
+             * @description What that kind of work is called, in European Portuguese (e.g. `Pergunta da avaliação`), named by the
+             *     plugin that owns it. Render it as plain text.
+             */
+            typeLabel: string;
             /** @description The work's id in the owning plugin. */
             reference: string;
             /** @description What to do, in European Portuguese. Free text from the plugin that owns the work: render it as plain text. */

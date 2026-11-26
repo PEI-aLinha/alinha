@@ -989,7 +989,7 @@ components:
     Task:
       type: object
       description: A piece of another plugin's work given to a member (organization#7).
-      required: [id, type, reference, title, link, assigneeId, dueDate, status, assignedAt, completedAt]
+      required: [id, type, typeLabel, reference, title, link, assigneeId, dueDate, status, assignedAt, completedAt]
       properties:
         id:
           type: string
@@ -998,6 +998,13 @@ components:
           type: string
           description: Kind of work, named by the plugin that owns it, e.g. `assessment-question`.
           pattern: '^[a-z][a-z0-9-]{0,49}$'
+        typeLabel:
+          type: string
+          description: |
+            What that kind of work is called, in European Portuguese (e.g. `Pergunta da avaliação`), named by the
+            plugin that owns it. Render it as plain text.
+          minLength: 1
+          maxLength: 60
         reference:
           type: string
           description: The work's id in the owning plugin.
