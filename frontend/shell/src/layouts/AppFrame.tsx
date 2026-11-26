@@ -44,7 +44,7 @@ export function AppFrame({ sections, subtitle, tools, children }: AppFrameProps)
         <nav aria-label="Navegação principal" className="mt-9 flex flex-1 flex-col gap-5 overflow-y-auto">
           {sections.map((section, i) => (
             <div key={section.heading ?? i} className="flex flex-col gap-1">
-              {section.heading && <p className="eyebrow mb-1 truncate px-3 text-[0.6563rem] text-muted">{section.heading}</p>}
+              {section.heading && <p className="eyebrow mb-1 truncate px-3 text-[0.75rem] text-muted">{section.heading}</p>}
               <ul className="flex flex-col gap-1">
                 {section.links.map((link) => <li key={link.to}><SideLink link={link} active={isLinkActive(link, pathname)} /></li>)}
               </ul>
