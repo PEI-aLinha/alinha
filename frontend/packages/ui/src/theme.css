@@ -205,15 +205,16 @@
   button:disabled { cursor: not-allowed; }
 }
 
+/* Small label (table headers, field groups, sidebar sections): bold sans in sentence case.
+   Monospace and uppercase tracking read as costume, not as data; mono stays for codes to copy. */
 @utility eyebrow {
-  font-family: var(--font-mono);
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  font-family: var(--font-sans);
+  font-weight: 700;
+  letter-spacing: 0;
   line-height: 1.3;
 }
 
-/* Section heading (h2 inside a page): sits between the 30 px page title and the 11 px eyebrows. */
+/* Section heading (h2 inside a page): sits between the 30 px page title and the 11 px labels. */
 @utility section-title {
   font-size: 1.0625rem;
   font-weight: 800;
