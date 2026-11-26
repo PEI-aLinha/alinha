@@ -341,10 +341,12 @@ paths:
         The catalogue version and the highest compliance level asked are fixed when the assessment starts:
         a newer catalogue never changes the questions of an existing assessment (NFR05, NFR18).
 
-        The questions are cut to the scope computed from `scope` with the core applicability rules. For
-        `nis2-qnrcs`, the NIS2 classification sets `maxLevel`; other frameworks get every level.
-        The submitted `scope` is stored with the assessment, together with `rulesVersion`, so it can be
-        checked later. The classification is indicative and self-declared: the consultant confirms it.
+        The questions are cut to the organization's regulatory scope, answered in the organization plugin
+        (`PUT /api/organization/scope/answers`) and read through the core `ApplicabilityQuery` (core#25). For
+        `nis2-qnrcs`, the NIS2 classification sets `maxScaleLevel`: the official CNCS qualification when registered,
+        otherwise the indicative one. Other frameworks get every level. The applicability result is stored with
+        the assessment, together with `rulesVersion`, so it can be checked later. A `scope` in the body is
+        deprecated and ignored.
 
         At most one open (not `validated`) assessment per framework: a second one is a `409`
         (`code` = `ASSESSMENT_ALREADY_OPEN`, with `assessmentId` of the open one). Permission
@@ -370,17 +372,21 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '409':
           description: |
-            An assessment of this framework is already open (`code` = `ASSESSMENT_ALREADY_OPEN`).
-            `assessmentId` is the open one: continue it.
+            `code` is one of:
+            - `ASSESSMENT_ALREADY_OPEN`: an assessment of this framework is already open. `assessmentId` is the
+              open one: continue it.
+            - `SCOPE_NOT_ANSWERED`: the organization has not answered the scope questions yet.
           content:
             application/problem+json:
               schema:
-                $ref: '#/components/schemas/AssessmentAlreadyOpenProblem'
+                oneOf:
+                  - $ref: '#/components/schemas/AssessmentAlreadyOpenProblem'
+                  - $ref: '#/components/schemas/Problem'
         '422':
           description: |
             `code` is one of:
-            - `VALIDATION_FAILED`: invalid or contradictory `scope` answers, or unknown `framework` format.
-            - `FRAMEWORK_NOT_IN_SCOPE`: by the `scope` answers, the framework does not apply.
+            - `VALIDATION_FAILED`: unknown `framework` format, or an unreadable body.
+            - `FRAMEWORK_NOT_IN_SCOPE`: by the organization's scope answers, the framework does not apply.
             - `CATALOGUE_NOT_FOUND`: there is no catalogue for this framework yet.
           content:
             application/problem+json:
@@ -1048,23 +1054,25 @@ components:
 
     StartAssessmentRequest:
       type: object
-      required: [framework, scope]
+      required: [framework]
       properties:
         framework:
           type: string
           pattern: '^[a-z0-9]+(-[a-z0-9]+)*$'
           description: Framework id, as in `frameworks/<id>/`, e.g. `nis2-qnrcs`, `gdpr`, `ai-act`.
         scope:
-          $ref: '#/components/schemas/ApplicabilityInput'
+          deprecated: true
+          description: Ignored since core#25 (the scope comes from the organization plugin). Kept until clients stop sending it.
+          allOf:
+            - $ref: '#/components/schemas/ApplicabilityInput'
 
     ApplicabilityInput:
       type: object
       description: |
-        **Temporary.** The facts the core applicability rules need (`docs/applicability.md`). Sent on start
-        until the core stores each organization's applicability (core#25); then this field is deprecated.
+        **Deprecated** (core#25): the facts the core applicability rules need (`docs/applicability.md`), once sent
+        on start. The server now ignores it and reads the organization's stored scope instead.
         Mirrors `pt.alinha.core.compliance.ApplicabilityInput`.
         Omitted booleans mean `false`; an omitted `entityTypes` means none.
-        Self-declared by the organization and stored as sent with the assessment (see `startAssessment`).
       required: [size, nis2, gdpr, aiAct]
       properties:
         size:
@@ -1390,7 +1398,26 @@ components:
 
     ComplianceLevel:
       type: string
-      enum: [basic, substantial, high]
+      deprecated: true
+      description: |
+        **Deprecated** (ADR 0007): the id of a level of the catalogue's own scale, e.g. `basic`, `substantial`,
+        `high` for `nis2-qnrcs` (unchanged) or `1` to `5` for `soc-cmm`. Use the `Level` fields
+        (`maxScaleLevel`, `scaleLevel`), which carry the label too. Kept until every client has moved.
+
+    Level:
+      type: object
+      description: |
+        One level of a catalogue's level scale (ADR 0007), e.g. `{id: substantial, label: Substancial}` (QNRCS
+        compliance level) or `{id: "3", label: Definido}` (SOC-CMM maturity level). Levels of different
+        frameworks are never compared.
+      required: [id, label]
+      properties:
+        id:
+          type: string
+          pattern: '^[a-z0-9]+(-[a-z0-9]+)*$'
+        label:
+          type: string
+          description: Name shown to the user, in Portuguese.
 
     AnswerValue:
       type: string
@@ -1436,28 +1463,35 @@ components:
       allOf:
         - $ref: '#/components/schemas/AssessmentSummary'
         - type: object
-          required: [catalogueTitle, nis2Classification, maxLevel, rulesVersion, controls]
+          required: [catalogueTitle, nis2Classification, nis2ClassificationOfficial, maxLevel, maxScaleLevel, rulesVersion, controls]
           properties:
             catalogueTitle:
               type: string
             nis2Classification:
               type: string
               enum: [essential, important, not-covered, to-be-assessed]
-              description: Indicative, from the applicability rules at start. The official one is the CNCS's.
+              description: |
+                Fixed at start: the official CNCS qualification when the organization had registered it
+                (`nis2ClassificationOfficial` true), otherwise the indicative one from the applicability rules.
+            nis2ClassificationOfficial:
+              type: boolean
+              description: True when `nis2Classification` is the official CNCS qualification, not the indicative one.
             maxLevel:
               $ref: '#/components/schemas/ComplianceLevel'
+            maxScaleLevel:
+              $ref: '#/components/schemas/Level'
             rulesVersion:
               type: string
               description: Version of the applicability rules used at start (NFR05).
             controls:
               type: array
-              description: Controls up to `maxLevel`, in catalogue order.
+              description: Controls up to `maxScaleLevel`, in catalogue order.
               items:
                 $ref: '#/components/schemas/QuestionnaireControl'
 
     QuestionnaireControl:
       type: object
-      required: [id, title, level, technical, questions]
+      required: [id, title, level, scaleLevel, technical, questions]
       properties:
         id:
           type: string
@@ -1465,6 +1499,8 @@ components:
           type: string
         level:
           $ref: '#/components/schemas/ComplianceLevel'
+        scaleLevel:
+          $ref: '#/components/schemas/Level'
         technical:
           type: boolean
           description: Questions an analyst usually answers.

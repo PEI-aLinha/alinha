@@ -2,7 +2,13 @@
 
 `core.compliance.ApplicabilityRules.assess(input)` tells an organization which frameworks apply to it and its
 indicative NIS2 classification. The rules are deterministic and versioned (`ApplicabilityRules.VERSION`, RNF05):
-store the version with every result. Tests: `ApplicabilityRulesTest`.
+store the version with every result. Tests: `ApplicabilityRulesTest`. Once a framework applies, its assessment is
+evaluated by the Compliance Engine: see `docs/compliance-engine.md`.
+
+The organization plugin stores the answers and serves the current result through `core.compliance.ApplicabilityQuery`
+(`current(tenant)`, null until the scope is answered), with the official CNCS qualification in
+`officialNis2Classification` when registered: it overrides the indicative classification. The assessment plugin
+reads it when an assessment starts (`409 SCOPE_NOT_ANSWERED` while it is null).
 
 The result is **indicative**. The official NIS2 qualification is made by the CNCS (RJC art. 8.º), and findings
 marked `review` must be confirmed by a consultant. Every finding carries its legal basis and a plain-language
