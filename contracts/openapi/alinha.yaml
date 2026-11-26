@@ -340,8 +340,9 @@ paths:
       summary: List the organization's critical services
       description: |
         Critical services (the services the organization cannot do without) of the current organization,
-        ordered by `name` ascending (risk-assets#2). Permission `critical-service:read` (Designated Officer,
-        analyst, consultant).
+        ordered by `name` ascending (risk-assets#2). `page` below 0 or `pageSize` outside 1..100 is `400`
+        (`code` = `VALIDATION_FAILED`, `errors[0].field` names the parameter). Permission
+        `critical-service:read` (Designated Officer, analyst, consultant).
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/PageSize'
@@ -491,7 +492,9 @@ paths:
       summary: List the organization's assets
       description: |
         Assets of the current organization, ordered by `name` then `id` ascending (risk-assets#2). Optional
-        filters combine with AND. Permission `asset:read` (Designated Officer, analyst, consultant).
+        filters combine with AND. An unknown `type` or `criticality`, a `serviceId` that is not a uuid, a `page`
+        below 0 or a `pageSize` outside 1..100 is `400` (`code` = `VALIDATION_FAILED`, `errors[0].field` names
+        the parameter). Permission `asset:read` (Designated Officer, analyst, consultant).
       parameters:
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/PageSize'
