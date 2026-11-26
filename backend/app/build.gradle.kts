@@ -40,6 +40,11 @@ dependencies {
 
 // Tests (ModularityTest, CI) run without OpenBao: no secrets are needed to verify the modules.
 tasks.test {
+    // DemoSeedIntegrationTest reads these outside the module: a change to them alone must run the tests again.
+    inputs.file(rootProject.file("deploy/keycloak/alinha-realm.json"))
+        .withPropertyName("demoRealm").withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.file(rootProject.file("scripts/reset-demo.sh"))
+        .withPropertyName("demoResetScript").withPathSensitivity(PathSensitivity.RELATIVE)
     systemProperty("spring.cloud.vault.enabled", "false")
     // With Vault off, db.* is not resolved. Take it from the environment (no credentials in code);
     // context tests should use Testcontainers (@ServiceConnection / @DynamicPropertySource), which overrides these.
