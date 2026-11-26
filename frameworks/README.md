@@ -18,7 +18,9 @@ frameworks/<framework>/vN/applicability.yaml
 **Level scale (ADR 0007).** A catalogue in the v2 format (`contracts/frameworks/catalogue.v2.schema.json`) declares
 its own ordered `levels: [{id, label}]`, lowest first, and each control's `level` is one of those ids. A v1 catalogue
 (no `levels`, e.g. `nis2-qnrcs/v1`, already released) has the QNRCS compliance levels basic, substantial, high.
-`scripts/validate-frameworks.sh` picks the schema by the presence of `levels:`.
+`scripts/validate-frameworks.sh` picks the schema by the presence of `levels:`. A catalogue that declares `levels` gets no implicit
+evidence bars (#26): a future `nis2-qnrcs/v2` must restate `requiredStrength: DOCUMENT_VERIFIED` and
+`requiredStrengthTechnical: TECHNICALLY_VERIFIED` for `high`.
 
 **RNF18 — a new version without recompiling or redeploying.** Catalogues do NOT go inside the jar:
 the Compliance Engine reads them at runtime (folder mounted into the container, or imported into the database),
