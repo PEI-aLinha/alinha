@@ -225,7 +225,7 @@ export interface paths {
          *
          *     The questions are cut to the organization's regulatory scope, answered in the organization plugin
          *     (`PUT /api/organization/scope/answers`) and read through the core `ApplicabilityQuery` (core#25). For
-         *     `nis2-qnrcs`, the NIS2 classification sets `maxLevel`: the official CNCS qualification when registered,
+         *     `nis2-qnrcs`, the NIS2 classification sets `maxScaleLevel`: the official CNCS qualification when registered,
          *     otherwise the indicative one. Other frameworks get every level. The applicability result is stored with
          *     the assessment, together with `rulesVersion`, so it can be checked later. A `scope` in the body is
          *     deprecated and ignored.
@@ -888,8 +888,23 @@ export interface components {
          * @enum {string}
          */
         AssessmentStatus: "draft" | "submitted" | "evaluated" | "validated";
-        /** @enum {string} */
-        ComplianceLevel: "basic" | "substantial" | "high";
+        /**
+         * @deprecated
+         * @description **Deprecated** (ADR 0007): the id of a level of the catalogue's own scale, e.g. `basic`, `substantial`,
+         *     `high` for `nis2-qnrcs` (unchanged) or `1` to `5` for `soc-cmm`. Use the `Level` fields
+         *     (`maxScaleLevel`, `scaleLevel`), which carry the label too. Kept until every client has moved.
+         */
+        ComplianceLevel: string;
+        /**
+         * @description One level of a catalogue's level scale (ADR 0007), e.g. `{id: substantial, label: Substancial}` (QNRCS
+         *     compliance level) or `{id: "3", label: Definido}` (SOC-CMM maturity level). Levels of different
+         *     frameworks are never compared.
+         */
+        Level: {
+            id: string;
+            /** @description Name shown to the user, in Portuguese. */
+            label: string;
+        };
         /** @enum {string} */
         AnswerValue: "yes" | "partial" | "no" | "unknown";
         Progress: {
@@ -923,15 +938,17 @@ export interface components {
             /** @description True when `nis2Classification` is the official CNCS qualification, not the indicative one. */
             nis2ClassificationOfficial: boolean;
             maxLevel: components["schemas"]["ComplianceLevel"];
+            maxScaleLevel: components["schemas"]["Level"];
             /** @description Version of the applicability rules used at start (NFR05). */
             rulesVersion: string;
-            /** @description Controls up to `maxLevel`, in catalogue order. */
+            /** @description Controls up to `maxScaleLevel`, in catalogue order. */
             controls: components["schemas"]["QuestionnaireControl"][];
         };
         QuestionnaireControl: {
             id: string;
             title: string;
             level: components["schemas"]["ComplianceLevel"];
+            scaleLevel: components["schemas"]["Level"];
             /** @description Questions an analyst usually answers. */
             technical: boolean;
             questions: components["schemas"]["QuestionnaireQuestion"][];

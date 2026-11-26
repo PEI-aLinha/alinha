@@ -38,4 +38,8 @@ maturity questionnaire with a single 1–5 maturity number (RF07, RF10).
   intended next step.
 - The level-scale change is a coordinated `contracts/` change with the assessment plugin (schema, OpenAPI, database
   constraint, questionnaire screens).
+- `ComplianceLevel` (OpenAPI) is relaxed in place from an enum to a level-id string and marked deprecated, instead of
+  getting a v2: the `nis2-qnrcs` values are unchanged, its only consumer (the assessment plugin) moves to `Level` in
+  the same coordinated change, and the new `maxScaleLevel`/`scaleLevel` fields are additive. Remove the old
+  `maxLevel`/`level` fields once no client reads them.
 - The prototype's maturity labels (2 Básico, 4 Gerido) are not used.

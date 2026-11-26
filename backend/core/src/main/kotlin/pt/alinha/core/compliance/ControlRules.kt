@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component
  *
  * - A control is [ControlStatus.COMPLIANT] when every answer is `yes`, a [ControlStatus.GAP] when any answer is
  *   `no` or `unknown` (not confirmed is not in place), and [ControlStatus.PARTIAL] otherwise.
+ * - Levels are ids of the catalogue's own scale, compared by position (ADR 0007).
  * - The current level is the highest level whose controls, and those of every level below, are all compliant.
  *   A level without controls is skipped, so it is never reported as reached from nothing. Per domain the same,
  *   over the same levels: a level with no controls in that domain counts as compliant, so the overall level is
@@ -18,8 +19,12 @@ import org.springframework.stereotype.Component
 @Component
 class ControlRules : ComplianceEngine {
 
-    override fun evaluate(catalogue: Catalogue, maxLevel: ComplianceLevel, answers: Map<String, Answer>): Evaluation {
-        val controls = catalogue.controls.filter { it.level <= maxLevel }
+    override fun evaluate(catalogue: Catalogue, maxLevel: String, answers: Map<String, Answer>): Evaluation {
+        val target = catalogue.levelIndex(maxLevel)
+        require(target >= 0) { "Target level '$maxLevel' is not in the scale of ${catalogue.framework}" }
+        val offScale = catalogue.controls.filter { catalogue.levelIndex(it.level) < 0 }.map { it.id }
+        require(offScale.isEmpty()) { "Controls $offScale have a level outside the scale of ${catalogue.framework}" }
+        val controls = catalogue.controls.filter { catalogue.levelIndex(it.level) <= target }
         require(controls.isNotEmpty()) {
             "${catalogue.framework} v${catalogue.version} has no controls up to $maxLevel"
         }
@@ -30,7 +35,7 @@ class ControlRules : ComplianceEngine {
             val (status, reason) = judge(control.questions.map { answers.getValue(it.id) })
             ControlEvaluation(control.id, control.level, status, control.id.substringBefore('.'), reason)
         }
-        val levels = ComplianceLevel.entries.filter { level -> level <= maxLevel && results.any { it.level == level } }
+        val levels = catalogue.levels.take(target + 1).map { it.id }.filter { level -> results.any { it.level == level } }
         val gaps = results.filter { it.reason != null }.map { result ->
             val requirementIds = catalogue.requirements.filter { result.controlId in it.controls }.map { it.id }
             Gap(result.controlId, requirementIds, result.level, result.status, result.reason!!)
@@ -61,7 +66,7 @@ class ControlRules : ComplianceEngine {
     }
 
     /** Highest of [levels] such that every result at it and below is compliant; a level with no results passes. */
-    private fun currentLevel(results: List<ControlEvaluation>, levels: List<ComplianceLevel>): ComplianceLevel? =
+    private fun currentLevel(results: List<ControlEvaluation>, levels: List<String>): String? =
         levels.takeWhile { level -> results.filter { it.level == level }.all { it.status == ControlStatus.COMPLIANT } }
             .lastOrNull()
 

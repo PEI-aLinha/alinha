@@ -2,19 +2,20 @@ package pt.alinha.core.compliance
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import pt.alinha.core.compliance.Answer.NO
 import pt.alinha.core.compliance.Answer.PARTIAL
 import pt.alinha.core.compliance.Answer.UNKNOWN
 import pt.alinha.core.compliance.Answer.YES
-import pt.alinha.core.compliance.ComplianceLevel.BASIC
-import pt.alinha.core.compliance.ComplianceLevel.HIGH
-import pt.alinha.core.compliance.ComplianceLevel.SUBSTANTIAL
 import pt.alinha.core.compliance.ControlStatus.COMPLIANT
 import pt.alinha.core.compliance.ControlStatus.GAP
+import pt.alinha.core.compliance.TestCatalogues.BASIC
+import pt.alinha.core.compliance.TestCatalogues.HIGH
+import pt.alinha.core.compliance.TestCatalogues.SUBSTANTIAL
 
-private fun control(id: String, level: ComplianceLevel, questions: Int = 1) = Control(
+private fun control(id: String, level: String, questions: Int = 1) = Control(
     id = id, title = id, level = level, technical = false, evidence = emptyList(),
     questions = (1..questions).map { Question("$id-Q$it", "?", "", "", Answer.entries) },
 )
@@ -212,6 +213,37 @@ class ControlRulesTest {
         val shuffled = answers.entries.shuffled(java.util.Random(42)).associate { it.key to it.value }
 
         assertEquals(rules.evaluate(catalogue, HIGH, answers), rules.evaluate(catalogue, HIGH, java.util.HashMap(shuffled)))
+    }
+
+    @Test
+    fun `levels follow the catalogue's own scale, by position`() {
+        val scale = listOf(Level("1", "Inicial"), Level("2", "Gerido"), Level("3", "Definido"))
+        val catalogue = domains(
+            control("BUS.1", "1"), control("BUS.2", "2"), control("BUS.3", "3"),
+            control("PEO.1", "1"), control("PEO.2", "2"),
+        ).copy(levels = scale)
+
+        val result = rules.evaluate(catalogue, "2", yes(catalogue) + ("PEO.2-Q1" to NO))
+
+        assertEquals(listOf("BUS.1", "BUS.2", "PEO.1", "PEO.2"), result.controls.map { it.controlId })
+        assertEquals(listOf(DomainEvaluation("BUS", "2", "2"), DomainEvaluation("PEO", "1", "2")), result.domains)
+        assertEquals("1", result.currentLevel)
+    }
+
+    @Test
+    fun `a target level outside the catalogue's scale is refused`() {
+        val error = assertThrows<IllegalArgumentException> { rules.evaluate(CATALOGUE, "3", ALL_YES) }
+
+        assertTrue("'3'" in error.message.orEmpty(), error.message)
+    }
+
+    @Test
+    fun `a control whose level is not in the scale is refused`() {
+        val catalogue = domains(control("BUS.1", BASIC), control("BUS.2", "3"))
+
+        val error = assertThrows<IllegalArgumentException> { rules.evaluate(catalogue, HIGH, yes(catalogue)) }
+
+        assertTrue("BUS.2" in error.message.orEmpty(), error.message)
     }
 
     private fun domains(vararg controls: Control) = CATALOGUE.copy(controls = controls.toList())

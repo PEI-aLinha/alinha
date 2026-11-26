@@ -29,7 +29,7 @@ class CatalogueLoaderTest {
 
         assertThat(catalogue.requirements.single().controls).containsExactly("CTRL-MFA")
         val control = catalogue.controls.single()
-        assertThat(control.level).isEqualTo(ComplianceLevel.BASIC)
+        assertThat(control.level).isEqualTo("basic")
         assertThat(control.technical).isTrue()
         assertThat(control.questions.single().answers)
             .containsExactly(Answer.YES, Answer.PARTIAL, Answer.NO, Answer.UNKNOWN)
@@ -185,6 +185,99 @@ class CatalogueLoaderTest {
             .isInstanceOf(InvalidCatalogueException::class.java)
             .hasMessageContaining("text must not be blank")
     }
+
+    @Test
+    fun `a v1 catalogue without levels has the QNRCS compliance levels`() {
+        write("nis2-qnrcs", "v1", validCatalogue())
+
+        val catalogue = CatalogueLoader(frameworksDir).loadAll().single()
+
+        assertThat(catalogue.levels).containsExactly(
+            Level("basic", "Básico"), Level("substantial", "Substancial"), Level("high", "Elevado"),
+        )
+    }
+
+    @Test
+    fun `a v2 catalogue declares its own ordered level scale`() {
+        write("soc-cmm", "v1", v2Catalogue())
+
+        val catalogue = CatalogueLoader(frameworksDir).loadAll().single()
+
+        assertThat(catalogue.levels.map { it.id }).containsExactly("1", "2", "3")
+        assertThat(catalogue.levels.first().label).isEqualTo("Inicial")
+        assertThat(catalogue.controls.single().level).isEqualTo("2")
+    }
+
+    @Test
+    fun `rejects a control whose level is not in the catalogue's scale`() {
+        write("soc-cmm", "v1", v2Catalogue().replace("level: \"2\"", "level: high"))
+
+        assertThatThrownBy { CatalogueLoader(frameworksDir).loadAll() }
+            .isInstanceOf(InvalidCatalogueException::class.java)
+            .hasMessageContaining("control 'BUS.1' level 'high' is not in the catalogue's levels")
+    }
+
+    @Test
+    fun `rejects a v1 control level outside the QNRCS levels`() {
+        write("nis2-qnrcs", "v1", validCatalogue().replace("level: basic", "level: \"3\""))
+
+        assertThatThrownBy { CatalogueLoader(frameworksDir).loadAll() }
+            .isInstanceOf(InvalidCatalogueException::class.java)
+            .hasMessageContaining("level '3' is not in the catalogue's levels")
+    }
+
+    @Test
+    fun `rejects duplicate, malformed or unlabelled levels`() {
+        val catalogue = v2Catalogue()
+            .replace("id: \"3\", label: \"Definido\"", "id: \"1\", label: \" \"")
+            .replace("id: \"2\", label: \"Gerido\"", "id: \"Level 2\", label: \"Gerido\"")
+        write("soc-cmm", "v1", catalogue)
+
+        assertThatThrownBy { CatalogueLoader(frameworksDir).loadAll() }
+            .isInstanceOf(InvalidCatalogueException::class.java)
+            .hasMessageContaining("duplicate level '1'")
+            .hasMessageContaining("level id 'Level 2' does not match level id pattern")
+            .hasMessageContaining("level '1' label must not be blank")
+    }
+
+    @Test
+    fun `rejects an empty level scale`() {
+        write("soc-cmm", "v1", v2Catalogue().replace(Regex("levels:\\n(  - .*\\n)+"), "levels: []\n"))
+
+        assertThatThrownBy { CatalogueLoader(frameworksDir).loadAll() }
+            .isInstanceOf(InvalidCatalogueException::class.java)
+            .hasMessageContaining("levels must not be empty")
+    }
+
+    private fun v2Catalogue() = """
+        framework: soc-cmm
+        version: 1
+        title: "SOC-CMM"
+        sources:
+          - "SOC-CMM v3"
+        levels:
+          - { id: "1", label: "Inicial" }
+          - { id: "2", label: "Gerido" }
+          - { id: "3", label: "Definido" }
+        requirements:
+          - id: SOC-BUS
+            reference: "SOC-CMM v3, Business"
+            text: "Negócio"
+            controls: [BUS.1]
+        controls:
+          - id: BUS.1
+            title: "Missão do SOC"
+            level: "2"
+            technical: false
+            evidence:
+              - "Documento"
+            questions:
+              - id: BUS.1-Q1
+                text: "Tem missão?"
+                explanation: "Explicação."
+                example: "Exemplo."
+                answers: ["yes", "partial", "no", "unknown"]
+    """.trimIndent()
 
     private fun write(framework: String, version: String, content: String) {
         val dir = frameworksDir.resolve(framework).resolve(version).createDirectories()
