@@ -67,6 +67,6 @@ describe('devSession (pnpm dev only)', () => {
     expect(analyst).not.toContain('asset:delete')
     expect(consultant).toContain('roadmap:validate')
     expect(responsible).not.toContain('roadmap:validate')
-    for (const p of [...responsible, ...analyst, ...consultant]) expect(p).toMatch(/^[a-z_]+:[a-z_]+$/)
+    for (const p of [...responsible, ...analyst, ...consultant]) expect(p).toMatch(/^[a-z][a-z0-9-]*:[a-z][a-z0-9-]*$/) // ManifestValidation.kt's PERMISSION
   })
 })
