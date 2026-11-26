@@ -598,12 +598,15 @@ export interface components {
              *     leading, trailing or double slash, dots or query. The server refuses anything else when the task is created.
              */
             link: string | null;
-            /** @description The assignee's token `sub`, as given to the task (no name or e-mail, RNF15). */
-            assignee: string;
+            /**
+             * @description The assignee's token `sub`, as given to the task (no name or e-mail, RNF15). Same field as `assigneeId` in
+             *     the `TaskAssigned` and `TaskCompleted` events.
+             */
+            assigneeId: string;
             /** Format: date */
             dueDate: string | null;
             /** @enum {string} */
-            status: "OPEN" | "DONE";
+            status: "open" | "done";
             /** Format: date-time */
             assignedAt: string;
             /** Format: date-time */

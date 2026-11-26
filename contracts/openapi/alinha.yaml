@@ -989,7 +989,7 @@ components:
     Task:
       type: object
       description: A piece of another plugin's work given to a member (organization#7).
-      required: [id, type, reference, title, link, assignee, dueDate, status, assignedAt, completedAt]
+      required: [id, type, reference, title, link, assigneeId, dueDate, status, assignedAt, completedAt]
       properties:
         id:
           type: string
@@ -1016,9 +1016,11 @@ components:
             leading, trailing or double slash, dots or query. The server refuses anything else when the task is created.
           pattern: '^[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*$'
           maxLength: 300
-        assignee:
+        assigneeId:
           type: string
-          description: The assignee's token `sub`, as given to the task (no name or e-mail, RNF15).
+          description: |
+            The assignee's token `sub`, as given to the task (no name or e-mail, RNF15). Same field as `assigneeId` in
+            the `TaskAssigned` and `TaskCompleted` events.
           minLength: 1
           maxLength: 255
         dueDate:
@@ -1026,7 +1028,7 @@ components:
           format: date
         status:
           type: string
-          enum: [OPEN, DONE]
+          enum: [open, done]
         assignedAt:
           type: string
           format: date-time
