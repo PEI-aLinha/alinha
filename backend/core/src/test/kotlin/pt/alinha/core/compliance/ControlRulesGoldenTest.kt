@@ -14,9 +14,9 @@ import tools.jackson.module.kotlin.readValue
 /**
  * Golden tests: a real catalogue and a fixed set of answers must give exactly the stored result (RNF05).
  * On a mismatch the actual result is written to build/golden-actual-<name>.json: review it and, when the change is
- * intended, copy it over the stored result (and bump ComplianceRules.VERSION once main has the old one).
+ * intended, copy it over the stored result (and bump ControlRules.VERSION once main has the old one).
  */
-class ComplianceRulesGoldenTest {
+class ControlRulesGoldenTest {
 
     private data class Fixture(
         val description: String,
@@ -37,7 +37,7 @@ class ComplianceRulesGoldenTest {
         val fixture: Fixture = mapper.readValue(resource("$name.answers.json"))
 
         val actual = mapper.writeValueAsString(
-            ComplianceRules().evaluate(EvaluationInput(catalogue, fixture.targetLevel, fixture.answers)),
+            ControlRules().evaluate(catalogue, fixture.targetLevel, fixture.answers),
         )
 
         val expected = javaClass.getResource("/compliance/golden/$name.result.json")?.readText()

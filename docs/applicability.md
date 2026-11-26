@@ -6,7 +6,7 @@ store the version with every result. Tests: `ApplicabilityRulesTest`. Once a fra
 evaluated by the Compliance Engine: see `docs/compliance-engine.md`.
 
 The organization plugin stores the answers and serves the current result through `core.compliance.ApplicabilityQuery`
-(`current(tenant)`, null until the scope is answered), with the official CNCS qualification in
+(`current()` for the current tenant, null until the scope is answered), with the official CNCS qualification in
 `officialNis2Classification` when registered: it overrides the indicative classification. The assessment plugin
 reads it when an assessment starts (`409 SCOPE_NOT_ANSWERED` while it is null).
 
