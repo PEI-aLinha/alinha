@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import threading
 import urllib.error
 import urllib.request
 import uuid
@@ -23,6 +24,36 @@ _TIMEOUT_S = 10.0
 
 # (url, token) -> (status, body); replaced in tests.
 Fetch = Callable[[str, str], tuple[int, bytes]]
+
+# Every credential value this worker has read (bounded, oldest forgotten first), so a collector's error message that
+# echoes one is dropped before it reaches the job result (consumer.py). Shorter values are ids and flags, not secrets.
+_MIN_SECRET_LENGTH = 8
+_MAX_REMEMBERED = 10_000
+_seen: dict[str, None] = {}
+_seen_lock = threading.Lock()
+# Shapes of well-known credentials a collector may hold without reading them here (e.g. a minted installation token).
+_CREDENTIAL_SHAPES = re.compile(
+    r"(gh[pousr]_|github_pat_|glpat-|-----BEGIN [A-Z ]*PRIVATE KEY|\bBearer\s+\S|[?&](access_)?token=)", re.IGNORECASE
+)
+
+
+def mentions_a_credential(text: str) -> bool:
+    """True when `text` contains a credential this worker read, or something shaped like one."""
+    if _CREDENTIAL_SHAPES.search(text):
+        return True
+    with _seen_lock:
+        values = list(_seen)
+    return any(value in text for value in values)
+
+
+def _remember(data: dict[str, str]) -> None:
+    with _seen_lock:
+        for value in data.values():
+            if len(value) >= _MIN_SECRET_LENGTH:
+                _seen.pop(value, None)
+                _seen[value] = None
+        while len(_seen) > _MAX_REMEMBERED:
+            del _seen[next(iter(_seen))]
 
 
 def connection_ref(provider: str) -> str:
@@ -81,6 +112,7 @@ def _data(body: bytes) -> dict[str, str]:
         raise CollectorError("secrets_unavailable", "OpenBao answered an unexpected body") from None
     if not isinstance(data, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in data.items()):
         raise CollectorError("secrets_unavailable", "the stored credential is not a map of strings")
+    _remember(data)
     return data
 
 
