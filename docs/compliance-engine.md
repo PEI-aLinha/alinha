@@ -28,6 +28,34 @@ engine writes nothing: the caller stores, audits and checks permissions. Words a
 Not confirmed is not in place: `unknown` counts as a gap. A **gap** in the result is any control that is not
 compliant, with the catalogue requirements that point to it.
 
+## Evidence strength (#26)
+
+The `evidence` argument lists evidence per control (the caller maps actions to controls): its strength
+(`SELF_REPORTED < DOCUMENT_VERIFIED < TECHNICALLY_VERIFIED < CONTINUOUSLY_VERIFIED`), whether it shows the control in
+place, and a `ref`. The caller passes only the **current** result of each check and drops older ones: a stale failure
+would otherwise keep a control a gap. Each `ControlEvaluation` carries `strength`: the strongest passing evidence,
+whatever the status (a control can be a gap by failing evidence and still show a strong pass), `SELF_REPORTED` (the
+answers) when there is none. Applied after the answer rule:
+
+1. Failing evidence of strength `TECHNICALLY_VERIFIED` or more turns any status into a gap (`EVIDENCE_FAILED`).
+   Weaker failing evidence changes nothing.
+2. Passing evidence only raises the strength: it never upgrades a `no` or `partial` answer.
+3. A would-be compliant control whose strength is below the bar for its level is partial (`WEAK_EVIDENCE`). Each
+   level of the catalogue's scale declares its bar (`levels[].requiredStrength`, and `requiredStrengthTechnical` for
+   technical controls; default `SELF_REPORTED`, catalogue schema v2). The implicit QNRCS scale of v1 catalogues has
+   it in code:
+
+| Framework | Levels that accept the answers | Levels that need `DOCUMENT_VERIFIED` | Technical control at those levels |
+|---|---|---|---|
+| QNRCS (in code, `QNRCS_LEVELS`) | basic, substantial | high | `TECHNICALLY_VERIFIED` |
+| SOC-CMM (`soc-cmm/v1` YAML) | 1 to 3 | 4, 5 | `TECHNICALLY_VERIFIED` |
+
+Evidence for controls that are not evaluated is ignored.
+**MVP consequence:** there is no document upload yet, so an essential entity (target high) sees its high
+controls as partial (weak evidence) until evidence of that strength exists. Golden test `nis2-qnrcs-v1-essential`:
+every question answered yes, verified evidence only for RC.CO-2-E: RC reaches high, the other five domains stop at
+substantial (50 high controls partial, `WEAK_EVIDENCE`), overall substantial, coverage 67%.
+
 ## Current level
 
 Overall: the highest level L, up to the target, such that every evaluated control at level L or below is compliant.
@@ -51,9 +79,9 @@ Componentes Águeda, 120 employees, CAE 29320: important entity, target substant
 | Domain | Gaps | Current level |
 |---|---|---|
 | GR, ID, RS, RC | none | substantial |
-| PR | PR.GA-2-S partial, PR.SD-1-S no, PR.SP-4-S partial, PR.RI-2-S no | basic |
+| PR | PR.GA-2-S partial, PR.SD-1-S no, PR.SP-4-S partial, PR.RI-2-S no, PR.GA-3-S gap (answered yes, failing technical evidence) | basic |
 | DE | DE.MC-6-S, DE.MC-7-S, DE.AE-4-S unknown | basic |
-| **Overall** | 7 of 102 evaluated controls | **basic**, coverage 93% |
+| **Overall** | 8 of 102 evaluated controls | **basic**, coverage 92% |
 
 ## SOC-CMM (maturity, #23)
 

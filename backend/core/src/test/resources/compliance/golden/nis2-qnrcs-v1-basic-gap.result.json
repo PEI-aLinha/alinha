@@ -1,5 +1,5 @@
 {
-  "engineVersion" : "controls-2026.11-v1",
+  "engineVersion" : "controls-2026.11-v2",
   "currentLevel" : null,
   "targetLevel" : "substantial",
   "coverage" : 0.9215686274509803,
@@ -8,613 +8,715 @@
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "GR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "GR.CO-3-B",
     "level" : "basic",
     "status" : "gap",
     "domain" : "GR",
-    "reason" : "ANSWERED_NO"
+    "reason" : "ANSWERED_NO",
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "GR.CO-4-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "GR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "GR.CO-4-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "GR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "GR.CO-5-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "GR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "GR.CO-5-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "GR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "GR.CO-6-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "GR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "GR.GR-1-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "GR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "GR.GR-2-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "GR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "GR.GR-2-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "GR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "GR.GR-3-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "GR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "GR.GR-4-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "GR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "GR.GR-5-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "GR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "GR.FR-1-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "GR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "GR.FR-2-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "GR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "GR.FR-3-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "GR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "GR.FR-4-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "GR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "GR.FR-4-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "GR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "GR.PP-1-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "GR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "GR.PP-1-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "GR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "GR.PP-2-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "GR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "GR.PP-3-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "GR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "GR.CA-3-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "GR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "GR.CA-5-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "GR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "GR.CA-7-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "GR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "GR.CA-7-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "GR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "GR.CA-8-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "GR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "ID.GA-1-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "ID",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "ID.GA-2-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "ID",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "ID.GA-3-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "ID",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "ID.GA-4-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "ID",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "ID.GA-5-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "ID",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "ID.GA-7-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "ID",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "ID.GA-7-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "ID",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "ID.GA-8-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "ID",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "ID.AR-1-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "ID",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "ID.AR-1-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "ID",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "ID.AR-4-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "ID",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "ID.AR-5-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "ID",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "ID.AR-5-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "ID",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "ID.AR-6-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "ID",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "ID.AR-6-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "ID",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "ID.AR-7-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "ID",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "ID.AR-7-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "ID",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "ID.MC-3-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "ID",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "ID.MC-3-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "ID",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PR.GA-1-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "PR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PR.GA-1-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "PR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PR.GA-2-S",
     "level" : "substantial",
     "status" : "partial",
     "domain" : "PR",
-    "reason" : "ANSWERED_PARTIAL"
+    "reason" : "ANSWERED_PARTIAL",
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PR.GA-3-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "PR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PR.GA-3-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "PR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PR.GA-5-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "PR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PR.GA-5-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "PR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PR.GA-6-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "PR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PR.GA-6-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "PR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PR.GA-7-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "PR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PR.GA-7-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "PR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PR.FC-1-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "PR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PR.FC-1-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "PR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PR.FC-2-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "PR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PR.FC-2-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "PR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PR.SD-1-S",
     "level" : "substantial",
     "status" : "gap",
     "domain" : "PR",
-    "reason" : "ANSWERED_NO"
+    "reason" : "ANSWERED_NO",
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PR.SD-2-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "PR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PR.SD-5-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "PR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PR.SD-5-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "PR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PR.SP-1-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "PR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PR.SP-1-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "PR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PR.SP-2-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "PR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PR.SP-2-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "PR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PR.SP-3-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "PR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PR.SP-4-S",
     "level" : "substantial",
     "status" : "partial",
     "domain" : "PR",
-    "reason" : "ANSWERED_PARTIAL"
+    "reason" : "ANSWERED_PARTIAL",
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PR.RI-1-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "PR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PR.RI-1-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "PR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PR.RI-2-S",
     "level" : "substantial",
     "status" : "gap",
     "domain" : "PR",
-    "reason" : "ANSWERED_NO"
+    "reason" : "ANSWERED_NO",
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PR.RI-4-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "PR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PR.RI-5-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "PR",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "DE.MC-1-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "DE",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "DE.MC-1-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "DE",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "DE.MC-2-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "DE",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "DE.MC-4-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "DE",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "DE.MC-5-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "DE",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "DE.MC-5-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "DE",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "DE.MC-6-S",
     "level" : "substantial",
     "status" : "gap",
     "domain" : "DE",
-    "reason" : "ANSWERED_UNKNOWN"
+    "reason" : "ANSWERED_UNKNOWN",
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "DE.MC-7-S",
     "level" : "substantial",
     "status" : "gap",
     "domain" : "DE",
-    "reason" : "ANSWERED_UNKNOWN"
+    "reason" : "ANSWERED_UNKNOWN",
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "DE.AE-1-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "DE",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "DE.AE-2-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "DE",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "DE.AE-4-S",
     "level" : "substantial",
     "status" : "gap",
     "domain" : "DE",
-    "reason" : "ANSWERED_UNKNOWN"
+    "reason" : "ANSWERED_UNKNOWN",
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "DE.AE-6-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "DE",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "RS.GI-1-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "RS",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "RS.GI-1-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "RS",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "RS.GI-2-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "RS",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "RS.GI-3-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "RS",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "RS.GI-5-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "RS",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "RS.NC-1-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "RS",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "RS.NC-1-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "RS",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "RS.MI-1-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "RS",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "RC.PR-1-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "RC",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "RC.PR-3-B",
     "level" : "basic",
     "status" : "compliant",
     "domain" : "RC",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "RC.PR-5-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "RC",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "RC.PR-6-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "RC",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "RC.CO-1-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "RC",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "RC.CO-2-S",
     "level" : "substantial",
     "status" : "compliant",
     "domain" : "RC",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   } ],
   "framework" : "nis2-qnrcs",
   "catalogueVersion" : 1,

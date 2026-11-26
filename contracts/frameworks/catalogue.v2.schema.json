@@ -62,6 +62,10 @@
     }
   },
   "$defs": {
+    "evidenceStrength": {
+      "enum": ["SELF_REPORTED", "DOCUMENT_VERIFIED", "TECHNICALLY_VERIFIED", "CONTINUOUSLY_VERIFIED"],
+      "description": "How far evidence can be trusted, weakest first (#26)."
+    },
     "id": {
       "type": "string",
       "pattern": "^[A-Z0-9]+([.-][A-Za-z0-9]+)*$",
@@ -206,6 +210,14 @@
           "type": "string",
           "minLength": 1,
           "description": "Name shown to the user, in Portuguese, e.g. Substancial or Definido"
+        },
+        "requiredStrength": {
+          "$ref": "#/$defs/evidenceStrength",
+          "description": "Optional. The weakest evidence that lets a control of this level be met (#26). Default SELF_REPORTED (the answers)."
+        },
+        "requiredStrengthTechnical": {
+          "$ref": "#/$defs/evidenceStrength",
+          "description": "Optional. The same for a technical control; never weaker than requiredStrength. Default: requiredStrength."
         }
       }
     }

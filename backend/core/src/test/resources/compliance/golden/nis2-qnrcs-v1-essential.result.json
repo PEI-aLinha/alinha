@@ -1,0 +1,1406 @@
+{
+  "engineVersion" : "controls-2026.11-v2",
+  "currentLevel" : "substantial",
+  "targetLevel" : "high",
+  "coverage" : 0.673202614379085,
+  "controls" : [ {
+    "controlId" : "GR.CO-1-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "GR.CO-3-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "GR.CO-4-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "GR.CO-4-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "GR.CO-5-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "GR.CO-5-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "GR.CO-5-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "GR",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "GR.CO-6-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "GR.GR-1-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "GR.GR-2-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "GR.GR-2-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "GR.GR-3-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "GR.GR-4-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "GR.GR-5-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "GR.GR-5-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "GR",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "GR.FR-1-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "GR.FR-2-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "GR.FR-3-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "GR.FR-4-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "GR.FR-4-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "GR.PP-1-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "GR.PP-1-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "GR.PP-2-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "GR.PP-3-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "GR.SP-2-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "GR",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "GR.SP-3-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "GR",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "GR.CA-1-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "GR",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "GR.CA-3-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "GR.CA-5-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "GR.CA-5-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "GR",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "GR.CA-6-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "GR",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "GR.CA-7-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "GR.CA-7-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "GR.CA-7-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "GR",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "GR.CA-8-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "GR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "GR.CA-8-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "GR",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "ID.GA-1-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "ID.GA-1-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "ID",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "ID.GA-2-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "ID.GA-2-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "ID",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "ID.GA-3-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "ID.GA-3-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "ID",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "ID.GA-4-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "ID.GA-5-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "ID.GA-6-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "ID",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "ID.GA-7-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "ID.GA-7-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "ID.GA-8-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "ID.GA-8-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "ID",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "ID.GA-9-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "ID",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "ID.AR-1-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "ID.AR-1-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "ID.AR-1-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "ID",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "ID.AR-4-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "ID.AR-5-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "ID.AR-5-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "ID.AR-6-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "ID.AR-6-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "ID.AR-6-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "ID",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "ID.AR-7-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "ID.AR-7-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "ID.AR-7-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "ID",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "ID.MC-2-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "ID",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "ID.MC-3-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "ID.MC-3-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "ID",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.GA-1-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.GA-1-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.GA-1-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "PR",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.GA-2-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.GA-2-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "PR",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.GA-3-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.GA-3-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.GA-3-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "PR",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.GA-4-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "PR",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.GA-5-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.GA-5-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.GA-5-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "PR",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.GA-6-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.GA-6-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.GA-6-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "PR",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.GA-7-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.GA-7-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.GA-7-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "PR",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.FC-1-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.FC-1-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.FC-1-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "PR",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.FC-2-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.FC-2-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.SD-1-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.SD-1-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "PR",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.SD-2-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.SD-2-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "PR",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.SD-3-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "PR",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.SD-4-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "PR",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.SD-5-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.SD-5-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.SD-5-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "PR",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.SP-1-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.SP-1-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.SP-1-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "PR",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.SP-2-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.SP-2-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.SP-2-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "PR",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.SP-3-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.SP-4-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.SP-4-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "PR",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.RI-1-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.RI-1-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.RI-1-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "PR",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.RI-2-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.RI-3-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "PR",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.RI-4-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "PR.RI-5-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "PR",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "DE.MC-1-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "DE",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "DE.MC-1-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "DE",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "DE.MC-1-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "DE",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "DE.MC-2-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "DE",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "DE.MC-2-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "DE",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "DE.MC-4-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "DE",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "DE.MC-5-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "DE",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "DE.MC-5-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "DE",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "DE.MC-5-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "DE",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "DE.MC-6-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "DE",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "DE.MC-7-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "DE",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "DE.MC-7-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "DE",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "DE.AE-1-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "DE",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "DE.AE-1-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "DE",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "DE.AE-2-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "DE",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "DE.AE-2-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "DE",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "DE.AE-3-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "DE",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "DE.AE-4-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "DE",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "DE.AE-6-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "DE",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "RS.GI-1-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "RS",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "RS.GI-1-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "RS",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "RS.GI-2-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "RS",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "RS.GI-3-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "RS",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "RS.GI-3-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "RS",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "RS.GI-5-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "RS",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "RS.AI-1-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "RS",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "RS.AI-2-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "RS",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "RS.AI-3-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "RS",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "RS.AI-4-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "RS",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "RS.NC-1-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "RS",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "RS.NC-1-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "RS",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "RS.MI-1-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "RS",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "RS.MI-2-E",
+    "level" : "high",
+    "status" : "partial",
+    "domain" : "RS",
+    "reason" : "WEAK_EVIDENCE",
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "RC.PR-1-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "RC",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "RC.PR-3-B",
+    "level" : "basic",
+    "status" : "compliant",
+    "domain" : "RC",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "RC.PR-5-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "RC",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "RC.PR-6-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "RC",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "RC.CO-1-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "RC",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "RC.CO-2-S",
+    "level" : "substantial",
+    "status" : "compliant",
+    "domain" : "RC",
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
+  }, {
+    "controlId" : "RC.CO-2-E",
+    "level" : "high",
+    "status" : "compliant",
+    "domain" : "RC",
+    "reason" : null,
+    "strength" : "DOCUMENT_VERIFIED"
+  } ],
+  "framework" : "nis2-qnrcs",
+  "catalogueVersion" : 1,
+  "domains" : [ {
+    "domain" : "GR",
+    "currentLevel" : "substantial",
+    "targetLevel" : "high"
+  }, {
+    "domain" : "ID",
+    "currentLevel" : "substantial",
+    "targetLevel" : "high"
+  }, {
+    "domain" : "PR",
+    "currentLevel" : "substantial",
+    "targetLevel" : "high"
+  }, {
+    "domain" : "DE",
+    "currentLevel" : "substantial",
+    "targetLevel" : "high"
+  }, {
+    "domain" : "RS",
+    "currentLevel" : "substantial",
+    "targetLevel" : "high"
+  }, {
+    "domain" : "RC",
+    "currentLevel" : "high",
+    "targetLevel" : "high"
+  } ],
+  "gaps" : [ {
+    "controlId" : "GR.CO-5-E",
+    "requirementIds" : [ "QNRCS-GR.CO-5", "RJC-27-1-b" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "GR.GR-5-E",
+    "requirementIds" : [ "QNRCS-GR.GR-5" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "GR.SP-2-E",
+    "requirementIds" : [ "QNRCS-GR.SP-2", "RJC-27-1-e" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "GR.SP-3-E",
+    "requirementIds" : [ "QNRCS-GR.SP-3", "RJC-27-1-e" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "GR.CA-1-E",
+    "requirementIds" : [ "QNRCS-GR.CA-1", "RJC-27-1-c" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "GR.CA-5-E",
+    "requirementIds" : [ "QNRCS-GR.CA-5", "RJC-27-1-c" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "GR.CA-6-E",
+    "requirementIds" : [ "QNRCS-GR.CA-6", "RJC-27-1-c", "RJC-27-1-d" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "GR.CA-7-E",
+    "requirementIds" : [ "QNRCS-GR.CA-7", "RJC-27-1-c" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "GR.CA-8-E",
+    "requirementIds" : [ "QNRCS-GR.CA-8", "RJC-27-1-c" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "ID.GA-1-E",
+    "requirementIds" : [ "QNRCS-ID.GA-1", "RJC-27-1-h" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "ID.GA-2-E",
+    "requirementIds" : [ "QNRCS-ID.GA-2", "RJC-27-1-h" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "ID.GA-3-E",
+    "requirementIds" : [ "QNRCS-ID.GA-3", "RJC-27-1-h" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "ID.GA-6-E",
+    "requirementIds" : [ "QNRCS-ID.GA-6", "RJC-27-1-h" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "ID.GA-8-E",
+    "requirementIds" : [ "QNRCS-ID.GA-8", "RJC-27-1-h" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "ID.GA-9-E",
+    "requirementIds" : [ "QNRCS-ID.GA-9", "RJC-27-1-d" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "ID.AR-1-E",
+    "requirementIds" : [ "QNRCS-ID.AR-1", "RJC-27-1-d" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "ID.AR-6-E",
+    "requirementIds" : [ "QNRCS-ID.AR-6", "RJC-27-1-e" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "ID.AR-7-E",
+    "requirementIds" : [ "QNRCS-ID.AR-7", "RJC-27-1-d" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "ID.MC-2-E",
+    "requirementIds" : [ "QNRCS-ID.MC-2", "RJC-27-1-e" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "PR.GA-1-E",
+    "requirementIds" : [ "QNRCS-PR.GA-1", "RJC-27-1-f", "RJC-27-1-g", "RJC-27-1-h", "RJC-27-1-i" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "PR.GA-2-E",
+    "requirementIds" : [ "QNRCS-PR.GA-2", "RJC-27-1-h" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "PR.GA-3-E",
+    "requirementIds" : [ "QNRCS-PR.GA-3", "RJC-27-1-h", "RJC-27-1-i" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "PR.GA-4-E",
+    "requirementIds" : [ "QNRCS-PR.GA-4", "RJC-27-1-h" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "PR.GA-5-E",
+    "requirementIds" : [ "QNRCS-PR.GA-5", "RJC-27-1-h" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "PR.GA-6-E",
+    "requirementIds" : [ "QNRCS-PR.GA-6", "RJC-27-1-h" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "PR.GA-7-E",
+    "requirementIds" : [ "QNRCS-PR.GA-7", "RJC-27-1-g", "RJC-27-1-h", "RJC-27-1-i" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "PR.FC-1-E",
+    "requirementIds" : [ "QNRCS-PR.FC-1", "RJC-27-1-e", "RJC-27-1-f" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "PR.SD-1-E",
+    "requirementIds" : [ "QNRCS-PR.SD-1", "RJC-27-1-g" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "PR.SD-2-E",
+    "requirementIds" : [ "QNRCS-PR.SD-2", "RJC-27-1-g", "RJC-27-1-i" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "PR.SD-3-E",
+    "requirementIds" : [ "QNRCS-PR.SD-3" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "PR.SD-4-E",
+    "requirementIds" : [ "QNRCS-PR.SD-4" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "PR.SD-5-E",
+    "requirementIds" : [ "QNRCS-PR.SD-5", "RJC-27-1-b" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "PR.SP-1-E",
+    "requirementIds" : [ "QNRCS-PR.SP-1", "RJC-27-1-d", "RJC-27-1-f" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "PR.SP-2-E",
+    "requirementIds" : [ "QNRCS-PR.SP-2", "RJC-27-1-a" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "PR.SP-4-E",
+    "requirementIds" : [ "QNRCS-PR.SP-4", "RJC-27-1-d" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "PR.RI-1-E",
+    "requirementIds" : [ "QNRCS-PR.RI-1" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "PR.RI-3-E",
+    "requirementIds" : [ "QNRCS-PR.RI-3" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "DE.MC-1-E",
+    "requirementIds" : [ "QNRCS-DE.MC-1" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "DE.MC-2-E",
+    "requirementIds" : [ "QNRCS-DE.MC-2" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "DE.MC-5-E",
+    "requirementIds" : [ "QNRCS-DE.MC-5" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "DE.MC-7-E",
+    "requirementIds" : [ "QNRCS-DE.MC-7" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "DE.AE-1-E",
+    "requirementIds" : [ "QNRCS-DE.AE-1", "RJC-27-1-a" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "DE.AE-2-E",
+    "requirementIds" : [ "QNRCS-DE.AE-2", "RJC-27-1-a" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "DE.AE-3-E",
+    "requirementIds" : [ "QNRCS-DE.AE-3" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "RS.GI-3-E",
+    "requirementIds" : [ "QNRCS-RS.GI-3", "RJC-27-1-a" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "RS.AI-1-E",
+    "requirementIds" : [ "QNRCS-RS.AI-1", "RJC-27-1-a" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "RS.AI-2-E",
+    "requirementIds" : [ "QNRCS-RS.AI-2", "RJC-27-1-a" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "RS.AI-3-E",
+    "requirementIds" : [ "QNRCS-RS.AI-3", "RJC-27-1-a" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "RS.AI-4-E",
+    "requirementIds" : [ "QNRCS-RS.AI-4", "RJC-27-1-a" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  }, {
+    "controlId" : "RS.MI-2-E",
+    "requirementIds" : [ "QNRCS-RS.MI-2", "RJC-27-1-a" ],
+    "level" : "high",
+    "status" : "partial",
+    "reason" : "WEAK_EVIDENCE"
+  } ]
+}

@@ -9,6 +9,9 @@ import org.springframework.stereotype.Component
  *
  * - A control is [ControlStatus.COMPLIANT] when every answer is `yes`, a [ControlStatus.GAP] when any answer is
  *   `no` or `unknown` (not confirmed is not in place), and [ControlStatus.PARTIAL] otherwise.
+ * - Evidence then applies (#26): failing evidence technically verified or stronger makes the control a gap
+ *   ([GapReason.EVIDENCE_FAILED]); a would-be compliant control whose strongest passing evidence is below its level's
+ *   bar is partial ([GapReason.WEAK_EVIDENCE]).
  * - Levels are ids of the catalogue's own scale, compared by position (ADR 0007).
  * - The current level is the highest level whose controls, and those of every level below, are all compliant.
  *   A level without controls is skipped, so it is never reported as reached from nothing. Per domain the same,
@@ -19,7 +22,12 @@ import org.springframework.stereotype.Component
 @Component
 class ControlRules : ComplianceEngine {
 
-    override fun evaluate(catalogue: Catalogue, maxLevel: String, answers: Map<String, Answer>): Evaluation {
+    override fun evaluate(
+        catalogue: Catalogue,
+        maxLevel: String,
+        answers: Map<String, Answer>,
+        evidence: List<Evidence>,
+    ): Evaluation {
         val target = catalogue.levelIndex(maxLevel)
         require(target >= 0) { "Target level '$maxLevel' is not in the scale of ${catalogue.framework}" }
         val offScale = catalogue.controls.filter { catalogue.levelIndex(it.level) < 0 }.map { it.id }
@@ -36,9 +44,20 @@ class ControlRules : ComplianceEngine {
         val unanswered = controls.flatMap { it.questions }.map { it.id }.filterNot { it in answers }
         if (unanswered.isNotEmpty()) throw IncompleteAnswersException(unanswered)
 
+        val evidenceByControl = evidence.groupBy { it.controlId }
         val results = controls.map { control ->
-            val (status, reason) = judge(control.questions.map { answers.getValue(it.id) })
-            ControlEvaluation(control.id, control.level, status, control.id.substringBefore('.'), reason)
+            val found = evidenceByControl[control.id].orEmpty()
+            // Passing evidence only raises the strength; it never upgrades a no or partial answer.
+            val strength = found.filter { it.satisfied }.maxOfOrNull { it.strength } ?: EvidenceStrength.SELF_REPORTED
+            val failed = found.any { !it.satisfied && it.strength >= EvidenceStrength.TECHNICALLY_VERIFIED }
+            val answered = judge(control.questions.map { answers.getValue(it.id) })
+            val (status, reason) = when {
+                failed -> ControlStatus.GAP to GapReason.EVIDENCE_FAILED
+                answered.first == ControlStatus.COMPLIANT && strength < requiredStrength(control, catalogue) ->
+                    ControlStatus.PARTIAL to GapReason.WEAK_EVIDENCE
+                else -> answered
+            }
+            ControlEvaluation(control.id, control.level, status, control.id.substringBefore('.'), reason, strength)
         }
         val levels = catalogue.levels.take(target + 1).map { it.id }
             .filter { level -> results.any { it.level == level } }
@@ -74,12 +93,18 @@ class ControlRules : ComplianceEngine {
         else -> ControlStatus.COMPLIANT to null
     }
 
+    /** The weakest evidence that lets [control] be met: declared by its level in the catalogue's scale (#26). */
+    private fun requiredStrength(control: Control, catalogue: Catalogue): EvidenceStrength {
+        val level = catalogue.levels[catalogue.levelIndex(control.level)]
+        return if (control.technical) level.requiredStrengthTechnical else level.requiredStrength
+    }
+
     /** Highest of [levels] such that every result at it and below is compliant; a level with no results passes. */
     private fun currentLevel(results: List<ControlEvaluation>, levels: List<String>): String? =
         levels.takeWhile { level -> results.filter { it.level == level }.all { it.status == ControlStatus.COMPLIANT } }
             .lastOrNull()
 
     companion object {
-        const val VERSION = "controls-2026.11-v1"
+        const val VERSION = "controls-2026.11-v2"
     }
 }

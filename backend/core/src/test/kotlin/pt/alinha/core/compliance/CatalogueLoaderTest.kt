@@ -201,7 +201,8 @@ class CatalogueLoaderTest {
         val catalogue = CatalogueLoader(frameworksDir).loadAll().single()
 
         assertThat(catalogue.levels).containsExactly(
-            Level("basic", "Básico"), Level("substantial", "Substancial"), Level("high", "Elevado"),
+            Level("basic", "Básico"), Level("substantial", "Substancial"),
+            Level("high", "Elevado", EvidenceStrength.DOCUMENT_VERIFIED, EvidenceStrength.TECHNICALLY_VERIFIED),
         )
     }
 
@@ -255,6 +256,47 @@ class CatalogueLoaderTest {
         assertThatThrownBy { CatalogueLoader(frameworksDir).loadAll() }
             .isInstanceOf(InvalidCatalogueException::class.java)
             .hasMessageContaining("levels must not be empty")
+    }
+
+    @Test
+    fun `a v2 level declares its evidence bar, which defaults to self-reported`() {
+        write("soc-cmm", "v1", v2Catalogue().replace(
+            "  - { id: \"3\", label: \"Definido\" }",
+            "  - { id: \"3\", label: \"Definido\", requiredStrength: DOCUMENT_VERIFIED }",
+        ))
+
+        val levels = CatalogueLoader(frameworksDir).loadAll().single().levels
+
+        assertThat(levels[0].requiredStrength).isEqualTo(EvidenceStrength.SELF_REPORTED)
+        assertThat(levels[0].requiredStrengthTechnical).isEqualTo(EvidenceStrength.SELF_REPORTED)
+        assertThat(levels[2].requiredStrength).isEqualTo(EvidenceStrength.DOCUMENT_VERIFIED)
+        // The technical bar is the same as the plain one unless declared.
+        assertThat(levels[2].requiredStrengthTechnical).isEqualTo(EvidenceStrength.DOCUMENT_VERIFIED)
+    }
+
+    @Test
+    fun `rejects a technical bar weaker than the plain one`() {
+        write("soc-cmm", "v1", v2Catalogue().replace(
+            "  - { id: \"3\", label: \"Definido\" }",
+            "  - { id: \"3\", label: \"Definido\", requiredStrength: DOCUMENT_VERIFIED, requiredStrengthTechnical: SELF_REPORTED }",
+        ))
+
+        assertThatThrownBy { CatalogueLoader(frameworksDir).loadAll() }
+            .isInstanceOf(InvalidCatalogueException::class.java)
+            .hasMessageContaining("level '3' requiredStrengthTechnical must not be weaker than requiredStrength")
+    }
+
+    @Test
+    fun `the real soc-cmm catalogue asks for verified evidence at maturity 4 and 5`() {
+        val socCmm = CatalogueLoader(Path.of("../../frameworks")).loadAll().single { it.framework == "soc-cmm" }
+
+        assertThat(socCmm.levels.map { it.id to it.requiredStrength }).containsExactly(
+            "0" to EvidenceStrength.SELF_REPORTED, "1" to EvidenceStrength.SELF_REPORTED,
+            "2" to EvidenceStrength.SELF_REPORTED,
+            "3" to EvidenceStrength.SELF_REPORTED, "4" to EvidenceStrength.DOCUMENT_VERIFIED,
+            "5" to EvidenceStrength.DOCUMENT_VERIFIED,
+        )
+        assertThat(socCmm.levels.last().requiredStrengthTechnical).isEqualTo(EvidenceStrength.TECHNICALLY_VERIFIED)
     }
 
     private fun v2Catalogue() = """

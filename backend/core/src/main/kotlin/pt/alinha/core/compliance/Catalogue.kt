@@ -24,10 +24,24 @@ data class Catalogue(
 }
 
 /** One level of a catalogue's scale: e.g. `substantial` "Substancial" (QNRCS) or `3` "Definido" (SOC-CMM). */
-data class Level(val id: String, val label: String)
+data class Level(
+    val id: String,
+    val label: String,
+    /** The weakest evidence that lets a control of this level be met (#26). */
+    val requiredStrength: EvidenceStrength = EvidenceStrength.SELF_REPORTED,
+    /** The same, for a technical control. */
+    val requiredStrengthTechnical: EvidenceStrength = requiredStrength,
+)
 
-/** Compliance levels of Regulation 756/2026: the scale of every v1 catalogue. */
-val QNRCS_LEVELS = listOf(Level("basic", "Básico"), Level("substantial", "Substancial"), Level("high", "Elevado"))
+/**
+ * Compliance levels of Regulation 756/2026: the scale of every v1 catalogue. High needs a verified document, or a
+ * technical check for a technical control (#26, decision D2).
+ */
+val QNRCS_LEVELS = listOf(
+    Level("basic", "Básico"),
+    Level("substantial", "Substancial"),
+    Level("high", "Elevado", EvidenceStrength.DOCUMENT_VERIFIED, EvidenceStrength.TECHNICALLY_VERIFIED),
+)
 
 /** What the law asks for, pointing to the canonical controls that satisfy it. */
 data class Requirement(

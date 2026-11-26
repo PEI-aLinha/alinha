@@ -13,10 +13,16 @@ interface ComplianceEngine {
 
     /**
      * Evaluates the controls of [catalogue] up to [maxLevel], an id of the catalogue's level scale (ADR 0007), from
-     * [answers] (question id -> answer).
+     * [answers] (question id -> answer) and [evidence] per control (the caller maps actions to controls and passes
+     * only the current result of each check, dropping older ones; evidence for controls not evaluated is ignored).
      * Throws [IncompleteAnswersException] when a question of those controls has no answer.
      */
-    fun evaluate(catalogue: Catalogue, maxLevel: String, answers: Map<String, Answer>): Evaluation
+    fun evaluate(
+        catalogue: Catalogue,
+        maxLevel: String,
+        answers: Map<String, Answer>,
+        evidence: List<Evidence> = emptyList(),
+    ): Evaluation
 }
 
 /** Implemented by the assessment plugin (assessment#5); read by the AI Gateway context builder. */
@@ -57,6 +63,11 @@ data class ControlEvaluation(
     val domain: String,
     /** Null only when [status] is [ControlStatus.COMPLIANT]. */
     val reason: GapReason?,
+    /**
+     * Strongest passing evidence, whatever the status (a control can be a gap by failing evidence and still show a
+     * strong pass); SELF_REPORTED (the answers) when there is none.
+     */
+    val strength: EvidenceStrength = EvidenceStrength.SELF_REPORTED,
 )
 
 data class DomainEvaluation(
@@ -80,7 +91,29 @@ data class Gap(
 )
 
 /** Why a control is a gap. */
-enum class GapReason { ANSWERED_NO, ANSWERED_UNKNOWN, ANSWERED_PARTIAL }
+enum class GapReason {
+    ANSWERED_NO,
+    ANSWERED_UNKNOWN,
+    ANSWERED_PARTIAL,
+
+    /** Answered yes, but the evidence is weaker than the control's level requires. */
+    WEAK_EVIDENCE,
+
+    /** Evidence technically verified or stronger shows the control is not in place. */
+    EVIDENCE_FAILED,
+}
+
+/** How far evidence can be trusted, weakest first. */
+enum class EvidenceStrength { SELF_REPORTED, DOCUMENT_VERIFIED, TECHNICALLY_VERIFIED, CONTINUOUSLY_VERIFIED }
+
+/** One piece of evidence for a control: whether it shows the control in place, and how far it can be trusted. */
+data class Evidence(
+    val controlId: String,
+    val strength: EvidenceStrength,
+    val satisfied: Boolean,
+    /** Where the evidence is (e.g. a collected result or a document id), for traceability. */
+    val ref: String,
+)
 
 /** `partial` and `gap` both count as gaps for the roadmap. */
 enum class ControlStatus {

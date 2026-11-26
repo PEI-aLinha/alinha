@@ -20,9 +20,10 @@ private fun control(id: String, level: String, questions: Int = 1) = Control(
     questions = (1..questions).map { Question("$id-Q$it", "?", "", "", Answer.entries) },
 )
 
-/** Two basic controls (B1 with two questions), one substantial (S1) and one high (H1). */
+/** Two basic controls (B1 with two questions), one substantial (S1) and one high (H1); no evidence bars. */
 private val CATALOGUE = Catalogue(
     framework = "test", version = 1, title = "Test", sources = emptyList(), requirements = emptyList(),
+    levels = TestCatalogues.PLAIN_LEVELS,
     controls = listOf(control("B1", BASIC, questions = 2), control("B2", BASIC), control("S1", SUBSTANTIAL), control("H1", HIGH)),
 )
 

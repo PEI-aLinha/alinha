@@ -106,6 +106,9 @@ internal class CatalogueLoader(private val frameworksDir: Path) {
         catalogue.levels.forEach { level ->
             if (!LEVEL_ID_PATTERN.matches(level.id)) problems += "level id '${level.id}' does not match level id pattern"
             if (level.label.isBlank()) problems += "level '${level.id}' label must not be blank"
+            if (level.requiredStrengthTechnical < level.requiredStrength) {
+                problems += "level '${level.id}' requiredStrengthTechnical must not be weaker than requiredStrength"
+            }
         }
         duplicates(catalogue.levels.map { it.id }).forEach { problems += "duplicate level '$it'" }
         return problems

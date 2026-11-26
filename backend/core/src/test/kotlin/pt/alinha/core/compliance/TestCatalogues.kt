@@ -6,6 +6,9 @@ object TestCatalogues {
     const val SUBSTANTIAL = "substantial"
     const val HIGH = "high"
 
+    /** basic, substantial, high without evidence bars, so the answer rules can be tested on their own. */
+    val PLAIN_LEVELS = QNRCS_LEVELS.map { Level(it.id, it.label) }
+
     fun control(id: String, level: String, questions: Int = 1, technical: Boolean = false) = Control(
         id = id,
         title = id,
@@ -20,7 +23,7 @@ object TestCatalogues {
     fun catalogue(
         vararg controls: Control,
         requirements: List<Requirement> = emptyList(),
-        levels: List<Level> = QNRCS_LEVELS,
+        levels: List<Level> = PLAIN_LEVELS,
     ) = Catalogue(
         framework = "test-fw",
         version = 3,

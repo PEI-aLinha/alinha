@@ -22,6 +22,7 @@ class ControlRulesGoldenTest {
         val description: String,
         val targetLevel: String,
         val answers: Map<String, Answer>,
+        val evidence: List<Evidence> = emptyList(),
     )
 
     private val mapper =
@@ -32,14 +33,15 @@ class ControlRulesGoldenTest {
 
     @ParameterizedTest
     @CsvSource(
-        "nis2-qnrcs, 1, nis2-qnrcs-v1-rui", "nis2-qnrcs, 1, nis2-qnrcs-v1-basic-gap", "soc-cmm, 1, soc-cmm-v1-rui",
+        "nis2-qnrcs, 1, nis2-qnrcs-v1-rui", "nis2-qnrcs, 1, nis2-qnrcs-v1-basic-gap",
+        "nis2-qnrcs, 1, nis2-qnrcs-v1-essential", "soc-cmm, 1, soc-cmm-v1-rui",
     )
     fun `evaluation matches the stored result`(framework: String, version: Int, name: String) {
         val catalogue = catalogues.single { it.framework == framework && it.version == version }
         val fixture: Fixture = mapper.readValue(resource("$name.answers.json"))
 
         val actual = mapper.writeValueAsString(
-            ControlRules().evaluate(catalogue, fixture.targetLevel, fixture.answers),
+            ControlRules().evaluate(catalogue, fixture.targetLevel, fixture.answers, fixture.evidence),
         )
 
         val expected = javaClass.getResource("/compliance/golden/$name.result.json")?.readText()

@@ -1,5 +1,5 @@
 {
-  "engineVersion" : "controls-2026.11-v1",
+  "engineVersion" : "controls-2026.11-v2",
   "currentLevel" : "0",
   "targetLevel" : "3",
   "coverage" : 0.7333333333333333,
@@ -8,91 +8,106 @@
     "level" : "1",
     "status" : "compliant",
     "domain" : "BUS",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "BUS.2",
     "level" : "2",
     "status" : "compliant",
     "domain" : "BUS",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "BUS.3",
     "level" : "3",
     "status" : "partial",
     "domain" : "BUS",
-    "reason" : "ANSWERED_PARTIAL"
+    "reason" : "ANSWERED_PARTIAL",
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PEO.1",
     "level" : "1",
     "status" : "compliant",
     "domain" : "PEO",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PEO.2",
     "level" : "2",
     "status" : "gap",
     "domain" : "PEO",
-    "reason" : "ANSWERED_NO"
+    "reason" : "ANSWERED_NO",
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PEO.3",
     "level" : "3",
     "status" : "compliant",
     "domain" : "PEO",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PRO.1",
     "level" : "1",
     "status" : "compliant",
     "domain" : "PRO",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PRO.2",
     "level" : "2",
     "status" : "compliant",
     "domain" : "PRO",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "PRO.3",
     "level" : "3",
     "status" : "compliant",
     "domain" : "PRO",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "TEC.1",
     "level" : "1",
     "status" : "compliant",
     "domain" : "TEC",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "TEC.2",
     "level" : "2",
     "status" : "compliant",
     "domain" : "TEC",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "TEC.3",
     "level" : "3",
     "status" : "gap",
     "domain" : "TEC",
-    "reason" : "ANSWERED_UNKNOWN"
+    "reason" : "ANSWERED_UNKNOWN",
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "SVC.1",
     "level" : "1",
     "status" : "gap",
     "domain" : "SVC",
-    "reason" : "ANSWERED_NO"
+    "reason" : "ANSWERED_NO",
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "SVC.2",
     "level" : "2",
     "status" : "compliant",
     "domain" : "SVC",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   }, {
     "controlId" : "SVC.3",
     "level" : "3",
     "status" : "compliant",
     "domain" : "SVC",
-    "reason" : null
+    "reason" : null,
+    "strength" : "SELF_REPORTED"
   } ],
   "framework" : "soc-cmm",
   "catalogueVersion" : 1,
