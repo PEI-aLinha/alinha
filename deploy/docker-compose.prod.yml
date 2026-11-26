@@ -88,8 +88,8 @@ services:
       # Links in emails (e.g. the code-repository invite).
       ALINHA_PUBLIC_URL: ${ALINHA_PUBLIC_URL:?}
       # The aLinha GitHub App (code-repository), optional: DEPLOYMENT.md, "GitHub App". Its client secret is in OpenBao.
-      GITHUB_APP_SLUG: ${GITHUB_APP_SLUG:-}
-      GITHUB_APP_CLIENT_ID: ${GITHUB_APP_CLIENT_ID:-}
+      GITHUB_APP_SLUG: ${ALINHA_GITHUB_APP_SLUG:-}
+      GITHUB_APP_CLIENT_ID: ${ALINHA_GITHUB_APP_CLIENT_ID:-}
       # Regex for BFF_IP.
       ALINHA_TRUSTED_PROXIES: ${ALINHA_TRUSTED_PROXIES:-172\.31\.0\.10}
     volumes:
@@ -242,10 +242,12 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:?}
       LLM_API_KEY: none # no AI Service in production yet
       AI_SERVICE_TOKEN: none # no AI Service in production yet
-      # The aLinha GitHub App, optional (DEPLOYMENT.md, "GitHub App")
-      GITHUB_APP_CLIENT_SECRET: ${GITHUB_APP_CLIENT_SECRET:-}
-      GITHUB_APP_ID: ${GITHUB_APP_ID:-}
-      GITHUB_APP_PRIVATE_KEY: ${GITHUB_APP_PRIVATE_KEY:-}
+      # The aLinha GitHub App, optional (DEPLOYMENT.md, "GitHub App"). GitHub refuses secret and variable names that
+      # start with GITHUB_, so the deploy passes them as ALINHA_GITHUB_APP_*.
+      GITHUB_APP_CLIENT_SECRET: ${ALINHA_GITHUB_APP_CLIENT_SECRET:-}
+      GITHUB_APP_ID: ${ALINHA_GITHUB_APP_ID:-}
+      GITHUB_APP_PRIVATE_KEY: ${ALINHA_GITHUB_APP_PRIVATE_KEY:-}
+      GITHUB_APP_REMOVE: ${ALINHA_GITHUB_APP_REMOVE:-}
     volumes:
       - ./openbao:/init:ro
     depends_on:
