@@ -482,6 +482,166 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /api/risk-assets/assets:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+    get:
+      tags: [risk-assets]
+      operationId: listAssets
+      summary: List the organization's assets
+      description: |
+        Assets of the current organization, ordered by `name` then `id` ascending (risk-assets#2). Optional
+        filters combine with AND. Permission `asset:read` (Designated Officer, analyst, consultant).
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - name: type
+          in: query
+          required: false
+          description: Only assets of this type.
+          schema:
+            $ref: '#/components/schemas/AssetType'
+        - name: criticality
+          in: query
+          required: false
+          description: Only assets with this criticality.
+          schema:
+            $ref: '#/components/schemas/Criticality'
+        - name: serviceId
+          in: query
+          required: false
+          description: Only assets that support this critical service.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: One page of assets.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [risk-assets]
+      operationId: createAsset
+      summary: Register an asset
+      description: |
+        Registers an asset of the current organization and publishes the `AssetRegistered` event. Every
+        id in `serviceIds` must be a critical service of this organization, otherwise `422`. Permission
+        `asset:create` (Designated Officer, analyst).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetInput'
+      responses:
+        '201':
+          description: The asset was registered.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/risk-assets/assets/{assetId}:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+      - $ref: '#/components/parameters/AssetId'
+    get:
+      tags: [risk-assets]
+      operationId: getAsset
+      summary: Read one asset
+      description: |
+        An asset of the current organization. An id of another organization is `404`
+        (`code` = `ASSET_NOT_FOUND`), never `403`. Permission `asset:read` (Designated Officer, analyst,
+        consultant).
+      responses:
+        '200':
+          description: The asset.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [risk-assets]
+      operationId: updateAsset
+      summary: Change an asset
+      description: |
+        Replaces the data of an asset, including the critical services it supports. `version` is the one
+        that was read, otherwise `409` (`code` = `VERSION_CONFLICT`). An unknown id in `serviceIds` is `422`.
+        An id of another organization is `404` (`code` = `ASSET_NOT_FOUND`). Permission `asset:edit`
+        (Designated Officer, analyst).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssetUpdate'
+      responses:
+        '200':
+          description: The asset after the change.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Asset'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: |
+            The asset changed since it was read (`code` = `VERSION_CONFLICT`): reload and try again.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+    delete:
+      tags: [risk-assets]
+      operationId: deleteAsset
+      summary: Delete an asset
+      description: |
+        Deletes an asset. An id of another organization is `404` (`code` = `ASSET_NOT_FOUND`). Permission
+        `asset:delete` (Designated Officer).
+      responses:
+        '204':
+          description: The asset was deleted.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /api/assessment/assessments:
     parameters:
       - $ref: '#/components/parameters/Tenant'
@@ -826,6 +986,13 @@ components:
         default: 20
     AssessmentId:
       name: assessmentId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    AssetId:
+      name: assetId
       in: path
       required: true
       schema:
@@ -1768,6 +1935,87 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/CriticalService'
+
+    AssetType:
+      type: string
+      enum: [server, network, application, database, equipment, cloud_service, storage, ot_system, other]
+
+    AssetInput:
+      type: object
+      required: [name, type, owner, criticality]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: [string, 'null']
+          maxLength: 2000
+        type:
+          $ref: '#/components/schemas/AssetType'
+        owner:
+          type: string
+          minLength: 1
+          maxLength: 120
+          description: Name or role of the person responsible (free text).
+        criticality:
+          $ref: '#/components/schemas/Criticality'
+        serviceIds:
+          type: array
+          maxItems: 100
+          uniqueItems: true
+          default: []
+          description: Critical services of this organization that the asset supports.
+          items:
+            type: string
+            format: uuid
+
+    AssetUpdate:
+      allOf:
+        - $ref: '#/components/schemas/AssetInput'
+        - type: object
+          required: [version]
+          properties:
+            version:
+              type: integer
+              format: int64
+              description: The `version` that was read. A different value is `409` (`VERSION_CONFLICT`).
+
+    Asset:
+      allOf:
+        - $ref: '#/components/schemas/AssetInput'
+        - type: object
+          required: [id, version, createdAt, updatedAt, serviceIds]
+          properties:
+            id:
+              type: string
+              format: uuid
+            version:
+              type: integer
+              format: int64
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+            serviceIds:
+              type: array
+              description: Sorted ascending.
+              items:
+                type: string
+                format: uuid
+
+    AssetPage:
+      allOf:
+        - $ref: '#/components/schemas/PageMeta'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/Asset'
 
     AuditEvent:
       type: object
