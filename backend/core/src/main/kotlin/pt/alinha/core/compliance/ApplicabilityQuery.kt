@@ -1,7 +1,5 @@
 package pt.alinha.core.compliance
 
-import pt.alinha.pluginapi.TenantId
-
 /**
  * The applicability of an organization as it stands now: its stored scope answers assessed by [ApplicabilityRules],
  * plus the official CNCS qualification when registered ([ApplicabilityResult.officialNis2Classification]).
@@ -9,8 +7,8 @@ import pt.alinha.pluginapi.TenantId
  */
 interface ApplicabilityQuery {
     /**
-     * Null when the organization has not answered the scope questions yet. [tenantId] must be the current tenant
-     * (request or `TenantContext.runAs`): tenant data is only read in that tenant's session (RNF03).
+     * For the current tenant ([pt.alinha.core.tenant.TenantContext]; use `runAs` outside a request), so no caller can
+     * read another tenant's scope (RNF03). Null when the organization has not answered the scope questions yet.
      */
-    fun current(tenantId: TenantId): ApplicabilityResult?
+    fun current(): ApplicabilityResult?
 }
