@@ -86,9 +86,10 @@ Componentes Águeda, 120 employees, CAE 29320: important entity, target substant
 `frameworks/RELEASES`). Its own framework and its own assessment, never compared with QNRCS (ADR 0007). "The SOC" is
 whoever runs the company's security operations: its own staff, an outside company or aLinha.
 
-- **Maturity levels:** 0 Inexistente, 1 Inicial, 2 Gerido, 3 Definido, 4 Medido, 5 Otimizado. The catalogue declares
-  1 to 5; level 0 has no controls. A domain is at **0** (not `null`) when any of its level-1 controls is not met: the
-  engine reports `"0"` for any numbered scale whose first level is above 0.
+- **Maturity levels:** 0 Inexistente, 1 Inicial, 2 Gerido, 3 Definido, 4 Medido, 5 Otimizado, all declared in the
+  catalogue; level 0 has no controls. A domain is at **0** (not `null`) when any of its level-1 controls is not
+  compliant, unknown or partial: the engine reports a scale's lowest level when it has no controls. The screen uses
+  the control statuses to tell "por avaliar" (unknown) from "not in place".
 - **Domains:** five, one control per level each (25 controls): `BUS` Negócio, `PEO` Pessoas, `PRO` Processos,
   `TEC` Tecnologia, `SVC` Serviços.
 - **Target:** *recomendado*, never "exigido por lei". Set by the assessment plugin (`ScopeRules.recommendedMaturity`)

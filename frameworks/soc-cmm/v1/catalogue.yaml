@@ -8,8 +8,8 @@
 # "The SOC" here is whoever runs the company's security operations day to day: its own staff, an outside company,
 # or aLinha.
 #
-# Maturity levels 1 to 5 (one control per domain and level, cumulative). Level 0 (Inexistente) has no controls: a
-# domain is at 0 when any of its level-1 controls is not met. Maturity is not compliance: these levels are never
+# Maturity levels 0 to 5. Level 0 (Inexistente) has no controls: a domain is at 0 when any of its level-1 controls
+# is not met. Levels 1 to 5 have one control per domain and level, cumulative. Maturity is not compliance: these levels are never
 # compared with the QNRCS compliance levels, and the target is a recommendation, never a legal requirement.
 # Evidence (#26): levels 1 to 3 accept the answers; 4 and 5 need a verified document, or a technical check for a
 # technical control.
@@ -20,6 +20,7 @@ sources:
   - "SOC-CMM v3 (SOC Capability Maturity Model)"
 
 levels:
+  - { id: "0", label: "Inexistente" }
   - { id: "1", label: "Inicial" }
   - { id: "2", label: "Gerido" }
   - { id: "3", label: "Definido" }

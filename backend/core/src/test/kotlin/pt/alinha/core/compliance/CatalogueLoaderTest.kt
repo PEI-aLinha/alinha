@@ -229,11 +229,15 @@ class CatalogueLoaderTest {
 
     @Test
     fun `rejects duplicate, malformed or unlabelled levels`() {
-        write("soc-cmm", "v1", v2Catalogue().replace("id: \"3\", label: \"Definido\"", "id: \"1\", label: \" \""))
+        val catalogue = v2Catalogue()
+            .replace("id: \"3\", label: \"Definido\"", "id: \"1\", label: \" \"")
+            .replace("id: \"2\", label: \"Gerido\"", "id: \"Level 2\", label: \"Gerido\"")
+        write("soc-cmm", "v1", catalogue)
 
         assertThatThrownBy { CatalogueLoader(frameworksDir).loadAll() }
             .isInstanceOf(InvalidCatalogueException::class.java)
             .hasMessageContaining("duplicate level '1'")
+            .hasMessageContaining("level id 'Level 2' does not match level id pattern")
             .hasMessageContaining("level '1' label must not be blank")
     }
 
@@ -279,7 +283,8 @@ class CatalogueLoaderTest {
         val socCmm = CatalogueLoader(Path.of("../../frameworks")).loadAll().single { it.framework == "soc-cmm" }
 
         assertThat(socCmm.levels.map { it.id to it.requiredStrength }).containsExactly(
-            "1" to EvidenceStrength.SELF_REPORTED, "2" to EvidenceStrength.SELF_REPORTED,
+            "0" to EvidenceStrength.SELF_REPORTED, "1" to EvidenceStrength.SELF_REPORTED,
+            "2" to EvidenceStrength.SELF_REPORTED,
             "3" to EvidenceStrength.SELF_REPORTED, "4" to EvidenceStrength.DOCUMENT_VERIFIED,
             "5" to EvidenceStrength.DOCUMENT_VERIFIED,
         )

@@ -238,8 +238,8 @@ class ControlRulesTest {
     }
 
     @Test
-    fun `a numbered scale starting above 0 reports 0 when its first level is not met`() {
-        val maturity = listOf(Level("1", "Inicial"), Level("2", "Gerido"))
+    fun `a lowest level with no controls is reported when the first level with controls is not met`() {
+        val maturity = listOf(Level("0", "Inexistente"), Level("1", "Inicial"), Level("2", "Gerido"))
         val catalogue = domains(control("BUS.1", "1"), control("BUS.2", "2"), control("PEO.1", "1"))
             .copy(levels = maturity)
 
@@ -247,6 +247,25 @@ class ControlRulesTest {
 
         assertEquals(listOf(DomainEvaluation("BUS", "2", "2"), DomainEvaluation("PEO", "0", "2")), result.domains)
         assertEquals("0", result.currentLevel)
+    }
+
+    @Test
+    fun `an unknown level-1 control puts its domain at 0, and the control says why`() {
+        val maturity = listOf(Level("0", "Inexistente"), Level("1", "Inicial"))
+        val catalogue = domains(control("BUS.1", "1"), control("PEO.1", "1")).copy(levels = maturity)
+
+        val result = rules.evaluate(catalogue, "1", yes(catalogue) + ("PEO.1-Q1" to UNKNOWN))
+
+        assertEquals(listOf("1", "0"), result.domains.map { it.currentLevel })
+        assertEquals(GapReason.ANSWERED_UNKNOWN, result.controls.single { it.controlId == "PEO.1" }.reason)
+    }
+
+    @Test
+    fun `a scale whose lowest level has controls never reports a floor`() {
+        val numbered = listOf(Level("1", "Inicial"), Level("2", "Gerido"))
+        val catalogue = domains(control("BUS.1", "1"), control("BUS.2", "2")).copy(levels = numbered)
+
+        assertNull(rules.evaluate(catalogue, "2", yes(catalogue) + ("BUS.1-Q1" to NO)).currentLevel)
     }
 
     private fun domains(vararg controls: Control) = CATALOGUE.copy(controls = controls.toList())

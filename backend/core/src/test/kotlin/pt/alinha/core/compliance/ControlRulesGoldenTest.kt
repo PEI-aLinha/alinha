@@ -33,7 +33,8 @@ class ControlRulesGoldenTest {
 
     @ParameterizedTest
     @CsvSource(
-        "nis2-qnrcs, 1, nis2-qnrcs-v1-rui", "nis2-qnrcs, 1, nis2-qnrcs-v1-essential", "soc-cmm, 1, soc-cmm-v1-rui",
+        "nis2-qnrcs, 1, nis2-qnrcs-v1-rui", "nis2-qnrcs, 1, nis2-qnrcs-v1-basic-gap",
+        "nis2-qnrcs, 1, nis2-qnrcs-v1-essential", "soc-cmm, 1, soc-cmm-v1-rui",
     )
     fun `evaluation matches the stored result`(framework: String, version: Int, name: String) {
         val catalogue = catalogues.single { it.framework == framework && it.version == version }

@@ -31,7 +31,9 @@ class ControlRules : ComplianceEngine {
         val target = catalogue.levelIndex(maxLevel)
         require(target >= 0) { "Target level '$maxLevel' is not in the scale of ${catalogue.framework}" }
         val controls = catalogue.controls.filter { catalogue.levelIndex(it.level) <= target }
-        require(controls.isNotEmpty()) { "${catalogue.framework} v${catalogue.version} has no controls up to $maxLevel" }
+        require(controls.isNotEmpty()) {
+            "${catalogue.framework} v${catalogue.version} has no controls up to $maxLevel"
+        }
         val unanswered = controls.flatMap { it.questions }.map { it.id }.filterNot { it in answers }
         if (unanswered.isNotEmpty()) throw IncompleteAnswersException(unanswered)
 
@@ -56,18 +58,18 @@ class ControlRules : ComplianceEngine {
             val requirementIds = catalogue.requirements.filter { result.controlId in it.controls }.map { it.id }
             Gap(result.controlId, requirementIds, result.level, result.status, result.reason!!)
         }
-        // A numbered scale starting above 0 (SOC-CMM 1 to 5) has an implicit level 0 with no controls (ADR 0007).
-        val belowFirst = catalogue.levels.first().id.toIntOrNull()?.takeIf { it > 0 }?.let { "0" }
+        // A scale whose lowest level has no controls (SOC-CMM 0 Inexistente) reports it when nothing is reached.
+        val floor = catalogue.levels.first().id.takeIf { first -> catalogue.controls.none { it.level == first } }
         return Evaluation(
             engineVersion = VERSION,
-            currentLevel = currentLevel(results, levels) ?: belowFirst,
+            currentLevel = currentLevel(results, levels) ?: floor,
             targetLevel = maxLevel,
             coverage = results.count { it.status == ControlStatus.COMPLIANT }.toDouble() / results.size,
             controls = results,
             framework = catalogue.framework,
             catalogueVersion = catalogue.version,
             domains = results.map { it.domain }.distinct().map { domain ->
-                val level = currentLevel(results.filter { it.domain == domain }, levels) ?: belowFirst
+                val level = currentLevel(results.filter { it.domain == domain }, levels) ?: floor
                 DomainEvaluation(domain, level, maxLevel)
             },
             gaps = gaps,
