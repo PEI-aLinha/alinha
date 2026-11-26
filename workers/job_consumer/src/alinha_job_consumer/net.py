@@ -74,12 +74,12 @@ def is_public(address: str) -> bool:
             ip = ip.ipv4_mapped
         elif any(ip in net for net in _TRANSLATED):
             return False
-        # 6to4 (2002::/16) and Teredo (2001::/32) count as global but carry an IPv4 address a relay may reach:
-        # every embedded address must be public too.
+        # 6to4 (2002::/16) carries an IPv4 address a relay may reach: it must be public too. Teredo (2001::/32) is
+        # refused outright: deprecated, and whether `ipaddress` counts it as global depends on the Python version.
         elif ip.sixtofour is not None:
             return ip.is_global and ip.sixtofour.is_global
         elif ip.teredo is not None:
-            return all(embedded.is_global for embedded in ip.teredo)
+            return False
     return ip.is_global
 
 

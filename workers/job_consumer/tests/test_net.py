@@ -49,6 +49,15 @@ def test_6to4_and_teredo_with_a_private_ipv4_are_refused(address):
     assert not net.is_public(address)
 
 
+def test_teredo_is_refused_even_with_public_ipv4_addresses():
+    assert not net.is_public("2001:0:4136:e378:8000:63bf:3fff:fdd2")  # server 65.54.227.120, client 192.0.2.45
+    assert not net.is_public("2001:0:0808:0808:8000:63bf:f7f7:f7f7")  # server and client 8.8.8.8
+
+
+def test_6to4_with_a_public_ipv4_is_allowed():
+    assert net.is_public("2002:0808:0808::1") == net.ipaddress.ip_address("2002:0808:0808::1").is_global
+
+
 def test_public_ipv4_mapped_address_is_allowed():
     assert net.is_public("::ffff:8.8.8.8")
 
