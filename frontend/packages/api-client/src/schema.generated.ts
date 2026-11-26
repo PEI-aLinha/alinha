@@ -266,9 +266,12 @@ export interface paths {
         post?: never;
         /**
          * Delete a critical service
-         * @description Deletes a critical service. Assets that depended on it simply stop listing it. An id of another
-         *     organization is `404` (`code` = `SERVICE_NOT_FOUND`). Permission `critical-service:delete`
-         *     (Designated Officer).
+         * @description Deletes a critical service. Each asset that supported it stops listing it in `serviceIds` and counts
+         *     as changed: its `version` goes up by one and `updatedAt` is the time of the deletion, so a `PUT` sent
+         *     with the old `version` is `409` (`VERSION_CONFLICT`), not a `422` about the missing service. The Audit
+         *     Trail gets `critical_service.deleted` (with how many assets were unlinked) and one `asset.updated`
+         *     per asset (`changed` = `["serviceIds"]`), in the same transaction. An id of another organization is
+         *     `404` (`code` = `SERVICE_NOT_FOUND`). Permission `critical-service:delete` (Designated Officer).
          */
         delete: operations["deleteCriticalService"];
         options?: never;
@@ -337,8 +340,8 @@ export interface paths {
         get: operations["getAsset"];
         /**
          * Change an asset
-         * @description Replaces the data of an asset, including the critical services it supports. `version` is the one
-         *     that was read, otherwise `409` (`code` = `VERSION_CONFLICT`). An unknown id in `serviceIds` is `422`.
+         * @description Replaces the data of an asset, including the critical services it supports (`serviceIds` is required;
+         *     `[]` removes every link). `version` is the one that was read, otherwise `409` (`code` = `VERSION_CONFLICT`). An unknown id in `serviceIds` is `422`.
          *     An id of another organization is `404` (`code` = `ASSET_NOT_FOUND`). Permission `asset:edit`
          *     (Designated Officer, analyst).
          */
@@ -1067,6 +1070,11 @@ export interface components {
              * @description The `version` that was read. A different value is `409` (`VERSION_CONFLICT`).
              */
             version: number;
+            /**
+             * @description Required here, so that a client that forgets it does not unlink every service: the full set of
+             *     services the asset supports, `[]` to remove every link. Omitted is `422` (field `serviceIds`).
+             */
+            serviceIds: string[];
         };
         CriticalService: components["schemas"]["CriticalServiceInput"] & {
             /** Format: uuid */
@@ -1084,7 +1092,7 @@ export interface components {
             items: components["schemas"]["CriticalService"][];
         };
         /** @enum {string} */
-        AssetType: "server" | "network" | "application" | "database" | "equipment" | "cloud_service" | "storage" | "ot_system" | "other";
+        AssetType: "server" | "network" | "application" | "database" | "equipment" | "cloud-service" | "storage" | "ot-system" | "other";
         AssetInput: {
             name: string;
             description?: string | null;
@@ -1093,9 +1101,9 @@ export interface components {
             owner: string;
             criticality: components["schemas"]["Criticality"];
             /**
-             * @description Critical services of this organization that the asset supports. Omitted or empty means none;
-             *     repeated ids count once. An id that is not a service of this organization is a `422`
-             *     (field `serviceIds`).
+             * @description Critical services of this organization that the asset supports. Empty means none; on create,
+             *     omitted also means none (on update it is required, see `AssetUpdate`). Repeated ids count once.
+             *     An id that is not a service of this organization is a `422` (field `serviceIds`).
              */
             serviceIds?: string[];
         };
@@ -1105,6 +1113,11 @@ export interface components {
              * @description The `version` that was read. A different value is `409` (`VERSION_CONFLICT`).
              */
             version: number;
+            /**
+             * @description Required here, so that a client that forgets it does not unlink every service: the full set of
+             *     services the asset supports, `[]` to remove every link. Omitted is `422` (field `serviceIds`).
+             */
+            serviceIds: string[];
         };
         Asset: components["schemas"]["AssetInput"] & {
             /** Format: uuid */
