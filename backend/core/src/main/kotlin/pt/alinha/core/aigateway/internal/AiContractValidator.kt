@@ -6,6 +6,7 @@ import com.networknt.schema.SchemaLocation
 import com.networknt.schema.SchemaRegistry
 import com.networknt.schema.SchemaRegistryConfig
 import com.networknt.schema.SpecificationVersion
+import com.networknt.schema.path.NodePath
 import org.springframework.core.io.ClassPathResource
 import org.springframework.stereotype.Component
 import tools.jackson.core.JacksonException
@@ -27,12 +28,14 @@ class AiContractValidator(private val json: JsonMapper) {
         it.schemaRegistryConfig(SchemaRegistryConfig.builder().formatAssertionsEnabled(true).build())
     }
     private val document: JsonNode by lazy { load() }
+    private val declaredNames: Set<String> by lazy { buildSet { collectPropertyNames(document, this) } }
     private val schemas = ConcurrentHashMap<String, Schema>()
 
     /**
      * @param schemaName a `components.schemas` name, e.g. `AiDraft`.
      * @throws IllegalArgumentException listing each violation as `location: keyword`. Never the library's message: it
-     * can quote the body, and AI context or drafts must not reach the logs.
+     * can quote the body, and AI context or drafts must not reach the logs. In the location, an object key the contract
+     * does not declare (a free-form `context` key, say) shows as `*`.
      */
     fun validate(schemaName: String, body: Map<String, Any?>) {
         val tree = try {
@@ -65,14 +68,39 @@ class AiContractValidator(private val json: JsonMapper) {
 
     /** A `required` property name comes from the schema, so it is safe to show; any other name may come from the body. */
     private fun describe(error: Error): String {
-        val location = error.instanceLocation.toString().ifEmpty { "/" }
+        val location = maskedLocation(error.instanceLocation, declaredNames)
         val missing = if (error.keyword == REQUIRED) " ${error.property}" else ""
         return "$location: ${error.keyword}$missing"
+    }
+
+    /** Every name under a `properties` keyword of the contract: the only object keys a location may show. */
+    private fun collectPropertyNames(node: JsonNode, into: MutableSet<String>) {
+        if (node.isObject) {
+            node.properties().forEach { (key, child) ->
+                if (key == PROPERTIES && child.isObject) into += child.propertyNames()
+                collectPropertyNames(child, into)
+            }
+        } else if (node.isArray) {
+            node.forEach { collectPropertyNames(it, into) }
+        }
     }
 
     private companion object {
         const val CONTRACT = "contracts/ai/ai-service.v1.yaml"
         const val BASE_URI = "https://alinha.pt/contracts/ai/ai-service.v1.yaml"
         const val REQUIRED = "required"
+        const val PROPERTIES = "properties"
+    }
+}
+
+/** [path] as a JSON Pointer that keeps array indexes and [declared] keys, and shows any other key as `*`. */
+internal fun maskedLocation(path: NodePath, declared: Set<String>): String {
+    if (path.nameCount == 0) return "/"
+    return (0 until path.nameCount).joinToString("/", prefix = "/") { index ->
+        when (val element = path.getElement(index)) {
+            is Int -> element.toString()
+            is String -> element.takeIf { it in declared } ?: "*"
+            else -> "*"
+        }
     }
 }

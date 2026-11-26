@@ -1,5 +1,7 @@
 package pt.alinha.core.aigateway.internal
 
+import com.networknt.schema.path.NodePath
+import com.networknt.schema.path.PathType
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.Test
@@ -50,6 +52,14 @@ class AiContractValidatorTest {
         }
 
         assertThat(e.message).contains("required sources", "/generatedAt: format", "/model: type").doesNotContain(secret)
+    }
+
+    @Test
+    fun `a location shows array indexes and declared keys, never a key taken from the body`() {
+        val path = NodePath(PathType.JSON_POINTER).append("context").append("s3cr3t-tenant-key").append(2).append("title")
+
+        assertThat(maskedLocation(path, setOf("context", "title"))).isEqualTo("/context/*/2/title")
+        assertThat(maskedLocation(NodePath(PathType.JSON_POINTER), emptySet())).isEqualTo("/")
     }
 
     @Test
