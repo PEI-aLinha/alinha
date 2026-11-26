@@ -219,9 +219,9 @@ class TenantMembershipService(
             jdbc.sql("update core.invitation set left_at = ? where tenant_id = ? and accepted_by = ? and left_at is null")
                 .params(Timestamp.from(Instant.now()), tenant.value, subject).update()
             audit.record(MEMBER_REMOVED, MEMBER_ENTITY, subject, mapOf("role" to ANALYST_ROLE))
-            // Last, so a failure rolls the audit entry back. A failed commit after this leaves the removal unaudited:
-            // logged, and visible in the identity provider's own admin events.
-            TransactionSynchronizationManager.registerSynchronization(ReportUnauditedRemoval(subject, tenant))
+            // Last, so a failure rolls the audit entry back. Registered before the call: if the commit fails after the
+            // identity provider let the account go, the analyst is put back, matching the database again.
+            TransactionSynchronizationManager.registerSynchronization(RejoinOnRollback(subject, tenant))
             identity("removing a member of tenant ${tenant.value}") { directory.leaveTenant(subject, tenant, ANALYST_ROLE) }
         }
         runCatching { directory.endSessions(subject) }.onFailure {
@@ -263,10 +263,21 @@ class TenantMembershipService(
         }
     }
 
-    private inner class ReportUnauditedRemoval(private val subject: String, private val tenantId: TenantId) : TransactionSynchronization {
+    /**
+     * Undoes a removal whose transaction rolled back (no audit entry, no `left_at`): the account joins again, so it is
+     * not left outside the organization in the identity provider while the database still counts it in. With an
+     * unknown outcome it is only reported, as provisioning does (ADR 0004).
+     */
+    private inner class RejoinOnRollback(private val subject: String, private val tenantId: TenantId) : TransactionSynchronization {
         override fun afterCompletion(status: Int) {
-            if (status != TransactionSynchronization.STATUS_COMMITTED) {
-                log.error("A member of tenant {} may have been removed without an audit entry", tenantId.value)
+            when (status) {
+                TransactionSynchronization.STATUS_COMMITTED -> Unit
+                TransactionSynchronization.STATUS_ROLLED_BACK -> runCatching {
+                    directory.joinTenant(subject, tenantId, ANALYST_ROLE)
+                }.onFailure {
+                    log.error("Could not undo the removal of a member of tenant {}: check the account", tenantId.value, it)
+                }
+                else -> log.error("Unknown commit outcome removing a member of tenant {}: check the account", tenantId.value)
             }
         }
     }

@@ -25,6 +25,8 @@ import org.springframework.web.context.request.RequestAttributes
 import org.springframework.web.context.request.RequestContextHolder
 import org.springframework.web.context.request.ServletRequestAttributes
 import org.springframework.web.server.ResponseStatusException
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import pt.alinha.core.audit.internal.AuditDatabase
 import pt.alinha.core.audit.internal.AuditTestApplication
 import pt.alinha.core.tenant.TenantMembership
@@ -41,6 +43,7 @@ class FakeIdentityMembership : IdentityMembership {
     val left: MutableList<Pair<String, TenantId>> = Collections.synchronizedList(mutableListOf())
     val sessionsEnded: MutableList<String> = Collections.synchronizedList(mutableListOf())
     var failOnJoin = false
+    var onLeave: () -> Unit = {}
 
     fun add(subject: String, tenant: TenantId, role: String, email: String = "$subject@empresa.pt") {
         accounts[subject] = DirectoryMember(subject, email, "Pessoa $subject", setOf(role))
@@ -55,6 +58,7 @@ class FakeIdentityMembership : IdentityMembership {
 
     override fun leaveTenant(subject: String, tenantId: TenantId, role: String) {
         left += subject to tenantId
+        onLeave()
         if (tenantOf[subject] == tenantId) {
             tenantOf.remove(subject)
             accounts.remove(subject)
@@ -99,6 +103,7 @@ class TenantMembershipIntegrationTest {
         officer = UUID.randomUUID().toString()
         directory.add(officer, tenant, "responsible")
         directory.failOnJoin = false
+        directory.onLeave = {}
     }
 
     @AfterEach
@@ -349,6 +354,22 @@ class TenantMembershipIntegrationTest {
         val own = provisioning.provisionForCurrentUser { it }
         assertThat(jdbc.queryForObject("select owner_subject from core.tenant where id = ?", String::class.java, own.value))
             .isEqualTo(sub)
+    }
+
+    @Test
+    fun `a removal whose commit fails puts the analyst back`() {
+        val analyst = UUID.randomUUID().toString()
+        directory.add(analyst, tenant, "analyst")
+        directory.onLeave = {
+            TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+                override fun beforeCommit(readOnly: Boolean) = error("commit failed")
+            })
+        }
+
+        assertThrows<IllegalStateException> { asOfficer { membership.removeAnalyst(analyst) } }
+
+        assertThat(asOfficer { membership.members() }.map { it.subject to it.role }).contains(analyst to "analyst")
+        assertThat(audit(MEMBER_REMOVED)).isZero()
     }
 
     @Test
