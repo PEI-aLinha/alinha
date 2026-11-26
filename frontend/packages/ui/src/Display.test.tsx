@@ -46,11 +46,17 @@ describe('cards', () => {
 })
 
 describe('PageHeader', () => {
-  it('is the page h1, with optional eyebrow, subtitle and actions', () => {
-    render(<PageHeader eyebrow="Organização" title="Ativos" subtitle="O que a empresa usa" actions={<button>Novo ativo</button>} help={<button>Ajuda</button>} />)
+  it('is the page h1, with optional subtitle, help and actions', () => {
+    render(<PageHeader title="Ativos" subtitle="O que a empresa usa" actions={<button>Novo ativo</button>} help={<button>Ajuda</button>} />)
     expect(screen.getByRole('heading', { level: 1, name: 'Ativos' })).toBeInTheDocument()
     expect(screen.getByText('O que a empresa usa')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Novo ativo' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Ajuda' })).toBeInTheDocument()
+  })
+
+  it('draws nothing above the title, even when a plugin still passes an eyebrow', () => {
+    render(<PageHeader eyebrow="Organização" title="Ativos" />)
+    expect(screen.queryByText('Organização')).not.toBeInTheDocument()
   })
 
   it('works with just a title', () => {
