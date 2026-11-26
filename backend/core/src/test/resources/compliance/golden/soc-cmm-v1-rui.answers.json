@@ -1,5 +1,5 @@
 {
-  "description": "Illustrative fixture: Rui, Componentes Águeda, important entity, recommended maturity target 3. Business at 2, People at 1, Process at 3, Technology at 2 (TEC.3 unanswered), Services at 0 (nobody looks at the alerts).",
+  "description": "Illustrative fixture: Rui, Componentes Águeda, important entity, recommended maturity target 3. Business at 2, People at 1, Process at 3, Technology at 2 (TEC.3 unknown), Services at 0 (nobody looks at the alerts).",
   "targetLevel": "3",
   "answers": {
     "BUS.1-Q1": "yes",
@@ -14,6 +14,7 @@
     "PRO.4-Q1": "no",
     "TEC.1-Q1": "yes",
     "TEC.2-Q1": "yes",
+    "TEC.3-Q1": "unknown",
     "SVC.1-Q1": "no",
     "SVC.2-Q1": "yes",
     "SVC.3-Q1": "yes"

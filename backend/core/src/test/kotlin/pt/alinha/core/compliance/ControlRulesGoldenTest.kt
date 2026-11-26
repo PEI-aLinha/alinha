@@ -14,9 +14,9 @@ import tools.jackson.module.kotlin.readValue
 /**
  * Golden tests: a real catalogue and a fixed set of answers must give exactly the stored result (RNF05).
  * On a mismatch the actual result is written to build/golden-actual-<name>.json: review it and, when the change is
- * intended, copy it over the stored result (and bump ComplianceRules.VERSION once main has the old one).
+ * intended, copy it over the stored result (and bump ControlRules.VERSION once main has the old one).
  */
-class ComplianceRulesGoldenTest {
+class ControlRulesGoldenTest {
 
     private data class Fixture(
         val description: String,
@@ -32,13 +32,15 @@ class ComplianceRulesGoldenTest {
     private val catalogues = CatalogueLoader(Path.of("../../frameworks")).loadAll()
 
     @ParameterizedTest
-    @CsvSource("nis2-qnrcs, 1, nis2-qnrcs-v1-rui", "nis2-qnrcs, 1, nis2-qnrcs-v1-essential", "soc-cmm, 1, soc-cmm-v1-rui")
+    @CsvSource(
+        "nis2-qnrcs, 1, nis2-qnrcs-v1-rui", "nis2-qnrcs, 1, nis2-qnrcs-v1-essential", "soc-cmm, 1, soc-cmm-v1-rui",
+    )
     fun `evaluation matches the stored result`(framework: String, version: Int, name: String) {
         val catalogue = catalogues.single { it.framework == framework && it.version == version }
         val fixture: Fixture = mapper.readValue(resource("$name.answers.json"))
 
         val actual = mapper.writeValueAsString(
-            ComplianceRules().evaluate(EvaluationInput(catalogue, fixture.targetLevel, fixture.answers, fixture.evidence)),
+            ControlRules().evaluate(catalogue, fixture.targetLevel, fixture.answers, fixture.evidence),
         )
 
         val expected = javaClass.getResource("/compliance/golden/$name.result.json")?.readText()

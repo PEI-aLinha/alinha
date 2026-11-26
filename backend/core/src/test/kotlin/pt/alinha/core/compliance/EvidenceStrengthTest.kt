@@ -18,7 +18,7 @@ import pt.alinha.core.compliance.TestCatalogues.control
 /** The evidence strength gate (#26, docs/compliance-engine.md). */
 class EvidenceStrengthTest {
 
-    private val engine = ComplianceRules()
+    private val engine = ControlRules()
 
     // The bar comes from the catalogue's scale (here the implicit QNRCS one), never from the framework id.
     private val qnrcs = catalogue(
@@ -37,9 +37,9 @@ class EvidenceStrengthTest {
         evidence: List<Evidence> = emptyList(),
         answers: Map<String, Answer> = answerAll(catalogue, YES),
         target: String = catalogue.levels.last().id,
-    ) = engine.evaluate(EvaluationInput(catalogue, target, answers, evidence))
+    ) = engine.evaluate(catalogue, target, answers, evidence)
 
-    private fun EvaluationResult.of(controlId: String) = controls.single { it.controlId == controlId }
+    private fun Evaluation.of(controlId: String) = controls.single { it.controlId == controlId }
 
     private fun evidence(controlId: String, strength: EvidenceStrength, satisfied: Boolean = true) =
         Evidence(controlId, strength, satisfied, "ref-$controlId")
@@ -48,7 +48,7 @@ class EvidenceStrengthTest {
     fun `a self-reported yes on a basic control is met`() {
         val result = evaluate(qnrcs).of("PR.1-B")
 
-        assertThat(result.status).isEqualTo(ControlStatus.MET)
+        assertThat(result.status).isEqualTo(ControlStatus.COMPLIANT)
         assertThat(result.strength).isEqualTo(SELF_REPORTED)
     }
 
@@ -56,7 +56,7 @@ class EvidenceStrengthTest {
     fun `failing technical evidence overrides a yes`() {
         val result = evaluate(qnrcs, listOf(evidence("PR.1-B", TECHNICALLY_VERIFIED, satisfied = false))).of("PR.1-B")
 
-        assertThat(result).extracting("status", "reason").containsExactly(ControlStatus.NOT_MET, GapReason.EVIDENCE_FAILED)
+        assertThat(result).extracting("status", "reason").containsExactly(ControlStatus.GAP, GapReason.EVIDENCE_FAILED)
     }
 
     @Test
@@ -65,7 +65,7 @@ class EvidenceStrengthTest {
             evidence("PR.1-B", SELF_REPORTED, satisfied = false), evidence("PR.1-B", DOCUMENT_VERIFIED, satisfied = false),
         )
 
-        assertThat(evaluate(qnrcs, failing).of("PR.1-B").status).isEqualTo(ControlStatus.MET)
+        assertThat(evaluate(qnrcs, failing).of("PR.1-B").status).isEqualTo(ControlStatus.COMPLIANT)
     }
 
     @Test
@@ -76,7 +76,7 @@ class EvidenceStrengthTest {
         val result = evaluate(qnrcs, passing, answers)
 
         assertThat(result.of("PR.1-B").status).isEqualTo(ControlStatus.PARTIAL)
-        assertThat(result.of("PR.1-E").status).isEqualTo(ControlStatus.NOT_MET)
+        assertThat(result.of("PR.1-E").status).isEqualTo(ControlStatus.GAP)
         assertThat(result.of("PR.1-B").strength).isEqualTo(CONTINUOUSLY_VERIFIED)
     }
 
@@ -94,7 +94,7 @@ class EvidenceStrengthTest {
     fun `a high control with document evidence is met`() {
         val result = evaluate(qnrcs, listOf(evidence("PR.1-E", DOCUMENT_VERIFIED))).of("PR.1-E")
 
-        assertThat(result.status).isEqualTo(ControlStatus.MET)
+        assertThat(result.status).isEqualTo(ControlStatus.COMPLIANT)
         assertThat(result.strength).isEqualTo(DOCUMENT_VERIFIED)
     }
 
@@ -103,19 +103,19 @@ class EvidenceStrengthTest {
         assertThat(evaluate(qnrcs, listOf(evidence("PR.2-E", DOCUMENT_VERIFIED))).of("PR.2-E").reason)
             .isEqualTo(GapReason.WEAK_EVIDENCE)
         assertThat(evaluate(qnrcs, listOf(evidence("PR.2-E", TECHNICALLY_VERIFIED))).of("PR.2-E").status)
-            .isEqualTo(ControlStatus.MET)
+            .isEqualTo(ControlStatus.COMPLIANT)
         assertThat(evaluate(qnrcs, listOf(evidence("PR.2-E", CONTINUOUSLY_VERIFIED))).of("PR.2-E").status)
-            .isEqualTo(ControlStatus.MET)
+            .isEqualTo(ControlStatus.COMPLIANT)
     }
 
     @Test
     fun `soc-cmm up to level 3 accepts self-reported answers, level 4 needs a document`() {
         val result = evaluate(socCmm)
 
-        assertThat(result.of("TEC.3").status).isEqualTo(ControlStatus.MET)
+        assertThat(result.of("TEC.3").status).isEqualTo(ControlStatus.COMPLIANT)
         assertThat(result.of("BUS.4").reason).isEqualTo(GapReason.WEAK_EVIDENCE)
         assertThat(evaluate(socCmm, listOf(evidence("BUS.4", DOCUMENT_VERIFIED))).of("BUS.4").status)
-            .isEqualTo(ControlStatus.MET)
+            .isEqualTo(ControlStatus.COMPLIANT)
         assertThat(evaluate(socCmm, listOf(evidence("TEC.4", DOCUMENT_VERIFIED))).of("TEC.4").reason)
             .isEqualTo(GapReason.WEAK_EVIDENCE)
     }
@@ -129,13 +129,13 @@ class EvidenceStrengthTest {
 
         val result = evaluate(qnrcs, failing, target = BASIC)
 
-        assertThat(result.controls.map { it.controlId to it.status }).containsExactly("PR.1-B" to ControlStatus.MET)
+        assertThat(result.controls.map { it.controlId to it.status }).containsExactly("PR.1-B" to ControlStatus.COMPLIANT)
     }
 
     @Test
     fun `a scale that declares no bar accepts self-reported answers at every level`() {
         val plain = catalogue(control("BUS.5", "5", technical = true), levels = (1..5).map { Level("$it", "L$it") })
 
-        assertThat(evaluate(plain).of("BUS.5").status).isEqualTo(ControlStatus.MET)
+        assertThat(evaluate(plain).of("BUS.5").status).isEqualTo(ControlStatus.COMPLIANT)
     }
 }
