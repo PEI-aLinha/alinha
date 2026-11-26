@@ -1444,7 +1444,7 @@ export interface components {
             /** @description A recommendation that is not evidence for any control (`caa`, `dnssec`). */
             informational: boolean;
             /**
-             * @description CONTINUOUSLY_VERIFIED when the daily check found it and the previous one succeeded within a day.
+             * @description CONTINUOUSLY_VERIFIED when the daily check found it and the previous successful check was at most 26 hours earlier (a day plus slack for the schedule).
              * @enum {string}
              */
             strength: "SELF_REPORTED" | "DOCUMENT_VERIFIED" | "TECHNICALLY_VERIFIED" | "CONTINUOUSLY_VERIFIED";
