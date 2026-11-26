@@ -1913,7 +1913,7 @@ components:
       allOf:
         - $ref: '#/components/schemas/CriticalServiceInput'
         - type: object
-          required: [id, version, createdAt, updatedAt]
+          required: [id, version, description, createdAt, updatedAt]
           properties:
             id:
               type: string
@@ -1921,6 +1921,10 @@ components:
             version:
               type: integer
               format: int64
+            description:
+              type: [string, 'null']
+              maxLength: 2000
+              description: Always present; null when there is none.
             createdAt:
               type: string
               format: date-time
@@ -1988,7 +1992,7 @@ components:
       allOf:
         - $ref: '#/components/schemas/AssetInput'
         - type: object
-          required: [id, version, createdAt, updatedAt, serviceIds]
+          required: [id, version, description, createdAt, updatedAt, serviceIds]
           properties:
             id:
               type: string
@@ -1996,6 +2000,10 @@ components:
             version:
               type: integer
               format: int64
+            description:
+              type: [string, 'null']
+              maxLength: 2000
+              description: Always present; null when there is none.
             createdAt:
               type: string
               format: date-time

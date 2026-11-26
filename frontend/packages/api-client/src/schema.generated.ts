@@ -1073,6 +1073,8 @@ export interface components {
             id: string;
             /** Format: int64 */
             version: number;
+            /** @description Always present; null when there is none. */
+            description: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -1108,6 +1110,8 @@ export interface components {
             id: string;
             /** Format: int64 */
             version: number;
+            /** @description Always present; null when there is none. */
+            description: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
