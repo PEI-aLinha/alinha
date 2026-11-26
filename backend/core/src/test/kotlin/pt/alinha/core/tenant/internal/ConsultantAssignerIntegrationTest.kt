@@ -102,6 +102,12 @@ class ConsultantAssignerIntegrationTest {
         identity.pool[subject] = MutableList(organizations) { TenantId(UUID.randomUUID()) }.toMutableSet()
     }
 
+    /** A row of `core.consultant_assignment` at [at], an SQL expression. */
+    private fun recordAt(tenant: TenantId, consultant: String, at: String) = jdbc.update(
+        "insert into core.consultant_assignment (tenant_id, consultant_subject, assigned_at) values (?, ?, $at)",
+        tenant.value, consultant,
+    )
+
     private fun recorded(tenant: TenantId): String? = jdbc.queryForList(
         "select consultant_subject from core.consultant_assignment where tenant_id = ?", String::class.java, tenant.value,
     ).singleOrNull()
@@ -126,15 +132,18 @@ class ConsultantAssignerIntegrationTest {
 
     @Test
     fun `on a tie, a consultant never assigned goes first, then the one whose last assignment is oldest`() {
-        consultants(marta to 0, joao to 0, ines to 0)
-        // Marta and João were each given one organization before (oldest first); Inês never was.
+        consultants(marta to 0, joao to 0, ines to 1)
+        // Marta and João were each given one organization by this flow (Marta's first); Inês's came from an admin.
         val first = newTenant()
-        jdbc.update("insert into core.consultant_assignment (tenant_id, consultant_subject, assigned_at) values (?, ?, now() - interval '2 days')", first.value, marta)
+        identity.pool.getValue(marta) += first
+        recordAt(first, marta, "now() - interval '2 days'")
         val second = newTenant()
-        jdbc.update("insert into core.consultant_assignment (tenant_id, consultant_subject, assigned_at) values (?, ?, now() - interval '1 day')", second.value, joao)
+        identity.pool.getValue(joao) += second
+        recordAt(second, joao, "now() - interval '1 day'")
 
+        // All three have one organization each: Inês was never assigned one here, so she goes first.
         assertThat(assign(newTenant())?.subject).isEqualTo(ines)
-        // Inês now has one organization; Marta and João have none, and Marta's last assignment is the older one.
+        // Inês now has two; Marta and João have one each, and Marta's last assignment is the older one.
         assertThat(assign(newTenant())?.subject).isEqualTo(marta)
     }
 
@@ -243,13 +252,23 @@ class ConsultantAssignerIntegrationTest {
     }
 
     @Test
-    fun `an assignment already recorded still counts after the identity provider was listed`() {
+    fun `an assignment recorded while the identity provider was listed still counts`() {
         // The pool comes from a listing taken before the lock: Marta's newest organization is only in the database.
         consultants(marta to 0, joao to 0)
-        val earlier = newTenant()
-        jdbc.update("insert into core.consultant_assignment (tenant_id, consultant_subject) values (?, ?)", earlier.value, marta)
+        val meanwhile = newTenant()
+        identity.afterListing = { recordAt(meanwhile, marta, "clock_timestamp()") }
 
         assertThat(assign(newTenant())?.subject).isEqualTo(joao)
+    }
+
+    @Test
+    fun `an organization an admin moved in the identity provider counts for its new consultant, not the recorded one`() {
+        consultants(marta to 0, joao to 0)
+        val moved = newTenant()
+        recordAt(moved, marta, "now() - interval '1 day'") // assigned to Marta here...
+        identity.pool.getValue(joao) += moved // ...and moved to João in the identity provider since
+
+        assertThat(assign(newTenant())?.subject).isEqualTo(marta)
     }
 
     @Test

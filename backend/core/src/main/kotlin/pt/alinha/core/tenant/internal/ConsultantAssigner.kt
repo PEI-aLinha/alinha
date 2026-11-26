@@ -44,16 +44,17 @@ class ConsultantAssigner(
     @Transactional(propagation = Propagation.MANDATORY)
     override fun assignConsultant(): AssignedConsultant? {
         val tenant = tenants.current()
-        // Listed before the lock, so a slow identity provider does not hold it. An assignment committed after this
-        // listing is in core.consultant_assignment, which is read under the lock, so the load below stays current.
+        // Listed before the lock, so a slow identity provider does not hold it. An assignment made while it lists may
+        // be missing from it, but it is in core.consultant_assignment, read under the lock, with a later time.
+        val listedAt = databaseNow()
         val pool = identity.consultants()
         jdbc.sql("set local lock_timeout = '$LOCK_TIMEOUT'").update()
         jdbc.sql("select pg_advisory_xact_lock(?)").param(ASSIGNMENT_LOCK).query { _, _ -> }.list()
         // Only the wait for the lock is capped: the caller's later statements in this transaction keep their default.
         jdbc.sql("set local lock_timeout to default").update()
 
-        val assignments = assignments()
-        assignments.entries.firstOrNull { tenant in it.value.tenants }?.let { (subject, _) ->
+        val recorded = recorded()
+        recorded.firstOrNull { it.tenant == tenant }?.consultant?.let { subject ->
             if (pool.none { it.subject == subject && tenant in it.tenants }) {
                 // Removed from the group, disabled, or the organization was taken out of their tenants by hand.
                 log.warn("Organization {} is assigned to {}, who no longer has it as an enabled consultant", tenant.value, subject)
@@ -66,20 +67,26 @@ class ConsultantAssigner(
             record(tenant, existing.subject, viaIdentityProvider = true)
             return AssignedConsultant(existing.subject, newlyAssigned = false)
         }
-        return assignLeastBusy(tenant, pool, assignments)
+        return assignLeastBusy(tenant, pool, recorded, listedAt)
     }
 
     /**
      * Gives [tenant] to the least busy consultant of [pool]. One who is no longer an enabled consultant (disabled or
      * removed from the group since the listing) is dropped and the next one is tried, so the organization is not left
      * without a consultant while others are free.
+     *
+     * The load is each consultant's `tenants` in the identity provider, the source of truth (an admin may move
+     * organizations there), plus the rows recorded since [listedAt]: those may be missing from the listing. A row is
+     * recorded after its identity provider write, so an older one is already in the listing.
      */
-    private fun assignLeastBusy(tenant: TenantId, pool: List<Consultant>, assignments: Map<String, Assignments>): AssignedConsultant? {
+    private fun assignLeastBusy(tenant: TenantId, pool: List<Consultant>, recorded: List<Recorded>, listedAt: Instant): AssignedConsultant? {
+        val unlisted = recorded.filterNot { it.at.isBefore(listedAt) }.groupBy({ it.consultant }) { it.tenant }
+        val last = recorded.groupBy { it.consultant }.mapValues { (_, rows) -> rows.maxOf { it.at } }
         var candidates = pool
         while (candidates.isNotEmpty()) {
             val chosen = candidates.minWith(
-                compareBy<Consultant> { (it.tenants + assignments[it.subject]?.tenants.orEmpty()).size }
-                    .thenBy(nullsFirst()) { assignments[it.subject]?.last }
+                compareBy<Consultant> { (it.tenants + unlisted[it.subject].orEmpty()).size }
+                    .thenBy(nullsFirst()) { last[it.subject] }
                     .thenBy { it.subject },
             )
             try {
@@ -89,7 +96,8 @@ class ConsultantAssigner(
                 candidates = candidates - chosen
                 continue
             }
-            // After the identity provider write, so a refused consultant leaves no row. If this or the commit fails,
+            // After the identity provider write: a refused consultant leaves no row, and the row's time is later than
+            // the write, which the load above relies on. If this or the commit fails,
             // the organization stays in the consultant's tenants; a retry then takes the "already in the identity
             // provider" branch and records it.
             record(tenant, chosen.subject, viaIdentityProvider = false)
@@ -99,17 +107,23 @@ class ConsultantAssigner(
         return null
     }
 
-    /** A consultant's recorded organizations and when they were last given one. */
-    private data class Assignments(val tenants: Set<TenantId>, val last: Instant)
+    /** One row of `core.consultant_assignment`. */
+    private data class Recorded(val tenant: TenantId, val consultant: String, val at: Instant)
 
-    private fun assignments(): Map<String, Assignments> =
-        jdbc.sql("select consultant_subject, tenant_id, assigned_at from core.consultant_assignment")
+    private fun recorded(): List<Recorded> =
+        jdbc.sql("select tenant_id, consultant_subject, assigned_at from core.consultant_assignment")
             .query { rs, _ ->
-                Triple(rs.getString("consultant_subject"), TenantId(rs.getObject("tenant_id", UUID::class.java)), rs.getTimestamp("assigned_at").toInstant())
+                Recorded(
+                    TenantId(rs.getObject("tenant_id", UUID::class.java)),
+                    rs.getString("consultant_subject"),
+                    rs.getTimestamp("assigned_at").toInstant(),
+                )
             }
             .list()
-            .groupBy({ it.first }) { it.second to it.third }
-            .mapValues { (_, rows) -> Assignments(rows.map { it.first }.toSet(), rows.maxOf { it.second }) }
+
+    /** The database's clock, the one `assigned_at` uses. */
+    private fun databaseNow(): Instant =
+        jdbc.sql("select clock_timestamp()").query { rs, _ -> rs.getTimestamp(1).toInstant() }.single()
 
     private fun record(tenant: TenantId, consultant: String, viaIdentityProvider: Boolean) {
         // clock_timestamp(), not now(): the time under the lock, so the tie-break order matches the commit order.
