@@ -56,7 +56,8 @@ private data class AccessToken(
 
 private data class CachedToken(val value: String, val renewAt: Instant)
 
-private data class GroupRepresentation(val id: String, val name: String)
+/** A group as the Admin REST API returns it. `path` tells a top-level group from a subgroup of the same name. */
+private data class GroupRepresentation(val id: String, val name: String, val path: String? = null)
 
 /**
  * [IdentityDirectory] and [ConsultantIdentity] on the Keycloak Admin REST API, with the `alinha-provisioner` service account
@@ -194,7 +195,7 @@ class KeycloakIdentityDirectory internal constructor(
         val name = properties.consultantsGroup
         return http.get().uri("$users/{id}/groups?search={name}&briefRepresentation=true", subject, name)
             .headers { it.setBearerAuth(token) }.retrieve().body<List<GroupRepresentation>>().orEmpty()
-            .any { it.name == name }
+            .any { it.path == "/$name" }
     }
 
     private data class Member(val id: String, val attributes: Map<String, List<String>>)
@@ -205,7 +206,7 @@ class KeycloakIdentityDirectory internal constructor(
         val group = deadline.step {
             http.get().uri("/admin/realms/{realm}/groups?search={name}&exact=true", properties.realm, name)
                 .headers { it.setBearerAuth(token) }.retrieve().body<List<GroupRepresentation>>().orEmpty()
-        }.firstOrNull { it.name == name } ?: error("Group '$name' is missing in the identity provider")
+        }.firstOrNull { it.path == "/$name" } ?: error("Group '$name' is missing in the identity provider")
         val members = mutableListOf<Map<String, Any?>>()
         do {
             val page = deadline.step {

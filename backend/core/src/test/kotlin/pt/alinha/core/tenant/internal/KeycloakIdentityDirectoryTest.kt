@@ -327,8 +327,8 @@ class KeycloakIdentityDirectoryTest {
     private val other = TenantId(UUID.fromString("44444444-4444-4444-8444-444444444444"))
 
     private fun expectConsultantsGroup() {
-        // `exact` search still returns groups whose subgroups match, so the name is checked again
-        expectGet(groups, """[{"id":"g-cons","name":"consultants"}]""")
+        // `exact` search still returns groups whose subgroups match, so the path is checked again
+        expectGet(groups, """[{"id":"g-cons","name":"consultants","path":"/consultants"}]""")
         expectGet(
             members,
             """[
@@ -365,7 +365,7 @@ class KeycloakIdentityDirectoryTest {
             joaoUrl,
             """{"id":"$joao","username":"joao@alinha.pt","enabled":true,"attributes":{"locale":["pt"],"tenants":["${other.value}"]}}""",
         )
-        expectGroupsOf(joao, """[{"id":"g-cons","name":"consultants"}]""")
+        expectGroupsOf(joao, """[{"id":"g-cons","name":"consultants","path":"/consultants"}]""")
         server.expect(requestTo(joaoUrl)).andExpect(method(HttpMethod.PUT))
             .andExpect(
                 content().json(
@@ -384,7 +384,7 @@ class KeycloakIdentityDirectoryTest {
     fun `assigning an organization the consultant already has writes nothing`() {
         expectToken()
         expectGet("http://kc/admin/realms/alinha/users/$marta", """{"id":"$marta","enabled":true,"attributes":{"tenants":["${tenant.value}"]}}""")
-        expectGroupsOf(marta, """[{"id":"g-cons","name":"consultants"}]""")
+        expectGroupsOf(marta, """[{"id":"g-cons","name":"consultants","path":"/consultants"}]""")
 
         directory.assign(marta, tenant)
 
@@ -395,8 +395,18 @@ class KeycloakIdentityDirectoryTest {
     fun `refuses to assign an account that left the consultants group`() {
         expectToken()
         expectGet("http://kc/admin/realms/alinha/users/$joao", """{"id":"$joao","enabled":true}""")
-        // `search` also matches groups whose subgroups match, so the name is checked again
-        expectGroupsOf(joao, """[{"id":"g-x","name":"consultants-old"}]""")
+        // `search` also matches groups whose subgroups match, so the path is checked again
+        expectGroupsOf(joao, """[{"id":"g-x","name":"consultants-old","path":"/consultants-old"}]""")
+
+        assertThrows<IllegalArgumentException> { directory.assign(joao, tenant) }
+        server.verify()
+    }
+
+    @Test
+    fun `refuses to assign an account only in a subgroup named like the consultants group`() {
+        expectToken()
+        expectGet("http://kc/admin/realms/alinha/users/$joao", """{"id":"$joao","enabled":true}""")
+        expectGroupsOf(joao, """[{"id":"g-sub","name":"consultants","path":"/partners/consultants"}]""")
 
         assertThrows<IllegalArgumentException> { directory.assign(joao, tenant) }
         server.verify()
@@ -424,7 +434,7 @@ class KeycloakIdentityDirectoryTest {
     @Test
     fun `reads every page of the consultants group`() {
         expectToken()
-        expectGet(groups, """[{"id":"g-cons","name":"consultants"}]""")
+        expectGet(groups, """[{"id":"g-cons","name":"consultants","path":"/consultants"}]""")
         val firstPage = (1..100).joinToString(",", "[", "]") { """{"id":"c-$it","enabled":true}""" }
         expectGet(members, firstPage)
         expectGet(
@@ -440,9 +450,19 @@ class KeycloakIdentityDirectoryTest {
     }
 
     @Test
+    fun `a subgroup named like the consultants group is not the consultants group`() {
+        expectToken()
+        expectGet(groups, """[{"id":"g-partners","name":"partners","path":"/partners","subGroups":[{"id":"g-sub","name":"consultants","path":"/partners/consultants"}]},{"id":"g-cons","name":"consultants","path":"/consultants"}]""")
+        expectGet(members, """[{"id":"$joao","enabled":true}]""")
+
+        assertThat(directory.consultants()).containsExactly(Consultant(joao, emptySet()))
+        server.verify() // members read from g-cons, not g-sub
+    }
+
+    @Test
     fun `fails clearly when the consultants group is missing`() {
         expectToken()
-        expectGet(groups, """[{"id":"g-x","name":"consultants-old"}]""")
+        expectGet(groups, """[{"id":"g-x","name":"consultants-old","path":"/consultants-old"}]""")
 
         val error = assertThrows<IllegalStateException> { directory.consultants() }
         assertThat(error.message).contains("consultants")
