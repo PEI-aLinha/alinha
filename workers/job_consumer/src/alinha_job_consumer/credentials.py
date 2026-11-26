@@ -36,9 +36,9 @@ def provider_secret(envelope: dict[str, Any], fetch: Fetch | None = None) -> dic
     Raises `CollectorError` (not retryable) when the job does not reference its own provider's credential, when
     nothing is stored, or when the worker is not configured; `TransientError` when OpenBao does not answer.
     """
-    tenant_id = envelope.get("tenantId")
+    tenant_id = _canonical_uuid(envelope.get("tenantId"))
     provider = envelope.get("provider")
-    if not (isinstance(provider, str) and _PROVIDER_ID.fullmatch(provider) and _is_uuid(tenant_id)):
+    if not (isinstance(provider, str) and _PROVIDER_ID.fullmatch(provider) and tenant_id):
         raise CollectorError("invalid_connection_ref", "the job does not name a tenant and provider")
     if envelope.get("connectionRef") != connection_ref(provider):
         raise CollectorError("invalid_connection_ref", f"connectionRef must be {connection_ref(provider)}")
@@ -95,9 +95,12 @@ def _fetch(url: str, token: str) -> tuple[int, bytes]:
         raise TransientError("OpenBao is unreachable") from error
 
 
-def _is_uuid(value: Any) -> bool:
+def _canonical_uuid(value: Any) -> str | None:
+    """`value` as a lowercase, hyphenated UUID, or None. The path is built from this form only, so the forms
+    `uuid.UUID` also parses (uppercase, no hyphens, braces, `urn:uuid:`) still find the stored credential."""
+    if not isinstance(value, str):
+        return None
     try:
-        uuid.UUID(str(value))
+        return str(uuid.UUID(value))
     except ValueError:
-        return False
-    return isinstance(value, str)
+        return None

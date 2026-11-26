@@ -41,12 +41,6 @@ $COMPOSE exec -T openbao bao operator unseal "$key" >/dev/null
 $COMPOSE exec -T -e BAO_TOKEN="$root" -e ALINHA_BAO_APP_TOKEN="$BAO_APP_TOKEN" \
   -e ALINHA_BAO_SEED_TOKEN="$BAO_SEED_TOKEN" -e ALINHA_BAO_WORKER_TOKEN="$BAO_WORKER_TOKEN" openbao sh /init/bootstrap.sh
 
-# What deploy.yml does, limited to the seed job: it must exit 0 and `--wait` must accept it.
-for run in first second; do
-  $COMPOSE up -d --wait --wait-timeout 120 --force-recreate openbao-seed app-stand-in
-  echo "ok   seed job ($run deploy)"
-done
-
 failures=0
 expect_ok() {
   label="$1"; shift
@@ -59,6 +53,20 @@ expect_denied() {
 
 seed() { $COMPOSE exec -T -e BAO_TOKEN="$BAO_SEED_TOKEN" openbao bao "$@"; }
 app() { $COMPOSE exec -T -e BAO_TOKEN="$BAO_APP_TOKEN" openbao bao "$@"; }
+worker() { $COMPOSE exec -T -e BAO_TOKEN="$BAO_WORKER_TOKEN" openbao bao "$@"; }
+
+# What deploy.yml does, limited to the seed job: it must exit 0 and `--wait` must accept it. The first deploy has
+# the GitHub App set; the second (an update) has it removed, which must remove its key too.
+DEPLOY="up -d --wait --wait-timeout 120 --force-recreate openbao-seed app-stand-in"
+env GITHUB_APP_ID=7 GITHUB_APP_PRIVATE_KEY=test-key $COMPOSE $DEPLOY
+echo "ok   seed job (first deploy)"
+got=$(worker kv get -field=github_app_private_key secret/providers/code-repository)
+if [ "$got" = "test-key" ]; then echo "ok   worker token reads the seeded GitHub App key"
+else echo "FAIL worker token: GitHub App key is not the seeded value"; failures=$((failures + 1)); fi
+$COMPOSE $DEPLOY
+echo "ok   seed job (second deploy, GitHub App removed)"
+expect_denied "worker token reads the GitHub App key after it was removed" \
+  worker kv get -version=1 secret/providers/code-repository
 
 expect_denied "seed token reads secret/alinha/app" seed kv get secret/alinha/app
 expect_denied "seed token writes a tenant's credentials" seed kv put secret/tenants/acme/github token=x
@@ -73,8 +81,8 @@ else echo "FAIL app token: db.password is not the seeded value"; failures=$((fai
 expect_denied "app token writes secret/alinha/app" app kv put secret/alinha/app a=b
 
 # The worker reads a provider credential the app stored, and nothing else (docs/jobs.md, "Credentials for a collector").
-worker() { $COMPOSE exec -T -e BAO_TOKEN="$BAO_WORKER_TOKEN" openbao bao "$@"; }
 expect_ok "app token stores a provider credential" app kv put secret/tenants/t1/providers/code-repository token=x
+expect_denied "seed token deletes a tenant's credentials" seed kv metadata delete secret/tenants/t1/providers/code-repository
 expect_ok "worker token reads a provider credential" worker kv get secret/tenants/t1/providers/code-repository
 expect_ok "seed token writes a provider's platform credential" seed kv put secret/providers/code-repository github_app_id=1
 expect_ok "worker token reads a provider's platform credential" worker kv get secret/providers/code-repository

@@ -4,3 +4,5 @@ path "secret/data/alinha/app" { capabilities = ["create", "update"] }
 path "secret/data/alinha/ai-service" { capabilities = ["create", "update"] }
 # A provider's platform credential (e.g. the GitHub App key of code-repository), read by the job consumer.
 path "secret/data/providers/+" { capabilities = ["create", "update"] }
+# ...and removes it with all its versions when its variables are unset (secrets.sh).
+path "secret/metadata/providers/+" { capabilities = ["delete"] }

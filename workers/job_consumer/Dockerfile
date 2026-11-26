@@ -13,13 +13,15 @@ COPY workers/job_consumer /app/worker
 RUN pip install --no-cache-dir --only-binary :all: /app/worker && useradd --create-home worker
 
 # Provider collectors (plugins/provider/<id>/worker, git submodules), registered through the `alinha.collectors`
-# entry points. A provider without a worker package, or a submodule that was not checked out, is skipped.
-COPY plugins/provider /app/providers
-RUN for package in /app/providers/*/worker; do \
+# entry points. A provider without a worker package, or a submodule that was not checked out, is skipped. The
+# context is bind-mounted rather than copied: with no worker package at all, Dockerfile.dockerignore leaves no
+# plugins/provider in the context and a COPY of it would fail. rw only lets pip build in place; nothing is kept.
+RUN --mount=type=bind,source=.,target=/context,rw \
+    for package in /context/plugins/provider/*/worker; do \
       if [ -f "$package/pyproject.toml" ]; then \
         pip install --no-cache-dir --only-binary :all: "$package" || exit 1; \
       fi; \
-    done && rm -rf /app/providers
+    done
 
 COPY contracts/jobs /app/contracts/jobs
 

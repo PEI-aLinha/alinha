@@ -1,5 +1,5 @@
 /**
- * Coming back from an outside page that can only return to one fixed address (e.g. a GitHub App's Setup URL).
+ * Coming back from an outside page that can only return to one fixed address (e.g. a GitHub App's Callback URL).
  * Before leaving, the plugin remembers its own page; the outside page returns to `/resume?<its parameters>` and the
  * shell sends the person back to that page with the same query string. Kept in sessionStorage (this tab only), for
  * [RESUME_MAX_AGE_MS], and used once. Only pages inside an organization are accepted, so it is never an open redirect.

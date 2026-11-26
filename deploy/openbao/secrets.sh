@@ -26,10 +26,14 @@ bao kv put secret/alinha/ai-service \
 
 # The aLinha GitHub App's id and private key, read only by the job consumer to mint read-only installation tokens
 # (code-repository provider). Optional: without them the App is not offered and clients connect with a token.
+# Removing GITHUB_APP_ID removes the stored key with every old version (e.g. after a leak), so existing App
+# connections stop using it on the next deploy.
 if [ -n "${GITHUB_APP_ID:-}" ]; then
   bao kv put secret/providers/code-repository \
     github_app_id="$GITHUB_APP_ID" \
     github_app_private_key="${GITHUB_APP_PRIVATE_KEY:?GITHUB_APP_PRIVATE_KEY is required with GITHUB_APP_ID}"
+else
+  bao kv metadata delete secret/providers/code-repository >/dev/null
 fi
 
 echo "OpenBao seeded: secret/alinha/app, secret/alinha/ai-service${GITHUB_APP_ID:+, secret/providers/code-repository}"

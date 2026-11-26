@@ -75,8 +75,27 @@ def test_refuses_a_ref_that_is_not_its_own_provider(ref):
 
 
 @pytest.mark.parametrize(
+    "tenant",
+    [TENANT.upper(), TENANT.replace("-", ""), f"urn:uuid:{TENANT}", f"{{{TENANT}}}"],
+)
+def test_the_path_uses_the_canonical_tenant_id_whatever_form_the_job_sends(tenant):
+    fetch = answering(200, {"token": "ghp_x"})
+
+    provider_secret(envelope(tenantId=tenant), fetch)
+
+    assert fetch.calls[0][0] == f"http://openbao:8200/v1/secret/data/tenants/{TENANT}/providers/code-repository"
+
+
+@pytest.mark.parametrize(
     "overrides",
-    [{"tenantId": "not-a-uuid"}, {"tenantId": None}, {"provider": "../alinha"}, {"provider": "Code"}],
+    [
+        {"tenantId": "not-a-uuid"},
+        {"tenantId": None},
+        {"tenantId": uuid.UUID(TENANT).int},
+        {"tenantId": f"{TENANT}/../x"},
+        {"provider": "../alinha"},
+        {"provider": "Code"},
+    ],
 )
 def test_refuses_an_envelope_without_a_valid_tenant_or_provider(overrides):
     with pytest.raises(CollectorError) as error:
