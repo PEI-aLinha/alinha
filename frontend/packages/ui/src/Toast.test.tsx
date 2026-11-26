@@ -2,12 +2,12 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { addToast, ToastProvider, useToast } from './Toast'
 
-function Trigger({ message, tone }: { message: string; tone?: 'success' | 'error' }) {
+function Trigger({ message, tone }: { message: string; tone?: 'success' | 'info' | 'error' }) {
   const toast = useToast()
   return <button onClick={() => toast.show(message, tone)}>show</button>
 }
 
-function renderToast(message: string, tone?: 'success' | 'error') {
+function renderToast(message: string, tone?: 'success' | 'info' | 'error') {
   render(<ToastProvider><Trigger message={message} tone={tone} /></ToastProvider>)
   fireEvent.click(screen.getByText('show'))
 }
@@ -47,7 +47,37 @@ describe('Toast', () => {
   it('clears the timer of a success toast dropped to make room', () => {
     render(<ToastProvider><Trigger message="Ativo guardado" /></ToastProvider>)
     for (let i = 0; i < 4; i++) fireEvent.click(screen.getByText('show'))
-    expect(vi.getTimerCount()).toBe(3)
+    expect(vi.getTimerCount()).toBe(2)
+  })
+
+  it('announces info politely and dismisses it like a success', () => {
+    renderToast('Pergunta deixada por responder', 'info')
+    expect(screen.getByRole('status')).toHaveTextContent('Pergunta deixada por responder')
+    act(() => { vi.advanceTimersByTime(5000) })
+    expect(screen.queryByText('Pergunta deixada por responder')).not.toBeInTheDocument()
+  })
+
+  it('waits while the pointer is on the toast and resumes with the time left', () => {
+    renderToast('Ativo guardado')
+    act(() => { vi.advanceTimersByTime(3000) })
+    fireEvent.mouseEnter(screen.getByText('Ativo guardado'))
+    act(() => { vi.advanceTimersByTime(60_000) })
+    expect(screen.getByText('Ativo guardado')).toBeInTheDocument()
+    fireEvent.mouseLeave(screen.getByText('Ativo guardado'))
+    act(() => { vi.advanceTimersByTime(1000) })
+    expect(screen.getByText('Ativo guardado')).toBeInTheDocument()
+    act(() => { vi.advanceTimersByTime(300) })
+    expect(screen.queryByText('Ativo guardado')).not.toBeInTheDocument()
+  })
+
+  it('waits while the focus is inside the toast', () => {
+    renderToast('Ativo guardado')
+    fireEvent.focus(screen.getByText('Ativo guardado'))
+    act(() => { vi.advanceTimersByTime(60_000) })
+    expect(screen.getByText('Ativo guardado')).toBeInTheDocument()
+    fireEvent.blur(screen.getByText('Ativo guardado'))
+    act(() => { vi.advanceTimersByTime(5000) })
+    expect(screen.queryByText('Ativo guardado')).not.toBeInTheDocument()
   })
 
   it('clears its timers on unmount', () => {
@@ -69,14 +99,15 @@ describe('addToast', () => {
   const success = (id: number) => ({ id, message: `s${id}`, tone: 'success' as const })
   const error = (id: number) => ({ id, message: `e${id}`, tone: 'error' as const })
 
-  it('drops the oldest success when there are too many', () => {
-    const items = [success(1), success(2), success(3)]
-    expect(addToast(items, success(4)).map((t) => t.id)).toEqual([2, 3, 4])
+  it('keeps at most two success or info toasts, dropping the oldest', () => {
+    const items = [success(1), success(2)]
+    expect(addToast(items, success(3)).map((t) => t.id)).toEqual([2, 3])
+    expect(addToast(items, { id: 3, message: 'i3', tone: 'info' }).map((t) => t.id)).toEqual([2, 3])
   })
 
   it('never drops an error to make room', () => {
-    const items = [error(1), success(2), success(3), success(4)]
-    expect(addToast(items, success(5)).map((t) => t.id)).toEqual([1, 3, 4, 5])
+    const items = [error(1), success(2), success(3)]
+    expect(addToast(items, success(4)).map((t) => t.id)).toEqual([1, 3, 4])
     expect(addToast([error(1), error(2), error(3)], error(4)).map((t) => t.id)).toEqual([1, 2, 3, 4])
   })
 
