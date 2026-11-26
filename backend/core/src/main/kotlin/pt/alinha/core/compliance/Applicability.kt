@@ -132,7 +132,7 @@ data class ApplicabilityResult(
     @get:JsonIgnore
     val effectiveNis2Classification: Nis2Classification get() = officialNis2Classification ?: nis2Classification
 
-    /** Always true: these are suggestions, not the official qualification (shown to the user). */
+    /** Always true: these are suggestions, not the official qualification. Not serialised: API views send it. */
     @get:JsonIgnore
     val indicative: Boolean = true
 }
