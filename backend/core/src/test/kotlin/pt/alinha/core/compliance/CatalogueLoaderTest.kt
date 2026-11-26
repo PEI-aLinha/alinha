@@ -22,6 +22,14 @@ class CatalogueLoaderTest {
     }
 
     @Test
+    fun `the real SOC-CMM catalogue resolves level 0 and its label`() {
+        val soc = CatalogueLoader(Path.of("../../frameworks")).loadAll().single { it.framework == "soc-cmm" }
+
+        assertThat(soc.levelIndex("0")).isZero()
+        assertThat(soc.levels.first().label).isEqualTo("Inexistente")
+    }
+
+    @Test
     fun `reads requirements, controls and questions`() {
         write("nis2-qnrcs", "v1", validCatalogue())
 

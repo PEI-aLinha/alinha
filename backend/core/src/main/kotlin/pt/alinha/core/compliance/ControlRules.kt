@@ -30,6 +30,13 @@ class ControlRules : ComplianceEngine {
     ): Evaluation {
         val target = catalogue.levelIndex(maxLevel)
         require(target >= 0) { "Target level '$maxLevel' is not in the scale of ${catalogue.framework}" }
+        val offScale = catalogue.controls.filter { catalogue.levelIndex(it.level) < 0 }.map { it.id }
+        require(offScale.isEmpty()) { "Controls $offScale have a level outside the scale of ${catalogue.framework}" }
+        // A level below the first with controls (SOC-CMM "0" Inexistente) cannot be a target.
+        val firstWithControls = catalogue.levels.indexOfFirst { level -> catalogue.controls.any { it.level == level.id } }
+        require(target >= firstWithControls) {
+            "Target level '$maxLevel' has no controls to assess in ${catalogue.framework}"
+        }
         val controls = catalogue.controls.filter { catalogue.levelIndex(it.level) <= target }
         require(controls.isNotEmpty()) {
             "${catalogue.framework} v${catalogue.version} has no controls up to $maxLevel"
