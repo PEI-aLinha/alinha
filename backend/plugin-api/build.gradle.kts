@@ -7,4 +7,7 @@ plugins {
 dependencies {
     api(platform(libs.spring.modulith.bom))
     api(libs.spring.modulith.api) // @NamedInterface, @ApplicationModule
+
+    testImplementation(platform(libs.spring.boot.bom))
+    testImplementation("org.junit.jupiter:junit-jupiter")
 }
