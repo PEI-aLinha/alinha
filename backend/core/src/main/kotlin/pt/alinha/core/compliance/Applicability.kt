@@ -1,5 +1,7 @@
 package pt.alinha.core.compliance
 
+import com.fasterxml.jackson.annotation.JsonIgnore
+
 /**
  * What the organization tells us for the applicability check (FR02, FR03). Rules: [ApplicabilityRules],
  * explained in docs/applicability.md. Assumes the organization is established in Portugal.
@@ -120,7 +122,17 @@ data class ApplicabilityResult(
     /** The CNCS may still qualify the organization, or qualify it higher (RJC art. 3.º n.º 2 b) to e), art. 6.º). */
     val cncsMayQualify: Boolean,
     val frameworks: List<FrameworkApplicability>,
+    /**
+     * The official classification from the CNCS Qualification Act, when registered (set by [ApplicabilityQuery], never
+     * by the rules). It overrides [nis2Classification], which stays the indicative one.
+     */
+    val officialNis2Classification: Nis2Classification? = null,
 ) {
-    /** Always true: these are suggestions, not the official qualification (shown to the user). */
+    /** The official classification when there is one, else the indicative one. */
+    @get:JsonIgnore
+    val effectiveNis2Classification: Nis2Classification get() = officialNis2Classification ?: nis2Classification
+
+    /** Always true: these are suggestions, not the official qualification. Not serialised: API views send it. */
+    @get:JsonIgnore
     val indicative: Boolean = true
 }
