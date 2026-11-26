@@ -120,4 +120,101 @@ class ControlRulesTest {
 
         assertEquals(rules.evaluate(CATALOGUE, HIGH, answers), rules.evaluate(CATALOGUE, HIGH, answers))
     }
+
+    @Test
+    fun `the result carries the framework and the catalogue version`() {
+        val result = rules.evaluate(CATALOGUE, HIGH, ALL_YES)
+
+        assertEquals("test" to 1, result.framework to result.catalogueVersion)
+    }
+
+    @Test
+    fun `every control that is not compliant is a gap, with why and the requirements that point to it`() {
+        val catalogue = domains(
+            control("GR.1-B", BASIC), control("GR.2-B", BASIC), control("GR.3-B", BASIC), control("GR.4-B", BASIC),
+        ).copy(
+            requirements = listOf(
+                Requirement("R-1", "ref", "t", listOf("GR.1-B", "GR.2-B")),
+                Requirement("R-2", "ref", "t", listOf("GR.1-B")),
+            ),
+        )
+        val answers = mapOf("GR.1-B-Q1" to PARTIAL, "GR.2-B-Q1" to NO, "GR.3-B-Q1" to UNKNOWN, "GR.4-B-Q1" to YES)
+
+        val result = rules.evaluate(catalogue, BASIC, answers)
+
+        assertEquals(
+            listOf(
+                Gap("GR.1-B", listOf("R-1", "R-2"), BASIC, ControlStatus.PARTIAL, GapReason.ANSWERED_PARTIAL),
+                Gap("GR.2-B", listOf("R-1"), BASIC, GAP, GapReason.ANSWERED_NO),
+                Gap("GR.3-B", emptyList(), BASIC, GAP, GapReason.ANSWERED_UNKNOWN),
+            ),
+            result.gaps,
+        )
+        assertNull(result.controls.single { it.controlId == "GR.4-B" }.reason)
+    }
+
+    @Test
+    fun `one no outweighs unknown and partial answers in the same control`() {
+        val catalogue = domains(control("GR.1-B", BASIC, questions = 3))
+        val answers = mapOf("GR.1-B-Q1" to UNKNOWN, "GR.1-B-Q2" to PARTIAL, "GR.1-B-Q3" to NO)
+
+        assertEquals(GapReason.ANSWERED_NO, rules.evaluate(catalogue, BASIC, answers).gaps.single().reason)
+    }
+
+    @Test
+    fun `each domain has its own level and the overall level is the lowest, domains in catalogue order`() {
+        val catalogue = domains(
+            control("PR.1-B", BASIC), control("PR.1-S", SUBSTANTIAL),
+            control("GR.1-B", BASIC), control("GR.1-S", SUBSTANTIAL),
+        )
+        val answers = yes(catalogue) + ("GR.1-S-Q1" to NO)
+
+        val result = rules.evaluate(catalogue, SUBSTANTIAL, answers)
+
+        assertEquals(
+            listOf(DomainEvaluation("PR", SUBSTANTIAL, SUBSTANTIAL), DomainEvaluation("GR", BASIC, SUBSTANTIAL)),
+            result.domains,
+        )
+        assertEquals(BASIC, result.currentLevel)
+    }
+
+    @Test
+    fun `a domain level is null when its basic level is not met`() {
+        val catalogue = domains(control("GR.1-B", BASIC), control("GR.1-S", SUBSTANTIAL), control("PR.1-B", BASIC))
+
+        val result = rules.evaluate(catalogue, SUBSTANTIAL, yes(catalogue) + ("GR.1-B-Q1" to UNKNOWN))
+
+        assertEquals(listOf(null, SUBSTANTIAL), result.domains.map { it.currentLevel })
+        assertNull(result.currentLevel)
+    }
+
+    @Test
+    fun `a level with no controls in a domain counts as met there, but a level with none at all is skipped`() {
+        val catalogue = domains(
+            control("GR.1-B", BASIC), control("GR.1-E", HIGH), control("PR.1-B", BASIC), control("PR.1-S", SUBSTANTIAL),
+        )
+
+        val result = rules.evaluate(catalogue, HIGH, yes(catalogue))
+
+        assertEquals(listOf(HIGH, HIGH), result.domains.map { it.currentLevel })
+        assertEquals(HIGH, result.currentLevel)
+        val noSubstantial = catalogue.copy(controls = catalogue.controls.filterNot { it.level == SUBSTANTIAL })
+        assertEquals(listOf(BASIC, BASIC), rules.evaluate(noSubstantial, SUBSTANTIAL, yes(noSubstantial)).domains.map { it.currentLevel })
+    }
+
+    @Test
+    fun `the same answers in any order give an equal result`() {
+        val catalogue = domains(
+            control("PR.1-B", BASIC, questions = 3), control("GR.1-B", BASIC, questions = 2),
+            control("GR.1-S", SUBSTANTIAL), control("DE.1-E", HIGH),
+        ).copy(requirements = listOf(Requirement("R-1", "ref", "t", listOf("GR.1-S", "PR.1-B"))))
+        val answers = yes(catalogue) + mapOf("PR.1-B-Q2" to PARTIAL, "GR.1-S-Q1" to NO, "DE.1-E-Q1" to UNKNOWN)
+        val shuffled = answers.entries.shuffled(java.util.Random(42)).associate { it.key to it.value }
+
+        assertEquals(rules.evaluate(catalogue, HIGH, answers), rules.evaluate(catalogue, HIGH, java.util.HashMap(shuffled)))
+    }
+
+    private fun domains(vararg controls: Control) = CATALOGUE.copy(controls = controls.toList())
+
+    private fun yes(catalogue: Catalogue) = catalogue.controls.flatMap { it.questions }.associate { it.id to YES }
 }

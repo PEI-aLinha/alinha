@@ -18,6 +18,15 @@ interface ComplianceEngine {
     fun evaluate(catalogue: Catalogue, maxLevel: ComplianceLevel, answers: Map<String, Answer>): Evaluation
 }
 
+/** Implemented by the assessment plugin (assessment#5); read by the AI Gateway context builder. */
+interface EvaluationResults {
+    /**
+     * The latest stored evaluation of [framework] for the current tenant ([pt.alinha.core.tenant.TenantContext];
+     * use `runAs` outside a request), or null when there is none.
+     */
+    fun latest(framework: String): Evaluation?
+}
+
 /** What the engine computed, with the [engineVersion] of the rules, so the result can always be explained. */
 data class Evaluation(
     val engineVersion: String,
@@ -28,13 +37,42 @@ data class Evaluation(
     val coverage: Double,
     /** Every evaluated control, in catalogue order. */
     val controls: List<ControlEvaluation>,
+    val framework: String,
+    val catalogueVersion: Int,
+    /** Current level per domain, in catalogue order of first appearance. [currentLevel] is the lowest of them. */
+    val domains: List<DomainEvaluation>,
+    /** Every control that is not compliant, in catalogue order. */
+    val gaps: List<Gap>,
 )
 
 data class ControlEvaluation(
     val controlId: String,
     val level: ComplianceLevel,
     val status: ControlStatus,
+    /** Control id up to the first dot ("GR.CO-1-B" -> "GR"). */
+    val domain: String,
+    /** Null only when [status] is [ControlStatus.COMPLIANT]. */
+    val reason: GapReason?,
 )
+
+data class DomainEvaluation(
+    val domain: String,
+    /** Highest level fully compliant in this domain, or null when not even the lowest level is. */
+    val currentLevel: ComplianceLevel?,
+    val targetLevel: ComplianceLevel,
+)
+
+/** A control that is not compliant, with the catalogue requirements that point to it (in catalogue order). */
+data class Gap(
+    val controlId: String,
+    val requirementIds: List<String>,
+    val level: ComplianceLevel,
+    val status: ControlStatus,
+    val reason: GapReason,
+)
+
+/** Why a control is a gap. */
+enum class GapReason { ANSWERED_NO, ANSWERED_UNKNOWN, ANSWERED_PARTIAL }
 
 /** `partial` and `gap` both count as gaps for the roadmap. */
 enum class ControlStatus {
