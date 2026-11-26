@@ -48,14 +48,12 @@ class ConsultantAssigner(
         // be missing from it, but it is in core.consultant_assignment, read under the lock, with a later time.
         val listedAt = databaseNow()
         val pool = identity.consultants()
-        jdbc.sql("set local lock_timeout = '$LOCK_TIMEOUT'").update()
-        jdbc.sql("select pg_advisory_xact_lock(?)").param(ASSIGNMENT_LOCK).query { _, _ -> }.list()
-        // Only the wait for the lock is capped: the caller's later statements in this transaction keep their default.
-        jdbc.sql("set local lock_timeout to default").update()
+        lockAssignments()
 
         val recorded = recorded()
-        recorded.firstOrNull { it.tenant == tenant }?.consultant?.let { subject ->
-            if (pool.none { it.subject == subject && tenant in it.tenants }) {
+        recorded.firstOrNull { it.tenant == tenant }?.let { (_, subject, at) ->
+            // A row recorded since the listing (a concurrent call for the same organization) may be missing from it.
+            if (at.isBefore(listedAt) && pool.none { it.subject == subject && tenant in it.tenants }) {
                 // Removed from the group, disabled, or the organization was taken out of their tenants by hand.
                 log.warn("Organization {} is assigned to {}, who no longer has it as an enabled consultant", tenant.value, subject)
             }
@@ -105,6 +103,22 @@ class ConsultantAssigner(
         }
         log.warn("No consultant to assign to organization {}: add one to the consultants group", tenant.value)
         return null
+    }
+
+    /**
+     * Takes [ASSIGNMENT_LOCK]. Only the wait is capped: the caller's later statements in this transaction get back
+     * the `lock_timeout` they had before.
+     */
+    private fun lockAssignments() {
+        val previous = jdbc.sql("select current_setting('lock_timeout')").query(String::class.java).single()
+        setLockTimeout(LOCK_TIMEOUT)
+        jdbc.sql("select pg_advisory_xact_lock(?)").param(ASSIGNMENT_LOCK).query { _, _ -> }.list()
+        setLockTimeout(previous)
+    }
+
+    /** Like `set local lock_timeout`, which takes no bind parameter. */
+    private fun setLockTimeout(value: String) {
+        jdbc.sql("select set_config('lock_timeout', ?, true)").param(value).query(String::class.java).single()
     }
 
     /** One row of `core.consultant_assignment`. */

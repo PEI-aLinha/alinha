@@ -4,9 +4,12 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
+import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.context.TestConfiguration
+import org.springframework.boot.test.system.CapturedOutput
+import org.springframework.boot.test.system.OutputCaptureExtension
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
 import org.springframework.jdbc.core.JdbcTemplate
@@ -161,7 +164,8 @@ class ConsultantAssignerIntegrationTest {
     }
 
     @Test
-    fun `a recorded consultant who left the group keeps the organization, it is not reassigned automatically`() {
+    @ExtendWith(OutputCaptureExtension::class)
+    fun `a recorded consultant who left the group keeps the organization, it is not reassigned automatically`(output: CapturedOutput) {
         consultants(marta to 0, joao to 0)
         val tenant = newTenant()
         assertThat(assign(tenant)?.subject).isEqualTo(joao)
@@ -169,9 +173,41 @@ class ConsultantAssignerIntegrationTest {
 
         val again = assign(tenant)
 
-        assertThat(again).isEqualTo(AssignedConsultant(joao, newlyAssigned = false)) // logged as a warning
+        assertThat(again).isEqualTo(AssignedConsultant(joao, newlyAssigned = false))
         assertThat(identity.assigned).hasSize(1)
         assertThat(recorded(tenant)).isEqualTo(joao)
+        assertThat(output).contains("no longer has it as an enabled consultant")
+    }
+
+    @Test
+    @ExtendWith(OutputCaptureExtension::class)
+    fun `an organization a concurrent call assigned since the listing is returned without a warning`(output: CapturedOutput) {
+        consultants(marta to 0)
+        val tenant = newTenant()
+        // The other call wrote to the identity provider and recorded the row after this call's listing.
+        identity.afterListing = { recordAt(tenant, marta, "clock_timestamp()") }
+
+        val result = assign(tenant)
+
+        assertThat(result).isEqualTo(AssignedConsultant(marta, newlyAssigned = false))
+        assertThat(identity.assigned).isEmpty()
+        assertThat(output).doesNotContain("no longer has it as an enabled consultant")
+    }
+
+    @Test
+    fun `the caller's lock_timeout is back once the lock is taken`() {
+        consultants(marta to 0)
+        val tenant = newTenant()
+
+        val after = tenants.runAs(tenant) {
+            tx.execute {
+                jdbc.execute("set local lock_timeout = '3s'")
+                assignment.assignConsultant()
+                jdbc.queryForObject("select current_setting('lock_timeout')", String::class.java)
+            }
+        }
+
+        assertThat(after).isEqualTo("3s")
     }
 
     @Test
