@@ -1,6 +1,7 @@
 package pt.alinha.core.tenant.internal
 
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Propagation
@@ -10,6 +11,7 @@ import pt.alinha.core.tenant.AssignedConsultant
 import pt.alinha.core.tenant.ConsultantAssignment
 import pt.alinha.core.tenant.TenantContext
 import pt.alinha.pluginapi.TenantId
+import java.time.Duration
 import java.time.Instant
 import java.util.UUID
 
@@ -17,19 +19,17 @@ import java.util.UUID
 internal const val CONSULTANT_ASSIGNED = "tenant.consultant_assigned"
 
 /** Advisory lock taken for the rest of the transaction, so assignments never choose side by side (any instance). */
-private const val ASSIGNMENT_LOCK = 0x616C_696E_6861_0005L
-
-/**
- * How long an assignment waits for the lock before it fails (and is logged by the caller), so a slow identity provider
- * cannot keep a queue of waiting transactions, each holding a pooled connection. The holder's only identity provider
- * call is [ConsultantIdentity.assign], itself bounded by a deadline.
- */
-private const val LOCK_TIMEOUT = "15s"
+internal const val ASSIGNMENT_LOCK = 0x616C_696E_6861_0005L
 
 /**
  * [ConsultantAssignment] over the identity provider's consultants ([ConsultantIdentity]) and
  * `core.consultant_assignment`. Raw SQL on purpose: the tie-break reads every tenant's assignment, and the core is the
  * only place allowed to (docs/tenancy.md).
+ *
+ * [lockTimeout] is how long an assignment waits for the lock before it fails with `lock_not_available` (the caller
+ * rolls back and retries), so a slow identity provider cannot keep a queue of waiting transactions, each holding a
+ * pooled connection. The holder's only identity provider call is [ConsultantIdentity.assign], itself bounded by a
+ * deadline.
  */
 @Component
 class ConsultantAssigner(
@@ -37,6 +37,7 @@ class ConsultantAssigner(
     private val jdbc: JdbcClient,
     private val audit: AuditTrail,
     private val identity: ConsultantIdentity,
+    @Value("\${alinha.tenant.consultant-assignment.lock-timeout:15s}") private val lockTimeout: Duration,
 ) : ConsultantAssignment {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -111,12 +112,12 @@ class ConsultantAssigner(
     }
 
     /**
-     * Takes [ASSIGNMENT_LOCK]. Only the wait is capped: the caller's later statements in this transaction get back
-     * the `lock_timeout` they had before.
+     * Takes [ASSIGNMENT_LOCK], waiting at most [lockTimeout]. Only the wait is capped: the caller's later statements
+     * in this transaction get back the `lock_timeout` they had before.
      */
     private fun lockAssignments() {
         val previous = jdbc.sql("select current_setting('lock_timeout')").query(String::class.java).single()
-        setLockTimeout(LOCK_TIMEOUT)
+        setLockTimeout("${lockTimeout.toMillis()}ms")
         jdbc.sql("select pg_advisory_xact_lock(?)").param(ASSIGNMENT_LOCK).query { _, _ -> }.list()
         setLockTimeout(previous)
     }

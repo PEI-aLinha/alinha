@@ -12,6 +12,7 @@ import org.springframework.boot.test.system.CapturedOutput
 import org.springframework.boot.test.system.OutputCaptureExtension
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
+import org.springframework.dao.DataAccessException
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
@@ -23,6 +24,8 @@ import pt.alinha.core.tenant.AssignedConsultant
 import pt.alinha.core.tenant.ConsultantAssignment
 import pt.alinha.core.tenant.TenantContext
 import pt.alinha.pluginapi.TenantId
+import java.sql.SQLException
+import java.time.Duration
 import java.util.Collections
 import java.util.UUID
 import java.util.concurrent.CountDownLatch
@@ -63,7 +66,12 @@ class ConsultantAssignmentTestConfig {
     @Bean fun consultantIdentity() = FakeConsultantIdentity()
 }
 
-@SpringBootTest(classes = [AuditTestApplication::class], webEnvironment = SpringBootTest.WebEnvironment.NONE)
+@SpringBootTest(
+    classes = [AuditTestApplication::class],
+    webEnvironment = SpringBootTest.WebEnvironment.NONE,
+    // Short, so the timeout test does not wait the default 15 s; still well above the concurrent test's 300 ms.
+    properties = ["alinha.tenant.consultant-assignment.lock-timeout=3s"],
+)
 @Import(ConsultantAssignmentTestConfig::class, ConsultantAssigner::class)
 class ConsultantAssignerIntegrationTest {
     companion object {
@@ -298,6 +306,31 @@ class ConsultantAssignerIntegrationTest {
         } finally {
             pool.shutdownNow()
         }
+    }
+
+    @Test
+    fun `an assignment that cannot get the lock in time fails and leaves nothing behind`() {
+        consultants(marta to 0)
+        val tenant = newTenant()
+        // Another instance holds the lock, as during a slow identity provider call: on its own connection.
+        jdbc.dataSource!!.connection.use { holder ->
+            holder.autoCommit = false
+            holder.createStatement().use { it.execute("select pg_advisory_xact_lock($ASSIGNMENT_LOCK)") }
+            try {
+                val started = System.nanoTime()
+                val error = assertThrows<DataAccessException> { assign(tenant) }
+                assertThat((error.rootCause as SQLException).sqlState).isEqualTo("55P03") // lock_not_available
+                assertThat(Duration.ofNanos(System.nanoTime() - started)).isLessThan(Duration.ofSeconds(10))
+            } finally {
+                holder.rollback()
+            }
+        }
+
+        assertThat(identity.assigned).isEmpty()
+        assertThat(recorded(tenant)).isNull()
+        assertThat(auditDetails(tenant)).isEmpty()
+        // The caller's retry, once the lock is free, assigns it.
+        assertThat(assign(tenant)).isEqualTo(AssignedConsultant(marta, newlyAssigned = true))
     }
 
     @Test
