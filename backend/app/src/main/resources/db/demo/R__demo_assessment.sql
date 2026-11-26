@@ -13,11 +13,18 @@
 -- submitted one the demo expects.
 -- Flyway runs this file again when it changes, but an edited answer does not replace the stored one: run
 -- scripts/reset-demo.sh to load the new values.
+--
+-- max_level: until #179 (catalogue level scales, ADR 0007) is on main, the column only accepts enum names
+-- ('SUBSTANTIAL'); after it, only level ids ('substantial'). Repeatable migrations run after every versioned one, so
+-- the seed takes the spelling the current check constraint accepts. Once #179 is merged, write 'substantial'.
 insert into assessment.assessment (
     id, tenant_id, framework, catalogue_version, max_level, nis2_classification, rules_version, scope_input, status,
     created_at, updated_at
 ) values (
-    'de330000-0000-4000-8000-000000000001', '11111111-1111-4111-8111-111111111111', 'nis2-qnrcs', 1, 'SUBSTANTIAL',
+    'de330000-0000-4000-8000-000000000001', '11111111-1111-4111-8111-111111111111', 'nis2-qnrcs', 1,
+    (select case when pg_get_constraintdef(c.oid) like '%''SUBSTANTIAL''%' then 'SUBSTANTIAL' else 'substantial' end
+     from pg_constraint c
+     where c.conrelid = 'assessment.assessment'::regclass and c.conname = 'assessment_max_level_check'),
     'IMPORTANT', 'applicability-2026.11-v1',
     '{"size": {"employees": 120, "annualTurnoverEur": 18500000, "annualBalanceSheetEur": null},
       "publicBody": false,
@@ -30,6 +37,20 @@ insert into assessment.assessment (
     'SUBMITTED', now() - interval '10 days', now() - interval '2 days'
 )
 on conflict (id) do nothing;
+
+-- The classification comes from the CNCS qualification act (R__demo_organization_scope.sql), registered before the
+-- assessment started, so it is official. The column arrives with #179's assessment migrations: set it only when it
+-- exists, and drop the guard once #179 is merged.
+do $$
+begin
+    if exists (select 1 from information_schema.columns
+               where table_schema = 'assessment' and table_name = 'assessment'
+                 and column_name = 'nis2_classification_official') then
+        execute 'update assessment.assessment set nis2_classification_official = true '
+             || 'where id = ''de330000-0000-4000-8000-000000000001''';
+    end if;
+end
+$$;
 
 insert into assessment.answer (id, tenant_id, assessment_id, question_id, value, answered_at)
 select gen_random_uuid(), a.tenant_id, a.id, q.question_id, q.value, a.updated_at - interval '1 day'
