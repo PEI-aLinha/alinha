@@ -98,6 +98,6 @@ class ControlRules : ComplianceEngine {
             .lastOrNull()
 
     companion object {
-        const val VERSION = "controls-2026.11-v1"
+        const val VERSION = "controls-2026.11-v2"
     }
 }

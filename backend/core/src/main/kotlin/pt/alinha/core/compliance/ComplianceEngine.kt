@@ -13,8 +13,8 @@ interface ComplianceEngine {
 
     /**
      * Evaluates the controls of [catalogue] up to [maxLevel], an id of the catalogue's level scale (ADR 0007), from
-     * [answers] (question id -> answer) and [evidence] per control (the caller maps actions to controls; evidence for
-     * controls not evaluated is ignored).
+     * [answers] (question id -> answer) and [evidence] per control (the caller maps actions to controls and passes
+     * only the current result of each check, dropping older ones; evidence for controls not evaluated is ignored).
      * Throws [IncompleteAnswersException] when a question of those controls has no answer.
      */
     fun evaluate(
@@ -63,7 +63,10 @@ data class ControlEvaluation(
     val domain: String,
     /** Null only when [status] is [ControlStatus.COMPLIANT]. */
     val reason: GapReason?,
-    /** Strongest passing evidence; SELF_REPORTED (the answers) when there is none. */
+    /**
+     * Strongest passing evidence, whatever the status (a control can be a gap by failing evidence and still show a
+     * strong pass); SELF_REPORTED (the answers) when there is none.
+     */
     val strength: EvidenceStrength = EvidenceStrength.SELF_REPORTED,
 )
 

@@ -60,6 +60,16 @@ class EvidenceStrengthTest {
     }
 
     @Test
+    fun `failing technical evidence wins over a stronger pass, which still shows as the strength`() {
+        val mixed = listOf(evidence("PR.2-E", CONTINUOUSLY_VERIFIED), evidence("PR.2-E", TECHNICALLY_VERIFIED, false))
+
+        val result = evaluate(qnrcs, mixed).of("PR.2-E")
+
+        assertThat(result).extracting("status", "reason", "strength")
+            .containsExactly(ControlStatus.GAP, GapReason.EVIDENCE_FAILED, CONTINUOUSLY_VERIFIED)
+    }
+
+    @Test
     fun `failing self-reported or document evidence does not override the answer`() {
         val failing = listOf(
             evidence("PR.1-B", SELF_REPORTED, satisfied = false), evidence("PR.1-B", DOCUMENT_VERIFIED, satisfied = false),

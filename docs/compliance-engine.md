@@ -32,15 +32,18 @@ compliant, with the catalogue requirements that point to it.
 
 The `evidence` argument lists evidence per control (the caller maps actions to controls): its strength
 (`SELF_REPORTED < DOCUMENT_VERIFIED < TECHNICALLY_VERIFIED < CONTINUOUSLY_VERIFIED`), whether it shows the control in
-place, and a `ref`. Each `ControlEvaluation` carries `strength`: the strongest passing evidence, `SELF_REPORTED` (the
+place, and a `ref`. The caller passes only the **current** result of each check and drops older ones: a stale failure
+would otherwise keep a control a gap. Each `ControlEvaluation` carries `strength`: the strongest passing evidence,
+whatever the status (a control can be a gap by failing evidence and still show a strong pass), `SELF_REPORTED` (the
 answers) when there is none. Applied after the answer rule:
 
 1. Failing evidence of strength `TECHNICALLY_VERIFIED` or more turns any status into a gap (`EVIDENCE_FAILED`).
    Weaker failing evidence changes nothing.
 2. Passing evidence only raises the strength: it never upgrades a `no` or `partial` answer.
-3. A would-be compliant control whose strength is below the bar for its level is partial (`WEAK_EVIDENCE`). Each level of
-   the catalogue's scale declares its bar (`levels[].requiredStrength`, and `requiredStrengthTechnical` for technical
-   controls; default `SELF_REPORTED`, catalogue schema v2). The implicit QNRCS scale of v1 catalogues has it in code:
+3. A would-be compliant control whose strength is below the bar for its level is partial (`WEAK_EVIDENCE`). Each
+   level of the catalogue's scale declares its bar (`levels[].requiredStrength`, and `requiredStrengthTechnical` for
+   technical controls; default `SELF_REPORTED`, catalogue schema v2). The implicit QNRCS scale of v1 catalogues has
+   it in code:
 
 | Framework | Levels that accept the answers | Levels that need `DOCUMENT_VERIFIED` | Technical control at those levels |
 |---|---|---|---|
@@ -49,9 +52,9 @@ answers) when there is none. Applied after the answer rule:
 
 Evidence for controls that are not evaluated is ignored.
 **MVP consequence:** there is no document upload yet, so an essential entity (target high) sees its high
-controls as partial (weak evidence) until evidence of that strength exists. Golden test `nis2-qnrcs-v1-essential`: every question
-answered yes, verified evidence only for RC.CO-2-E: RC reaches high, the other five domains stop at substantial
-(50 high controls partial, `WEAK_EVIDENCE`), overall substantial, coverage 67%.
+controls as partial (weak evidence) until evidence of that strength exists. Golden test `nis2-qnrcs-v1-essential`:
+every question answered yes, verified evidence only for RC.CO-2-E: RC reaches high, the other five domains stop at
+substantial (50 high controls partial, `WEAK_EVIDENCE`), overall substantial, coverage 67%.
 
 ## Current level
 
