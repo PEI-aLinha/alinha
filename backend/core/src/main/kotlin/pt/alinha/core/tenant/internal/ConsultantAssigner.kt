@@ -49,6 +49,8 @@ class ConsultantAssigner(
         val pool = identity.consultants()
         jdbc.sql("set local lock_timeout = '$LOCK_TIMEOUT'").update()
         jdbc.sql("select pg_advisory_xact_lock(?)").param(ASSIGNMENT_LOCK).query { _, _ -> }.list()
+        // Only the wait for the lock is capped: the caller's later statements in this transaction keep their default.
+        jdbc.sql("set local lock_timeout to default").update()
 
         val assignments = assignments()
         assignments.entries.firstOrNull { tenant in it.value.tenants }?.let { (subject, _) ->
