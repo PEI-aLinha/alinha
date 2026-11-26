@@ -22,6 +22,8 @@ class ControlRules : ComplianceEngine {
     override fun evaluate(catalogue: Catalogue, maxLevel: String, answers: Map<String, Answer>): Evaluation {
         val target = catalogue.levelIndex(maxLevel)
         require(target >= 0) { "Target level '$maxLevel' is not in the scale of ${catalogue.framework}" }
+        val offScale = catalogue.controls.filter { catalogue.levelIndex(it.level) < 0 }.map { it.id }
+        require(offScale.isEmpty()) { "Controls $offScale have a level outside the scale of ${catalogue.framework}" }
         val controls = catalogue.controls.filter { catalogue.levelIndex(it.level) <= target }
         require(controls.isNotEmpty()) {
             "${catalogue.framework} v${catalogue.version} has no controls up to $maxLevel"

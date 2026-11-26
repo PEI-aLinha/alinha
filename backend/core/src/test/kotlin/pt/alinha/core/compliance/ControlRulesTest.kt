@@ -2,6 +2,7 @@ package pt.alinha.core.compliance
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import pt.alinha.core.compliance.Answer.NO
@@ -233,7 +234,16 @@ class ControlRulesTest {
     fun `a target level outside the catalogue's scale is refused`() {
         val error = assertThrows<IllegalArgumentException> { rules.evaluate(CATALOGUE, "3", ALL_YES) }
 
-        assertEquals(true, error.message?.contains("'3'"))
+        assertTrue("'3'" in error.message.orEmpty(), error.message)
+    }
+
+    @Test
+    fun `a control whose level is not in the scale is refused`() {
+        val catalogue = domains(control("BUS.1", BASIC), control("BUS.2", "3"))
+
+        val error = assertThrows<IllegalArgumentException> { rules.evaluate(catalogue, HIGH, yes(catalogue)) }
+
+        assertTrue("BUS.2" in error.message.orEmpty(), error.message)
     }
 
     private fun domains(vararg controls: Control) = CATALOGUE.copy(controls = controls.toList())
