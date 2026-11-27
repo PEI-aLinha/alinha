@@ -308,6 +308,79 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/assessment/assessments/{assessmentId}/submit": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path: {
+                assessmentId: components["parameters"]["AssessmentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit the assessment and compute its results
+         * @description Freezes the answers and has the Compliance Engine compute the results, in one transaction
+         *     (assessment#5, FR10, US15): the assessment goes `draft` -> `submitted` -> `evaluated`, both steps are
+         *     audited (NFR04) and publish `AssessmentSubmitted` and `AssessmentEvaluated`.
+         *
+         *     Every question must have an answer (`unknown` counts as one); otherwise `422`
+         *     (`code` = `ASSESSMENT_INCOMPLETE`, with the ids in `unanswered`). An assessment that is not `draft` is a `409`
+         *     (`code` = `ASSESSMENT_NOT_EDITABLE`). Permission `assessment:submit` (Designated Officer).
+         *
+         *     The response does not carry the results: the client sees them only after the consultant validates them
+         *     (`getAssessmentResults`).
+         */
+        post: operations["submitAssessment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/assessment/assessments/{assessmentId}/results": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path: {
+                assessmentId: components["parameters"]["AssessmentId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The results the Compliance Engine computed for one assessment
+         * @description Current and target level, and the status of every control, as computed on submit (NFR05: deterministic
+         *     rules over the catalogue and the answers, never an LLM). Stored with the assessment, so they never change
+         *     when the rules or the catalogue do.
+         *
+         *     Permission `assessment:review` (consultant): the consultant reviews the results before the client sees
+         *     them. Client access after validation comes with assessment#8, as an additive change.
+         *     A `draft` or `submitted` assessment has no results yet: `409` (`code` = `RESULTS_NOT_AVAILABLE`).
+         */
+        get: operations["getAssessmentResults"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/dashboard-reports/portfolio": {
         parameters: {
             query?: never;
@@ -1108,6 +1181,40 @@ export interface components {
              */
             assessmentId: string;
         };
+        AssessmentIncompleteProblem: components["schemas"]["Problem"] & {
+            /** @description Ids of the questions with no answer, in catalogue order. */
+            unanswered: string[];
+        };
+        /**
+         * @description From the control's answers: `compliant` when every answer is `yes`; `gap` when any is `no` or `unknown`;
+         *     `partial` otherwise (some `partial`). `partial` and `gap` both count as gaps for the roadmap.
+         * @enum {string}
+         */
+        ControlStatus: "compliant" | "partial" | "gap";
+        ControlResult: {
+            controlId: string;
+            title: string;
+            level: components["schemas"]["ComplianceLevel"];
+            status: components["schemas"]["ControlStatus"];
+        };
+        AssessmentResults: {
+            /** Format: uuid */
+            assessmentId: string;
+            /** Format: date-time */
+            evaluatedAt: string;
+            /** @description Version of the Compliance Engine rules that computed these results (NFR05). */
+            engineVersion: string;
+            /**
+             * @description Highest level whose controls, and those of every level below, are all `compliant`. Null when a
+             *     `basic` control is not.
+             */
+            currentLevel: components["schemas"]["ComplianceLevel"] | null;
+            targetLevel: components["schemas"]["ComplianceLevel"];
+            /** @description Share of the assessment's controls that are `compliant`. */
+            coverage: number;
+            /** @description Every control of the assessment, in catalogue order. */
+            controls: components["schemas"]["ControlResult"][];
+        };
         AuditEvent: {
             /** Format: uuid */
             id: string;
@@ -1827,6 +1934,99 @@ export interface operations {
                 };
             };
             422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    submitAssessment: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path: {
+                assessmentId: components["parameters"]["AssessmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The assessment, now `evaluated`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssessmentSummary"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description The assessment was already submitted (`code` = `ASSESSMENT_NOT_EDITABLE`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Some questions have no answer (`code` = `ASSESSMENT_INCOMPLETE`). */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["AssessmentIncompleteProblem"];
+                };
+            };
+        };
+    };
+    getAssessmentResults: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path: {
+                assessmentId: components["parameters"]["AssessmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The results. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssessmentResults"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description Not evaluated yet (`code` = `RESULTS_NOT_AVAILABLE`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     getPortfolioSummary: {

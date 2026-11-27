@@ -21,6 +21,7 @@ import pt.alinha.core.jobs.JobDispatcher
 import pt.alinha.core.tenant.TenantContext
 import pt.alinha.pluginapi.TenantId
 import tools.jackson.databind.json.JsonMapper
+import tools.jackson.module.kotlin.readValue
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
 
@@ -41,6 +42,7 @@ class OutboxRelayIntegrationTest {
     @Autowired private lateinit var json: JsonMapper
     @Autowired private lateinit var outbox: JobOutboxRepository
     @Autowired private lateinit var properties: JobsProperties
+    @Autowired private lateinit var validator: JobSchemaValidator
 
     private val tenant = TenantId(UUID.randomUUID())
 
@@ -76,6 +78,16 @@ class OutboxRelayIntegrationTest {
         assertThat(entry.value[RedisJobStreams.ATTEMPT]).isEqualTo("1")
         assertThat(status(id)).isEqualTo("published")
         assertThat(relay.relayOnce()).isZero()
+    }
+
+    @Test
+    fun `what goes on the stream is a valid contracts-jobs envelope`() {
+        dispatcher.dispatchAs(tenants, tx, tenant, collectRequest())
+        relay.relayOnce()
+
+        // The worker reads this exact string: check it, not just the map the dispatcher validated before the insert.
+        val envelope = json.readValue<Map<String, Any?>>(entries().single().value.getValue(RedisJobStreams.ENVELOPE))
+        validator.validateEnvelope("evidence.collect", 1, envelope)
     }
 
     @Test

@@ -1,0 +1,12 @@
+{
+  "task": "roadmap",
+  "context": {
+    "organization": {
+      "sector": "saúde",
+      "size": "pequena"
+    },
+    "gaps": [
+      "MFA em falta"
+    ]
+  }
+}
