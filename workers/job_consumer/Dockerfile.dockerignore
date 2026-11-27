@@ -4,4 +4,6 @@
 !workers/job_consumer/src
 !contracts/jobs
 contracts/jobs/examples
+!plugins/provider/*/worker/pyproject.toml
+!plugins/provider/*/worker/src
 **/__pycache__

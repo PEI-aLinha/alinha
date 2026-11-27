@@ -42,6 +42,7 @@ services:
       BAO_TOKEN: ${BAO_ROOT_TOKEN:?}
       ALINHA_BAO_APP_TOKEN: ${BAO_APP_TOKEN:?}
       ALINHA_BAO_SEED_TOKEN: ${BAO_SEED_TOKEN:?}
+      ALINHA_BAO_WORKER_TOKEN: ${BAO_WORKER_TOKEN:?}
       ALINHA_BAO_AI_TOKEN: "" # no AI Service, like production
 
   keycloak:

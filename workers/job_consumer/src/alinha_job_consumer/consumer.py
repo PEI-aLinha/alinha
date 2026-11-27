@@ -15,7 +15,7 @@ from typing import Any, Callable
 import jsonschema
 from redis.exceptions import RedisError, ResponseError
 
-from . import collectors, contracts, results
+from . import collectors, contracts, credentials, results
 
 log = logging.getLogger(__name__)
 
@@ -238,7 +238,15 @@ class Consumer:
             return results.failed(
                 envelope, type_, version, attempt, "transient_error", SAFE_COLLECTOR_MESSAGE, retryable=True
             )
-        except Exception:  # collector bugs and bad credentials are not retryable
+        except collectors.CollectorError as error:
+            log.warning("collector for %s failed: %s", envelope["provider"], error.code)
+            # The message comes from provider code: drop it if it carries a credential (the code is kept).
+            message = error.message
+            if credentials.mentions_a_credential(message):
+                log.warning("collector for %s put a credential in its error message: dropped", envelope["provider"])
+                message = SAFE_COLLECTOR_MESSAGE
+            return results.failed(envelope, type_, version, attempt, error.code, message)
+        except Exception:  # collector bugs are not retryable
             log.exception("collector for %s failed", envelope["provider"])
             return results.failed(envelope, type_, version, attempt, "collector_error", SAFE_COLLECTOR_MESSAGE)
         return results.completed(envelope, type_, version, attempt, output)

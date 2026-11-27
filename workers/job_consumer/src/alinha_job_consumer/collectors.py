@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import functools
 import logging
+import re
 from importlib.metadata import EntryPoint, entry_points
 from typing import Any, Callable
 
@@ -15,6 +16,23 @@ Collector = Callable[[dict[str, Any]], dict[str, Any]]
 
 class TransientError(Exception):
     """A retryable failure: timeout, 5xx, connection reset."""
+
+
+class CollectorError(Exception):
+    """A final failure the core may show: `code` and `message` go into the result as they are.
+
+    Use it for expected failures (`invalid_credentials`, `connection_not_found`); any other exception becomes a
+    generic `collector_error`. Never put a credential, a URL with a token or provider response text in either field.
+    """
+
+    _CODE = re.compile(r"[a-z][a-z0-9_]{0,99}")
+
+    def __init__(self, code: str, message: str) -> None:
+        if not self._CODE.fullmatch(code):
+            raise ValueError(f"error code must match {self._CODE.pattern}")
+        super().__init__(f"{code}: {message}")
+        self.code = code
+        self.message = message[:500]
 
 
 @functools.lru_cache(maxsize=1)

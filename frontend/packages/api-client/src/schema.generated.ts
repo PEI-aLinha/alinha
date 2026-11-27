@@ -412,6 +412,225 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/code-repository/connection": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The organization's connection to its repository host
+         * @description `204` when nothing is connected yet. Never contains the token. Permission `code-repository:read`
+         *     (Designated Officer, analyst, consultant).
+         */
+        get: operations["getCodeRepositoryConnection"];
+        /**
+         * Connect (or change) the repository host and start a collection
+         * @description Stores the read-only token in OpenBao (never in the database, never returned) and queues an `evidence.collect`
+         *     job (FR37, US37). `token` is required the first time, for another host or server, and after a GitHub App
+         *     connection; otherwise leave it out to keep the stored one. The connection is then collected again every day.
+         *     `repositories` empty means every repository of `account` the token can see (at most 20 per collection).
+         *     `409` (`code` = `COLLECTION_RUNNING`) while a collection is running (less than 15 minutes); `422` names the invalid field;
+         *     `503` (`code` = `SECRETS_UNAVAILABLE`) when the token cannot be stored. Permission `code-repository:connect`
+         *     (Designated Officer, analyst, consultant).
+         */
+        put: operations["connectCodeRepository"];
+        post?: never;
+        /**
+         * Remove the connection and its stored token
+         * @description Evidence already collected is kept. `404` (`code` = `NOT_CONNECTED`) when nothing is connected.
+         *     Permission `code-repository:connect`.
+         */
+        delete: operations["disconnectCodeRepository"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/code-repository/collections": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Collect the evidence again now
+         * @description Queues a new collection with the stored credential. `404` (`code` = `NOT_CONNECTED`) when nothing is connected,
+         *     `409` (`code` = `COLLECTION_RUNNING`) while one is running. Permission `code-repository:connect`.
+         */
+        post: operations["collectCodeRepositoryEvidence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/code-repository/setup": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * What the connect page needs before anything is connected
+         * @description Whether the aLinha GitHub App can be offered, and who was asked to connect. Permission `code-repository:read`.
+         */
+        get: operations["getCodeRepositorySetup"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/code-repository/assignment": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Ask someone, by email, to connect the repository
+         * @description Saves who was asked and emails them a link to the platform (US37). Connecting still needs
+         *     `code-repository:connect`. `422` (`field` = `email`) for an invalid address. Permission `code-repository:assign`
+         *     (Designated Officer, consultant).
+         */
+        put: operations["assignCodeRepository"];
+        post?: never;
+        /**
+         * Withdraw the request
+         * @description Nothing happens when nobody was asked. Permission `code-repository:assign`.
+         */
+        delete: operations["unassignCodeRepository"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/code-repository/github-app/installations": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start installing the aLinha GitHub App
+         * @description Returns GitHub's install page with a single-use `state` (valid 15 minutes) bound to this organization. GitHub
+         *     sends the person back to `/resume` (the shell returns them to the plugin page). `503` (`code` =
+         *     `APP_UNAVAILABLE`) when the App is not configured. Permission `code-repository:connect`.
+         */
+        post: operations["startCodeRepositoryAppInstall"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/code-repository/github-app/installation": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Connect through the GitHub App that was just installed
+         * @description Takes what GitHub sent back (`installation_id`, `state`, `code`). The state must be this organization's, unused
+         *     and fresh (`422`, `code` = `APP_INSTALL_EXPIRED`); the installation must be one GitHub shows to the person who
+         *     installed it (`422`, `code` = `APP_INSTALL_NOT_VERIFIED`). Only the installation id is stored; no token.
+         *     `503` (`code` = `GITHUB_UNAVAILABLE`) when GitHub does not answer. Permission `code-repository:connect`.
+         */
+        put: operations["completeCodeRepositoryAppInstall"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/code-repository/evidence": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Evidence from the last completed collection
+         * @description One item per repository and check, ordered by repository then check. Empty before the first collection
+         *     completes. Not paginated: at most 20 repositories × 4 checks. `controlIds` come from a deterministic,
+         *     versioned mapping (NFR05). Permission `code-repository:read`.
+         */
+        get: operations["listCodeRepositoryEvidence"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/audit/events": {
         parameters: {
             query?: never;
@@ -1032,6 +1251,107 @@ export interface components {
             plugin: string;
             /** @enum {string} */
             status: "ok";
+        };
+        CodeRepositoryConnection: {
+            /** @enum {string} */
+            host: "github" | "gitlab";
+            /** @description Self-managed GitLab server (`https://host[:port]`); null for github.com and gitlab.com. */
+            baseUrl?: string | null;
+            /**
+             * @description `token`: a read-only access token; `app`: the aLinha GitHub App installed by the client.
+             * @enum {string}
+             */
+            auth: "token" | "app";
+            /** @description GitHub user or organization, or GitLab group (with subgroups) or user path. */
+            account: string;
+            /**
+             * @description `owner/name` (GitLab: the project path). Empty: every repository of `account` the credential can see (with
+             *     the App, the ones chosen when installing it).
+             */
+            repositories: string[];
+            /**
+             * @description PENDING while a collection is queued or running; FAILED says why in `lastError`.
+             * @enum {string}
+             */
+            status: "PENDING" | "ACTIVE" | "FAILED";
+            /**
+             * @description Error code of the last failed collection (`invalid_credentials`, `connection_not_found`, `invalid_result`,
+             *     `transient_error`, `collector_error`, ...). The page turns it into a sentence.
+             */
+            lastError?: string | null;
+            /** Format: date-time */
+            lastCollectedAt?: string | null;
+            /**
+             * Format: date-time
+             * @description When the current (or last) collection was queued. A PENDING one older than 15 minutes is treated as lost, and a new collection may start.
+             */
+            collectingSince?: string | null;
+            /** @description The account has more repositories than one collection inspects (20). */
+            truncated: boolean;
+            /** Format: date-time */
+            connectedAt: string;
+        };
+        CodeRepositoryConnectInput: {
+            /** @enum {string} */
+            host: "github" | "gitlab";
+            /** @description Only for a self-managed GitLab, `https://host[:port]`. Leave out for gitlab.com. */
+            baseUrl?: string;
+            account: string;
+            repositories?: string[];
+            /**
+             * @description Read-only access token. Required the first time, for another host or server and after a GitHub App
+             *     connection; leave out to keep the stored one.
+             */
+            token?: string;
+        };
+        CodeRepositoryEvidence: {
+            /** Format: uuid */
+            id: string;
+            repository: string;
+            /** @enum {string} */
+            check: "branch_protection" | "required_reviews" | "dependency_alerts" | "secret_scanning";
+            /**
+             * @description UNKNOWN when the token could not see it; it is not evidence for any control.
+             * @enum {string}
+             */
+            outcome: "PASS" | "FAIL" | "UNKNOWN";
+            /** @description Counts and flags only (e.g. `requiredApprovals`, `openCriticalOrHigh`, `enabled`). */
+            details: {
+                [key: string]: boolean | number | string;
+            };
+            controlIds: string[];
+            /**
+             * @description CONTINUOUSLY_VERIFIED when the daily collection found it and the previous one succeeded within a day.
+             * @enum {string}
+             */
+            strength: "SELF_REPORTED" | "DOCUMENT_VERIFIED" | "TECHNICALLY_VERIFIED" | "CONTINUOUSLY_VERIFIED";
+            /** Format: date-time */
+            collectedAt: string;
+        };
+        CodeRepositorySetup: {
+            /** @description The aLinha GitHub App is configured, so the page can offer it instead of a token. */
+            githubApp: boolean;
+            assignment?: components["schemas"]["CodeRepositoryAssignment"] | null;
+        };
+        CodeRepositoryAssignment: {
+            /** Format: email */
+            email: string;
+            /** Format: date-time */
+            assignedAt: string;
+        };
+        CodeRepositoryAssignInput: {
+            /** Format: email */
+            email: string;
+        };
+        CodeRepositoryAppInstallStart: {
+            /** Format: uri */
+            installUrl: string;
+        };
+        CodeRepositoryAppInstallInput: {
+            /** Format: int64 */
+            installationId: number;
+            state: string;
+            code: string;
         };
     };
     responses: {
@@ -1727,6 +2047,366 @@ export interface operations {
                     "application/json": components["schemas"]["PortfolioSummary"];
                 };
             };
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    getCodeRepositoryConnection: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The connection and the state of its last collection. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CodeRepositoryConnection"];
+                };
+            };
+            /** @description No repository is connected. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    connectCodeRepository: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CodeRepositoryConnectInput"];
+            };
+        };
+        responses: {
+            /** @description Saved; a collection is queued. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CodeRepositoryConnection"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            /** @description The token could not be stored. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    disconnectCodeRepository: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Disconnected. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description The token could not be removed. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    collectCodeRepositoryEvidence: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A collection is queued. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CodeRepositoryConnection"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+        };
+    };
+    getCodeRepositorySetup: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The setup. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CodeRepositorySetup"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    assignCodeRepository: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CodeRepositoryAssignInput"];
+            };
+        };
+        responses: {
+            /** @description Assigned; the email is queued. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CodeRepositoryAssignment"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    unassignCodeRepository: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Withdrawn. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    startCodeRepositoryAppInstall: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Where to send the person. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CodeRepositoryAppInstallStart"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description The GitHub App is not configured. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    completeCodeRepositoryAppInstall: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CodeRepositoryAppInstallInput"];
+            };
+        };
+        responses: {
+            /** @description Connected; a collection is queued. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CodeRepositoryConnection"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            /** @description GitHub or the App is not available. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    listCodeRepositoryEvidence: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The evidence. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CodeRepositoryEvidence"][];
+                };
+            };
+            400: components["responses"]["BadRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
         };

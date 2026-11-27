@@ -39,13 +39,7 @@ key=$(echo "$init" | jq -r '.unseal_keys_b64[0]')
 root=$(echo "$init" | jq -r '.root_token')
 $COMPOSE exec -T openbao bao operator unseal "$key" >/dev/null
 $COMPOSE exec -T -e BAO_TOKEN="$root" -e ALINHA_BAO_APP_TOKEN="$BAO_APP_TOKEN" \
-  -e ALINHA_BAO_SEED_TOKEN="$BAO_SEED_TOKEN" openbao sh /init/bootstrap.sh
-
-# What deploy.yml does, limited to the seed job: it must exit 0 and `--wait` must accept it.
-for run in first second; do
-  $COMPOSE up -d --wait --wait-timeout 120 --force-recreate openbao-seed app-stand-in
-  echo "ok   seed job ($run deploy)"
-done
+  -e ALINHA_BAO_SEED_TOKEN="$BAO_SEED_TOKEN" -e ALINHA_BAO_WORKER_TOKEN="$BAO_WORKER_TOKEN" openbao sh /init/bootstrap.sh
 
 failures=0
 expect_ok() {
@@ -59,6 +53,30 @@ expect_denied() {
 
 seed() { $COMPOSE exec -T -e BAO_TOKEN="$BAO_SEED_TOKEN" openbao bao "$@"; }
 app() { $COMPOSE exec -T -e BAO_TOKEN="$BAO_APP_TOKEN" openbao bao "$@"; }
+worker() { $COMPOSE exec -T -e BAO_TOKEN="$BAO_WORKER_TOKEN" openbao bao "$@"; }
+
+# What deploy.yml does, limited to the seed job: it must exit 0 and `--wait` must accept it. The first deploy has
+# the GitHub App set; the next (an update) has it missing, which must keep its key; only an explicit
+# ALINHA_GITHUB_APP_REMOVE=true removes it, also when there is nothing left to remove.
+DEPLOY="up -d --wait --wait-timeout 120 --force-recreate openbao-seed app-stand-in"
+env ALINHA_GITHUB_APP_ID=7 ALINHA_GITHUB_APP_PRIVATE_KEY=test-key $COMPOSE $DEPLOY
+echo "ok   seed job (first deploy)"
+expect_denied "an unset GitHub App client secret is stored" \
+  app kv get -field=code-repository.github-app.client-secret secret/alinha/app
+got=$(worker kv get -field=github_app_private_key secret/providers/code-repository)
+if [ "$got" = "test-key" ]; then echo "ok   worker token reads the seeded GitHub App key"
+else echo "FAIL worker token: GitHub App key is not the seeded value"; failures=$((failures + 1)); fi
+$COMPOSE $DEPLOY
+echo "ok   seed job (second deploy, GitHub App variables missing)"
+expect_ok "worker token still reads the GitHub App key" worker kv get secret/providers/code-repository
+env ALINHA_GITHUB_APP_REMOVE=true $COMPOSE $DEPLOY
+echo "ok   seed job (third deploy, GitHub App removed)"
+expect_denied "worker token reads the GitHub App key after it was removed" \
+  worker kv get -version=1 secret/providers/code-repository
+env ALINHA_GITHUB_APP_REMOVE=true $COMPOSE $DEPLOY
+echo "ok   seed job (fourth deploy, removing a key that is already gone)"
+expect_denied "removing and setting the App at once" \
+  env ALINHA_GITHUB_APP_REMOVE=true ALINHA_GITHUB_APP_ID=7 ALINHA_GITHUB_APP_PRIVATE_KEY=k $COMPOSE $DEPLOY
 
 expect_denied "seed token reads secret/alinha/app" seed kv get secret/alinha/app
 expect_denied "seed token writes a tenant's credentials" seed kv put secret/tenants/acme/github token=x
@@ -71,6 +89,20 @@ got=$(app kv get -field=db.password secret/alinha/app)
 if [ "$got" = "$ALINHA_APP_DB_PASSWORD" ]; then echo "ok   app token reads the seeded db.password"
 else echo "FAIL app token: db.password is not the seeded value"; failures=$((failures + 1)); fi
 expect_denied "app token writes secret/alinha/app" app kv put secret/alinha/app a=b
+
+# The worker reads a provider credential the app stored, and nothing else (docs/jobs.md, "Credentials for a collector").
+expect_ok "app token stores a provider credential" app kv put secret/tenants/t1/providers/code-repository token=x
+expect_denied "seed token deletes a tenant's credentials" seed kv metadata delete secret/tenants/t1/providers/code-repository
+expect_ok "worker token reads a provider credential" worker kv get secret/tenants/t1/providers/code-repository
+expect_ok "seed token writes a provider's platform credential" seed kv put secret/providers/code-repository github_app_id=1
+expect_ok "worker token reads a provider's platform credential" worker kv get secret/providers/code-repository
+expect_denied "worker token writes a provider's platform credential" worker kv put secret/providers/code-repository github_app_id=2
+expect_denied "app token reads a provider's platform credential" app kv get secret/providers/code-repository
+expect_denied "worker token writes a provider credential" worker kv put secret/tenants/t1/providers/code-repository token=y
+expect_denied "worker token lists tenants" worker kv list secret/tenants
+expect_denied "worker token reads secret/alinha/app" worker kv get secret/alinha/app
+expect_denied "worker token reads outside providers/" worker kv get secret/tenants/t1/other
+expect_ok "worker token renews itself (healthcheck)" worker token renew
 
 if [ "$failures" -gt 0 ]; then echo "$failures check(s) failed"; exit 1; fi
 echo "All OpenBao seed checks passed"

@@ -39,9 +39,12 @@ browser ─► reverse proxy (TLS, PROXY_NETWORK) ─► web (alias alinha-web)
 
 1. Merge to `main` with CI green.
 2. `gh release create vX.Y.Z --generate-notes` (the tag triggers `publish.yml`; wait for the 5 images).
-3. Actions → **Deploy to Production VM** → Run workflow on `main`. Empty `image_tag` = latest release. A reviewer approves
+3. If the release changes a policy (`deploy/openbao/*.hcl`) or adds an OpenBao token (e.g. `BAO_WORKER_TOKEN`),
+   run `bootstrap.sh` on the VM first (**OpenBao**, "Changing a policy file"). Until then `openbao-seed` is refused
+   (403) and the deploy fails, and the job consumer's collectors fail with `secrets_unavailable`.
+4. Actions → **Deploy to Production VM** → Run workflow on `main`. Empty `image_tag` = latest release. A reviewer approves
    the `production` environment, then the runner pulls the images and runs `up -d --wait`.
-4. If it fails, the job prints the last logs. **Get Production Logs** dumps the logs of every container at any time.
+5. If it fails, the job prints the last logs. **Get Production Logs** dumps the logs of every container at any time.
 
 Only one of **Deploy**, **Get Production Logs** and **Clean** runs on the VM at a time (`concurrency: prod-vm`);
 a second run waits for the first instead of starting halfway through its `up`.
@@ -63,7 +66,9 @@ Generate each secret with `openssl rand -hex 24` and set it with `gh secret set 
 | `BFF_CLIENT_SECRET` | client `bff` in the realm and the BFF |
 | `KEYCLOAK_PROVISIONER_SECRET` | client `alinha-provisioner` in the realm and the app (through OpenBao) |
 | `BAO_APP_TOKEN` | the app's OpenBao token |
-| `BAO_SEED_TOKEN` | the `openbao-seed` job's token: can only write `secret/alinha/{app,ai-service}` |
+| `BAO_SEED_TOKEN` | the `openbao-seed` job's token: can only write `secret/alinha/{app,ai-service}` and `secret/providers/+` |
+| `BAO_WORKER_TOKEN` | the job consumer's OpenBao token: can only read `secret/tenants/+/providers/+` (provider credentials) and `secret/providers/+` |
+| `ALINHA_GITHUB_APP_CLIENT_SECRET`, `ALINHA_GITHUB_APP_PRIVATE_KEY` | optional, the aLinha GitHub App (see "GitHub App" below) |
 | `SMTP_USERNAME`, `SMTP_PASSWORD` | the SMTP relay's login (from the mail provider, not generated) |
 
 The OpenBao **root token is not a secret here**: it stays with the operator (see OpenBao below).
@@ -74,7 +79,34 @@ Variables: `ALINHA_PUBLIC_URL=https://pei-alinha.duckdns.org`, `PROXY_NETWORK` (
 authenticate and require STARTTLS.
 
 Compose refuses to start when any of them is missing (`${VAR:?}`), so an empty secret can never become a
-placeholder in the imported realm.
+placeholder in the imported realm. The GitHub App ones are the exception: optional, see below.
+
+### GitHub App (code-repository, optional)
+
+Clients can connect their GitHub organisation by installing the aLinha GitHub App instead of pasting a token. Without
+the values below the page only offers the token. To enable it, a GitHub organisation owner of the team registers the
+App once (Settings, Developer settings, GitHub Apps, New GitHub App):
+
+- **Homepage URL**: `ALINHA_PUBLIC_URL`. **Callback URL**: `<ALINHA_PUBLIC_URL>/resume`.
+- **Request user authorization (OAuth) during installation**: on (the app checks with it that the person who returns
+  can see the installation). With it on, GitHub greys out the **Setup URL** and sends the person back to the
+  Callback URL instead, with `installation_id`, `setup_action`, `state` and `code`: leave the Setup URL empty.
+  **Expire user authorization tokens**: on. **Webhook**: off.
+- **Repository permissions**, all **Read-only**: Administration, Metadata, Dependabot alerts, Secret scanning alerts.
+  Nothing else, and no account permissions. **Where can this App be installed**: Any account.
+
+Then set the variables `ALINHA_GITHUB_APP_SLUG` (from the App's URL), `ALINHA_GITHUB_APP_CLIENT_ID` and
+`ALINHA_GITHUB_APP_ID`, and the secrets `ALINHA_GITHUB_APP_CLIENT_SECRET` (generate one on the App page) and
+`ALINHA_GITHUB_APP_PRIVATE_KEY` (generate a private key and paste the whole `.pem`). GitHub refuses secret and
+variable names that start with `GITHUB_`, hence the prefix; inside the containers they are still `GITHUB_APP_*`. `openbao-seed` writes the client secret to `secret/alinha/app` (read by the app) and
+the App id and key to `secret/providers/code-repository` (read only by the job consumer, which asks GitHub for
+read-only installation tokens). After changing `alinha-seed.hcl` or `alinha-worker.hcl`, run `bootstrap.sh` once as
+described under OpenBao.
+
+A deploy without `ALINHA_GITHUB_APP_ID` leaves the stored App key as it is (a missing variable must not break the
+existing App connections). To remove the key with all its versions (for example after a leak), deploy once with the
+variable `ALINHA_GITHUB_APP_REMOVE=true` and without `ALINHA_GITHUB_APP_ID`, then delete `ALINHA_GITHUB_APP_REMOVE`.
+App connections then fail with `provider_not_configured` until a new key is set.
 
 ## Things to know
 
@@ -150,28 +182,29 @@ docker exec alinha-prod-openbao-1 bao operator init -key-shares=3 -key-threshold
 
 It prints 3 unseal keys and the root token, once. Give one unseal key to each of three team members and keep them
 out of the VM and out of the repo. Then unseal and set OpenBao up. `read -s` keeps the tokens out of the shell
-history: paste the root token, then the values of the `BAO_APP_TOKEN` and `BAO_SEED_TOKEN` secrets.
+history: paste the root token, then the values of the `BAO_APP_TOKEN`, `BAO_SEED_TOKEN` and `BAO_WORKER_TOKEN` secrets.
 
 ```sh
 docker exec -it alinha-prod-openbao-1 bao operator unseal   # asks for a key; repeat with a second key
-read -rs ROOT; read -rs APP; read -rs SEED
+read -rs ROOT; read -rs APP; read -rs SEED; read -rs WORKER
 docker exec -e BAO_TOKEN="$ROOT" -e ALINHA_BAO_APP_TOKEN="$APP" -e ALINHA_BAO_SEED_TOKEN="$SEED" \
-  alinha-prod-openbao-1 sh /init/bootstrap.sh
+  -e ALINHA_BAO_WORKER_TOKEN="$WORKER" alinha-prod-openbao-1 sh /init/bootstrap.sh
 docker exec -e BAO_TOKEN="$ROOT" alinha-prod-openbao-1 bao token revoke -self   # the root token is no longer needed
-unset ROOT APP SEED
+unset ROOT APP SEED WORKER
 ```
 
 Run **Deploy to Production VM** again. `openbao-seed` writes the secrets.
 
 **Changing a policy file** (`deploy/openbao/*.hcl`) or a token: create a root token for the occasion with
-`bao operator generate-root` (two key holders), run `bootstrap.sh` as above, then revoke it.
+`bao operator generate-root` (two key holders), run `bootstrap.sh` as above, then revoke it. Do it **before** the
+deploy that ships the change (Release and deploy, step 3).
 
 **After a VM reboot or an OpenBao restart:** run `bao operator unseal` twice (two key holders). Until then the app
 cannot read its secrets: `restart: always` keeps restarting it, and it comes up by itself once OpenBao is unsealed.
 A deploy before the unseal fails waiting for `openbao`: if a deploy times out, check
 `docker exec alinha-prod-openbao-1 bao status` (`Sealed true`) first.
 
-**Token expiry:** `BAO_APP_TOKEN` and `BAO_SEED_TOKEN` are periodic tokens (768h, 32 days), renewed by the OpenBao
+**Token expiry:** `BAO_APP_TOKEN`, `BAO_SEED_TOKEN` and `BAO_WORKER_TOKEN` are periodic tokens (768h, 32 days), renewed by the OpenBao
 healthcheck and by every seed while the stack runs. If the stack is down for more than 32 days they expire: run
 `bootstrap.sh` again as above (it recreates them with the same values).
 
@@ -196,6 +229,6 @@ first, then the GitHub secret, then deploy**:
 | `SMTP_*` | Keycloak, realm `alinha` → Realm settings → Email (the app reads the new values on deploy) |
 | `KEYCLOAK_ADMIN_PASSWORD` | Keycloak, realm `master` → the admin user (the env value is only used on the very first start) |
 | `POSTGRES_PASSWORD`, `ALINHA_APP_DB_PASSWORD`, `KEYCLOAK_DB_PASSWORD` | `docker exec -it alinha-prod-postgres-1 psql -U alinha -c '\password <role>'` with role `alinha`, `alinha_app` or `keycloak` |
-| `BAO_APP_TOKEN`, `BAO_SEED_TOKEN` | OpenBao: revoke the old token and run `bootstrap.sh` with the new one (see OpenBao) |
+| `BAO_APP_TOKEN`, `BAO_SEED_TOKEN`, `BAO_WORKER_TOKEN` | OpenBao: revoke the old token and run `bootstrap.sh` with the new one (see OpenBao) |
 
 `\password` asks for the new value, so it never appears in the shell history or the process list.
