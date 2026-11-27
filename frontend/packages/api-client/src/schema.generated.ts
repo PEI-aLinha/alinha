@@ -631,6 +631,136 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/external-surface/monitoring": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The domain checked, the extra hosts and the state of the checks
+         * @description Always `200`: `active` is false until the Designated Officer activates the checks. `domain` comes from the
+         *     organization profile; null when the profile has none, and nothing can be checked. Permission
+         *     `external-surface:read` (Designated Officer, analyst, consultant).
+         */
+        get: operations["getExternalSurfaceMonitoring"];
+        /**
+         * Activate the daily checks and run the first one
+         * @description The Designated Officer confirms that the organization owns the domain and authorizes the checks
+         *     (`authorized` must be true; it is recorded in the audit trail). Queues an `evidence.collect` job (FR37) and
+         *     checks again every day. Already active: `200`, nothing new is queued. `422` with `code` =
+         *     `AUTHORIZATION_REQUIRED` or `DOMAIN_MISSING` (the organization profile has no domain). Permission
+         *     `external-surface:activate` (Designated Officer only).
+         */
+        put: operations["activateExternalSurface"];
+        post?: never;
+        /**
+         * Stop the daily checks
+         * @description Results already collected and the extra hosts are kept. `404` (`code` = `NOT_ACTIVE`) when not active.
+         *     Permission `external-surface:manage` (Designated Officer, consultant).
+         */
+        delete: operations["deactivateExternalSurface"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/external-surface/hosts": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Replace the extra hosts checked besides the domain and www
+         * @description At most 10 host names, each a subdomain of the profile's domain (e.g. `loja.empresa.pt`), without scheme,
+         *     port or path. Takes effect on the next check. `422` names the invalid entry (`hosts[i]`); `422` with `code` =
+         *     `DOMAIN_MISSING` when the profile has no domain. Permission `external-surface:manage`.
+         */
+        put: operations["setExternalSurfaceHosts"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/external-surface/collections": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check again now
+         * @description `404` (`code` = `NOT_ACTIVE`) when not active, `409` (`code` = `COLLECTION_RUNNING`) while a check is running
+         *     (less than 15 minutes), `422` (`code` = `DOMAIN_MISSING`), `429` (`code` = `TOO_SOON`) within 10 minutes of the
+         *     last check. Permission `external-surface:manage`.
+         */
+        post: operations["collectExternalSurfaceEvidence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/external-surface/evidence": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Results of the last completed check
+         * @description One item per host and check, ordered by host then check; the domain-wide checks (email, DNS) carry the
+         *     domain as `host`. Empty before the first check completes. Not paginated: at most 12 hosts. `controlIds` come
+         *     from a deterministic, versioned mapping (NFR05); informational checks have none. Permission
+         *     `external-surface:read`.
+         */
+        get: operations["listExternalSurfaceEvidence"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/audit/events": {
         parameters: {
             query?: never;
@@ -675,7 +805,7 @@ export interface paths {
             };
             path: {
                 /** @description Plugin id exactly as declared in `plugin.yaml`. */
-                plugin: "assessment" | "dashboard-reports" | "notifications" | "organization" | "risk-assets" | "code-repository" | "external-surface";
+                plugin: "assessment" | "dashboard-reports" | "notifications" | "organization" | "risk-assets" | "code-repository";
             };
             cookie?: never;
         };
@@ -840,6 +970,12 @@ export interface components {
             address: components["schemas"]["OrganizationAddress"];
             contacts: components["schemas"]["OrganizationContacts"];
             permanentContact: components["schemas"]["PermanentContact"];
+            /**
+             * @description The organization's own internet domain, used for its website and email (e.g. `empresa.pt`). Optional. A
+             *     web address is accepted and reduced to the domain (`https://www.empresa.pt/` → `empresa.pt`); IP
+             *     addresses and shared domains (`gmail.com`) are refused.
+             */
+            domain?: string | null;
         };
         OrganizationProfileUpdate: components["schemas"]["OrganizationProfileInput"] & {
             /** @description The `version` that was read. */
@@ -869,6 +1005,8 @@ export interface components {
             address: components["schemas"]["OrganizationAddress"];
             contacts: components["schemas"]["OrganizationContacts"];
             permanentContact: components["schemas"]["PermanentContact"];
+            /** @description Registrable domain in lower case, internationalized names in ASCII form (`xn--...`). */
+            domain: string | null;
             /** Format: date-time */
             registeredAt: string;
             /** Format: date-time */
@@ -1352,6 +1490,73 @@ export interface components {
             installationId: number;
             state: string;
             code: string;
+        };
+        ExternalSurfaceMonitoring: {
+            /** @description From the organization profile; null when the profile has none. */
+            domain: string | null;
+            /** @description The daily checks are on. */
+            active: boolean;
+            /** Format: date-time */
+            activatedAt?: string | null;
+            /**
+             * @description State of the last check; null before the first. PENDING while queued or running; FAILED says why in
+             *     `lastError`.
+             * @enum {string|null}
+             */
+            status?: "PENDING" | "ACTIVE" | "FAILED" | null;
+            /**
+             * @description Error code of the last failed check (`domain_not_found`, `invalid_scope`, `invalid_result`,
+             *     `transient_error`, `collector_error`, ...). The page turns it into a sentence.
+             */
+            lastError?: string | null;
+            /** Format: date-time */
+            lastCollectedAt?: string | null;
+            /**
+             * Format: date-time
+             * @description When the current (or last) check was queued. A PENDING one older than 15 minutes is treated as lost.
+             */
+            collectingSince?: string | null;
+            /** @description Extra hosts, in the order saved. */
+            hosts: components["schemas"]["ExternalSurfaceHost"][];
+        };
+        ExternalSurfaceHost: {
+            hostname: string;
+            /** @description Still a subdomain of the profile's domain. Hosts out of scope are kept but not checked. */
+            inScope: boolean;
+        };
+        ExternalSurfaceHostsInput: {
+            hosts: string[];
+        };
+        ExternalSurfaceActivationInput: {
+            /** @description The organization owns the domain and authorizes the checks. Must be true. */
+            authorized: boolean;
+        };
+        ExternalSurfaceEvidence: {
+            /** Format: uuid */
+            id: string;
+            /** @description The host checked; the domain itself for the domain-wide checks. */
+            host: string;
+            /** @enum {string} */
+            check: "tls_version" | "tls_legacy" | "tls_certificate" | "https_redirect" | "hsts" | "csp" | "content_type_options" | "frame_protection" | "referrer_policy" | "security_txt" | "spf" | "dkim" | "dmarc" | "mta_sts" | "caa" | "dnssec";
+            /**
+             * @description UNKNOWN when it could not be checked (timeout, no answer); it is not evidence for any control.
+             * @enum {string}
+             */
+            outcome: "PASS" | "FAIL" | "UNKNOWN";
+            /** @description Counts, flags and short codes only (e.g. `daysLeft`, `expiresSoon`, `policy`, `reason`). */
+            details: {
+                [key: string]: boolean | number | string;
+            };
+            controlIds: string[];
+            /** @description A recommendation that is not evidence for any control (`caa`, `dnssec`). */
+            informational: boolean;
+            /**
+             * @description CONTINUOUSLY_VERIFIED when the daily check found it and the previous successful check was at most 26 hours earlier (a day plus slack for the schedule).
+             * @enum {string}
+             */
+            strength: "SELF_REPORTED" | "DOCUMENT_VERIFIED" | "TECHNICALLY_VERIFIED" | "CONTINUOUSLY_VERIFIED";
+            /** Format: date-time */
+            collectedAt: string;
         };
     };
     responses: {
@@ -2411,6 +2616,217 @@ export interface operations {
             403: components["responses"]["Forbidden"];
         };
     };
+    getExternalSurfaceMonitoring: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The monitoring state. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalSurfaceMonitoring"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    activateExternalSurface: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExternalSurfaceActivationInput"];
+            };
+        };
+        responses: {
+            /** @description Already active. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalSurfaceMonitoring"];
+                };
+            };
+            /** @description Activated; the first check is queued. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalSurfaceMonitoring"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    deactivateExternalSurface: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deactivated. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    setExternalSurfaceHosts: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExternalSurfaceHostsInput"];
+            };
+        };
+        responses: {
+            /** @description Saved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalSurfaceMonitoring"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    collectExternalSurfaceEvidence: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A check is queued. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalSurfaceMonitoring"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            422: components["responses"]["UnprocessableEntity"];
+            /** @description The last check was less than 10 minutes ago (`code` = `TOO_SOON`). */
+            429: {
+                headers: {
+                    "Retry-After": components["headers"]["RetryAfter"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    listExternalSurfaceEvidence: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The results. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExternalSurfaceEvidence"][];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
     listAuditEvents: {
         parameters: {
             query?: {
@@ -2469,7 +2885,7 @@ export interface operations {
             };
             path: {
                 /** @description Plugin id exactly as declared in `plugin.yaml`. */
-                plugin: "assessment" | "dashboard-reports" | "notifications" | "organization" | "risk-assets" | "code-repository" | "external-surface";
+                plugin: "assessment" | "dashboard-reports" | "notifications" | "organization" | "risk-assets" | "code-repository";
             };
             cookie?: never;
         };

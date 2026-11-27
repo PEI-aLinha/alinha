@@ -65,3 +65,24 @@ collector". A credential of the provider itself, the same for every tenant (a Gi
 `credentials.platform_secret(provider)`.
 
 A provider that is not installed produces a non-retryable `unknown_provider` result instead of crashing the worker.
+
+## Network access from a collector
+
+A collector that connects to an address the tenant chose (a self-managed server, the organisation's own domain)
+uses `alinha_job_consumer.net`, never urllib or http.client directly:
+
+- `public_addresses(host, port)` resolves the host once and raises `CollectorError("host_not_allowed")` unless every
+  address is a public internet address, so a tenant cannot point the platform at its own network (SSRF). It returns
+  them all, IPv4 first; `public_address` returns only the first;
+- `pinned_https_get`, `pinned_http_location` and `tls_handshake` connect to those checked addresses, trying each in
+  turn until one answers (a dual-stack host with one address down still works), with TLS verified against the host
+  name (no second DNS lookup, so no DNS rebinding), never follow redirects and cap the body;
+- each connection attempt takes at most `min(timeout, time left)`, all of them together at most `deadline`; once
+  connected, the handshake, request and answer together take at most `deadline` (default twice `timeout`), so a host
+  that trickles its answer cannot hold the worker. The DNS
+  lookup uses the system resolver's timeouts: put your own budget around the whole run;
+- an answer that would be the same on a retry raises `CollectorError`: `host_not_allowed`, `host_not_found`,
+  `response_too_large`. Other network failures raise `TransientError`. A refused TLS handshake or an invalid certificate is raised as
+  `ssl.SSLError`: for a collector that checks a host, it is a finding, not a failure.
+
+Send `user_agent(provider)` as the `User-Agent`, so the host's owner can tell who is asking.
