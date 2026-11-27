@@ -1,0 +1,10 @@
+{
+  "jobId": "11111111-2222-4333-8444-555555555555",
+  "type": "evidence.collect",
+  "version": 1,
+  "tenantId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+  "attempt": 2,
+  "status": "failed",
+  "retryable": true,
+  "finishedAt": "2026-11-24T10:05:00Z"
+}
