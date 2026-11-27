@@ -381,6 +381,79 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/dashboard-reports/traceability/{framework}": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path: {
+                /** @description Framework id of a catalogue, e.g. `nis2-qnrcs`. */
+                framework: components["parameters"]["Framework"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Requirement → controls → gaps → roadmap actions → evidence, for one client
+         * @description The consultant's traceability view of the organization in `X-Alinha-Tenant` (alinha#26, FR38, FR39, US39).
+         *     Requirements and controls come from the catalogue version the latest evaluation used (NFR18), or the newest
+         *     version before any evaluation. A control's `status` is the Compliance Engine's (NFR05), never computed here.
+         *
+         *     Until the sources exist, parts are empty and say so: `evaluated` is false before the organization's
+         *     assessment is evaluated (statuses null); `actions` stay empty until the roadmap exists (assessment#6);
+         *     `evidence` stays empty until providers collect some (dashboard-reports#2).
+         *
+         *     A framework with no catalogue is a `404` (`code` = `FRAMEWORK_NOT_FOUND`). Permission `traceability:read`
+         *     (consultant): the view shows results before the consultant validates them, so the client's people never
+         *     get it.
+         */
+        get: operations["getTraceability"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/dashboard-reports/traceability/{framework}/requirements/{requirementId}": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path: {
+                /** @description Framework id of a catalogue, e.g. `nis2-qnrcs`. */
+                framework: components["parameters"]["Framework"];
+                /** @description Requirement id from the catalogue, e.g. `QNRCS-GR.CO-1`. */
+                requirementId: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * The traceability of one requirement
+         * @description Same rules as `getTraceability`, for one requirement. An id that is not in the catalogue version used is a
+         *     `404` (`code` = `REQUIREMENT_NOT_FOUND`). Permission `traceability:read` (consultant).
+         */
+        get: operations["getRequirementTrace"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/dashboard-reports/portfolio": {
         parameters: {
             query?: never;
@@ -654,6 +727,68 @@ export interface components {
             registeredAt: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        Traceability: {
+            framework: string;
+            /** @description The version of the latest evaluation, or the newest one before any evaluation. */
+            catalogueVersion: number;
+            catalogueTitle: string;
+            /** @description Version of the Compliance Engine rules of the latest evaluation; null before any. */
+            engineVersion: string | null;
+            /** @description False until the organization's assessment of this framework has been evaluated. */
+            evaluated: boolean;
+            /** @description In catalogue order. */
+            requirements: components["schemas"]["RequirementTrace"][];
+        };
+        RequirementTrace: {
+            id: string;
+            /** @description Where the law asks for it, e.g. `Regulamento 756/2026, anexos I e III, GR.CO-1`. */
+            reference: string;
+            /** @description The requirement, in Portuguese, from the catalogue. */
+            text: string;
+            /**
+             * @description `compliant` when every control is; `gap` when any control is `gap` or `partial`; null when not evaluated
+             *     (or when only some controls were, the others being above the assessment's level).
+             */
+            status: ("compliant" | "gap") | null;
+            controls: components["schemas"]["ControlTrace"][];
+        };
+        ControlTrace: {
+            id: string;
+            title: string;
+            /** @description Level id of the catalogue's scale, e.g. `basic`. */
+            level: string;
+            /** @description The Compliance Engine's status; null when not evaluated. */
+            status: components["schemas"]["ControlStatus"] | null;
+            /** @description Why it is a gap (`ANSWERED_NO`, `ANSWERED_UNKNOWN`, `ANSWERED_PARTIAL`); null otherwise. */
+            reason: string | null;
+            /** @description Roadmap actions for this control. Empty until the roadmap exists (assessment#6). */
+            actions: components["schemas"]["TraceAction"][];
+            /** @description Evidence collected for this control. Empty until providers collect some. */
+            evidence: components["schemas"]["TraceEvidence"][];
+        };
+        TraceAction: {
+            /** Format: uuid */
+            id: string;
+            title: string;
+            status: string;
+            /** Format: date */
+            dueDate: string | null;
+        };
+        TraceEvidence: {
+            /** @description The provider plugin's id, e.g. `code-repository`. */
+            provider: string;
+            /** Format: uuid */
+            evidenceId: string;
+            /**
+             * @description As in `EvidenceCollected`. `NOT_SATISFIED` is evidence of a gap, never of compliance.
+             * @enum {string}
+             */
+            outcome: "SATISFIED" | "NOT_SATISFIED";
+            /** @enum {string} */
+            strength: "SELF_REPORTED" | "DOCUMENT_VERIFIED" | "TECHNICALLY_VERIFIED" | "CONTINUOUSLY_VERIFIED";
+            /** Format: date-time */
+            collectedAt: string;
         };
         PortfolioSummary: {
             items: components["schemas"]["PortfolioClientSummary"][];
@@ -1102,6 +1237,8 @@ export interface components {
         /** @description Items per page. */
         PageSize: number;
         AssessmentId: string;
+        /** @description Framework id of a catalogue, e.g. `nis2-qnrcs`. */
+        Framework: string;
     };
     requestBodies: never;
     headers: {
@@ -1707,6 +1844,79 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+        };
+    };
+    getTraceability: {
+        parameters: {
+            query?: {
+                /** @description Only the requirements with a gap (`status` = `gap`). */
+                onlyGaps?: boolean;
+            };
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path: {
+                /** @description Framework id of a catalogue, e.g. `nis2-qnrcs`. */
+                framework: components["parameters"]["Framework"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The traceability of every requirement, in catalogue order. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Traceability"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    getRequirementTrace: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path: {
+                /** @description Framework id of a catalogue, e.g. `nis2-qnrcs`. */
+                framework: components["parameters"]["Framework"];
+                /** @description Requirement id from the catalogue, e.g. `QNRCS-GR.CO-1`. */
+                requirementId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The requirement, its controls, their gaps, actions and evidence. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequirementTrace"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     getPortfolioSummary: {

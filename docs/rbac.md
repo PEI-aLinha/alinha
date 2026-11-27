@@ -95,3 +95,5 @@ Add a row with each new endpoint.
 | `POST /api/organization/registration` | `organization:register` | no | no | no | yes |
 | `GET /api/organization/profile` | `organization:read` | yes | yes | yes | no |
 | `PUT /api/organization/profile` | `organization:edit` | yes | yes | no | no |
+| `GET /api/dashboard-reports/traceability/{framework}` | `traceability:read` | yes | no | no | no |
+| `GET /api/dashboard-reports/traceability/{framework}/requirements/{requirementId}` | `traceability:read` | yes | no | no | no |
