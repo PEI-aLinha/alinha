@@ -209,6 +209,35 @@ paths:
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
 
+  /api/organization/tasks/mine:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+    get:
+      tags: [organization]
+      operationId: listMyTasks
+      summary: The caller's tasks in the current organization
+      description: |
+        Work other plugins gave to the caller (organization#7): only the caller's own tasks, never another member's.
+        Open tasks first, by due date (none last), then the done ones, most recent first. Not paginated: a member
+        has one task per piece of work given to them (tens, not thousands). Permission `task:read` (Designated
+        Officer, analyst). A consultant gets `403`, with or without `X-Alinha-Tenant`: the permission check runs
+        before the tenant is resolved, so the `400` for a consultant's missing header does not apply here.
+      responses:
+        '200':
+          description: The caller's tasks.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
   /api/organization/scope:
     parameters:
       - $ref: '#/components/parameters/Tenant'
@@ -1043,6 +1072,63 @@ components:
               type: integer
               minimum: 0
               description: The `version` that was read.
+
+    Task:
+      type: object
+      description: A piece of another plugin's work given to a member (organization#7).
+      required: [id, type, typeLabel, reference, title, link, assigneeId, dueDate, status, assignedAt, completedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          description: Kind of work, named by the plugin that owns it, e.g. `assessment-question`.
+          pattern: '^[a-z][a-z0-9-]{0,49}$'
+        typeLabel:
+          type: string
+          description: |
+            What that kind of work is called, in European Portuguese (e.g. `Pergunta da avaliação`), named by the
+            plugin that owns it. Render it as plain text.
+          minLength: 1
+          maxLength: 60
+        reference:
+          type: string
+          description: The work's id in the owning plugin.
+          minLength: 1
+          maxLength: 200
+        title:
+          type: string
+          description: |
+            What to do, in European Portuguese. Free text from the plugin that owns the work: render it as plain text.
+          minLength: 1
+          maxLength: 200
+        link:
+          type: [string, 'null']
+          description: |
+            Where the work is done, as a path relative to the client area (e.g. `assessment/<id>`): no scheme, host,
+            leading, trailing or double slash, dots or query. The server refuses anything else when the task is created.
+          pattern: '^[A-Za-z0-9_-]+(/[A-Za-z0-9_-]+)*$'
+          maxLength: 300
+        assigneeId:
+          type: string
+          description: |
+            The assignee's token `sub`, as given to the task (no name or e-mail, RNF15). Same field as `assigneeId` in
+            the `TaskAssigned` and `TaskCompleted` events.
+          minLength: 1
+          maxLength: 255
+        dueDate:
+          type: [string, 'null']
+          format: date
+        status:
+          type: string
+          enum: [open, done]
+        assignedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: [string, 'null']
+          format: date-time
 
     OrganizationProfile:
       type: object

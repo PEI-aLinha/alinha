@@ -24,7 +24,7 @@ describe('the 7 plugins in the shell', () => {
     await waitFor(() => expect(router.state.location.pathname).toBe('/org/acme/dashboard'))
     // Evidence providers (integrations/*) are grouped under the shell's own "Integrações" entry.
     expect(await navLabels()).toEqual([
-      'Início', 'Organização', 'Avaliação', 'Ativos', 'Integrações', 'Notificações',
+      'Início', 'As minhas tarefas', 'Organização', 'Avaliação', 'Ativos', 'Integrações', 'Notificações',
     ])
   })
 

@@ -100,6 +100,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organization/tasks/mine": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The caller's tasks in the current organization
+         * @description Work other plugins gave to the caller (organization#7): only the caller's own tasks, never another member's.
+         *     Open tasks first, by due date (none last), then the done ones, most recent first. Not paginated: a member
+         *     has one task per piece of work given to them (tens, not thousands). Permission `task:read` (Designated
+         *     Officer, analyst). A consultant gets `403`, with or without `X-Alinha-Tenant`: the permission check runs
+         *     before the tenant is resolved, so the `400` for a consultant's missing header does not apply here.
+         */
+        get: operations["listMyTasks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organization/scope": {
         parameters: {
             query?: never;
@@ -625,6 +656,40 @@ export interface components {
         OrganizationProfileUpdate: components["schemas"]["OrganizationProfileInput"] & {
             /** @description The `version` that was read. */
             version: number;
+        };
+        /** @description A piece of another plugin's work given to a member (organization#7). */
+        Task: {
+            /** Format: uuid */
+            id: string;
+            /** @description Kind of work, named by the plugin that owns it, e.g. `assessment-question`. */
+            type: string;
+            /**
+             * @description What that kind of work is called, in European Portuguese (e.g. `Pergunta da avaliação`), named by the
+             *     plugin that owns it. Render it as plain text.
+             */
+            typeLabel: string;
+            /** @description The work's id in the owning plugin. */
+            reference: string;
+            /** @description What to do, in European Portuguese. Free text from the plugin that owns the work: render it as plain text. */
+            title: string;
+            /**
+             * @description Where the work is done, as a path relative to the client area (e.g. `assessment/<id>`): no scheme, host,
+             *     leading, trailing or double slash, dots or query. The server refuses anything else when the task is created.
+             */
+            link: string | null;
+            /**
+             * @description The assignee's token `sub`, as given to the task (no name or e-mail, RNF15). Same field as `assigneeId` in
+             *     the `TaskAssigned` and `TaskCompleted` events.
+             */
+            assigneeId: string;
+            /** Format: date */
+            dueDate: string | null;
+            /** @enum {string} */
+            status: "open" | "done";
+            /** Format: date-time */
+            assignedAt: string;
+            /** Format: date-time */
+            completedAt: string | null;
         };
         OrganizationProfile: {
             /** Format: uuid */
@@ -1305,6 +1370,36 @@ export interface operations {
                 };
             };
             422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    listMyTasks: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The caller's tasks. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Task"][];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
         };
     };
     getOrganizationScope: {
