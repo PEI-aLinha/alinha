@@ -8,7 +8,7 @@ import fakeredis
 import pytest
 from redis.exceptions import ConnectionError, ResponseError
 
-from alinha_job_consumer import collectors, results
+from alinha_job_consumer import collectors, credentials, results
 from alinha_job_consumer import consumer as consumer_module
 from alinha_job_consumer.consumer import Config, Consumer, _parse_job_types, stream_name
 
@@ -128,6 +128,37 @@ def test_collector_error_keeps_its_code_and_message_and_is_final(redis):
     assert result["retryable"] is False
     assert result["error"] == {"code": "invalid_credentials", "message": "the token was refused"}
     assert pending(redis) == 0
+
+
+def test_a_collector_error_message_carrying_a_credential_it_read_is_dropped(redis, monkeypatch):
+    monkeypatch.setenv("BAO_ADDR", "http://openbao:8200")
+    monkeypatch.setenv("BAO_TOKEN", "worker-token")
+    body = json.dumps({"data": {"data": {"token": "s3cret-tenant-token"}}}).encode()
+
+    def collect(job):
+        secret = credentials.provider_secret(job, fetch=lambda url, token: (200, body))
+        raise collectors.CollectorError("invalid_credentials", f"refused: {secret['token']}")
+
+    add_job(redis, envelope(connectionRef="providers/code-repository"))
+    run_once(consumer(redis, collect))
+
+    [result] = published(redis)
+    assert result["error"] == {"code": "invalid_credentials", "message": consumer_module.SAFE_COLLECTOR_MESSAGE}
+
+
+@pytest.mark.parametrize(
+    "message",
+    ["token ghs_abc123 refused", "https://api.example/?access_token=x", "Authorization: Bearer abc", "-----BEGIN RSA PRIVATE KEY-----"],
+)
+def test_a_collector_error_message_shaped_like_a_credential_is_dropped(redis, message):
+    def collect(_):
+        raise collectors.CollectorError("invalid_credentials", message)
+
+    add_job(redis, envelope())
+    run_once(consumer(redis, collect))
+
+    [result] = published(redis)
+    assert result["error"]["message"] == consumer_module.SAFE_COLLECTOR_MESSAGE
 
 
 def test_a_broken_provider_package_does_not_crash_the_worker(redis):

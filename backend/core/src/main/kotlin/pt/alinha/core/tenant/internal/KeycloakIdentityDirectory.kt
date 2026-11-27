@@ -33,6 +33,8 @@ private val ASSIGN_DEADLINE: Duration = Duration.ofSeconds(10)
  * connection and provisioning slot, so it is kept short: at most this plus one call, about 10 s.
  */
 private val REVOKE_DEADLINE: Duration = Duration.ofSeconds(5)
+/** Upper bound of [KeycloakIdentityDirectory.members]: far above an SME's team, low enough to keep the call small. */
+internal const val MAX_MEMBERS = 200
 /** Renew the service-account token this long before it expires. */
 private val TOKEN_MARGIN: Duration = Duration.ofSeconds(10)
 
@@ -64,7 +66,7 @@ class KeycloakIdentityDirectory internal constructor(
     private val properties: IdentityProperties,
     restClientBuilder: RestClient.Builder,
     private val clock: Clock = Clock.systemUTC(),
-) : IdentityDirectory {
+) : IdentityDirectory, IdentityMembership {
 
     @Volatile private var cached: CachedToken? = null
 
@@ -85,7 +87,51 @@ class KeycloakIdentityDirectory internal constructor(
     private val http = restClientBuilder.baseUrl(properties.baseUrl.trimEnd('/')).build()
     private val users = "/admin/realms/${properties.realm}/users"
 
-    override fun assignTenant(subject: String, tenantId: TenantId) = forgettingRejectedToken {
+    override fun assignTenant(subject: String, tenantId: TenantId) = assign(subject, tenantId, RESPONSIBLE_ROLE)
+
+    override fun revokeTenant(subject: String, tenantId: TenantId) = revoke(subject, tenantId, RESPONSIBLE_ROLE)
+
+    override fun joinTenant(subject: String, tenantId: TenantId, role: String) = assign(subject, tenantId, role)
+
+    override fun leaveTenant(subject: String, tenantId: TenantId, role: String) = revoke(subject, tenantId, role)
+
+    /**
+     * Accounts whose `tenant_id` attribute is [tenantId], with their realm roles. One call for the users plus one
+     * per user for the roles: an organization has a handful of members, at most [MAX_MEMBERS].
+     */
+    override fun members(tenantId: TenantId): List<DirectoryMember> {
+        var result: List<DirectoryMember> = emptyList()
+        forgettingRejectedToken {
+            val token = token()
+            val found = http.get()
+                .uri { it.path(users).queryParam("q", "$TENANT_CLAIM:${tenantId.value}").queryParam("exact", true)
+                    .queryParam("briefRepresentation", false).queryParam("max", MAX_MEMBERS).build() }
+                .headers { it.setBearerAuth(token) }.retrieve()
+                .body<List<Map<String, Any?>>>().orEmpty()
+            result = found
+                // Keycloak's attribute search is a filter we do not control: check the attribute ourselves.
+                .filter { user -> attributesOf(user)[TENANT_CLAIM].orEmpty().any { it.equals(tenantId.value.toString(), true) } }
+                .map { user ->
+                    val id = user["id"] as String
+                    DirectoryMember(
+                        subject = id,
+                        email = user["email"] as String?,
+                        name = listOfNotNull(user["firstName"] as String?, user["lastName"] as String?)
+                            .joinToString(" ").ifBlank { null },
+                        roles = mappedRealmRoles(token, id).map { it.name }.toSet(),
+                    )
+                }
+        }
+        return result
+    }
+
+    /** Signs the account out everywhere, so a removed member's refresh token stops working at once. */
+    override fun endSessions(subject: String) = forgettingRejectedToken {
+        val token = token()
+        http.post().uri("$users/{id}/logout", subject).headers { it.setBearerAuth(token) }.retrieve().toBodilessEntity()
+    }
+
+    private fun assign(subject: String, tenantId: TenantId, role: String) = forgettingRejectedToken {
         val deadline = Deadline(ASSIGN_DEADLINE, "assignment")
         fun <T> step(call: () -> T): T = deadline.step(call)
         val token = step { token() }
@@ -93,10 +139,10 @@ class KeycloakIdentityDirectory internal constructor(
         step { writeUser(token, subject, user, attributesOf(user) + (TENANT_CLAIM to listOf(tenantId.value.toString()))) }
         val mapped = step { mappedRealmRoles(token, subject) }
         val toMap = buildList {
-            if (mapped.none { it.name == RESPONSIBLE_ROLE }) {
-                val responsible = step { availableRealmRoles(token, subject) }.filter { it.name == RESPONSIBLE_ROLE }
-                check(responsible.isNotEmpty()) { "Realm role '$RESPONSIBLE_ROLE' is missing" }
-                addAll(responsible)
+            if (mapped.none { it.name == role }) {
+                val granted = step { availableRealmRoles(token, subject) }.filter { it.name == role }
+                check(granted.isNotEmpty()) { "Realm role '$role' is missing" }
+                addAll(granted)
             }
             if (mapped.any { it.name == defaultRoles() }) addAll(step { rolesKeptFromDefault(token, subject, mapped) })
         }
@@ -110,7 +156,7 @@ class KeycloakIdentityDirectory internal constructor(
             role.name != REGISTRANT_ROLE && role.name != defaultRoles() && mapped.none { it.id == role.id }
         }
 
-    override fun revokeTenant(subject: String, tenantId: TenantId) = forgettingRejectedToken {
+    private fun revoke(subject: String, tenantId: TenantId, role: String) = forgettingRejectedToken {
         val deadline = Deadline(REVOKE_DEADLINE, "undo")
         fun <T> step(call: () -> T): T = deadline.step(call)
         val token = step { token() }
@@ -124,8 +170,8 @@ class KeycloakIdentityDirectory internal constructor(
         // The roles mapped directly from the default composite stay: the composite grants them again anyway.
         val default = step { availableRealmRoles(token, subject) }.filter { it.name == defaultRoles() }
         step { mapRoles(token, subject, default) }
-        val responsible = step { mappedRealmRoles(token, subject) }.filter { it.name == RESPONSIBLE_ROLE }
-        step { unmapRoles(token, subject, responsible) }
+        val granted = step { mappedRealmRoles(token, subject) }.filter { it.name == role }
+        step { unmapRoles(token, subject, granted) }
         step { writeUser(token, subject, user, attributesOf(user) - TENANT_CLAIM) }
     }
 

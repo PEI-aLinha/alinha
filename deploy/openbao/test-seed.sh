@@ -56,17 +56,25 @@ app() { $COMPOSE exec -T -e BAO_TOKEN="$BAO_APP_TOKEN" openbao bao "$@"; }
 worker() { $COMPOSE exec -T -e BAO_TOKEN="$BAO_WORKER_TOKEN" openbao bao "$@"; }
 
 # What deploy.yml does, limited to the seed job: it must exit 0 and `--wait` must accept it. The first deploy has
-# the GitHub App set; the second (an update) has it removed, which must remove its key too.
+# the GitHub App set; the next (an update) has it missing, which must keep its key; only an explicit
+# ALINHA_GITHUB_APP_REMOVE=true removes it, also when there is nothing left to remove.
 DEPLOY="up -d --wait --wait-timeout 120 --force-recreate openbao-seed app-stand-in"
-env GITHUB_APP_ID=7 GITHUB_APP_PRIVATE_KEY=test-key $COMPOSE $DEPLOY
+env ALINHA_GITHUB_APP_ID=7 ALINHA_GITHUB_APP_PRIVATE_KEY=test-key $COMPOSE $DEPLOY
 echo "ok   seed job (first deploy)"
 got=$(worker kv get -field=github_app_private_key secret/providers/code-repository)
 if [ "$got" = "test-key" ]; then echo "ok   worker token reads the seeded GitHub App key"
 else echo "FAIL worker token: GitHub App key is not the seeded value"; failures=$((failures + 1)); fi
 $COMPOSE $DEPLOY
-echo "ok   seed job (second deploy, GitHub App removed)"
+echo "ok   seed job (second deploy, GitHub App variables missing)"
+expect_ok "worker token still reads the GitHub App key" worker kv get secret/providers/code-repository
+env ALINHA_GITHUB_APP_REMOVE=true $COMPOSE $DEPLOY
+echo "ok   seed job (third deploy, GitHub App removed)"
 expect_denied "worker token reads the GitHub App key after it was removed" \
   worker kv get -version=1 secret/providers/code-repository
+env ALINHA_GITHUB_APP_REMOVE=true $COMPOSE $DEPLOY
+echo "ok   seed job (fourth deploy, removing a key that is already gone)"
+expect_denied "removing and setting the App at once" \
+  env ALINHA_GITHUB_APP_REMOVE=true ALINHA_GITHUB_APP_ID=7 ALINHA_GITHUB_APP_PRIVATE_KEY=k $COMPOSE $DEPLOY
 
 expect_denied "seed token reads secret/alinha/app" seed kv get secret/alinha/app
 expect_denied "seed token writes a tenant's credentials" seed kv put secret/tenants/acme/github token=x

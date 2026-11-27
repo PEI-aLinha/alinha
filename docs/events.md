@@ -6,7 +6,8 @@ This page lists every event, who publishes it and who consumes it.
 ## How an event works
 
 - An event is a Kotlin `data class` in the publishing plugin's `events` package that implements
-  `pt.alinha.pluginapi.DomainEvent`: `tenantId`, `correlationId` and `occurredAt`.
+  `pt.alinha.pluginapi.DomainEvent`: `tenantId`, `correlationId` and `occurredAt`. The one exception is an event
+  that several plugins publish, such as `EvidenceCollected`: it is defined once in `plugin-api` (see below).
 - Publish it with Spring's `ApplicationEventPublisher` **inside the transaction** that made the change.
   Transactional listeners (the recipe in `docs/tenancy.md`) run only after that transaction commits: published
   outside one, the event never reaches them.

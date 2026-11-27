@@ -9,6 +9,23 @@ export const RESUME_MAX_AGE_MS = 30 * 60 * 1000
 const KEY = 'alinha:resume'
 const ALLOWED = /^\/(org|portfolio)\/[A-Za-z0-9._~%-]+(\/[A-Za-z0-9._~%-]+)*$/
 
+/**
+ * A page inside an organization: allowed characters only, and no segment that is (or decodes to) `.` or `..`, or
+ * hides a `/` or a backslash behind percent-encoding, so a router that decodes the path cannot leave the organization.
+ */
+function isOrganizationPage(path: string): boolean {
+  if (!ALLOWED.test(path)) return false
+  return path.split('/').slice(1).every((segment) => {
+    let decoded: string
+    try {
+      decoded = decodeURIComponent(segment)
+    } catch {
+      return false // malformed percent-encoding
+    }
+    return decoded !== '.' && decoded !== '..' && !/[/\\]/.test(decoded)
+  })
+}
+
 interface Stored {
   path: string
   at: number
@@ -16,7 +33,7 @@ interface Stored {
 
 /** Remembers [path] (e.g. `/org/acme/integrations/code-repository`, no query) as the page to come back to. */
 export function rememberReturnPath(path: string, now: number = Date.now()): void {
-  if (!ALLOWED.test(path) || path.includes('..')) throw new Error(`Not a page inside an organization: ${path}`)
+  if (!isOrganizationPage(path)) throw new Error(`Not a page inside an organization: ${path}`)
   sessionStorage.setItem(KEY, JSON.stringify({ path, at: now } satisfies Stored))
 }
 
@@ -28,7 +45,7 @@ export function takeReturnPath(now: number = Date.now()): string | null {
   try {
     const { path, at } = JSON.parse(raw) as Partial<Stored>
     const fresh = typeof at === 'number' && now - at >= 0 && now - at <= RESUME_MAX_AGE_MS
-    return typeof path === 'string' && fresh && ALLOWED.test(path) && !path.includes('..') ? path : null
+    return typeof path === 'string' && fresh && isOrganizationPage(path) ? path : null
   } catch {
     return null
   }

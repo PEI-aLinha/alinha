@@ -268,9 +268,12 @@ describe('consultant area (/portfolio)', () => {
       url: '/portfolio/acme/probe',
       plugins,
       me: meFor('consultant'),
-      api: (_path, init) => new Headers(init.headers).get('X-Alinha-Tenant') === ACME.id
-        ? json({ value: 'dados A' })
-        : new Promise<Response>((resolve) => { answerBeta = resolve }),
+      api: (path, init) => {
+        if (new Headers(init.headers).get('X-Alinha-Tenant') === ACME.id) return json({ value: 'dados A' })
+        // Hold only Beta's probe: another Beta call made later must not take its place in answerBeta.
+        if (path !== '/api/probe') return json({})
+        return new Promise<Response>((resolve) => { answerBeta = resolve })
+      },
     })
     expect(await screen.findByText('Dados de Acme, Lda.: dados A')).toBeInTheDocument()
     const switcher = screen.getByRole('combobox', { name: 'Cliente' })

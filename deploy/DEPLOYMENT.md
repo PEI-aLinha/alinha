@@ -68,7 +68,7 @@ Generate each secret with `openssl rand -hex 24` and set it with `gh secret set 
 | `BAO_APP_TOKEN` | the app's OpenBao token |
 | `BAO_SEED_TOKEN` | the `openbao-seed` job's token: can only write `secret/alinha/{app,ai-service}` and `secret/providers/+` |
 | `BAO_WORKER_TOKEN` | the job consumer's OpenBao token: can only read `secret/tenants/+/providers/+` (provider credentials) and `secret/providers/+` |
-| `GITHUB_APP_CLIENT_SECRET`, `GITHUB_APP_PRIVATE_KEY` | optional, the aLinha GitHub App (see "GitHub App" below) |
+| `ALINHA_GITHUB_APP_CLIENT_SECRET`, `ALINHA_GITHUB_APP_PRIVATE_KEY` | optional, the aLinha GitHub App (see "GitHub App" below) |
 | `SMTP_USERNAME`, `SMTP_PASSWORD` | the SMTP relay's login (from the mail provider, not generated) |
 
 The OpenBao **root token is not a secret here**: it stays with the operator (see OpenBao below).
@@ -95,12 +95,18 @@ App once (Settings, Developer settings, GitHub Apps, New GitHub App):
 - **Repository permissions**, all **Read-only**: Administration, Metadata, Dependabot alerts, Secret scanning alerts.
   Nothing else, and no account permissions. **Where can this App be installed**: Any account.
 
-Then set the variables `GITHUB_APP_SLUG` (from the App's URL), `GITHUB_APP_CLIENT_ID` and `GITHUB_APP_ID`, and the
-secrets `GITHUB_APP_CLIENT_SECRET` (generate one on the App page) and `GITHUB_APP_PRIVATE_KEY` (generate a private
-key and paste the whole `.pem`). `openbao-seed` writes the client secret to `secret/alinha/app` (read by the app) and
+Then set the variables `ALINHA_GITHUB_APP_SLUG` (from the App's URL), `ALINHA_GITHUB_APP_CLIENT_ID` and
+`ALINHA_GITHUB_APP_ID`, and the secrets `ALINHA_GITHUB_APP_CLIENT_SECRET` (generate one on the App page) and
+`ALINHA_GITHUB_APP_PRIVATE_KEY` (generate a private key and paste the whole `.pem`). GitHub refuses secret and
+variable names that start with `GITHUB_`, hence the prefix; inside the containers they are still `GITHUB_APP_*`. `openbao-seed` writes the client secret to `secret/alinha/app` (read by the app) and
 the App id and key to `secret/providers/code-repository` (read only by the job consumer, which asks GitHub for
 read-only installation tokens). After changing `alinha-seed.hcl` or `alinha-worker.hcl`, run `bootstrap.sh` once as
 described under OpenBao.
+
+A deploy without `ALINHA_GITHUB_APP_ID` leaves the stored App key as it is (a missing variable must not break the
+existing App connections). To remove the key with all its versions (for example after a leak), deploy once with the
+variable `ALINHA_GITHUB_APP_REMOVE=true` and without `ALINHA_GITHUB_APP_ID`, then delete `ALINHA_GITHUB_APP_REMOVE`.
+App connections then fail with `provider_not_configured` until a new key is set.
 
 ## Things to know
 

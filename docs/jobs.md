@@ -59,6 +59,8 @@ A provider plugin stores the tenant's credential with `TenantSecretStore.put("<p
   key, is read with `credentials.platform_secret(provider)` from `secret/providers/<provider id>` (written by the
   deploy's `openbao-seed`, never by the app). Missing: `provider_not_configured`, not retryable.
 - The credential never goes into the payload, the result, the logs or an error message.
+  As a backstop, the consumer replaces a `CollectorError` message that contains a credential it read (or looks like
+  one: `ghs_…`, `Bearer …`, a private key, `?token=`) with a generic one; the code is kept.
 - A provider without credentials (external-surface) still sends `providers/<provider id>` (the contract requires the
   field) and simply does not call `provider_secret`.
 

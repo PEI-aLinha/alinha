@@ -258,4 +258,62 @@ class KeycloakIdentityDirectoryTest {
 
         server.verify()
     }
+
+    @Test
+    fun `joining by invitation maps the analyst role, not responsible`() {
+        val analyst = """{"id":"r-an","name":"analyst"}"""
+        expectToken()
+        expectGet(users, user)
+        server.expect(requestTo(users)).andExpect(method(HttpMethod.PUT))
+            .andExpect(content().json("""{"attributes":{"tenant_id":["${tenant.value}"]}}"""))
+            .andRespond(withNoContent())
+        expectGet("$users/role-mappings/realm", "[$defaultRoles]")
+        expectGet("$users/role-mappings/realm/available", """[$responsible,$analyst]""")
+        expectGet("$users/role-mappings/realm/composite", """[$defaultRoles,{"id":"r-reg","name":"registrant"}]""")
+        server.expect(requestTo("$users/role-mappings/realm")).andExpect(method(HttpMethod.POST))
+            .andExpect(content().json("[$analyst]", JsonCompareMode.STRICT))
+            .andRespond(withNoContent())
+        server.expect(requestTo("$users/role-mappings/realm")).andExpect(method(HttpMethod.DELETE))
+            .andExpect(content().json("""[{"id":"r-default","name":"default-roles-alinha"}]"""))
+            .andRespond(withNoContent())
+
+        directory.joinTenant(subject, tenant, "analyst")
+
+        server.verify()
+    }
+
+    @Test
+    fun `members are the accounts with the tenant attribute, with their roles`() {
+        val other = "8d0c1f4e-0000-4000-8000-000000000002"
+        expectToken()
+        server.expect(requestTo(containsString("/admin/realms/alinha/users?q=tenant_id:${tenant.value}")))
+            .andExpect(method(HttpMethod.GET))
+            .andRespond(
+                withSuccess(
+                    """[{"id":"$subject","email":"ana@empresa.pt","firstName":"Ana","lastName":"Silva",
+                        "attributes":{"tenant_id":["${tenant.value}"]}},
+                       {"id":"$other","email":"x@outra.pt","attributes":{"tenant_id":["${UUID.randomUUID()}"]}}]""",
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+        expectGet("$users/role-mappings/realm", """[{"id":"r-an","name":"analyst"}]""")
+
+        val members = directory.members(tenant)
+
+        // The second account came back from the search but is in another tenant: dropped, and its roles never read.
+        assertThat(members).containsExactly(DirectoryMember(subject, "ana@empresa.pt", "Ana Silva", setOf("analyst")))
+        server.verify()
+    }
+
+    @Test
+    fun `ending sessions signs the account out`() {
+        expectToken()
+        server.expect(requestTo("$users/logout")).andExpect(method(HttpMethod.POST))
+            .andExpect(header("Authorization", "Bearer tok"))
+            .andRespond(withNoContent())
+
+        directory.endSessions(subject)
+
+        server.verify()
+    }
 }
