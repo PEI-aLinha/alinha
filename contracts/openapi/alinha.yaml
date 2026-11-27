@@ -220,7 +220,8 @@ paths:
         Work other plugins gave to the caller (organization#7): only the caller's own tasks, never another member's.
         Open tasks first, by due date (none last), then the done ones, most recent first. Not paginated: a member
         has one task per piece of work given to them (tens, not thousands). Permission `task:read` (Designated
-        Officer, analyst); a consultant gets `403`, whatever organization `X-Alinha-Tenant` names.
+        Officer, analyst). A consultant gets `403`, with or without `X-Alinha-Tenant`: the permission check runs
+        before the tenant is resolved, so the `400` for a consultant's missing header does not apply here.
       responses:
         '200':
           description: The caller's tasks.
