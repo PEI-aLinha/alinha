@@ -61,6 +61,8 @@ worker() { $COMPOSE exec -T -e BAO_TOKEN="$BAO_WORKER_TOKEN" openbao bao "$@"; }
 DEPLOY="up -d --wait --wait-timeout 120 --force-recreate openbao-seed app-stand-in"
 env ALINHA_GITHUB_APP_ID=7 ALINHA_GITHUB_APP_PRIVATE_KEY=test-key $COMPOSE $DEPLOY
 echo "ok   seed job (first deploy)"
+expect_denied "an unset GitHub App client secret is stored" \
+  app kv get -field=code-repository.github-app.client-secret secret/alinha/app
 got=$(worker kv get -field=github_app_private_key secret/providers/code-repository)
 if [ "$got" = "test-key" ]; then echo "ok   worker token reads the seeded GitHub App key"
 else echo "FAIL worker token: GitHub App key is not the seeded value"; failures=$((failures + 1)); fi
