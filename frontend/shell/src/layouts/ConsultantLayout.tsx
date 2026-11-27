@@ -20,7 +20,7 @@ export function OrgSwitcher({ organizations, current }: { organizations: readonl
   if (organizations.length === 0) return null
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="eyebrow px-1 text-[0.6563rem] text-muted">Cliente</label>
+      <label htmlFor={id} className="eyebrow px-1 text-[0.75rem] text-muted">Cliente</label>
       <select
         id={id}
         className={controlClass(false, 'sm')}

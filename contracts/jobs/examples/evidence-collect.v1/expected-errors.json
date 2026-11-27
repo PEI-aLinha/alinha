@@ -1,0 +1,17 @@
+{
+  "credential-in-envelope.json": [
+    "/: additionalProperties"
+  ],
+  "job-id-not-uuid.json": [
+    "/jobId: format"
+  ],
+  "missing-provider.json": [
+    "/: required provider"
+  ],
+  "requested-at-not-date-time.json": [
+    "/requestedAt: format"
+  ],
+  "wrong-type.json": [
+    "/type: const"
+  ]
+}
