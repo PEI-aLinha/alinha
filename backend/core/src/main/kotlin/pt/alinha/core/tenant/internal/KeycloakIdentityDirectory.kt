@@ -2,6 +2,7 @@ package pt.alinha.core.tenant.internal
 
 import com.fasterxml.jackson.annotation.JsonProperty
 import io.micrometer.observation.ObservationRegistry
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.context.properties.EnableConfigurationProperties
@@ -17,6 +18,7 @@ import pt.alinha.pluginapi.TenantId
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
+import java.util.UUID
 
 private const val DEFAULT_ROLES = "default-roles-"
 private const val RESPONSIBLE_ROLE = "responsible"
@@ -33,6 +35,18 @@ private val ASSIGN_DEADLINE: Duration = Duration.ofSeconds(10)
  * connection and provisioning slot, so it is kept short: at most this plus one call, about 10 s.
  */
 private val REVOKE_DEADLINE: Duration = Duration.ofSeconds(5)
+/**
+ * Upper bound for listing the consultants or assigning one an organization (FR04). These run in an event listener's
+ * transaction, not in a user's request, so the bound only keeps a stuck identity provider from holding the connection.
+ */
+private val CONSULTANT_DEADLINE: Duration = Duration.ofSeconds(10)
+
+/** Writes of a consultant's `tenants` before an assignment gives up, when another write keeps replacing it. */
+internal const val ASSIGN_ATTEMPTS = 2
+
+private val log = LoggerFactory.getLogger(KeycloakIdentityDirectory::class.java)
+/** Page size when reading the consultants group; the Admin API returns at most this many members per call. */
+private const val MEMBERS_PAGE = 100
 /** Upper bound of [KeycloakIdentityDirectory.members]: far above an SME's team, low enough to keep the call small. */
 internal const val MAX_MEMBERS = 200
 /** Renew the service-account token this long before it expires. */
@@ -48,14 +62,21 @@ private data class AccessToken(
 
 private data class CachedToken(val value: String, val renewAt: Instant)
 
+/** A group as the Admin REST API returns it. `path` tells a top-level group from a subgroup of the same name. */
+private data class GroupRepresentation(val id: String, val name: String, val path: String? = null)
+
 /**
- * [IdentityDirectory] on the Keycloak Admin REST API, with the `alinha-provisioner` service account
+ * [IdentityDirectory] and [ConsultantIdentity] on the Keycloak Admin REST API, with the `alinha-provisioner` service account
  * (client credentials). The Keycloak user id is the token's `sub`.
  *
  * A self-registered account gets `registrant` through the realm's default composite role. Assigning a tenant removes
  * that composite mapping, after mapping its other roles (`offline_access`, `uma_authorization`) directly, so only
  * `registrant` goes away and offline sessions keep working. The whole user representation is read and written back, because a partial
  * `PUT` would fail the realm's user profile validation.
+ *
+ * Consultants are the members of the [IdentityProperties.consultantsGroup] group, which grants the `consultant` role.
+ * A group, not the role itself, because listing a role's users needs `view-realm`, which the service account does not
+ * have; reading a group's members only needs the `view-users` it already has.
  *
  * Provisioning calls this inside its database transaction, so the calls are kept short: the service-account
  * token is cached until shortly before it expires, and every call has a connect and read timeout.
@@ -66,7 +87,7 @@ class KeycloakIdentityDirectory internal constructor(
     private val properties: IdentityProperties,
     restClientBuilder: RestClient.Builder,
     private val clock: Clock = Clock.systemUTC(),
-) : IdentityDirectory, IdentityMembership {
+) : IdentityDirectory, ConsultantIdentity, IdentityMembership {
 
     @Volatile private var cached: CachedToken? = null
 
@@ -126,9 +147,10 @@ class KeycloakIdentityDirectory internal constructor(
     }
 
     /** Signs the account out everywhere, so a removed member's refresh token stops working at once. */
-    override fun endSessions(subject: String) = forgettingRejectedToken {
+    override fun endSessions(subject: String): Unit = forgettingRejectedToken {
         val token = token()
         http.post().uri("$users/{id}/logout", subject).headers { it.setBearerAuth(token) }.retrieve().toBodilessEntity()
+        Unit
     }
 
     private fun assign(subject: String, tenantId: TenantId, role: String) = forgettingRejectedToken {
@@ -149,6 +171,89 @@ class KeycloakIdentityDirectory internal constructor(
         step { mapRoles(token, subject, toMap) }
         step { unmapRoles(token, subject, mapped.filter { it.name == defaultRoles() }) }
     }
+
+    override fun consultants(): List<Consultant> = forgettingRejectedToken {
+        val deadline = Deadline(CONSULTANT_DEADLINE, "consultant listing")
+        val token = deadline.step { token() }
+        consultantMembers(token, deadline).map { Consultant(it.id, tenantsOf(it.attributes)) }
+    }
+
+    /**
+     * Read-modify-write of the consultant's `tenants`: Keycloak has no version check on a user `PUT`, and the advisory
+     * lock in [ConsultantAssigner] only orders this app's assignments. So the write is read back: when another write (an
+     * admin, the provisioner) replaced the attribute in between and [tenantId] is missing, it is written again, up to
+     * [ASSIGN_ATTEMPTS] times, and then fails so the transaction rolls back instead of recording an assignment the
+     * consultant does not have.
+     */
+    override fun assign(subject: String, tenantId: TenantId) = forgettingRejectedToken {
+        val deadline = Deadline(CONSULTANT_DEADLINE, "consultant assignment")
+        val token = deadline.step { token() }
+        repeat(ASSIGN_ATTEMPTS) { attempt ->
+            val user = readConsultant(token, subject, deadline, checkGroup = attempt == 0)
+            val attributes = attributesOf(user)
+            val current = attributes[ASSIGNED_TENANTS_CLAIM].orEmpty()
+            if (current.any { it.equals(tenantId.value.toString(), ignoreCase = true) }) return@forgettingRejectedToken
+            if (attempt > 0) log.warn("The tenants of consultant {} changed while assigning {}; writing again", subject, tenantId.value)
+            deadline.step {
+                writeUser(token, subject, user, attributes + (ASSIGNED_TENANTS_CLAIM to current + tenantId.value.toString()))
+            }
+        }
+        val written = attributesOf(readConsultant(token, subject, deadline, checkGroup = false))[ASSIGNED_TENANTS_CLAIM].orEmpty()
+        check(written.any { it.equals(tenantId.value.toString(), ignoreCase = true) }) {
+            "The tenants of consultant $subject kept changing while assigning ${tenantId.value}"
+        }
+    }
+
+    /** The consultant's representation; [ConsultantNotEligibleException] when deleted, disabled or out of the group. */
+    private fun readConsultant(token: String, subject: String, deadline: Deadline, checkGroup: Boolean): Map<String, Any?> {
+        val user = try {
+            deadline.step { readUser(token, subject) }
+        } catch (_: HttpClientErrorException.NotFound) {
+            // Deleted since the listing: the caller then tries another consultant.
+            throw ConsultantNotEligibleException(subject)
+        }
+        if (user["enabled"] != true) throw ConsultantNotEligibleException(subject)
+        // This account's groups, not the paged group listing: the caller has just listed the whole group.
+        if (checkGroup && !deadline.step { inConsultantsGroup(token, subject) }) throw ConsultantNotEligibleException(subject)
+        return user
+    }
+
+    private fun inConsultantsGroup(token: String, subject: String): Boolean {
+        val name = properties.consultantsGroup
+        return http.get().uri("$users/{id}/groups?search={name}&briefRepresentation=true", subject, name)
+            .headers { it.setBearerAuth(token) }.retrieve().body<List<GroupRepresentation>>().orEmpty()
+            .any { it.path == "/$name" }
+    }
+
+    private data class Member(val id: String, val attributes: Map<String, List<String>>)
+
+    /** Enabled members of the consultants group, every page. The group must exist (deploy/keycloak/alinha-realm.json). */
+    private fun consultantMembers(token: String, deadline: Deadline): List<Member> {
+        val name = properties.consultantsGroup
+        val group = deadline.step {
+            http.get().uri("/admin/realms/{realm}/groups?search={name}&exact=true", properties.realm, name)
+                .headers { it.setBearerAuth(token) }.retrieve().body<List<GroupRepresentation>>().orEmpty()
+        }.firstOrNull { it.path == "/$name" } ?: error("Group '$name' is missing in the identity provider")
+        val members = mutableListOf<Map<String, Any?>>()
+        do {
+            val page = deadline.step {
+                http.get()
+                    .uri(
+                        "/admin/realms/{realm}/groups/{id}/members?first={first}&max={max}&briefRepresentation=false",
+                        properties.realm, group.id, members.size, MEMBERS_PAGE,
+                    )
+                    .headers { it.setBearerAuth(token) }.retrieve().body<List<Map<String, Any?>>>().orEmpty()
+            }
+            members += page
+        } while (page.size == MEMBERS_PAGE)
+        return members.filter { it["enabled"] == true }.map { Member(it["id"] as String, attributesOf(it)) }
+    }
+
+    /** The `tenants` attribute as tenant ids. A value that is not a UUID is skipped, as token resolution does. */
+    private fun tenantsOf(attributes: Map<String, List<String>>): Set<TenantId> =
+        attributes[ASSIGNED_TENANTS_CLAIM].orEmpty()
+            .mapNotNull { runCatching { TenantId(UUID.fromString(it)) }.getOrNull() }
+            .toSet()
 
     /** The roles the account gets through the default composite, except `registrant`, that are not mapped directly. */
     private fun rolesKeptFromDefault(token: String, subject: String, mapped: List<RoleRepresentation>) =
@@ -189,8 +294,8 @@ class KeycloakIdentityDirectory internal constructor(
     }
 
     /** A 401 means the cached token was revoked or the secret rotated: fetch a new one on the next call. */
-    private fun forgettingRejectedToken(block: () -> Unit) {
-        try {
+    private fun <T> forgettingRejectedToken(block: () -> T): T {
+        return try {
             block()
         } catch (e: HttpClientErrorException.Unauthorized) {
             cached = null

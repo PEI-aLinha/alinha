@@ -4,8 +4,9 @@ import pt.alinha.pluginapi.TenantId
 
 /**
  * Accounts in the identity provider, without naming the vendor (ADR 0004). Accounts are identified by the
- * token's `sub`. Internal: plugins never manage accounts. Later work (analyst invitations, consultant
- * assignment, actor names) extends this interface instead of adding another admin client.
+ * token's `sub`. Internal: plugins never manage accounts. Later work (analyst invitations, actor names) extends
+ * this interface instead of adding another admin client. Consultants are in [ConsultantIdentity]
+ * instead (same Keycloak adapter), so plugins' test applications can keep faking this one.
  *
  * Every account created in the identity provider gets the realm's default role, and with it `registrant`, unless it
  * is imported. So any method added here that **creates** an account (an invitation, a consultant) must remove that

@@ -60,6 +60,12 @@ for (const [name, multivalued] of [
   assert.equal(attribute.multivalued, multivalued, `${name} has the wrong cardinality`);
 }
 
+// Consultants get their role from the group that ConsultantAssigner lists, not directly.
+const consultants = realm.groups?.find((g) => g.path === "/consultants");
+assert.ok(consultants?.realmRoles?.includes("consultant"), "group /consultants must grant the consultant role");
+const groupRoles = new Map(realm.groups.map((g) => [g.path, g.realmRoles ?? []]));
+const effectiveRoles = (user) => [...(user.realmRoles ?? []), ...(user.groups ?? []).flatMap((g) => groupRoles.get(g) ?? [])];
+
 const users = new Map(realm.users.map((user) => [user.username, user]));
 const expected = {
   "rui.santos@compagueda.pt": { role: "responsible", claim: "tenant_id" },
@@ -70,7 +76,7 @@ const expected = {
 for (const [username, { role, claim }] of Object.entries(expected)) {
   const user = users.get(username);
   assert.ok(user, `user ${username} is missing`);
-  assert.ok(user.realmRoles.includes(role), `${username} must have role ${role}`);
+  assert.ok(effectiveRoles(user).includes(role), `${username} must have role ${role}`);
   assert.ok(user.requiredActions.includes("CONFIGURE_TOTP"), `${username} must configure OTP`);
   const tenants = user.attributes?.[claim];
   assert.ok(Array.isArray(tenants) && tenants.length > 0, `${username} needs a ${claim} attribute`);
