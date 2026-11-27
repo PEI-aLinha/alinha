@@ -16,7 +16,7 @@ shell, the BFF, the AI Service, the workers, the contracts and the deployment. H
 ## Repo layout and what is a submodule
 
 ```
-backend/plugin-api/     core <-> plugin contract (PluginManifest, DomainEvent, TenantId)    [this repo]
+backend/plugin-api/     core <-> plugin contract (PluginManifest, DomainEvent, TenantId, EvidenceCollected)  [this repo]
 backend/core/           tenant, access, audit, registry, jobs, compliance, aigateway        [this repo]
 backend/app/            Spring Boot app; ModularityTest                                     [this repo]
 frontend/shell/         router, layouts, session; mounts plugin routes/menu                 [this repo]
@@ -175,6 +175,9 @@ Avoid this unless the task needs it. Before starting, say so explicitly and list
 - Don't add dependencies between plugins, or from the core to a plugin.
 - Don't commit secrets or `.env*` files (`.env.example` is allowed). Dev credentials live only in
   `deploy/docker-compose.dev.yml` and `deploy/openbao/init.sh`. Runtime secrets come from OpenBao
-  (`secret/alinha/app`); per-tenant provider credentials go through `TenantSecretStore`. CI runs gitleaks.
+  (`secret/alinha/app`); per-tenant provider credentials go through `TenantSecretStore`
+  (`secret/tenants/<tenant>/providers/<id>`), and a provider's platform credentials (the same for every tenant) go in
+  `secret/providers/<id>`. The job consumer reads both with its own read-only token (`BAO_WORKER_TOKEN`, policy
+  `alinha-worker`). CI runs gitleaks.
 - Don't bring back options the team already rejected without asking first: microservices, runtime plugin loading,
   Angular, Valkey instead of Redis, Caddy instead of Nginx.
