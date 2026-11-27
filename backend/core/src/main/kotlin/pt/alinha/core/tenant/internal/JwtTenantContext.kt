@@ -41,6 +41,16 @@ class JwtTenantContext : TenantContext {
         return bind(tenantId, block)
     }
 
+    /**
+     * Binds the tenant of an invitation the caller is accepting, inside its own request (ADR 0007). The caller has no
+     * tenant yet, and the block only marks the invitation as used and records it. Only [TenantMembershipService] may
+     * use it.
+     */
+    internal fun <T> runAsInvitedTenant(tenantId: TenantId, block: () -> T): T {
+        check(requestTenant() == null) { "Cannot accept an invitation from a tenant-scoped request" }
+        return bind(tenantId, block)
+    }
+
     private fun <T> bind(tenantId: TenantId, block: () -> T): T {
         check(!TransactionSynchronizationManager.isActualTransactionActive()) {
             "runAs must start outside a transaction: the open JPA session keeps its tenant"
