@@ -1,0 +1,11 @@
+{
+  "context-not-object.json": [
+    "/context: type"
+  ],
+  "missing-context.json": [
+    "/: required context"
+  ],
+  "missing-task.json": [
+    "/: required task"
+  ]
+}

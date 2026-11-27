@@ -3,4 +3,5 @@
 !workers/job_consumer/pyproject.toml
 !workers/job_consumer/src
 !contracts/jobs
+contracts/jobs/examples
 **/__pycache__
