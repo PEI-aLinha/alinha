@@ -2,6 +2,7 @@ package pt.alinha.core.tenant.internal
 
 import com.fasterxml.jackson.annotation.JsonProperty
 import io.micrometer.observation.ObservationRegistry
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.ObjectProvider
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.context.properties.EnableConfigurationProperties
@@ -39,6 +40,11 @@ private val REVOKE_DEADLINE: Duration = Duration.ofSeconds(5)
  * transaction, not in a user's request, so the bound only keeps a stuck identity provider from holding the connection.
  */
 private val CONSULTANT_DEADLINE: Duration = Duration.ofSeconds(10)
+
+/** Writes of a consultant's `tenants` before an assignment gives up, when another write keeps replacing it. */
+internal const val ASSIGN_ATTEMPTS = 2
+
+private val log = LoggerFactory.getLogger(KeycloakIdentityDirectory::class.java)
 /** Page size when reading the consultants group; the Admin API returns at most this many members per call. */
 private const val MEMBERS_PAGE = 100
 /** Upper bound of [KeycloakIdentityDirectory.members]: far above an SME's team, low enough to keep the call small. */
@@ -172,23 +178,44 @@ class KeycloakIdentityDirectory internal constructor(
         consultantMembers(token, deadline).map { Consultant(it.id, tenantsOf(it.attributes)) }
     }
 
+    /**
+     * Read-modify-write of the consultant's `tenants`: Keycloak has no version check on a user `PUT`, and the advisory
+     * lock in [ConsultantAssigner] only orders this app's assignments. So the write is read back: when another write (an
+     * admin, the provisioner) replaced the attribute in between and [tenantId] is missing, it is written again, up to
+     * [ASSIGN_ATTEMPTS] times, and then fails so the transaction rolls back instead of recording an assignment the
+     * consultant does not have.
+     */
     override fun assign(subject: String, tenantId: TenantId) = forgettingRejectedToken {
         val deadline = Deadline(CONSULTANT_DEADLINE, "consultant assignment")
         val token = deadline.step { token() }
+        repeat(ASSIGN_ATTEMPTS) { attempt ->
+            val user = readConsultant(token, subject, deadline, checkGroup = attempt == 0)
+            val attributes = attributesOf(user)
+            val current = attributes[ASSIGNED_TENANTS_CLAIM].orEmpty()
+            if (current.any { it.equals(tenantId.value.toString(), ignoreCase = true) }) return@forgettingRejectedToken
+            if (attempt > 0) log.warn("The tenants of consultant {} changed while assigning {}; writing again", subject, tenantId.value)
+            deadline.step {
+                writeUser(token, subject, user, attributes + (ASSIGNED_TENANTS_CLAIM to current + tenantId.value.toString()))
+            }
+        }
+        val written = attributesOf(readConsultant(token, subject, deadline, checkGroup = false))[ASSIGNED_TENANTS_CLAIM].orEmpty()
+        check(written.any { it.equals(tenantId.value.toString(), ignoreCase = true) }) {
+            "The tenants of consultant $subject kept changing while assigning ${tenantId.value}"
+        }
+    }
+
+    /** The consultant's representation; [ConsultantNotEligibleException] when deleted, disabled or out of the group. */
+    private fun readConsultant(token: String, subject: String, deadline: Deadline, checkGroup: Boolean): Map<String, Any?> {
         val user = try {
             deadline.step { readUser(token, subject) }
         } catch (_: HttpClientErrorException.NotFound) {
             // Deleted since the listing: the caller then tries another consultant.
-            throw IllegalArgumentException("Not an enabled consultant")
+            throw ConsultantNotEligibleException(subject)
         }
+        if (user["enabled"] != true) throw ConsultantNotEligibleException(subject)
         // This account's groups, not the paged group listing: the caller has just listed the whole group.
-        require(user["enabled"] == true && deadline.step { inConsultantsGroup(token, subject) }) { "Not an enabled consultant" }
-        val attributes = attributesOf(user)
-        val current = attributes[ASSIGNED_TENANTS_CLAIM].orEmpty()
-        if (current.any { it.equals(tenantId.value.toString(), ignoreCase = true) }) return@forgettingRejectedToken
-        deadline.step {
-            writeUser(token, subject, user, attributes + (ASSIGNED_TENANTS_CLAIM to current + tenantId.value.toString()))
-        }
+        if (checkGroup && !deadline.step { inConsultantsGroup(token, subject) }) throw ConsultantNotEligibleException(subject)
+        return user
     }
 
     private fun inConsultantsGroup(token: String, subject: String): Boolean {

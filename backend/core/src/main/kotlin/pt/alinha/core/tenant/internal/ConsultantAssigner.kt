@@ -95,8 +95,8 @@ class ConsultantAssigner(
             )
             try {
                 identity.assign(chosen.subject, tenant)
-            } catch (e: IllegalArgumentException) {
-                log.warn("Consultant {} cannot take organization {} ({}), trying the next one", chosen.subject, tenant.value, e.message)
+            } catch (_: ConsultantNotEligibleException) {
+                log.warn("Consultant {} cannot take organization {}, trying the next one", chosen.subject, tenant.value)
                 candidates = candidates - chosen
                 continue
             }

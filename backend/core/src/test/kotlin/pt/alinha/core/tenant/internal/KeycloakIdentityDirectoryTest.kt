@@ -374,9 +374,52 @@ class KeycloakIdentityDirectoryTest {
                 ),
             )
             .andRespond(withNoContent())
+        expectGet(joaoUrl, """{"id":"$joao","enabled":true,"attributes":{"tenants":["${other.value}","${tenant.value}"]}}""")
 
         directory.assign(joao, tenant)
 
+        server.verify()
+    }
+
+    @Test
+    fun `assigning writes again when another write replaced the consultant's tenants in between`() {
+        expectToken()
+        val joaoUrl = "http://kc/admin/realms/alinha/users/$joao"
+        expectGet(joaoUrl, """{"id":"$joao","enabled":true,"attributes":{"tenants":["${other.value}"]}}""")
+        expectGroupsOf(joao, """[{"id":"g-cons","name":"consultants","path":"/consultants"}]""")
+        server.expect(requestTo(joaoUrl)).andExpect(method(HttpMethod.PUT)).andRespond(withNoContent())
+        // An admin saved the account right after: our organization is gone, theirs is new.
+        val third = UUID.randomUUID()
+        expectGet(joaoUrl, """{"id":"$joao","enabled":true,"attributes":{"tenants":["${other.value}","$third"]}}""")
+        server.expect(requestTo(joaoUrl)).andExpect(method(HttpMethod.PUT))
+            .andExpect(
+                content().json(
+                    """{"id":"$joao","enabled":true,"attributes":{"tenants":["${other.value}","$third","${tenant.value}"]}}""",
+                    JsonCompareMode.STRICT,
+                ),
+            )
+            .andRespond(withNoContent())
+        expectGet(joaoUrl, """{"id":"$joao","enabled":true,"attributes":{"tenants":["${other.value}","$third","${tenant.value}"]}}""")
+
+        directory.assign(joao, tenant)
+
+        server.verify()
+    }
+
+    @Test
+    fun `assigning fails when the consultant's tenants keep being replaced, so nothing is recorded`() {
+        expectToken()
+        val joaoUrl = "http://kc/admin/realms/alinha/users/$joao"
+        val without = """{"id":"$joao","enabled":true,"attributes":{"tenants":["${other.value}"]}}"""
+        expectGet(joaoUrl, without)
+        expectGroupsOf(joao, """[{"id":"g-cons","name":"consultants","path":"/consultants"}]""")
+        repeat(ASSIGN_ATTEMPTS) {
+            if (it > 0) expectGet(joaoUrl, without)
+            server.expect(requestTo(joaoUrl)).andExpect(method(HttpMethod.PUT)).andRespond(withNoContent())
+        }
+        expectGet(joaoUrl, without)
+
+        assertThrows<IllegalStateException> { directory.assign(joao, tenant) }
         server.verify()
     }
 
@@ -398,7 +441,7 @@ class KeycloakIdentityDirectoryTest {
         // `search` also matches groups whose subgroups match, so the path is checked again
         expectGroupsOf(joao, """[{"id":"g-x","name":"consultants-old","path":"/consultants-old"}]""")
 
-        assertThrows<IllegalArgumentException> { directory.assign(joao, tenant) }
+        assertThrows<ConsultantNotEligibleException> { directory.assign(joao, tenant) }
         server.verify()
     }
 
@@ -408,7 +451,7 @@ class KeycloakIdentityDirectoryTest {
         expectGet("http://kc/admin/realms/alinha/users/$joao", """{"id":"$joao","enabled":true}""")
         expectGroupsOf(joao, """[{"id":"g-sub","name":"consultants","path":"/partners/consultants"}]""")
 
-        assertThrows<IllegalArgumentException> { directory.assign(joao, tenant) }
+        assertThrows<ConsultantNotEligibleException> { directory.assign(joao, tenant) }
         server.verify()
     }
 
@@ -417,7 +460,7 @@ class KeycloakIdentityDirectoryTest {
         expectToken()
         expectGet("http://kc/admin/realms/alinha/users/gone", """{"id":"gone","enabled":false}""")
 
-        assertThrows<IllegalArgumentException> { directory.assign("gone", tenant) }
+        assertThrows<ConsultantNotEligibleException> { directory.assign("gone", tenant) }
         server.verify() // stops before reading its groups
     }
 
@@ -427,7 +470,7 @@ class KeycloakIdentityDirectoryTest {
         server.expect(requestTo("http://kc/admin/realms/alinha/users/gone")).andExpect(method(HttpMethod.GET))
             .andRespond(withResourceNotFound())
 
-        assertThrows<IllegalArgumentException> { directory.assign("gone", tenant) }
+        assertThrows<ConsultantNotEligibleException> { directory.assign("gone", tenant) }
         server.verify()
     }
 

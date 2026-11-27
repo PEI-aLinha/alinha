@@ -38,6 +38,9 @@ class FakeConsultantIdentity : ConsultantIdentity {
     val assigned: MutableList<Pair<String, TenantId>> = Collections.synchronizedList(mutableListOf())
     @Volatile var failOnAssign = false
 
+    /** Thrown by [assign] instead of assigning: an identity provider failure that is not "not a consultant". */
+    @Volatile var failWith: RuntimeException? = null
+
     /** Time [assign] takes, to make concurrent assignments overlap. */
     @Volatile var assignDelayMillis = 0L
 
@@ -52,9 +55,10 @@ class FakeConsultantIdentity : ConsultantIdentity {
 
     override fun assign(subject: String, tenantId: TenantId) {
         if (failOnAssign) error("identity provider down")
+        failWith?.let { throw it }
         Thread.sleep(assignDelayMillis)
         synchronized(pool) {
-            require(subject in pool) { "Not an enabled consultant" }
+            if (subject !in pool) throw ConsultantNotEligibleException(subject)
             assigned += subject to tenantId
             pool.getValue(subject) += tenantId
         }
@@ -96,6 +100,7 @@ class ConsultantAssignerIntegrationTest {
         identity.pool.clear()
         identity.assigned.clear()
         identity.failOnAssign = false
+        identity.failWith = null
         identity.assignDelayMillis = 0
         identity.afterListing = {}
     }
@@ -262,6 +267,19 @@ class ConsultantAssignerIntegrationTest {
 
         assertThrows<IllegalStateException> { assign(tenant) }
 
+        assertThat(recorded(tenant)).isNull()
+        assertThat(auditDetails(tenant)).isEmpty()
+    }
+
+    @Test
+    fun `an unrelated IllegalArgumentException is not read as an ineligible consultant`() {
+        consultants(marta to 0, joao to 1)
+        identity.failWith = IllegalArgumentException("Not enough variable values available to expand 'id'")
+        val tenant = newTenant()
+
+        assertThrows<IllegalArgumentException> { assign(tenant) }
+
+        assertThat(identity.assigned).isEmpty()
         assertThat(recorded(tenant)).isNull()
         assertThat(auditDetails(tenant)).isEmpty()
     }

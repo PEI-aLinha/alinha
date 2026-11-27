@@ -13,11 +13,15 @@ interface ConsultantIdentity {
     /**
      * Adds [tenantId] to the consultant's `tenants`. Idempotent: an organization already there changes nothing.
      *
-     * @throws IllegalArgumentException when [subject] is not an enabled consultant (disabled, deleted or removed from
-     *   the group since [consultants]), so the caller can try another one.
+     * @throws ConsultantNotEligibleException when [subject] is not an enabled consultant (disabled, deleted or removed
+     *   from the group since [consultants]), so the caller can try another one. Any other exception is a failure of the
+     *   identity provider and must not be read as "try the next one".
      */
     fun assign(subject: String, tenantId: TenantId)
 }
+
+/** [ConsultantIdentity.assign]'s "this account cannot take organizations": the only failure the caller skips. */
+class ConsultantNotEligibleException(subject: String) : RuntimeException("Not an enabled consultant: $subject")
 
 /** A consultant: the token's `sub` and the organizations in their `tenants` claim. */
 data class Consultant(val subject: String, val tenants: Set<TenantId>)
