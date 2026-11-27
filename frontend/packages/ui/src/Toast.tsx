@@ -117,7 +117,7 @@ function Toast({ item, held, onDismiss, onClose }: {
     const timer = window.setTimeout(() => onDismiss(item.id), remaining.current)
     return () => {
       window.clearTimeout(timer)
-      remaining.current -= Date.now() - started
+      remaining.current = Math.max(0, remaining.current - (Date.now() - started))
     }
   }, [error, paused, item.id, onDismiss])
   return (
