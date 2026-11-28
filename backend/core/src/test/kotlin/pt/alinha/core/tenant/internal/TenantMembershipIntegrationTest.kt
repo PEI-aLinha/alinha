@@ -153,6 +153,7 @@ class TenantMembershipIntegrationTest {
     fun `an invited analyst accepts, joins the organization and the use is audited`() {
         val invitation = asOfficer { membership.invite("  Ana.Silva@Empresa.pt ") }
         assertThat(invitation.email).isEqualTo("ana.silva@empresa.pt")
+        assertThat(invitation.expiresAt).isEqualTo(invitation.createdAt.plus(java.time.Duration.ofDays(7)))
         assertThat(audit(INVITATION_CREATED)).isEqualTo(1)
 
         val sub = asNewAccount("ana.silva@empresa.pt")

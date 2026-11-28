@@ -35,7 +35,7 @@ export const DEV_PERMISSIONS: Record<DevPersona, readonly string[]> = {
     'asset:read', 'asset:create', 'asset:edit', 'asset:delete', 'asset:import', 'asset:bulk_edit',
     'critical_service:read', 'critical_service:create', 'critical_service:edit', 'critical_service:delete',
     'asset_task:read', 'asset_task:assign', 'asset_comment:read', 'asset_export:read', 'roadmap:read', 'history:read',
-    'audit:read',
+    'audit:read', 'member:read', 'member:manage',
   ],
   analyst: ['plugins:read', 'asset:read', 'asset:create', 'asset:edit', 'critical_service:read', 'asset_task:read'],
   consultant: [
@@ -44,7 +44,7 @@ export const DEV_PERMISSIONS: Record<DevPersona, readonly string[]> = {
     'risk:read', 'risk:create', 'risk:edit', 'risk:link', 'roadmap:read', 'roadmap:validate', 'roadmap:create',
     'history:read', 'portfolio:read', 'audit:read', 'traceability:read',
   ],
-  registrant: ['plugins:read', 'organization:register'],
+  registrant: ['plugins:read', 'organization:register', 'invitation:accept'],
 }
 
 export function isDevRole(value: string): value is DevRole {
