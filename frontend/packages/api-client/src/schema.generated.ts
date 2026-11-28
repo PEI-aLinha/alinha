@@ -570,6 +570,111 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/risk-assets/risk-matrix": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The likelihood and impact scales and how they map to a risk level
+         * @description The scale is configured on the server (`alinha.risk-assets.matrix`), so the UI reads it here instead of
+         *     hardcoding it. A risk's `score` is `likelihood × impact`, and its `level` is the band that contains the
+         *     score. The bands cover every possible score exactly once. Permission `risk:read`
+         *     (consultant, Designated Officer).
+         */
+        get: operations["getRiskMatrix"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/risk-assets/risks": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The current organization's risk register
+         * @description Highest `score` first, then most recently changed (risk-assets#4, FR36). Permission `risk:read`
+         *     (consultant, Designated Officer).
+         */
+        get: operations["listRisks"];
+        put?: never;
+        /**
+         * Register a risk
+         * @description Adds a risk to the register (ISO/IEC 27005). `level` and `score` are computed by the server from
+         *     `likelihood` and `impact` with the risk matrix; they are never sent. `likelihood` and `impact` must be
+         *     values of the matrix's scales; otherwise `422` (`code` = `VALIDATION_FAILED`, with one entry per field in
+         *     `errors`: `threat`, `vulnerability`, `likelihood`, `impact` or `treatment`). Audited and published as
+         *     `RiskRegistered`. Permission `risk:edit` (consultant).
+         */
+        post: operations["registerRisk"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/risk-assets/risks/{riskId}": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path: {
+                riskId: components["parameters"]["RiskId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * One risk
+         * @description An id of another organization is a `404` (`code` = `RISK_NOT_FOUND`). Permission `risk:read`.
+         */
+        get: operations["getRisk"];
+        /**
+         * Update a risk
+         * @description Replaces the risk's data, for example to reassess it or to choose its treatment. `version` must be the
+         *     one that was read; otherwise `409` (`code` = `VERSION_CONFLICT`) and nothing changes, checked before the
+         *     data, so a stale form is a `409` even with invalid fields. A missing `version` is a `422` with `errors`
+         *     field `version`; invalid data a `422` with one entry per field, as in `registerRisk`. A `likelihood` or
+         *     `impact` the current scale no longer has (the matrix was made smaller) may be sent back unchanged; a new
+         *     value must be on the scale. Sending the data already saved changes nothing (`version` and `updatedAt`
+         *     stay) and writes no audit entry. Permission `risk:edit` (consultant).
+         */
+        put: operations["updateRisk"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/audit/events": {
         parameters: {
             query?: never;
@@ -1197,6 +1302,90 @@ export interface components {
             /** @description Every control of the assessment, in catalogue order. */
             controls: components["schemas"]["ControlResult"][];
         };
+        /**
+         * @description Computed by the server from the risk matrix; never sent by the client.
+         * @enum {string}
+         */
+        RiskLevel: "low" | "medium" | "high";
+        /**
+         * @description ISO/IEC 27005 risk treatment option: reduce the risk (`mitigate`), keep it (`accept`), share it with
+         *     someone else, such as an insurer or a supplier (`transfer`), or stop the activity that causes it (`avoid`).
+         * @enum {string}
+         */
+        RiskTreatment: "mitigate" | "accept" | "transfer" | "avoid";
+        RiskScaleStep: {
+            value: number;
+            /** @description Short name, in Portuguese (e.g. `Alta`). */
+            label: string;
+            /** @description What the value means, in plain Portuguese, to help choose it. */
+            description: string;
+        };
+        RiskBand: {
+            level: components["schemas"]["RiskLevel"];
+            minScore: number;
+            maxScore: number;
+        };
+        RiskMatrix: {
+            /** @description Likelihood scale, lowest first. */
+            likelihood: components["schemas"]["RiskScaleStep"][];
+            /** @description Impact scale, lowest first. */
+            impact: components["schemas"]["RiskScaleStep"][];
+            /** @description Score ranges of each level, lowest first. Every possible score falls in exactly one band. */
+            bands: components["schemas"]["RiskBand"][];
+        };
+        RiskInput: {
+            /**
+             * Format: uuid
+             * @description The asset at risk, or null for a risk to the whole organization. Not checked against the asset
+             *     inventory yet (risk-assets#2).
+             */
+            assetId?: string | null;
+            /** @description What could happen (e.g. `Ransomware cifra o servidor de ficheiros`). */
+            threat: string;
+            /** @description The weakness the threat would exploit (e.g. `Cópias de segurança no mesmo servidor`). */
+            vulnerability?: string | null;
+            /** @description A `value` of the risk matrix's likelihood scale. */
+            likelihood: number;
+            /** @description A `value` of the risk matrix's impact scale. */
+            impact: number;
+            /** @description Null while the treatment is not decided. */
+            treatment?: components["schemas"]["RiskTreatment"] | null;
+            /**
+             * Format: uuid
+             * @description Account responsible for the risk (the token's `sub`), or null. Not checked against the organization's
+             *     members until they exist (organization#6).
+             */
+            ownerId?: string | null;
+        };
+        RiskUpdate: components["schemas"]["RiskInput"] & {
+            /** @description The `version` that was read. */
+            version: number;
+        };
+        Risk: {
+            /** Format: uuid */
+            id: string;
+            /** @description Changes whenever the risk's data changes; send it back in `RiskUpdate`. */
+            version: number;
+            /** Format: uuid */
+            assetId: string | null;
+            threat: string;
+            vulnerability: string | null;
+            likelihood: number;
+            impact: number;
+            /** @description `likelihood × impact`. */
+            score: number;
+            level: components["schemas"]["RiskLevel"];
+            treatment: components["schemas"]["RiskTreatment"] | null;
+            /** Format: uuid */
+            ownerId: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        RiskPage: components["schemas"]["PageMeta"] & {
+            items: components["schemas"]["Risk"][];
+        };
         AuditEvent: {
             /** Format: uuid */
             id: string;
@@ -1303,6 +1492,7 @@ export interface components {
         /** @description Items per page. */
         PageSize: number;
         AssessmentId: string;
+        RiskId: string;
     };
     requestBodies: never;
     headers: {
@@ -2200,6 +2390,186 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+        };
+    };
+    getRiskMatrix: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The risk matrix. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RiskMatrix"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    listRisks: {
+        parameters: {
+            query?: {
+                /** @description Zero-based page number. */
+                page?: components["parameters"]["Page"];
+                /** @description Items per page. */
+                pageSize?: components["parameters"]["PageSize"];
+            };
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of risks. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RiskPage"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    registerRisk: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RiskInput"];
+            };
+        };
+        responses: {
+            /** @description The new risk. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Risk"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    getRisk: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path: {
+                riskId: components["parameters"]["RiskId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The risk. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Risk"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateRisk: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path: {
+                riskId: components["parameters"]["RiskId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RiskUpdate"];
+            };
+        };
+        responses: {
+            /** @description The updated risk. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Risk"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description The risk changed since it was read (`code` = `VERSION_CONFLICT`): reload and edit again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["UnprocessableEntity"];
         };
     };
     listAuditEvents: {
