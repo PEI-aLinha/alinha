@@ -38,7 +38,8 @@ whatever the status (a control can be a gap by failing evidence and still show a
 answers) when there is none. Applied after the answer rule:
 
 1. Failing evidence of strength `TECHNICALLY_VERIFIED` or more turns any status into a gap (`EVIDENCE_FAILED`).
-   Weaker failing evidence changes nothing.
+   Weaker failing evidence changes nothing and is not recorded on `ControlEvaluation`: an inadequate document leaves
+   no trace of the contradiction on the result in the MVP (to surface it in the consultant view later).
 2. Passing evidence only raises the strength: it never upgrades a `no` or `partial` answer.
 3. A would-be compliant control whose strength is below the bar for its level is partial (`WEAK_EVIDENCE`). Each
    level of the catalogue's scale declares its bar (`levels[].requiredStrength`, and `requiredStrengthTechnical` for
