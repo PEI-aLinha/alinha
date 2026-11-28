@@ -66,8 +66,26 @@ def test_teredo_is_refused_even_with_public_ipv4_addresses():
     assert not net.is_public("2001:0:0808:0808:8000:63bf:f7f7:f7f7")  # server and client 8.8.8.8
 
 
-def test_6to4_with_a_public_ipv4_is_allowed():
-    assert net.is_public("2002:0808:0808::1") == net.ipaddress.ip_address("2002:0808:0808::1").is_global
+def test_6to4_is_refused_even_with_a_public_ipv4():
+    assert not net.is_public("2002:0808:0808::1")  # 6to4 of 8.8.8.8
+
+
+@pytest.mark.parametrize("address", [
+    "::7f00:1",                                  # IPv4-compatible 127.0.0.1
+    "::a00:1",                                   # IPv4-compatible 10.0.0.1
+    "::808:808",                                 # IPv4-compatible 8.8.8.8: deprecated, refused even when public
+    "::ffff:0:a00:1",                            # IPv4-translated 10.0.0.1
+    "::ffff:0:808:808",                          # IPv4-translated 8.8.8.8
+    "64:ff9b::808:808",                          # NAT64 of 8.8.8.8
+    "fec0::1",                                   # deprecated site-local
+    "ff02::1",                                   # link-local multicast
+    "ff0e::1",                                   # global multicast
+    "224.0.0.1",                                 # IPv4 multicast
+    "::ffff:224.0.0.1",                          # IPv4-mapped multicast
+    "::ffff:10.0.0.1",                           # IPv4-mapped private
+])
+def test_addresses_that_embed_or_reach_a_non_public_target_are_refused(address):
+    assert not net.is_public(address)
 
 
 def test_public_ipv4_mapped_address_is_allowed():

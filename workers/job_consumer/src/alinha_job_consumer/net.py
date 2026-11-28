@@ -66,8 +66,10 @@ def user_agent(provider: str) -> str:
 
 # -- addresses ----------------------------------------------------------------------------------------------------
 
-# NAT64 prefixes count as global to `ipaddress`, but a NAT64 gateway would turn them into any IPv4 address.
-_TRANSLATED = (ipaddress.ip_network("64:ff9b::/96"), ipaddress.ip_network("64:ff9b:1::/48"))
+# Prefixes that `ipaddress` counts as global although they embed an IPv4 address that something on the path may
+# reach: NAT64 (a gateway turns them into any IPv4 address), IPv4-compatible `::/96` (deprecated; routed to the IPv4
+# address on a host with a `sit` tunnel up) and IPv4-translated `::ffff:0:0:0/96` (SIIT).
+_EMBEDS_IPV4 = tuple(ipaddress.ip_network(n) for n in ("64:ff9b::/96", "64:ff9b:1::/48", "::/96", "::ffff:0:0:0/96"))
 
 
 _NOT_FOUND = {code for code in (getattr(socket, "EAI_NONAME", None), getattr(socket, "EAI_NODATA", None))
@@ -76,16 +78,16 @@ _NOT_FOUND = {code for code in (getattr(socket, "EAI_NONAME", None), getattr(soc
 
 def is_public(address: str) -> bool:
     ip = ipaddress.ip_address(address.split("%", 1)[0])
+    if ip.is_multicast:  # some multicast scopes count as global, but they never name one web server
+        return False
     if isinstance(ip, ipaddress.IPv6Address):
         if ip.ipv4_mapped is not None:
-            ip = ip.ipv4_mapped
-        elif any(ip in net for net in _TRANSLATED):
+            return is_public(str(ip.ipv4_mapped))
+        # 6to4 (2002::/16) and Teredo (2001::/32) carry an IPv4 address a relay may reach. Both are deprecated, and
+        # whether `ipaddress` counts them as global depends on the Python version, so they are refused outright.
+        if ip.is_site_local or ip.sixtofour is not None or ip.teredo is not None:
             return False
-        # 6to4 (2002::/16) carries an IPv4 address a relay may reach: it must be public too. Teredo (2001::/32) is
-        # refused outright: deprecated, and whether `ipaddress` counts it as global depends on the Python version.
-        elif ip.sixtofour is not None:
-            return ip.is_global and ip.sixtofour.is_global
-        elif ip.teredo is not None:
+        if any(ip in net for net in _EMBEDS_IPV4):
             return False
     return ip.is_global
 
