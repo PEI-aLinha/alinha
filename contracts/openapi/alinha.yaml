@@ -30,6 +30,8 @@ tags:
     description: Questionnaires adapted to the organization's regulatory scope (assessment plugin).
   - name: dashboard-reports
     description: Dashboards and reports (dashboard-reports plugin).
+  - name: risk-assets
+    description: Asset inventory and ISO/IEC 27005 risk register (risk-assets plugin).
   - name: code-repository
     description: Read-only connection to the organization's code repositories and the evidence collected (code-repository provider).
   - name: external-surface
@@ -212,6 +214,255 @@ paths:
                 $ref: '#/components/schemas/Problem'
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/organization/members:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+    get:
+      tags: [organization]
+      operationId: listMembers
+      summary: Everyone with an account in the current organization
+      description: |
+        The Designated Officer first, then the analysts by name (organization#6, ADR 0007). Consultants are not
+        members: they are assigned. Not paginated: an SME's team is a handful of people. Permission `member:read`
+        (Designated Officer).
+      responses:
+        '200':
+          description: The members.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Member'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          description: The identity provider did not answer (`code` = `IDENTITY_UNAVAILABLE`), with `Retry-After`.
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /api/organization/members/{memberId}:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+      - name: memberId
+        in: path
+        required: true
+        description: The member's `id` from `listMembers`.
+        schema:
+          type: string
+          maxLength: 255
+    delete:
+      tags: [organization]
+      operationId: removeMember
+      summary: Remove an analyst from the organization
+      description: |
+        The analyst loses access to the organization and their sessions end; what they recorded stays. Their account
+        stays too, as a new account that may be invited again. The Designated Officer cannot be removed, and an id
+        that is not an analyst of this organization is a `404` (`code` = `MEMBER_NOT_FOUND`). Audited. Permission
+        `member:manage` (Designated Officer).
+      responses:
+        '204':
+          description: The analyst was removed.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          description: The identity provider did not answer (`code` = `IDENTITY_UNAVAILABLE`); nothing changed.
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /api/organization/invitations:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+    get:
+      tags: [organization]
+      operationId: listInvitations
+      summary: The current organization's pending invitations
+      description: |
+        Not accepted and not cancelled, newest first. Expired ones stay listed (`expired`), so they can be sent
+        again. The secret is never listed. Permission `member:read` (Designated Officer).
+      responses:
+        '200':
+          description: The pending invitations.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Invitation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [organization]
+      operationId: inviteAnalyst
+      summary: Invite an analyst by email
+      description: |
+        Creates a single-use invitation, valid for 7 days and bound to `email` (ADR 0007). Inviting the same email
+        again cancels the pending invitation, so this is also how an invitation is sent again. The response carries
+        `token` **once**: the link is `/onboarding/invitation#<token>` (in the fragment, so it never reaches a server
+        log). Until the invitation email exists (notifications#3) the page shows the link to copy.
+
+        An email that already has an account in this organization is a `409` (`code` = `ALREADY_MEMBER`); an invalid
+        one is a `422` (`code` = `INVALID_EMAIL`, field `email`). Audited. Permission `member:manage` (Designated
+        Officer).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvitationRequest'
+      responses:
+        '201':
+          description: The invitation, with its secret.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssuedInvitation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: This email already has an account in the organization (`code` = `ALREADY_MEMBER`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '503':
+          description: |
+            The identity provider did not answer while checking the team (`code` = `IDENTITY_UNAVAILABLE`); no
+            invitation was created.
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /api/organization/invitations/{invitationId}:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+      - name: invitationId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    delete:
+      tags: [organization]
+      operationId: cancelInvitation
+      summary: Cancel a pending invitation
+      description: |
+        The link stops working. An id that is not a pending invitation of this organization is a `404`
+        (`code` = `INVITATION_NOT_FOUND`). Audited. Permission `member:manage` (Designated Officer).
+      responses:
+        '204':
+          description: The invitation was cancelled.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/organization/invitations/accept:
+    post:
+      tags: [organization]
+      operationId: acceptInvitation
+      summary: Join the organization that invited the signed-in account
+      description: |
+        Called from the onboarding by a new account (`registrant`, no organization) whose verified email is the
+        invited one (ADR 0007). No `X-Alinha-Tenant`: the organization comes from the invitation. The account joins
+        as an analyst; the session is stale until the client calls `reauthenticate()`. Audited.
+
+        `code` on failure: `INVITATION_NOT_FOUND` (404: unknown or cancelled), `INVITATION_FOR_ANOTHER_EMAIL` (403),
+        `INVITATION_ALREADY_USED` (409), `INVITATION_EXPIRED` (410), `ORGANIZATION_ALREADY_EXISTS` (409: the account
+        already has an organization), `TOO_MANY_REGISTRATIONS` (429), `REGISTRATION_BUSY` or `IDENTITY_UNAVAILABLE`
+        (503); 429 and 503 carry `Retry-After`. Permission `invitation:accept` (registrant).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AcceptInvitationRequest'
+      responses:
+        '204':
+          description: The account joined the organization.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: |
+            With `code` = `INVITATION_FOR_ANOTHER_EMAIL`: the invitation is for another email. Without a `code`: the
+            account cannot accept at all, because it is not a new account (`registrant`), its email is not verified
+            yet, or its token has no email or subject. The page then tells the person to verify their email and sign
+            in again.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '410':
+          description: The invitation expired (`code` = `INVITATION_EXPIRED`).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '429':
+          description: Too many attempts from this client (`code` = `TOO_MANY_REGISTRATIONS`).
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '503':
+          description: Try again later (`REGISTRATION_BUSY`, `IDENTITY_UNAVAILABLE`).
+          headers:
+            Retry-After:
+              $ref: '#/components/headers/RetryAfter'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
 
   /api/organization/scope:
     parameters:
@@ -618,6 +869,158 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+
+  /api/risk-assets/risk-matrix:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+    get:
+      tags: [risk-assets]
+      operationId: getRiskMatrix
+      summary: The likelihood and impact scales and how they map to a risk level
+      description: |
+        The scale is configured on the server (`alinha.risk-assets.matrix`), so the UI reads it here instead of
+        hardcoding it. A risk's `score` is `likelihood × impact`, and its `level` is the band that contains the
+        score. The bands cover every possible score exactly once. Permission `risk:read`
+        (consultant, Designated Officer).
+      responses:
+        '200':
+          description: The risk matrix.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RiskMatrix'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/risk-assets/risks:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+    get:
+      tags: [risk-assets]
+      operationId: listRisks
+      summary: The current organization's risk register
+      description: |
+        Highest `score` first, then most recently changed (risk-assets#4, FR36). Permission `risk:read`
+        (consultant, Designated Officer).
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: One page of risks.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RiskPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [risk-assets]
+      operationId: registerRisk
+      summary: Register a risk
+      description: |
+        Adds a risk to the register (ISO/IEC 27005). `level` and `score` are computed by the server from
+        `likelihood` and `impact` with the risk matrix; they are never sent. `likelihood` and `impact` must be
+        values of the matrix's scales; otherwise `422` (`code` = `VALIDATION_FAILED`, with one entry per field in
+        `errors`: `threat`, `vulnerability`, `likelihood`, `impact` or `treatment`). Audited and published as
+        `RiskRegistered`. Permission `risk:edit` (consultant).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RiskInput'
+      responses:
+        '201':
+          description: The new risk.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Risk'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/risk-assets/risks/{riskId}:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+      - $ref: '#/components/parameters/RiskId'
+    get:
+      tags: [risk-assets]
+      operationId: getRisk
+      summary: One risk
+      description: |
+        An id of another organization is a `404` (`code` = `RISK_NOT_FOUND`). Permission `risk:read`.
+      responses:
+        '200':
+          description: The risk.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Risk'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [risk-assets]
+      operationId: updateRisk
+      summary: Update a risk
+      description: |
+        Replaces the risk's data, for example to reassess it or to choose its treatment. `version` must be the
+        one that was read; otherwise `409` (`code` = `VERSION_CONFLICT`) and nothing changes, checked before the
+        data, so a stale form is a `409` even with invalid fields. A missing `version` is a `422` with `errors`
+        field `version`; invalid data a `422` with one entry per field, as in `registerRisk`. A `likelihood` or
+        `impact` the current scale no longer has (the matrix was made smaller) may be sent back unchanged; a new
+        value must be on the scale. Sending the data already saved changes nothing (`version` and `updatedAt`
+        stay) and writes no audit entry. Permission `risk:edit` (consultant).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RiskUpdate'
+      responses:
+        '200':
+          description: The updated risk.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Risk'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: |
+            The risk changed since it was read (`code` = `VERSION_CONFLICT`): reload and edit again.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
 
   /api/code-repository/connection:
     parameters:
@@ -1238,6 +1641,13 @@ components:
       schema:
         type: string
         format: uuid
+    RiskId:
+      name: riskId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
 
   schemas:
     Problem:
@@ -1784,6 +2194,84 @@ components:
           maxLength: 100
           description: Optional reference of the Act, as printed on it.
 
+    MemberRole:
+      type: string
+      enum: [responsible, analyst]
+
+    Member:
+      type: object
+      required: [id, name, email, role]
+      properties:
+        id:
+          type: string
+          description: The account's id in the identity provider (the token's `sub`).
+        name:
+          type: [string, 'null']
+          description: First and last name from the account; null when it has none.
+        email:
+          type: [string, 'null']
+        role:
+          $ref: '#/components/schemas/MemberRole'
+
+    Invitation:
+      type: object
+      required: [id, email, createdAt, expiresAt, expired]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          description: In lower case, as invited.
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        expired:
+          type: boolean
+          description: Past `expiresAt`; inviting the same email again sends a new one.
+
+    InvitationRequest:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          maxLength: 254
+
+    IssuedInvitation:
+      type: object
+      required: [id, email, createdAt, expiresAt, token]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        token:
+          type: string
+          description: |
+            The invitation's secret, returned only here and never stored in clear. The link is
+            `/onboarding/invitation#<token>`.
+
+    AcceptInvitationRequest:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: The secret from the invitation link's fragment.
+
     OrganizationScope:
       type: object
       required: [answers, result, qualification, nis2, entityTypes]
@@ -2178,6 +2666,171 @@ components:
           description: Every control of the assessment, in catalogue order.
           items:
             $ref: '#/components/schemas/ControlResult'
+
+    RiskLevel:
+      type: string
+      enum: [low, medium, high]
+      description: Computed by the server from the risk matrix; never sent by the client.
+
+    RiskTreatment:
+      type: string
+      enum: [mitigate, accept, transfer, avoid]
+      description: |
+        ISO/IEC 27005 risk treatment option: reduce the risk (`mitigate`), keep it (`accept`), share it with
+        someone else, such as an insurer or a supplier (`transfer`), or stop the activity that causes it (`avoid`).
+
+    RiskScaleStep:
+      type: object
+      required: [value, label, description]
+      properties:
+        value:
+          type: integer
+          minimum: 1
+        label:
+          type: string
+          description: Short name, in Portuguese (e.g. `Alta`).
+        description:
+          type: string
+          description: What the value means, in plain Portuguese, to help choose it.
+
+    RiskBand:
+      type: object
+      required: [level, minScore, maxScore]
+      properties:
+        level:
+          $ref: '#/components/schemas/RiskLevel'
+        minScore:
+          type: integer
+          minimum: 1
+        maxScore:
+          type: integer
+          minimum: 1
+
+    RiskMatrix:
+      type: object
+      required: [likelihood, impact, bands]
+      properties:
+        likelihood:
+          type: array
+          description: Likelihood scale, lowest first.
+          items:
+            $ref: '#/components/schemas/RiskScaleStep'
+        impact:
+          type: array
+          description: Impact scale, lowest first.
+          items:
+            $ref: '#/components/schemas/RiskScaleStep'
+        bands:
+          type: array
+          description: Score ranges of each level, lowest first. Every possible score falls in exactly one band.
+          items:
+            $ref: '#/components/schemas/RiskBand'
+
+    RiskInput:
+      type: object
+      required: [threat, likelihood, impact]
+      properties:
+        assetId:
+          type: [string, 'null']
+          format: uuid
+          description: |
+            The asset at risk, or null for a risk to the whole organization. Not checked against the asset
+            inventory yet (risk-assets#2).
+        threat:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: What could happen (e.g. `Ransomware cifra o servidor de ficheiros`).
+        vulnerability:
+          type: [string, 'null']
+          maxLength: 500
+          description: The weakness the threat would exploit (e.g. `Cópias de segurança no mesmo servidor`).
+        likelihood:
+          type: integer
+          minimum: 1
+          description: A `value` of the risk matrix's likelihood scale.
+        impact:
+          type: integer
+          minimum: 1
+          description: A `value` of the risk matrix's impact scale.
+        treatment:
+          oneOf:
+            - $ref: '#/components/schemas/RiskTreatment'
+            - type: 'null'
+          description: Null while the treatment is not decided.
+        ownerId:
+          type: [string, 'null']
+          format: uuid
+          description: |
+            Account responsible for the risk (the token's `sub`), or null. Not checked against the organization's
+            members until they exist (organization#6).
+
+    RiskUpdate:
+      allOf:
+        - $ref: '#/components/schemas/RiskInput'
+        - type: object
+          required: [version]
+          properties:
+            version:
+              type: integer
+              minimum: 0
+              description: The `version` that was read.
+
+    Risk:
+      type: object
+      required: [id, version, assetId, threat, vulnerability, likelihood, impact, score, level, treatment, ownerId,
+                 createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        version:
+          type: integer
+          minimum: 0
+          description: Changes whenever the risk's data changes; send it back in `RiskUpdate`.
+        assetId:
+          type: [string, 'null']
+          format: uuid
+        threat:
+          type: string
+        vulnerability:
+          type: [string, 'null']
+        likelihood:
+          type: integer
+          minimum: 1
+        impact:
+          type: integer
+          minimum: 1
+        score:
+          type: integer
+          minimum: 1
+          description: '`likelihood × impact`.'
+        level:
+          $ref: '#/components/schemas/RiskLevel'
+        treatment:
+          oneOf:
+            - $ref: '#/components/schemas/RiskTreatment'
+            - type: 'null'
+        ownerId:
+          type: [string, 'null']
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    RiskPage:
+      allOf:
+        - $ref: '#/components/schemas/PageMeta'
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/Risk'
 
     AuditEvent:
       type: object
