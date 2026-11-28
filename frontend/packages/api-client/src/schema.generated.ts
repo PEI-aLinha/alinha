@@ -100,6 +100,164 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organization/members": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Everyone with an account in the current organization
+         * @description The Designated Officer first, then the analysts by name (organization#6, ADR 0007). Consultants are not
+         *     members: they are assigned. Not paginated: an SME's team is a handful of people. Permission `member:read`
+         *     (Designated Officer).
+         */
+        get: operations["listMembers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organization/members/{memberId}": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path: {
+                /** @description The member's `id` from `listMembers`. */
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Remove an analyst from the organization
+         * @description The analyst loses access to the organization and their sessions end; what they recorded stays. Their account
+         *     stays too, as a new account that may be invited again. The Designated Officer cannot be removed, and an id
+         *     that is not an analyst of this organization is a `404` (`code` = `MEMBER_NOT_FOUND`). Audited. Permission
+         *     `member:manage` (Designated Officer).
+         */
+        delete: operations["removeMember"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organization/invitations": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The current organization's pending invitations
+         * @description Not accepted and not cancelled, newest first. Expired ones stay listed (`expired`), so they can be sent
+         *     again. The secret is never listed. Permission `member:read` (Designated Officer).
+         */
+        get: operations["listInvitations"];
+        put?: never;
+        /**
+         * Invite an analyst by email
+         * @description Creates a single-use invitation, valid for 7 days and bound to `email` (ADR 0007). Inviting the same email
+         *     again cancels the pending invitation, so this is also how an invitation is sent again. The response carries
+         *     `token` **once**: the link is `/onboarding/invitation#<token>` (in the fragment, so it never reaches a server
+         *     log). Until the invitation email exists (notifications#3) the page shows the link to copy.
+         *
+         *     An email that already has an account in this organization is a `409` (`code` = `ALREADY_MEMBER`); an invalid
+         *     one is a `422` (`code` = `INVALID_EMAIL`, field `email`). Audited. Permission `member:manage` (Designated
+         *     Officer).
+         */
+        post: operations["inviteAnalyst"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organization/invitations/{invitationId}": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path: {
+                invitationId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Cancel a pending invitation
+         * @description The link stops working. An id that is not a pending invitation of this organization is a `404`
+         *     (`code` = `INVITATION_NOT_FOUND`). Audited. Permission `member:manage` (Designated Officer).
+         */
+        delete: operations["cancelInvitation"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organization/invitations/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Join the organization that invited the signed-in account
+         * @description Called from the onboarding by a new account (`registrant`, no organization) whose verified email is the
+         *     invited one (ADR 0007). No `X-Alinha-Tenant`: the organization comes from the invitation. The account joins
+         *     as an analyst; the session is stale until the client calls `reauthenticate()`. Audited.
+         *
+         *     `code` on failure: `INVITATION_NOT_FOUND` (404: unknown or cancelled), `INVITATION_FOR_ANOTHER_EMAIL` (403),
+         *     `INVITATION_ALREADY_USED` (409), `INVITATION_EXPIRED` (410), `ORGANIZATION_ALREADY_EXISTS` (409: the account
+         *     already has an organization), `TOO_MANY_REGISTRATIONS` (429), `REGISTRATION_BUSY` or `IDENTITY_UNAVAILABLE`
+         *     (503); 429 and 503 carry `Retry-After`. Permission `invitation:accept` (registrant).
+         */
+        post: operations["acceptInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organization/scope": {
         parameters: {
             query?: never;
@@ -405,6 +563,111 @@ export interface paths {
          */
         get: operations["getPortfolioSummary"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/risk-assets/risk-matrix": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The likelihood and impact scales and how they map to a risk level
+         * @description The scale is configured on the server (`alinha.risk-assets.matrix`), so the UI reads it here instead of
+         *     hardcoding it. A risk's `score` is `likelihood × impact`, and its `level` is the band that contains the
+         *     score. The bands cover every possible score exactly once. Permission `risk:read`
+         *     (consultant, Designated Officer).
+         */
+        get: operations["getRiskMatrix"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/risk-assets/risks": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The current organization's risk register
+         * @description Highest `score` first, then most recently changed (risk-assets#4, FR36). Permission `risk:read`
+         *     (consultant, Designated Officer).
+         */
+        get: operations["listRisks"];
+        put?: never;
+        /**
+         * Register a risk
+         * @description Adds a risk to the register (ISO/IEC 27005). `level` and `score` are computed by the server from
+         *     `likelihood` and `impact` with the risk matrix; they are never sent. `likelihood` and `impact` must be
+         *     values of the matrix's scales; otherwise `422` (`code` = `VALIDATION_FAILED`, with one entry per field in
+         *     `errors`: `threat`, `vulnerability`, `likelihood`, `impact` or `treatment`). Audited and published as
+         *     `RiskRegistered`. Permission `risk:edit` (consultant).
+         */
+        post: operations["registerRisk"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/risk-assets/risks/{riskId}": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path: {
+                riskId: components["parameters"]["RiskId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * One risk
+         * @description An id of another organization is a `404` (`code` = `RISK_NOT_FOUND`). Permission `risk:read`.
+         */
+        get: operations["getRisk"];
+        /**
+         * Update a risk
+         * @description Replaces the risk's data, for example to reassess it or to choose its treatment. `version` must be the
+         *     one that was read; otherwise `409` (`code` = `VERSION_CONFLICT`) and nothing changes, checked before the
+         *     data, so a stale form is a `409` even with invalid fields. A missing `version` is a `422` with `errors`
+         *     field `version`; invalid data a `422` with one entry per field, as in `registerRisk`. A `likelihood` or
+         *     `impact` the current scale no longer has (the matrix was made smaller) may be sent back unchanged; a new
+         *     value must be on the scale. Sending the data already saved changes nothing (`version` and `updatedAt`
+         *     stay) and writes no audit entry. Permission `risk:edit` (consultant).
+         */
+        put: operations["updateRisk"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1004,6 +1267,49 @@ export interface components {
             /** @description Optional reference of the Act, as printed on it. */
             actReference?: string | null;
         };
+        /** @enum {string} */
+        MemberRole: "responsible" | "analyst";
+        Member: {
+            /** @description The account's id in the identity provider (the token's `sub`). */
+            id: string;
+            /** @description First and last name from the account; null when it has none. */
+            name: string | null;
+            email: string | null;
+            role: components["schemas"]["MemberRole"];
+        };
+        Invitation: {
+            /** Format: uuid */
+            id: string;
+            /** @description In lower case, as invited. */
+            email: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            expiresAt: string;
+            /** @description Past `expiresAt`; inviting the same email again sends a new one. */
+            expired: boolean;
+        };
+        InvitationRequest: {
+            email: string;
+        };
+        IssuedInvitation: {
+            /** Format: uuid */
+            id: string;
+            email: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            expiresAt: string;
+            /**
+             * @description The invitation's secret, returned only here and never stored in clear. The link is
+             *     `/onboarding/invitation#<token>`.
+             */
+            token: string;
+        };
+        AcceptInvitationRequest: {
+            /** @description The secret from the invitation link's fragment. */
+            token: string;
+        };
         OrganizationScope: {
             /** @description The saved answers; null until the first save. */
             answers: components["schemas"]["ApplicabilityAnswers"] | null;
@@ -1215,6 +1521,90 @@ export interface components {
             /** @description Every control of the assessment, in catalogue order. */
             controls: components["schemas"]["ControlResult"][];
         };
+        /**
+         * @description Computed by the server from the risk matrix; never sent by the client.
+         * @enum {string}
+         */
+        RiskLevel: "low" | "medium" | "high";
+        /**
+         * @description ISO/IEC 27005 risk treatment option: reduce the risk (`mitigate`), keep it (`accept`), share it with
+         *     someone else, such as an insurer or a supplier (`transfer`), or stop the activity that causes it (`avoid`).
+         * @enum {string}
+         */
+        RiskTreatment: "mitigate" | "accept" | "transfer" | "avoid";
+        RiskScaleStep: {
+            value: number;
+            /** @description Short name, in Portuguese (e.g. `Alta`). */
+            label: string;
+            /** @description What the value means, in plain Portuguese, to help choose it. */
+            description: string;
+        };
+        RiskBand: {
+            level: components["schemas"]["RiskLevel"];
+            minScore: number;
+            maxScore: number;
+        };
+        RiskMatrix: {
+            /** @description Likelihood scale, lowest first. */
+            likelihood: components["schemas"]["RiskScaleStep"][];
+            /** @description Impact scale, lowest first. */
+            impact: components["schemas"]["RiskScaleStep"][];
+            /** @description Score ranges of each level, lowest first. Every possible score falls in exactly one band. */
+            bands: components["schemas"]["RiskBand"][];
+        };
+        RiskInput: {
+            /**
+             * Format: uuid
+             * @description The asset at risk, or null for a risk to the whole organization. Not checked against the asset
+             *     inventory yet (risk-assets#2).
+             */
+            assetId?: string | null;
+            /** @description What could happen (e.g. `Ransomware cifra o servidor de ficheiros`). */
+            threat: string;
+            /** @description The weakness the threat would exploit (e.g. `Cópias de segurança no mesmo servidor`). */
+            vulnerability?: string | null;
+            /** @description A `value` of the risk matrix's likelihood scale. */
+            likelihood: number;
+            /** @description A `value` of the risk matrix's impact scale. */
+            impact: number;
+            /** @description Null while the treatment is not decided. */
+            treatment?: components["schemas"]["RiskTreatment"] | null;
+            /**
+             * Format: uuid
+             * @description Account responsible for the risk (the token's `sub`), or null. Not checked against the organization's
+             *     members until they exist (organization#6).
+             */
+            ownerId?: string | null;
+        };
+        RiskUpdate: components["schemas"]["RiskInput"] & {
+            /** @description The `version` that was read. */
+            version: number;
+        };
+        Risk: {
+            /** Format: uuid */
+            id: string;
+            /** @description Changes whenever the risk's data changes; send it back in `RiskUpdate`. */
+            version: number;
+            /** Format: uuid */
+            assetId: string | null;
+            threat: string;
+            vulnerability: string | null;
+            likelihood: number;
+            impact: number;
+            /** @description `likelihood × impact`. */
+            score: number;
+            level: components["schemas"]["RiskLevel"];
+            treatment: components["schemas"]["RiskTreatment"] | null;
+            /** Format: uuid */
+            ownerId: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        RiskPage: components["schemas"]["PageMeta"] & {
+            items: components["schemas"]["Risk"][];
+        };
         AuditEvent: {
             /** Format: uuid */
             id: string;
@@ -1422,6 +1812,7 @@ export interface components {
         /** @description Items per page. */
         PageSize: number;
         AssessmentId: string;
+        RiskId: string;
     };
     requestBodies: never;
     headers: {
@@ -1625,6 +2016,276 @@ export interface operations {
                 };
             };
             422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    listMembers: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The members. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Member"][];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description The identity provider did not answer (`code` = `IDENTITY_UNAVAILABLE`), with `Retry-After`. */
+            503: {
+                headers: {
+                    "Retry-After": components["headers"]["RetryAfter"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    removeMember: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path: {
+                /** @description The member's `id` from `listMembers`. */
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The analyst was removed. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description The identity provider did not answer (`code` = `IDENTITY_UNAVAILABLE`); nothing changed. */
+            503: {
+                headers: {
+                    "Retry-After": components["headers"]["RetryAfter"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    listInvitations: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The pending invitations. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Invitation"][];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    inviteAnalyst: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvitationRequest"];
+            };
+        };
+        responses: {
+            /** @description The invitation, with its secret. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IssuedInvitation"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description This email already has an account in the organization (`code` = `ALREADY_MEMBER`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["UnprocessableEntity"];
+            /**
+             * @description The identity provider did not answer while checking the team (`code` = `IDENTITY_UNAVAILABLE`); no
+             *     invitation was created.
+             */
+            503: {
+                headers: {
+                    "Retry-After": components["headers"]["RetryAfter"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    cancelInvitation: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path: {
+                invitationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The invitation was cancelled. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    acceptInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptInvitationRequest"];
+            };
+        };
+        responses: {
+            /** @description The account joined the organization. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            /**
+             * @description With `code` = `INVITATION_FOR_ANOTHER_EMAIL`: the invitation is for another email. Without a `code`: the
+             *     account cannot accept at all, because it is not a new account (`registrant`), its email is not verified
+             *     yet, or its token has no email or subject. The page then tells the person to verify their email and sign
+             *     in again.
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            404: components["responses"]["NotFound"];
+            409: components["responses"]["Conflict"];
+            /** @description The invitation expired (`code` = `INVITATION_EXPIRED`). */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["UnprocessableEntity"];
+            /** @description Too many attempts from this client (`code` = `TOO_MANY_REGISTRATIONS`). */
+            429: {
+                headers: {
+                    "Retry-After": components["headers"]["RetryAfter"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Try again later (`REGISTRATION_BUSY`, `IDENTITY_UNAVAILABLE`). */
+            503: {
+                headers: {
+                    "Retry-After": components["headers"]["RetryAfter"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     getOrganizationScope: {
@@ -2049,6 +2710,186 @@ export interface operations {
             };
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
+        };
+    };
+    getRiskMatrix: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The risk matrix. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RiskMatrix"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    listRisks: {
+        parameters: {
+            query?: {
+                /** @description Zero-based page number. */
+                page?: components["parameters"]["Page"];
+                /** @description Items per page. */
+                pageSize?: components["parameters"]["PageSize"];
+            };
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of risks. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RiskPage"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    registerRisk: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RiskInput"];
+            };
+        };
+        responses: {
+            /** @description The new risk. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Risk"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    getRisk: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path: {
+                riskId: components["parameters"]["RiskId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The risk. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Risk"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateRisk: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path: {
+                riskId: components["parameters"]["RiskId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RiskUpdate"];
+            };
+        };
+        responses: {
+            /** @description The updated risk. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Risk"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description The risk changed since it was read (`code` = `VERSION_CONFLICT`): reload and edit again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["UnprocessableEntity"];
         };
     };
     getCodeRepositoryConnection: {

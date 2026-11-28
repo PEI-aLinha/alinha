@@ -5,7 +5,7 @@ import java.time.Instant
 import java.util.UUID
 
 /** A new invitation. [token] is the secret for the link; it is shown once and only its hash is stored. */
-data class IssuedInvitation(val id: UUID, val email: String, val token: String, val expiresAt: Instant)
+data class IssuedInvitation(val id: UUID, val email: String, val token: String, val createdAt: Instant, val expiresAt: Instant)
 
 /** An invitation that was neither accepted nor revoked. [expired] ones stay listed so they can be sent again. */
 data class PendingInvitation(val id: UUID, val email: String, val createdAt: Instant, val expiresAt: Instant, val expired: Boolean)
