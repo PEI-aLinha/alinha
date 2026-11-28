@@ -87,7 +87,9 @@ export interface paths {
         get: operations["getOrganizationProfile"];
         /**
          * Update the current organization's data
-         * @description Replaces the organization's data. `version` must be the one that was read; otherwise the answer is
+         * @description Replaces the organization's data: an optional field left out is cleared. This includes `domain`: leaving it
+         *     out removes the domain, and the External Surface checks then fail with `DOMAIN_MISSING`. `version` must be
+         *     the one that was read; otherwise the answer is
          *     `409` (`code` = `VERSION_CONFLICT`) and nothing changes. The NIF identifies the organization and cannot
          *     change after registration: a different `nif` is a `422`. Permission `organization:edit`
          *     (Designated Officer, consultant).
@@ -1235,8 +1237,13 @@ export interface components {
             permanentContact: components["schemas"]["PermanentContact"];
             /**
              * @description The organization's own internet domain, used for its website and email (e.g. `empresa.pt`). Optional. A
-             *     web address is accepted and reduced to the domain (`https://www.empresa.pt/` → `empresa.pt`); IP
-             *     addresses and shared domains (`gmail.com`) are refused.
+             *     web address is accepted and reduced to the domain (`https://www.empresa.pt/` → `empresa.pt`). Refused
+             *     with `422`: IP addresses; shared domains (`gmail.com`) and their subdomains; registry suffixes (`com.pt`);
+             *     reserved or internal names (`example.com`, `.test`, `.local`, `.internal`); wildcard DNS services that
+             *     resolve any name to an address written in it (`nip.io`, `localtest.me`); and international names that
+             *     IDNA2003 would turn into another name.
+             *     On `PUT`, leaving it out or sending `null` removes the stored domain, and the External Surface checks
+             *     then fail with `DOMAIN_MISSING`: send the current value back to keep it.
              */
             domain?: string | null;
         };
