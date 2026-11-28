@@ -838,6 +838,88 @@ paths:
               schema:
                 $ref: '#/components/schemas/Problem'
 
+  /api/dashboard-reports/traceability/{framework}:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+      - $ref: '#/components/parameters/Framework'
+    get:
+      tags: [dashboard-reports]
+      operationId: getTraceability
+      summary: Requirement → controls → gaps → roadmap actions → evidence, for one client
+      description: |
+        The consultant's traceability view of the organization in `X-Alinha-Tenant` (alinha#26, FR38, FR39, US39).
+        Requirements and controls come from the catalogue version the latest evaluation used (NFR18), or the newest
+        version before any evaluation. A control's `status` is the Compliance Engine's (NFR05), never computed here.
+
+        Until the sources exist, parts are empty and say so: `evaluated` is false before the organization's
+        assessment is evaluated (statuses null); `actions` stay empty until the roadmap exists (assessment#6);
+        `evidence` stays empty until providers collect some (dashboard-reports#2).
+
+        If the latest evaluation names a catalogue version the application did not load, the answer is a `500`
+        (`code` = `CATALOGUE_VERSION_MISSING`) rather than statuses shown against another version's controls.
+
+        A framework with no catalogue, malformed ids included (the server does not check `framework` against its
+        pattern), is a `404` (`code` = `FRAMEWORK_NOT_FOUND`). Permission `traceability:read`
+        (consultant): the view shows results before the consultant validates them, so the client's people never
+        get it.
+      parameters:
+        - name: onlyGaps
+          in: query
+          required: false
+          description: Only the requirements with a gap (`status` = `gap`).
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: The traceability of every requirement, in catalogue order.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Traceability'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/dashboard-reports/traceability/{framework}/requirements/{requirementId}:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+      - $ref: '#/components/parameters/Framework'
+      - name: requirementId
+        in: path
+        required: true
+        description: Requirement id from the catalogue, e.g. `QNRCS-GR.CO-1`.
+        schema:
+          type: string
+          maxLength: 100
+    get:
+      tags: [dashboard-reports]
+      operationId: getRequirementTrace
+      summary: The traceability of one requirement
+      description: |
+        Same rules as `getTraceability`, for one requirement. An id that is not in the catalogue version used is a
+        `404` (`code` = `REQUIREMENT_NOT_FOUND`). Permission `traceability:read` (consultant).
+      responses:
+        '200':
+          description: The requirement, its controls, their gaps, actions and evidence.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequirementTrace'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /api/dashboard-reports/portfolio:
     get:
       tags: [dashboard-reports]
@@ -1467,6 +1549,16 @@ components:
         type: string
         format: uuid
 
+    Framework:
+      name: framework
+      in: path
+      required: true
+      description: Framework id of a catalogue, e.g. `nis2-qnrcs`.
+      schema:
+        type: string
+        pattern: '^[a-z0-9]+(-[a-z0-9]+)*$'
+        maxLength: 50
+
   schemas:
     Problem:
       type: object
@@ -1790,6 +1882,123 @@ components:
           type: string
           format: date-time
         updatedAt:
+          type: string
+          format: date-time
+
+    Traceability:
+      type: object
+      required: [framework, catalogueVersion, catalogueTitle, engineVersion, evaluated, requirements]
+      properties:
+        framework:
+          type: string
+        catalogueVersion:
+          type: integer
+          minimum: 1
+          description: The version of the latest evaluation, or the newest one before any evaluation.
+        catalogueTitle:
+          type: string
+        engineVersion:
+          type: [string, 'null']
+          description: Version of the Compliance Engine rules of the latest evaluation; null before any.
+        evaluated:
+          type: boolean
+          description: False until the organization's assessment of this framework has been evaluated.
+        requirements:
+          type: array
+          description: In catalogue order.
+          items:
+            $ref: '#/components/schemas/RequirementTrace'
+
+    RequirementTrace:
+      type: object
+      required: [id, reference, text, status, controls]
+      properties:
+        id:
+          type: string
+        reference:
+          type: string
+          description: Where the law asks for it, e.g. `Regulamento 756/2026, anexos I e III, GR.CO-1`.
+        text:
+          type: string
+          description: The requirement, in Portuguese, from the catalogue.
+        status:
+          description: |
+            A display roll-up of the engine's control statuses, not a compliance decision (NFR05). `gap` when any
+            evaluated control is `gap` or `partial`, even if others are above the assessment's level (so `onlyGaps`
+            always lists it); `compliant` when every control is evaluated and compliant; null when none was evaluated,
+            or when the evaluated ones are compliant and the others are above the assessment's level.
+          oneOf:
+            - type: string
+              enum: [compliant, gap]
+            - type: 'null'
+        controls:
+          type: array
+          items:
+            $ref: '#/components/schemas/ControlTrace'
+
+    ControlTrace:
+      type: object
+      required: [id, title, level, status, reason, actions, evidence]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        level:
+          type: string
+          description: Level id of the catalogue's scale, e.g. `basic`.
+        status:
+          description: The Compliance Engine's status; null when not evaluated.
+          oneOf:
+            - $ref: '#/components/schemas/ControlStatus'
+            - type: 'null'
+        reason:
+          type: [string, 'null']
+          description: Why it is a gap (`ANSWERED_NO`, `ANSWERED_UNKNOWN`, `ANSWERED_PARTIAL`); null otherwise.
+        actions:
+          type: array
+          description: Roadmap actions for this control. Empty until the roadmap exists (assessment#6).
+          items:
+            $ref: '#/components/schemas/TraceAction'
+        evidence:
+          type: array
+          description: Evidence collected for this control. Empty until providers collect some.
+          items:
+            $ref: '#/components/schemas/TraceEvidence'
+
+    TraceAction:
+      type: object
+      required: [id, title, status, dueDate]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        status:
+          type: string
+        dueDate:
+          type: [string, 'null']
+          format: date
+
+    TraceEvidence:
+      type: object
+      required: [provider, evidenceId, outcome, strength, collectedAt]
+      properties:
+        provider:
+          type: string
+          description: The provider plugin's id, e.g. `code-repository`.
+        evidenceId:
+          type: string
+          format: uuid
+        outcome:
+          type: string
+          enum: [SATISFIED, NOT_SATISFIED]
+          description: As in `EvidenceCollected`. `NOT_SATISFIED` is evidence of a gap, never of compliance.
+        strength:
+          type: string
+          enum: [SELF_REPORTED, DOCUMENT_VERIFIED, TECHNICALLY_VERIFIED, CONTINUOUSLY_VERIFIED]
+        collectedAt:
           type: string
           format: date-time
 
