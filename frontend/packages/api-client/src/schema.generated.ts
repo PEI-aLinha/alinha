@@ -354,6 +354,168 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/risk-assets/services": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the organization's critical services
+         * @description Critical services (the services the organization cannot do without) of the current organization,
+         *     ordered by `name` ascending (risk-assets#2). `page` below 0 or `pageSize` outside 1..100 is `400`
+         *     (`code` = `VALIDATION_FAILED`, `errors[0].field` names the parameter). Permission
+         *     `critical-service:read` (Designated Officer, analyst, consultant).
+         */
+        get: operations["listCriticalServices"];
+        put?: never;
+        /**
+         * Register a critical service
+         * @description Registers a critical service of the current organization. The `name` is unique in the organization
+         *     (case-insensitive): a repeated name is `409` (`code` = `SERVICE_NAME_TAKEN`). Permission
+         *     `critical-service:create` (Designated Officer).
+         */
+        post: operations["createCriticalService"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/risk-assets/services/{serviceId}": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path: {
+                serviceId: components["parameters"]["ServiceId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Read one critical service
+         * @description A critical service of the current organization. An id of another organization is `404`
+         *     (`code` = `SERVICE_NOT_FOUND`), never `403`. Permission `critical-service:read` (Designated Officer,
+         *     analyst, consultant).
+         */
+        get: operations["getCriticalService"];
+        /**
+         * Change a critical service
+         * @description Replaces the data of a critical service. `version` is the one that was read, otherwise `409`
+         *     (`code` = `VERSION_CONFLICT`); a name already used by another critical service is `409`
+         *     (`code` = `SERVICE_NAME_TAKEN`). An id of another organization is `404` (`code` = `SERVICE_NOT_FOUND`).
+         *     Permission `critical-service:edit` (Designated Officer).
+         */
+        put: operations["updateCriticalService"];
+        post?: never;
+        /**
+         * Delete a critical service
+         * @description Deletes a critical service. Each asset that supported it stops listing it in `serviceIds` and counts
+         *     as changed: its `version` goes up by one and `updatedAt` is the time of the deletion, so a `PUT` sent
+         *     with the old `version` is `409` (`VERSION_CONFLICT`), not a `422` about the missing service. The Audit
+         *     Trail gets `critical_service.deleted` (with how many assets were unlinked) and one `asset.updated`
+         *     per asset (`changed` = `["serviceIds"]`), in the same transaction. An id of another organization is
+         *     `404` (`code` = `SERVICE_NOT_FOUND`). Permission `critical-service:delete` (Designated Officer).
+         */
+        delete: operations["deleteCriticalService"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/risk-assets/assets": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the organization's assets
+         * @description Assets of the current organization, ordered by `name` then `id` ascending (risk-assets#2). Optional
+         *     filters combine with AND. An unknown `type` or `criticality`, a `serviceId` that is not a uuid, a `page`
+         *     below 0 or a `pageSize` outside 1..100 is `400` (`code` = `VALIDATION_FAILED`, `errors[0].field` names
+         *     the parameter). Permission `asset:read` (Designated Officer, analyst, consultant).
+         */
+        get: operations["listAssets"];
+        put?: never;
+        /**
+         * Register an asset
+         * @description Registers an asset of the current organization and publishes the `AssetRegistered` event. Every
+         *     id in `serviceIds` must be a critical service of this organization, otherwise `422`. Permission
+         *     `asset:create` (Designated Officer, analyst).
+         */
+        post: operations["createAsset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/risk-assets/assets/{assetId}": {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path: {
+                assetId: components["parameters"]["AssetId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Read one asset
+         * @description An asset of the current organization. An id of another organization is `404`
+         *     (`code` = `ASSET_NOT_FOUND`), never `403`. Permission `asset:read` (Designated Officer, analyst,
+         *     consultant).
+         */
+        get: operations["getAsset"];
+        /**
+         * Change an asset
+         * @description Replaces the data of an asset, including the critical services it supports (`serviceIds` is required;
+         *     `[]` removes every link). `version` is the one that was read, otherwise `409` (`code` = `VERSION_CONFLICT`). An unknown id in `serviceIds` is `422`.
+         *     An id of another organization is `404` (`code` = `ASSET_NOT_FOUND`). Permission `asset:edit`
+         *     (Designated Officer, analyst).
+         */
+        put: operations["updateAsset"];
+        post?: never;
+        /**
+         * Delete an asset
+         * @description Deletes an asset. An id of another organization is `404` (`code` = `ASSET_NOT_FOUND`). Permission
+         *     `asset:delete` (Designated Officer).
+         */
+        delete: operations["deleteAsset"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/assessment/assessments": {
         parameters: {
             query?: never;
@@ -1268,6 +1430,86 @@ export interface components {
              */
             assessmentId: string;
         };
+        /**
+         * @description How much the organization depends on the service or asset.
+         * @enum {string}
+         */
+        Criticality: "low" | "medium" | "high";
+        CriticalServiceInput: {
+            /** @description Unique in the organization (case-insensitive). */
+            name: string;
+            description?: string | null;
+            /** @description Name or role of the person responsible (free text). */
+            owner: string;
+            criticality: components["schemas"]["Criticality"];
+        };
+        CriticalServiceUpdate: components["schemas"]["CriticalServiceInput"] & {
+            /**
+             * Format: int64
+             * @description The `version` that was read. A different value is `409` (`VERSION_CONFLICT`).
+             */
+            version: number;
+        };
+        CriticalService: components["schemas"]["CriticalServiceInput"] & {
+            /** Format: uuid */
+            id: string;
+            /** Format: int64 */
+            version: number;
+            /** @description Always present; null when there is none. */
+            description: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        CriticalServicePage: components["schemas"]["PageMeta"] & {
+            items: components["schemas"]["CriticalService"][];
+        };
+        /** @enum {string} */
+        AssetType: "server" | "network" | "application" | "database" | "equipment" | "cloud-service" | "storage" | "ot-system" | "other";
+        AssetInput: {
+            name: string;
+            description?: string | null;
+            type: components["schemas"]["AssetType"];
+            /** @description Name or role of the person responsible (free text). */
+            owner: string;
+            criticality: components["schemas"]["Criticality"];
+            /**
+             * @description Critical services of this organization that the asset supports. Empty means none; on create,
+             *     omitted also means none (on update it is required, see `AssetUpdate`). Repeated ids count once.
+             *     An id that is not a service of this organization is a `422` (field `serviceIds`).
+             */
+            serviceIds?: string[];
+        };
+        AssetUpdate: components["schemas"]["AssetInput"] & {
+            /**
+             * Format: int64
+             * @description The `version` that was read. A different value is `409` (`VERSION_CONFLICT`).
+             */
+            version: number;
+            /**
+             * @description Required here, so that a client that forgets it does not unlink every service: the full set of
+             *     services the asset supports, `[]` to remove every link. Omitted is `422` (field `serviceIds`).
+             */
+            serviceIds: string[];
+        };
+        Asset: components["schemas"]["AssetInput"] & {
+            /** Format: uuid */
+            id: string;
+            /** Format: int64 */
+            version: number;
+            /** @description Always present; null when there is none. */
+            description: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** @description Sorted ascending. */
+            serviceIds: string[];
+        };
+        AssetPage: components["schemas"]["PageMeta"] & {
+            items: components["schemas"]["Asset"][];
+        };
         AssessmentIncompleteProblem: components["schemas"]["Problem"] & {
             /** @description Ids of the questions with no answer, in catalogue order. */
             unanswered: string[];
@@ -1492,6 +1734,8 @@ export interface components {
         /** @description Items per page. */
         PageSize: number;
         AssessmentId: string;
+        AssetId: string;
+        ServiceId: string;
         RiskId: string;
     };
     requestBodies: never;
@@ -2087,6 +2331,386 @@ export interface operations {
                 };
             };
             422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    listCriticalServices: {
+        parameters: {
+            query?: {
+                /** @description Zero-based page number. */
+                page?: components["parameters"]["Page"];
+                /** @description Items per page. */
+                pageSize?: components["parameters"]["PageSize"];
+            };
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of critical services. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CriticalServicePage"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createCriticalService: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CriticalServiceInput"];
+            };
+        };
+        responses: {
+            /** @description The critical service was registered. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CriticalService"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            /** @description Another critical service of this organization already has this name (`code` = `SERVICE_NAME_TAKEN`). */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    getCriticalService: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path: {
+                serviceId: components["parameters"]["ServiceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The critical service. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CriticalService"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateCriticalService: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path: {
+                serviceId: components["parameters"]["ServiceId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CriticalServiceUpdate"];
+            };
+        };
+        responses: {
+            /** @description The critical service after the change. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CriticalService"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /**
+             * @description The critical service changed since it was read (`code` = `VERSION_CONFLICT`: reload and try
+             *     again), or the name is taken (`code` = `SERVICE_NAME_TAKEN`).
+             */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    deleteCriticalService: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path: {
+                serviceId: components["parameters"]["ServiceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The critical service was deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    listAssets: {
+        parameters: {
+            query?: {
+                /** @description Zero-based page number. */
+                page?: components["parameters"]["Page"];
+                /** @description Items per page. */
+                pageSize?: components["parameters"]["PageSize"];
+                /** @description Only assets of this type. */
+                type?: components["schemas"]["AssetType"];
+                /** @description Only assets with this criticality. */
+                criticality?: components["schemas"]["Criticality"];
+                /** @description Only assets that support this critical service. */
+                serviceId?: string;
+            };
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description One page of assets. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssetPage"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+        };
+    };
+    createAsset: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssetInput"];
+            };
+        };
+        responses: {
+            /** @description The asset was registered. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Asset"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    getAsset: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path: {
+                assetId: components["parameters"]["AssetId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The asset. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Asset"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+        };
+    };
+    updateAsset: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path: {
+                assetId: components["parameters"]["AssetId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssetUpdate"];
+            };
+        };
+        responses: {
+            /** @description The asset after the change. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Asset"];
+                };
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
+            /** @description The asset changed since it was read (`code` = `VERSION_CONFLICT`): reload and try again. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            422: components["responses"]["UnprocessableEntity"];
+        };
+    };
+    deleteAsset: {
+        parameters: {
+            query?: never;
+            header?: {
+                /**
+                 * @description Tenant UUID chosen by a consultant. Client users may omit it; if sent, it must match their
+                 *     own organization. Required for consultants: a missing value is `400`, an unassigned value
+                 *     is `403`. Never put the tenant in the path, query or body (ADR 0002).
+                 */
+                "X-Alinha-Tenant"?: components["parameters"]["Tenant"];
+            };
+            path: {
+                assetId: components["parameters"]["AssetId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The asset was deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["BadRequest"];
+            401: components["responses"]["Unauthorized"];
+            403: components["responses"]["Forbidden"];
+            404: components["responses"]["NotFound"];
         };
     };
     listAssessments: {

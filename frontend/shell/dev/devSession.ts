@@ -32,15 +32,15 @@ const PEOPLE: Record<DevPersona, MeDto['user']> = {
 export const DEV_PERMISSIONS: Record<DevPersona, readonly string[]> = {
   responsible: [
     'plugins:read', 'scope:read', 'scope:edit', 'framing:read', 'framing:edit',
-    'asset:read', 'asset:create', 'asset:edit', 'asset:delete', 'asset:import', 'asset:bulk_edit',
-    'critical_service:read', 'critical_service:create', 'critical_service:edit', 'critical_service:delete',
-    'asset_task:read', 'asset_task:assign', 'asset_comment:read', 'asset_export:read', 'roadmap:read', 'history:read',
+    'asset:read', 'asset:create', 'asset:edit', 'asset:delete', 'asset:import', 'asset:bulk-edit',
+    'critical-service:read', 'critical-service:create', 'critical-service:edit', 'critical-service:delete',
+    'asset-task:read', 'asset-task:assign', 'asset-comment:read', 'asset-export:read', 'roadmap:read', 'history:read',
     'audit:read', 'member:read', 'member:manage',
   ],
-  analyst: ['plugins:read', 'asset:read', 'asset:create', 'asset:edit', 'critical_service:read', 'asset_task:read'],
+  analyst: ['plugins:read', 'asset:read', 'asset:create', 'asset:edit', 'critical-service:read', 'asset-task:read'],
   consultant: [
-    'plugins:read', 'scope:read', 'framing:read', 'asset:read', 'critical_service:read',
-    'asset_comment:read', 'asset_comment:comment', 'asset_export:read',
+    'plugins:read', 'scope:read', 'framing:read', 'asset:read', 'critical-service:read',
+    'asset-comment:read', 'asset-comment:comment', 'asset-export:read',
     'risk:read', 'risk:create', 'risk:edit', 'risk:link', 'roadmap:read', 'roadmap:validate', 'roadmap:create',
     'history:read', 'portfolio:read', 'audit:read',
   ],

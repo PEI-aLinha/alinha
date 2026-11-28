@@ -95,6 +95,16 @@ Add a row with each new endpoint.
 | `POST /api/organization/registration` | `organization:register` | no | no | no | yes |
 | `GET /api/organization/profile` | `organization:read` | yes | yes | yes | no |
 | `PUT /api/organization/profile` | `organization:edit` | yes | yes | no | no |
+| `GET /api/risk-assets/services` | `critical-service:read` | yes | yes | yes | no |
+| `POST /api/risk-assets/services` | `critical-service:create` | no | yes | no | no |
+| `GET /api/risk-assets/services/{serviceId}` | `critical-service:read` | yes | yes | yes | no |
+| `PUT /api/risk-assets/services/{serviceId}` | `critical-service:edit` | no | yes | no | no |
+| `DELETE /api/risk-assets/services/{serviceId}` | `critical-service:delete` | no | yes | no | no |
+| `GET /api/risk-assets/assets` | `asset:read` | yes | yes | yes | no |
+| `POST /api/risk-assets/assets` | `asset:create` | no | yes | yes | no |
+| `GET /api/risk-assets/assets/{assetId}` | `asset:read` | yes | yes | yes | no |
+| `PUT /api/risk-assets/assets/{assetId}` | `asset:edit` | no | yes | yes | no |
+| `DELETE /api/risk-assets/assets/{assetId}` | `asset:delete` | no | yes | no | no |
 | `GET /api/organization/members` | `member:read` | no | yes | no | no |
 | `DELETE /api/organization/members/{memberId}` | `member:manage` | no | yes | no | no |
 | `GET /api/organization/invitations` | `member:read` | no | yes | no | no |
