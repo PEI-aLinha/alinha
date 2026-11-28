@@ -827,8 +827,6 @@ export interface components {
             nis2Classification: components["schemas"]["Nis2Classification"];
             /** @description The CNCS may still cover the organization or raise its classification. */
             cncsMayQualify: boolean;
-            /** @description Always true; the official qualification is the CNCS's. */
-            indicative: boolean;
             /** @description NIS2 (`nis2-qnrcs`), GDPR (`gdpr`) and the AI Act (`ai-act`), in that order. */
             frameworks: components["schemas"]["FrameworkApplicability"][];
         };

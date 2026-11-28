@@ -1365,7 +1365,7 @@ components:
 
     ApplicabilityResult:
       type: object
-      required: [rulesVersion, size, nis2Classification, cncsMayQualify, indicative, frameworks]
+      required: [rulesVersion, size, nis2Classification, cncsMayQualify, frameworks]
       properties:
         rulesVersion:
           type: string
@@ -1379,9 +1379,6 @@ components:
         cncsMayQualify:
           type: boolean
           description: The CNCS may still cover the organization or raise its classification.
-        indicative:
-          type: boolean
-          description: Always true; the official qualification is the CNCS's.
         frameworks:
           type: array
           description: NIS2 (`nis2-qnrcs`), GDPR (`gdpr`) and the AI Act (`ai-act`), in that order.
