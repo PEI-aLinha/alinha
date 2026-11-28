@@ -42,7 +42,7 @@ export const DEV_PERMISSIONS: Record<DevPersona, readonly string[]> = {
     'plugins:read', 'scope:read', 'framing:read', 'asset:read', 'critical_service:read',
     'asset_comment:read', 'asset_comment:comment', 'asset_export:read',
     'risk:read', 'risk:create', 'risk:edit', 'risk:link', 'roadmap:read', 'roadmap:validate', 'roadmap:create',
-    'history:read', 'portfolio:read', 'audit:read',
+    'history:read', 'portfolio:read', 'audit:read', 'traceability:read',
   ],
   registrant: ['plugins:read', 'organization:register', 'invitation:accept'],
 }

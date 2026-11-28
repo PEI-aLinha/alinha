@@ -101,3 +101,5 @@ Add a row with each new endpoint.
 | `POST /api/organization/invitations` | `member:manage` | no | yes | no | no |
 | `DELETE /api/organization/invitations/{invitationId}` | `member:manage` | no | yes | no | no |
 | `POST /api/organization/invitations/accept` | `invitation:accept` | no | no | no | yes |
+| `GET /api/dashboard-reports/traceability/{framework}` | `traceability:read` | yes | no | no | no |
+| `GET /api/dashboard-reports/traceability/{framework}/requirements/{requirementId}` | `traceability:read` | yes | no | no | no |
