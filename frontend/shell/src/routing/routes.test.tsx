@@ -1,6 +1,8 @@
-import { describe, expect, it } from 'vitest'
-import { definePlugin, type FrontendPlugin } from '@alinha/plugin-sdk'
-import { checkPortfolioRoutes, firstOnboardingPath } from './routes'
+import { afterEach, describe, expect, it } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
+import { definePlugin, rememberReturnPath, type FrontendPlugin } from '@alinha/plugin-sdk'
+import { checkPortfolioRoutes, firstOnboardingPath, ResumeRedirect } from './routes'
 
 const Page = () => null
 const withOnboarding = (onboarding: FrontendPlugin['routes']['onboarding']) =>
@@ -74,5 +76,35 @@ describe('checkPortfolioRoutes', () => {
     ['a route with no path', { Component: Page, children: [{ path: 'x', Component: Page }] }],
   ])('refuses %s, naming the plugin', (_why, route) => {
     expect(() => checkPortfolioRoutes(withPortfolio([route]))).toThrow(/Plugin "p".*ADR 0006/)
+  })
+})
+
+describe('ResumeRedirect', () => {
+  const at = (url: string) =>
+    render(
+      <MemoryRouter initialEntries={[url]}>
+        <Routes>
+          <Route path="/resume" element={<ResumeRedirect />} />
+          <Route path="*" element={<LocationProbe />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+  function LocationProbe() {
+    const { pathname, search } = useLocation()
+    return <p>{`${pathname}${search}`}</p>
+  }
+
+  afterEach(() => sessionStorage.clear())
+
+  it('goes back to the remembered page with the query string', () => {
+    rememberReturnPath('/org/acme/integrations/code-repository')
+    at('/resume?installation_id=7&state=abc')
+    expect(screen.getByText('/org/acme/integrations/code-repository?installation_id=7&state=abc')).toBeInTheDocument()
+  })
+
+  it('goes home without a remembered page', () => {
+    at('/resume?installation_id=7')
+    expect(screen.getByText('/')).toBeInTheDocument()
   })
 })

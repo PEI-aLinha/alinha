@@ -108,12 +108,21 @@ jobs:
           # OpenBao. The root token is never here: it stays with the operator (deploy/DEPLOYMENT.md, "OpenBao").
           BAO_SEED_TOKEN: ${{ secrets.BAO_SEED_TOKEN }}
           BAO_APP_TOKEN: ${{ secrets.BAO_APP_TOKEN }}
+          BAO_WORKER_TOKEN: ${{ secrets.BAO_WORKER_TOKEN }}
           # SMTP relay for Keycloak and the app
           SMTP_HOST: ${{ vars.SMTP_HOST }}
           SMTP_PORT: ${{ vars.SMTP_PORT }}
           SMTP_FROM: ${{ vars.SMTP_FROM }}
           SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          # The aLinha GitHub App (code-repository), optional: unset hides it and clients use a token. GitHub refuses
+          # names that start with GITHUB_, hence ALINHA_. ALINHA_GITHUB_APP_REMOVE=true deletes the stored key.
+          ALINHA_GITHUB_APP_SLUG: ${{ vars.ALINHA_GITHUB_APP_SLUG }}
+          ALINHA_GITHUB_APP_CLIENT_ID: ${{ vars.ALINHA_GITHUB_APP_CLIENT_ID }}
+          ALINHA_GITHUB_APP_ID: ${{ vars.ALINHA_GITHUB_APP_ID }}
+          ALINHA_GITHUB_APP_REMOVE: ${{ vars.ALINHA_GITHUB_APP_REMOVE }}
+          ALINHA_GITHUB_APP_CLIENT_SECRET: ${{ secrets.ALINHA_GITHUB_APP_CLIENT_SECRET }}
+          ALINHA_GITHUB_APP_PRIVATE_KEY: ${{ secrets.ALINHA_GITHUB_APP_PRIVATE_KEY }}
           # The VM's reverse proxy: its Docker network and the address range web trusts X-Forwarded-For from.
           PROXY_NETWORK: ${{ vars.PROXY_NETWORK }}
           TRUSTED_PROXY_CIDR: ${{ vars.TRUSTED_PROXY_CIDR }}

@@ -32,6 +32,8 @@ tags:
     description: Dashboards and reports (dashboard-reports plugin).
   - name: risk-assets
     description: Asset inventory and ISO/IEC 27005 risk register (risk-assets plugin).
+  - name: code-repository
+    description: Read-only connection to the organization's code repositories and the evidence collected (code-repository provider).
   - name: audit
     description: Who did what and when in the current organization (core audit trail).
   - name: internal
@@ -1099,6 +1101,296 @@ paths:
                 $ref: '#/components/schemas/Problem'
         '422':
           $ref: '#/components/responses/UnprocessableEntity'
+
+  /api/code-repository/connection:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+    get:
+      tags: [code-repository]
+      operationId: getCodeRepositoryConnection
+      summary: The organization's connection to its repository host
+      description: |
+        `204` when nothing is connected yet. Never contains the token. Permission `code-repository:read`
+        (Designated Officer, analyst, consultant).
+      responses:
+        '200':
+          description: The connection and the state of its last collection.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CodeRepositoryConnection'
+        '204':
+          description: No repository is connected.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    put:
+      tags: [code-repository]
+      operationId: connectCodeRepository
+      summary: Connect (or change) the repository host and start a collection
+      description: |
+        Stores the read-only token in OpenBao (never in the database, never returned) and queues an `evidence.collect`
+        job (FR37, US37). `token` is required the first time, for another host or server, and after a GitHub App
+        connection; otherwise leave it out to keep the stored one. The connection is then collected again every day.
+        `repositories` empty means every repository of `account` the token can see (at most 20 per collection).
+        `409` (`code` = `COLLECTION_RUNNING`) while a collection is running (less than 15 minutes); `422` names the invalid field;
+        `503` (`code` = `SECRETS_UNAVAILABLE`) when the token cannot be stored. Permission `code-repository:connect`
+        (Designated Officer, analyst, consultant).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CodeRepositoryConnectInput'
+      responses:
+        '202':
+          description: Saved; a collection is queued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CodeRepositoryConnection'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '503':
+          description: The token could not be stored.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    delete:
+      tags: [code-repository]
+      operationId: disconnectCodeRepository
+      summary: Remove the connection and its stored token
+      description: |
+        Evidence already collected is kept. `404` (`code` = `NOT_CONNECTED`) when nothing is connected.
+        Permission `code-repository:connect`.
+      responses:
+        '204':
+          description: Disconnected.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          description: The token could not be removed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /api/code-repository/collections:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+    post:
+      tags: [code-repository]
+      operationId: collectCodeRepositoryEvidence
+      summary: Collect the evidence again now
+      description: |
+        Queues a new collection with the stored credential. `404` (`code` = `NOT_CONNECTED`) when nothing is connected,
+        `409` (`code` = `COLLECTION_RUNNING`) while one is running. Permission `code-repository:connect`.
+      responses:
+        '202':
+          description: A collection is queued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CodeRepositoryConnection'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/code-repository/setup:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+    get:
+      tags: [code-repository]
+      operationId: getCodeRepositorySetup
+      summary: What the connect page needs before anything is connected
+      description: Whether the aLinha GitHub App can be offered, and who was asked to connect. Permission `code-repository:read`.
+      responses:
+        '200':
+          description: The setup.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CodeRepositorySetup'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/code-repository/assignment:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+    put:
+      tags: [code-repository]
+      operationId: assignCodeRepository
+      summary: Ask someone, by email, to connect the repository
+      description: |
+        Saves who was asked and emails them a link to the platform (US37). Connecting still needs
+        `code-repository:connect`. `422` (`field` = `email`) for an invalid address. Permission `code-repository:assign`
+        (Designated Officer, consultant).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CodeRepositoryAssignInput'
+      responses:
+        '200':
+          description: Assigned; the email is queued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CodeRepositoryAssignment'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+    delete:
+      tags: [code-repository]
+      operationId: unassignCodeRepository
+      summary: Withdraw the request
+      description: Nothing happens when nobody was asked. Permission `code-repository:assign`.
+      responses:
+        '204':
+          description: Withdrawn.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/code-repository/github-app/installations:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+    post:
+      tags: [code-repository]
+      operationId: startCodeRepositoryAppInstall
+      summary: Start installing the aLinha GitHub App
+      description: |
+        Returns GitHub's install page with a single-use `state` (valid 15 minutes) bound to this organization. GitHub
+        sends the person back to `/resume` (the shell returns them to the plugin page). `503` (`code` =
+        `APP_UNAVAILABLE`) when the App is not configured. Permission `code-repository:connect`.
+      responses:
+        '201':
+          description: Where to send the person.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CodeRepositoryAppInstallStart'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          description: The GitHub App is not configured.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /api/code-repository/github-app/installation:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+    put:
+      tags: [code-repository]
+      operationId: completeCodeRepositoryAppInstall
+      summary: Connect through the GitHub App that was just installed
+      description: |
+        Takes what GitHub sent back (`installation_id`, `state`, `code`). The state must be this organization's, unused
+        and fresh (`422`, `code` = `APP_INSTALL_EXPIRED`); the installation must be one GitHub shows to the person who
+        installed it (`422`, `code` = `APP_INSTALL_NOT_VERIFIED`). Only the installation id is stored; no token.
+        `503` (`code` = `GITHUB_UNAVAILABLE`) when GitHub does not answer. Permission `code-repository:connect`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CodeRepositoryAppInstallInput'
+      responses:
+        '202':
+          description: Connected; a collection is queued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CodeRepositoryConnection'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '503':
+          description: GitHub or the App is not available.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+  /api/code-repository/evidence:
+    parameters:
+      - $ref: '#/components/parameters/Tenant'
+    get:
+      tags: [code-repository]
+      operationId: listCodeRepositoryEvidence
+      summary: Evidence from the last completed collection
+      description: |
+        One item per repository and check, ordered by repository then check. Empty before the first collection
+        completes. Not paginated: at most 20 repositories × 4 checks. `controlIds` come from a deterministic,
+        versioned mapping (NFR05). Permission `code-repository:read`.
+      responses:
+        '200':
+          description: The evidence.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CodeRepositoryEvidence'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   /api/audit/events:
     parameters:
@@ -2626,6 +2918,162 @@ components:
         status:
           type: string
           enum: [ok]
+
+    CodeRepositoryConnection:
+      type: object
+      required: [host, auth, account, repositories, status, truncated, connectedAt]
+      properties:
+        host:
+          type: string
+          enum: [github, gitlab]
+        baseUrl:
+          type: [string, 'null']
+          description: Self-managed GitLab server (`https://host[:port]`); null for github.com and gitlab.com.
+        auth:
+          type: string
+          enum: [token, app]
+          description: '`token`: a read-only access token; `app`: the aLinha GitHub App installed by the client.'
+        account:
+          type: string
+          description: GitHub user or organization, or GitLab group (with subgroups) or user path.
+        repositories:
+          type: array
+          description: |
+            `owner/name` (GitLab: the project path). Empty: every repository of `account` the credential can see (with
+            the App, the ones chosen when installing it).
+          items:
+            type: string
+        status:
+          type: string
+          enum: [PENDING, ACTIVE, FAILED]
+          description: PENDING while a collection is queued or running; FAILED says why in `lastError`.
+        lastError:
+          type: [string, 'null']
+          description: |
+            Error code of the last failed collection (`invalid_credentials`, `connection_not_found`, `invalid_result`,
+            `transient_error`, `collector_error`, ...). The page turns it into a sentence.
+        lastCollectedAt:
+          type: [string, 'null']
+          format: date-time
+        collectingSince:
+          type: [string, 'null']
+          format: date-time
+          description: When the current (or last) collection was queued. A PENDING one older than 15 minutes is
+            treated as lost, and a new collection may start.
+        truncated:
+          type: boolean
+          description: The account has more repositories than one collection inspects (20).
+        connectedAt:
+          type: string
+          format: date-time
+    CodeRepositoryConnectInput:
+      type: object
+      required: [host, account]
+      properties:
+        host:
+          type: string
+          enum: [github, gitlab]
+        baseUrl:
+          type: string
+          description: Only for a self-managed GitLab, `https://host[:port]`. Leave out for gitlab.com.
+        account:
+          type: string
+          maxLength: 255
+        repositories:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            description: '`owner/name` inside `account` (GitLab: a project path, possibly in a subgroup).'
+        token:
+          type: string
+          maxLength: 512
+          writeOnly: true
+          description: |
+            Read-only access token. Required the first time, for another host or server and after a GitHub App
+            connection; leave out to keep the stored one.
+    CodeRepositoryEvidence:
+      type: object
+      required: [id, repository, check, outcome, details, controlIds, strength, collectedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        repository:
+          type: string
+        check:
+          type: string
+          enum: [branch_protection, required_reviews, dependency_alerts, secret_scanning]
+        outcome:
+          type: string
+          enum: [PASS, FAIL, UNKNOWN]
+          description: UNKNOWN when the token could not see it; it is not evidence for any control.
+        details:
+          type: object
+          description: Counts and flags only (e.g. `requiredApprovals`, `openCriticalOrHigh`, `enabled`).
+          additionalProperties:
+            type: [boolean, integer, string]
+        controlIds:
+          type: array
+          items:
+            type: string
+        strength:
+          type: string
+          enum: [SELF_REPORTED, DOCUMENT_VERIFIED, TECHNICALLY_VERIFIED, CONTINUOUSLY_VERIFIED]
+          description: CONTINUOUSLY_VERIFIED when the daily collection found it and the previous one succeeded within a day.
+        collectedAt:
+          type: string
+          format: date-time
+    CodeRepositorySetup:
+      type: object
+      required: [githubApp]
+      properties:
+        githubApp:
+          type: boolean
+          description: The aLinha GitHub App is configured, so the page can offer it instead of a token.
+        assignment:
+          oneOf:
+            - $ref: '#/components/schemas/CodeRepositoryAssignment'
+            - type: 'null'
+    CodeRepositoryAssignment:
+      type: object
+      required: [email, assignedAt]
+      properties:
+        email:
+          type: string
+          format: email
+        assignedAt:
+          type: string
+          format: date-time
+    CodeRepositoryAssignInput:
+      type: object
+      required: [email]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+    CodeRepositoryAppInstallStart:
+      type: object
+      required: [installUrl]
+      properties:
+        installUrl:
+          type: string
+          format: uri
+    CodeRepositoryAppInstallInput:
+      type: object
+      required: [installationId, state, code]
+      properties:
+        installationId:
+          type: integer
+          format: int64
+          minimum: 1
+        state:
+          type: string
+          writeOnly: true
+        code:
+          type: string
+          writeOnly: true
 
   headers:
     RetryAfter:

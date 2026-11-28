@@ -14,6 +14,7 @@ export LLM_API_KEY="${LLM_API_KEY:-change-me}"
 export AI_SERVICE_TOKEN="${AI_SERVICE_TOKEN:-dev-ai-service-token}"
 export KEYCLOAK_PROVISIONER_SECRET="${KEYCLOAK_PROVISIONER_SECRET:-dev-provisioner-secret}"
 export ALINHA_BAO_APP_TOKEN="${ALINHA_BAO_APP_TOKEN:-dev-app-token}"
+export ALINHA_BAO_WORKER_TOKEN="${ALINHA_BAO_WORKER_TOKEN:-dev-worker-token}"
 # Staging passes an empty AI Service token (no AI Service yet); dev gets its fixed one.
 export ALINHA_BAO_AI_TOKEN="${ALINHA_BAO_AI_TOKEN-dev-ai-token}"
 

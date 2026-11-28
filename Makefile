@@ -35,7 +35,7 @@ staging-env:
 	  echo "SMTP_USERNAME=staging"; \
 	  for v in POSTGRES_PASSWORD ALINHA_APP_DB_PASSWORD KEYCLOAK_DB_PASSWORD KEYCLOAK_ADMIN_PASSWORD \
 	           BFF_CLIENT_SECRET KEYCLOAK_PROVISIONER_SECRET ALINHA_TEST_USER_PASSWORD BAO_ROOT_TOKEN BAO_APP_TOKEN \
-	           BAO_SEED_TOKEN SMTP_PASSWORD; do \
+	           BAO_SEED_TOKEN BAO_WORKER_TOKEN SMTP_PASSWORD; do \
 	    echo "$$v=$$(openssl rand -hex 24)"; \
 	  done; \
 	} > deploy/.env.staging && chmod 600 deploy/.env.staging && echo "Created deploy/.env.staging"

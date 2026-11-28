@@ -85,6 +85,11 @@ services:
       SMTP_USERNAME: ${SMTP_USERNAME:?}
       SMTP_AUTH: "true"
       SMTP_STARTTLS: "true"
+      # Links in emails (e.g. the code-repository invite).
+      ALINHA_PUBLIC_URL: ${ALINHA_PUBLIC_URL:?}
+      # The aLinha GitHub App (code-repository), optional: DEPLOYMENT.md, "GitHub App". Its client secret is in OpenBao.
+      GITHUB_APP_SLUG: ${ALINHA_GITHUB_APP_SLUG:-}
+      GITHUB_APP_CLIENT_ID: ${ALINHA_GITHUB_APP_CLIENT_ID:-}
       # Regex for BFF_IP.
       ALINHA_TRUSTED_PROXIES: ${ALINHA_TRUSTED_PROXIES:-172\.31\.0\.10}
     volumes:
@@ -110,8 +115,13 @@ services:
     networks: [alinha]
     environment:
       REDIS_URL: redis://redis:6379/0
+      # Reads provider credentials only (deploy/openbao/alinha-worker.hcl).
+      BAO_ADDR: http://openbao:8200
+      BAO_TOKEN: ${BAO_WORKER_TOKEN:?}
     depends_on:
       redis:
+        condition: service_healthy
+      openbao:
         condition: service_healthy
 
   keycloak:
@@ -198,14 +208,15 @@ services:
       BAO_ADDR: http://127.0.0.1:8200 # for `docker exec ... bao operator unseal` and bootstrap.sh
       ALINHA_BAO_APP_TOKEN: ${BAO_APP_TOKEN:?}
       ALINHA_BAO_SEED_TOKEN: ${BAO_SEED_TOKEN:?}
+      ALINHA_BAO_WORKER_TOKEN: ${BAO_WORKER_TOKEN:?}
     volumes:
       - ./openbao/server.hcl:/openbao/config/server.hcl:ro
       - ./openbao:/init:ro # bootstrap.sh and the policies, run by hand with the root token
       - openbao-data:/openbao/file
     healthcheck:
-      # Healthy = initialized and unsealed. Also renews the app's and the seed job's periodic tokens (renew-self),
+      # Healthy = initialized and unsealed. Also renews the app's, the seed job's and the worker's periodic tokens (renew-self),
       # so they never expire while the stack runs; before the bootstrap they do not exist yet, which is fine.
-      test: ["CMD-SHELL", "bao status >/dev/null && { for t in \"$$ALINHA_BAO_APP_TOKEN\" \"$$ALINHA_BAO_SEED_TOKEN\"; do BAO_TOKEN=\"$$t\" bao token renew >/dev/null 2>&1 || true; done; }"]
+      test: ["CMD-SHELL", "bao status >/dev/null && { for t in \"$$ALINHA_BAO_APP_TOKEN\" \"$$ALINHA_BAO_SEED_TOKEN\" \"$$ALINHA_BAO_WORKER_TOKEN\"; do BAO_TOKEN=\"$$t\" bao token renew >/dev/null 2>&1 || true; done; }"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -231,6 +242,12 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD:?}
       LLM_API_KEY: none # no AI Service in production yet
       AI_SERVICE_TOKEN: none # no AI Service in production yet
+      # The aLinha GitHub App, optional (DEPLOYMENT.md, "GitHub App"). GitHub refuses secret and variable names that
+      # start with GITHUB_, so the deploy passes them as ALINHA_GITHUB_APP_*.
+      GITHUB_APP_CLIENT_SECRET: ${ALINHA_GITHUB_APP_CLIENT_SECRET:-}
+      GITHUB_APP_ID: ${ALINHA_GITHUB_APP_ID:-}
+      GITHUB_APP_PRIVATE_KEY: ${ALINHA_GITHUB_APP_PRIVATE_KEY:-}
+      GITHUB_APP_REMOVE: ${ALINHA_GITHUB_APP_REMOVE:-}
     volumes:
       - ./openbao:/init:ro
     depends_on:
