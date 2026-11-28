@@ -101,3 +101,9 @@ Add a row with each new endpoint.
 | `POST /api/organization/invitations` | `member:manage` | no | yes | no | no |
 | `DELETE /api/organization/invitations/{invitationId}` | `member:manage` | no | yes | no | no |
 | `POST /api/organization/invitations/accept` | `invitation:accept` | no | no | no | yes |
+| `GET /api/external-surface/monitoring` | `external-surface:read` | yes | yes | yes | no |
+| `PUT /api/external-surface/monitoring` | `external-surface:activate` | no | yes | no | no |
+| `DELETE /api/external-surface/monitoring` | `external-surface:manage` | yes | yes | no | no |
+| `PUT /api/external-surface/hosts` | `external-surface:manage` | yes | yes | no | no |
+| `POST /api/external-surface/collections` | `external-surface:manage` | yes | yes | no | no |
+| `GET /api/external-surface/evidence` | `external-surface:read` | yes | yes | yes | no |
