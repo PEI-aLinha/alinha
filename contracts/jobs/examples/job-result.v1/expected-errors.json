@@ -1,0 +1,17 @@
+{
+  "attempt-zero.json": [
+    "/attempt: minimum"
+  ],
+  "completed-with-error.json": [
+    "/: not"
+  ],
+  "failed-without-error.json": [
+    "/: required error"
+  ],
+  "missing-tenant.json": [
+    "/: required tenantId"
+  ],
+  "unknown-status.json": [
+    "/status: enum"
+  ]
+}

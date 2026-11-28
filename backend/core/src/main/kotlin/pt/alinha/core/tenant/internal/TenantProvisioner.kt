@@ -35,8 +35,11 @@ internal const val ORGANIZATION_ALREADY_EXISTS = "ORGANIZATION_ALREADY_EXISTS"
 internal const val IDENTITY_UNAVAILABLE = "IDENTITY_UNAVAILABLE"
 internal const val REGISTRATION_BUSY = "REGISTRATION_BUSY"
 private const val EMAIL_VERIFIED_CLAIM = "email_verified"
-/** Namespace of the per-account advisory lock key, so it cannot collide with other advisory locks. */
-private const val ACCOUNT_LOCK_PREFIX = "alinha.tenant.provisioning:"
+/**
+ * Namespace of the per-account advisory lock key, so it cannot collide with other advisory locks. Shared with
+ * [TenantMembershipService]: registering an organization and accepting an invitation exclude each other.
+ */
+internal const val ACCOUNT_LOCK_PREFIX = "alinha.tenant.provisioning:"
 
 /**
  * Registrations that may run at once. Each one holds a database connection while it calls the identity provider:
@@ -130,6 +133,8 @@ class TenantProvisioner(
             .params(tenantId.value, subject)
             .update()
         if (inserted == 0) throw alreadyRegistered()
+        // An analyst whose token is still stale after joining by invitation still says `registrant` (ADR 0007).
+        if (hasAcceptedInvitation(jdbc, subject)) throw alreadyRegistered()
 
         val result = block(tenantId)
         audit.record(TENANT_PROVISIONED, "tenant", tenantId.value.toString())

@@ -105,3 +105,9 @@ Add a row with each new endpoint.
 | `GET /api/risk-assets/assets/{assetId}` | `asset:read` | yes | yes | yes | no |
 | `PUT /api/risk-assets/assets/{assetId}` | `asset:edit` | no | yes | yes | no |
 | `DELETE /api/risk-assets/assets/{assetId}` | `asset:delete` | no | yes | no | no |
+| `GET /api/organization/members` | `member:read` | no | yes | no | no |
+| `DELETE /api/organization/members/{memberId}` | `member:manage` | no | yes | no | no |
+| `GET /api/organization/invitations` | `member:read` | no | yes | no | no |
+| `POST /api/organization/invitations` | `member:manage` | no | yes | no | no |
+| `DELETE /api/organization/invitations/{invitationId}` | `member:manage` | no | yes | no | no |
+| `POST /api/organization/invitations/accept` | `invitation:accept` | no | no | no | yes |

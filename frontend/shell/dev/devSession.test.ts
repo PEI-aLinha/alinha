@@ -37,9 +37,9 @@ describe('devSession (pnpm dev only)', () => {
     expect(JSON.parse(res.body!)).toEqual(devMe('analyst'))
   })
 
-  it('gives a registrant no organization and only the registration permission', () => {
+  it('gives a registrant no organization, only registering one or joining one by invitation', () => {
     expect(devMe('registrant')).toMatchObject({ roles: ['registrant'], organizations: [] })
-    expect(devMe('registrant').permissions).toEqual(['plugins:read', 'organization:register'])
+    expect(devMe('registrant').permissions).toEqual(['plugins:read', 'organization:register', 'invitation:accept'])
   })
 
   it('answers 401 for anonymous', () => {

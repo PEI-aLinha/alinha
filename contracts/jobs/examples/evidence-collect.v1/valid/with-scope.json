@@ -1,0 +1,14 @@
+{
+  "jobId": "11111111-2222-4333-8444-555555555555",
+  "type": "evidence.collect",
+  "tenantId": "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
+  "provider": "code-repository",
+  "connectionRef": "tenant/connections/github",
+  "requestedAt": "2026-11-24T10:00:00Z",
+  "scope": {
+    "repositories": [
+      "acme/api",
+      "acme/web"
+    ]
+  }
+}
