@@ -64,7 +64,8 @@ cp deploy/.env.example deploy/.env                     # optional: dev defaults 
 pnpm install && pnpm --filter @alinha/keycloak-theme build-keycloak-theme  # aLinha login pages (needs Maven)
 docker compose -f deploy/docker-compose.dev.yml up -d  # Postgres, Redis, Keycloak, Mailpit, OpenBao
 # Existing volume from before #10? See docs/audit.md (DB role alinha_app needs LOGIN)
-BAO_TOKEN=dev-app-token SPRING_PROFILES_ACTIVE=demo ./gradlew :app:bootRun  # backend on :8080, with demo organizations
+BAO_TOKEN=dev-app-token SPRING_PROFILES_ACTIVE=demo ./gradlew :app:bootRun  # backend on :8080, with demo data (deploy/keycloak/README.md)
+./scripts/reset-demo.sh                                # back to the demo seed (then restart the backend)
 SPRING_PROFILES_ACTIVE=dev ./gradlew :bff:bootRun       # BFF on :8081 (OIDC login, session)
 pnpm install && pnpm dev                               # frontend on :5173
 ```
