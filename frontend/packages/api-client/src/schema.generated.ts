@@ -408,7 +408,11 @@ export interface paths {
          *     assessment is evaluated (statuses null); `actions` stay empty until the roadmap exists (assessment#6);
          *     `evidence` stays empty until providers collect some (dashboard-reports#2).
          *
-         *     A framework with no catalogue is a `404` (`code` = `FRAMEWORK_NOT_FOUND`). Permission `traceability:read`
+         *     If the latest evaluation names a catalogue version the application did not load, the answer is a `500`
+         *     (`code` = `CATALOGUE_VERSION_MISSING`) rather than statuses shown against another version's controls.
+         *
+         *     A framework with no catalogue, malformed ids included (the server does not check `framework` against its
+         *     pattern), is a `404` (`code` = `FRAMEWORK_NOT_FOUND`). Permission `traceability:read`
          *     (consultant): the view shows results before the consultant validates them, so the client's people never
          *     get it.
          */
@@ -747,8 +751,10 @@ export interface components {
             /** @description The requirement, in Portuguese, from the catalogue. */
             text: string;
             /**
-             * @description `compliant` when every control is; `gap` when any control is `gap` or `partial`; null when not evaluated
-             *     (or when only some controls were, the others being above the assessment's level).
+             * @description A display roll-up of the engine's control statuses, not a compliance decision (NFR05). `gap` when any
+             *     evaluated control is `gap` or `partial`, even if others are above the assessment's level (so `onlyGaps`
+             *     always lists it); `compliant` when every control is evaluated and compliant; null when none was evaluated,
+             *     or when the evaluated ones are compliant and the others are above the assessment's level.
              */
             status: ("compliant" | "gap") | null;
             controls: components["schemas"]["ControlTrace"][];
